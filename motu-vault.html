@@ -1233,6 +1233,33 @@ function App() {
 
   `;
 
+
+  // Fetch the latest figures.json from GitHub and update the app.
+  // Merges remote rows with local custom figures (line='custom') so user additions survive.
+  const fetchFigs = useCallback(async () => {
+    setSyncStatus('syncing');
+    try {
+      const res = await fetch(FIGS_URL + '?t=' + Date.now()); // bust CDN cache
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const remote = await res.json();
+      if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
+      // Preserve any locally-added custom figures
+      setFigs(prev => {
+        const custom = prev.filter(f => f.line === 'custom');
+        const ids = new Set(remote.map(f => f.id));
+        const merged = [...remote, ...custom.filter(f => !ids.has(f.id))];
+        const ts = Date.now();
+        store.set(CACHE_KEY, { rows: merged, ts });
+        setSyncTs(ts);
+        return merged;
+      });
+      setSyncStatus('ok');
+    } catch(e) {
+      console.warn('figures.json fetch failed:', e.message);
+      setSyncStatus('err');
+    }
+  }, []);
+
   useEffect(() => {
     if (init.current) return; init.current = true;
     const c = store.get('motu-c2');
@@ -1266,32 +1293,6 @@ function App() {
   }, []);
 
   const saveFigs = useCallback(f => { setFigs(f); }, []);
-
-  // Fetch the latest figures.json from GitHub and update the app.
-  // Merges remote rows with local custom figures (line='custom') so user additions survive.
-  const fetchFigs = useCallback(async () => {
-    setSyncStatus('syncing');
-    try {
-      const res = await fetch(FIGS_URL + '?t=' + Date.now()); // bust CDN cache
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const remote = await res.json();
-      if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
-      // Preserve any locally-added custom figures
-      setFigs(prev => {
-        const custom = prev.filter(f => f.line === 'custom');
-        const ids = new Set(remote.map(f => f.id));
-        const merged = [...remote, ...custom.filter(f => !ids.has(f.id))];
-        const ts = Date.now();
-        store.set(CACHE_KEY, { rows: merged, ts });
-        setSyncTs(ts);
-        return merged;
-      });
-      setSyncStatus('ok');
-    } catch(e) {
-      console.warn('figures.json fetch failed:', e.message);
-      setSyncStatus('err');
-    }
-  }, []);
   const saveColl = useCallback(c => { setColl(c); store.set('motu-c2', c); }, []);
 
   const setStatus = useCallback((id, status) => {
