@@ -948,6 +948,27 @@ const _D =
 ['origins-5338','Snake Mountain Playset','origins','Vehicles & Playsets','',2023,79.99,'snake-mountain-playset-5338','Other'],
 ['origins-8110','The Collector (Cartoon Collection)','origins','Vehicles & Playsets','',2024,39.99,'the-collector-cartoon-collection-8110','Other'],
 ['origins-8111','Prince Adam & Cringer (Cartoon Collection)','origins','Vehicles & Playsets','',2024,30.0,'prince-adam-cringer-cartoon-collection-8111','Heroic Warriors']
+,
+['eternia-minis-2625','Faker & Man-At-Arms 2 Pack','eternia-minis','Action Figures','1',2014,14.99,'faker-man-at-arms-2-pack-2625','Evil Warriors'],
+['eternia-minis-3198','She-ra & Horde Trooper 2 Pack','eternia-minis','Action Figures','2',2015,14.99,'she-ra-horde-trooper-2-pack-3198','Great Rebellion'],
+['eternia-minis-2623','Beast Man and War Sled (Revelation)','eternia-minis','Vehicles & Playsets','',2021,9.99,'beast-man-and-war-sled-revelation-2623','Evil Warriors'],
+['eternia-minis-2622','Fisto and Stridor (Revelation)','eternia-minis','Vehicles & Playsets','',2021,9.99,'fisto-and-stridor-revelation-2622','Heroic Warriors'],
+['eternia-minis-4063','He-Man and Battle Cat (Netflix)','eternia-minis','Vehicles & Playsets','',2021,9.99,'he-man-and-battle-cat-netflix-4063','Heroic Warriors'],
+['eternia-minis-2613','He-Man and Ground Ripper','eternia-minis','Vehicles & Playsets','',2021,9.99,'he-man-and-ground-ripper-2613','Heroic Warriors'],
+['eternia-minis-4088','Skeletor and Painthor Cycle (Netflix)','eternia-minis','Vehicles & Playsets','',2021,19.99,'skeletor-and-painthor-cycle-netflix-4088','Evil Warriors'],
+['eternia-minis-2612','Skeletor and Roton','eternia-minis','Vehicles & Playsets','',2021,9.99,'skeletor-and-roton-2612','Evil Warriors'],
+['super7-2900','He-Man (Holiday)','super7','Club Grayskull','',2018,35.0,'he-man-holiday-2900','Heroic Warriors'],
+['super7-6047','God Skeletor','super7','Classics','',2019,35.0,'god-skeletor-6047','Evil Warriors'],
+['classics-5161','Battle Cat','classics','Creatures','',2010,30.0,'battle-cat-5161','Heroic Warriors'],
+['classics-5216','Granamyr (Green)','classics','Creatures','',2016,100.0,'granamyr-green-5216','Other'],
+['classics-5170','Mo-Larr vs Skeletor','classics','Packs','SDCC',2010,40.0,'mo-larr-vs-skeletor-5170','Evil Warriors'],
+['original-3979','Buzz Saw Hordak','original','Action Figures','6',1987,4.99,'buzz-saw-hordak-3979','Evil Horde'],
+['original-5468','Entrapta','original','Action Figures','2',1985,4.99,'entrapta-5468','Evil Horde'],
+['original-7811','He-Man (Wonder Bread)','original','Action Figures','',1984,null,'he-man-wonder-bread-7811','Heroic Warriors'],
+['original-3780','Rokkon','original','Action Figures','5',1986,7.99,'rokkon-3780','Heroic Warriors'],
+['original-5465','Scratchin Sound Catra','original','Action Figures','2',1985,4.99,'scratchin-sound-catra-5465','Great Rebellion'],
+['original-3782','Stonedar','original','Action Figures','5',1986,4.99,'stonedar-3782','Heroic Warriors'],
+['original-3762','Battle Bones','original','Vehicles and Playsets','4',1985,10.99,'battle-bones-3762','Other']
 ];
 
 const SEED = _D.map(d => ({
@@ -1465,7 +1486,7 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned</div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v1.4</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
