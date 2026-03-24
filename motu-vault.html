@@ -41,7 +41,10 @@ const store = {
 };
 
 // ─── Seed Data ───────────────────────────────────────────────────────────────
-const IMG = "https://raw.githubusercontent.com/shkankin/motu-images/main";
+const IMG       = "https://raw.githubusercontent.com/shkankin/motu-images/main";
+const FIGS_URL  = IMG + "/figures.json";
+const CACHE_KEY = 'motu-figs-cache';   // { rows:[], ts:number }
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in ms
 const _D = 
 [
 ['masterverse-4220','He-Man (40th anniversary)','masterverse','40th Anniversary','',2022,23.99,'he-man-40th-anniversary-4220','Heroic Warriors'],
@@ -1187,7 +1190,15 @@ const ICO = {
 
 // ─── App ─────────────────────────────────────────────────────────────────────
 function App() {
-  const [figs, setFigs]       = useState([]);
+  // Seed: baked-in fallback used before remote fetch completes
+  const SEED = useMemo(() => _D.map(r=>({id:r[0],name:r[1],line:r[2],group:r[3],wave:r[4],year:r[5],retail:r[6],slug:r[7],faction:r[8]})), []);
+  const [figs,  setFigs]  = useState(() => {
+    const c = store.get(CACHE_KEY);
+    if (c?.rows?.length) return c.rows;
+    return _D.map(r=>({id:r[0],name:r[1],line:r[2],group:r[3],wave:r[4],year:r[5],retail:r[6],slug:r[7],faction:r[8]}));
+  });
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | ok | err
+  const [syncTs,     setSyncTs]     = useState(() => store.get(CACHE_KEY)?.ts || null);
   const [coll, setColl]       = useState({});
   const [tab, setTab]         = useState('lines');   // lines | all | collection
   const [activeLine, setActiveLine] = useState(null);
@@ -1224,10 +1235,8 @@ function App() {
 
   useEffect(() => {
     if (init.current) return; init.current = true;
-    const f = store.get('motu-f2');
     const c = store.get('motu-c2');
-    setFigs(f && f.length ? f : SEED);
-    if (!f) store.set('motu-f2', SEED);
+    // figs already initialised from CACHE_KEY in useState — just load coll
     if (c) setColl(c);
     // Load custom photo index (just the keys, not the data - lazy load per figure)
     setCustomPhotos(prev => {
@@ -1237,7 +1246,10 @@ function App() {
       return map;
     });
     setLoaded(true);
-  }, []);
+    // Auto-refresh if cache is missing or older than TTL
+    const c = store.get(CACHE_KEY);
+    if (!c?.ts || Date.now() - c.ts > CACHE_TTL) fetchFigs();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { localStorage.setItem('motu-sort', sortBy); }, [sortBy]);
   useEffect(() => { if (srch) setTab('all'); }, [srch]);
@@ -1253,7 +1265,33 @@ function App() {
     setTab('all');
   }, []);
 
-  const saveFigs = useCallback(f => { setFigs(f); store.set('motu-f2', f); }, []);
+  const saveFigs = useCallback(f => { setFigs(f); }, []);
+
+  // Fetch the latest figures.json from GitHub and update the app.
+  // Merges remote rows with local custom figures (line='custom') so user additions survive.
+  const fetchFigs = useCallback(async () => {
+    setSyncStatus('syncing');
+    try {
+      const res = await fetch(FIGS_URL + '?t=' + Date.now()); // bust CDN cache
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const remote = await res.json();
+      if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
+      // Preserve any locally-added custom figures
+      setFigs(prev => {
+        const custom = prev.filter(f => f.line === 'custom');
+        const ids = new Set(remote.map(f => f.id));
+        const merged = [...remote, ...custom.filter(f => !ids.has(f.id))];
+        const ts = Date.now();
+        store.set(CACHE_KEY, { rows: merged, ts });
+        setSyncTs(ts);
+        return merged;
+      });
+      setSyncStatus('ok');
+    } catch(e) {
+      console.warn('figures.json fetch failed:', e.message);
+      setSyncStatus('err');
+    }
+  }, []);
   const saveColl = useCallback(c => { setColl(c); store.set('motu-c2', c); }, []);
 
   const setStatus = useCallback((id, status) => {
@@ -1536,13 +1574,23 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v2.2</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v2.3{syncTs ? ' · updated ' + new Date(syncTs).toLocaleDateString() : ''}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
             <TapButton icon={ICO.import} label="Import" onTap={()=>setSheet('import')} T={T}/>
             <TapButton icon={ICO.export} label="Export" onTap={exportCSV} T={T}/>
             <TapButton icon={ICO.palette} label="Theme" onTap={()=>setSheet('theme')} T={T}/>
+            {/* Sync button with spinner/status indicator */}
+            <button onClick={fetchFigs} disabled={syncStatus==='syncing'} title="Sync latest figures"
+              style={{width:38,height:38,borderRadius:10,border:`1px solid ${syncStatus==='err'?'#f87171':syncStatus==='ok'?'#34d399':T.bd}`,
+                background:T.bg3,color:syncStatus==='err'?'#f87171':syncStatus==='ok'?'#34d399':T.t2,
+                cursor:syncStatus==='syncing'?'default':'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontFamily:"'Outfit',sans-serif",transition:'all .3s',
+                animation:syncStatus==='syncing'?'spin 1s linear infinite':'none'}}>
+              <Icon d={ICO.sync} s={16}/>
+            </button>
           </div>
         </div>
         {/* Search row */}
@@ -2131,6 +2179,7 @@ function GlobalStyles() {
     input::placeholder { color: var(--t3); }
     button:active { opacity: .75; }
     ::-webkit-scrollbar { display: none; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     * { scrollbar-width: none; }
   `}</style>;
 }
