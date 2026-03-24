@@ -1336,12 +1336,14 @@ function App() {
     URL.revokeObjectURL(url);
   }, [figs, coll]);
 
-  // Stats
+  // Stats — derived from figs cross-referenced with coll to avoid counting
+  // orphaned coll entries (figures that were deleted or not in current seed).
   const stats = useMemo(() => {
-    const owned = Object.values(coll).filter(c=>c.status==='owned').length;
-    const wish  = Object.values(coll).filter(c=>c.status==='wishlist').length;
-    const ord   = Object.values(coll).filter(c=>c.status==='ordered').length;
-    const paid  = Object.entries(coll).filter(([,c])=>c.status==='owned'&&c.paid).reduce((s,[,c])=>s+Number(c.paid),0);
+    const owned = figs.filter(f=>coll[f.id]?.status==='owned').length;
+    const wish  = figs.filter(f=>coll[f.id]?.status==='wishlist').length;
+    const ord   = figs.filter(f=>coll[f.id]?.status==='ordered').length;
+    const paid  = figs.filter(f=>coll[f.id]?.status==='owned'&&coll[f.id]?.paid)
+                      .reduce((s,f)=>s+Number(coll[f.id].paid),0);
     return { total:figs.length, owned, wish, ord, paid };
   }, [figs, coll]);
 
@@ -1504,7 +1506,7 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v1.9</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v2.0</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
