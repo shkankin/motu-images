@@ -32,7 +32,8 @@ const store = {
 
 // ─── Seed Data ───────────────────────────────────────────────────────────────
 const IMG = "https://raw.githubusercontent.com/shkankin/motu-images/main";
-const _D = [
+const _D = 
+[
 ['origins-2394','Beast Man','origins','Action Figures','1',2020,14.99,'beast-man-2394','Evil Warriors'],
 ['origins-2395','Evil-Lyn','origins','Action Figures','1',2020,14.99,'evil-lyn-2395','Evil Warriors'],
 ['origins-2393','He-Man','origins','Action Figures','1',2020,14.99,'he-man-2393','Heroic Warriors'],
@@ -938,6 +939,15 @@ const _D = [
 ['original-90133','Scratchin Sound Catra','original','Action Figures','',null,4.99,'scratchin-sound-catra-90133','Evil Horde'],
 ['original-90134','Stonedar','original','Action Figures','',null,4.99,'stonedar-90134','Other'],
 ['original-90135','Battle Bones','original','Vehicles & Playsets','',null,10.99,'battle-bones-90135','Other']
+,
+['origins-90120','Beast Man','origins','Turtles of Grayskull','',2023,19.99,'beast-man-90120','Evil Warriors'],
+['origins-90121','Hordak','origins','Turtles of Grayskull','',2023,19.99,'hordak-90121','Evil Horde'],
+['origins-90122','Man-At-Arms','origins','Turtles of Grayskull','',2023,19.99,'man-at-arms-90122','Heroic Warriors'],
+['origins-90123','Mer-Man','origins','Turtles of Grayskull','',2023,19.99,'mer-man-90123','Evil Warriors'],
+['origins-90124','Ninjor','origins','Turtles of Grayskull','',2023,23.99,'ninjor-90124','Evil Warriors'],
+['origins-90125','Rattlor','origins','Turtles of Grayskull','',2023,20.99,'rattlor-90125','Snake Men'],
+['origins-90126','Skeletor','origins','Turtles of Grayskull','',2023,19.99,'skeletor-90126','Evil Warriors'],
+['origins-90127','Teela','origins','Turtles of Grayskull','',2023,19.99,'teela-90127','Heroic Warriors']
 ];
 
 const SEED = _D.map(d => ({
@@ -988,13 +998,7 @@ const LINE_REP_DEFAULTS = {
   'eternia-minis':  'he-man-grayskull-2597',
 };
 
-// MOTU theme — stone/parchment with figure imagery
-THEMES.motu = {
-  name:'MOTU',
-  bg:'#0d0b08', bg2:'#161310', bg3:'#201c17', bd:'#3d3020',
-  acc:'#c8860a', gold:'#e8a020',
-  t1:'#f0e8d8', t2:'#a08060', t3:'#6a5040',
-};
+
 
 // Sublines: line -> ordered list of {key, label, groups[]}
 // 'groups' are the seed group values that belong to this subline
@@ -1108,14 +1112,14 @@ function parseCSV(text) {
   };
   const headers = parseRow(lines[0]).map(h=>h.trim());
   const idx = h => headers.indexOf(h);
-  const [iGenre,iSeries,iGroup,iName,iPaid,iCond,iNote,iWhere] =
-    ['Genre','Series','Group','Name','Purchase Price','Condition','Note','Where Purchased'].map(idx);
+  const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere] =
+    ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased'].map(idx);
   return lines.slice(1).map(l => {
     const c = parseRow(l);
     const csvGroup = c[iGroup]?.trim() || '';
     const mappedGroup = GROUP_MAP[csvGroup] || csvGroup;
     return { genre:c[iGenre], series:c[iSeries], name:c[iName]?.trim(),
-      group:mappedGroup, paid:c[iPaid]?.trim(), cond:COND_MAP[c[iCond]?.trim()]||'',
+      group:mappedGroup, wave:c[iWave]?.trim()||'', paid:c[iPaid]?.trim(), cond:COND_MAP[c[iCond]?.trim()]||'',
       note:c[iNote]?.trim(), where:c[iWhere]?.trim() };
   }).filter(r => r.genre === 'Masters of the Universe' && SERIES_MAP[r.series]);
 }
@@ -1169,6 +1173,7 @@ function App() {
   const [loaded, setLoaded]   = useState(false);
   const init = useRef(false);
   const scrollRef = useRef(null);
+  const savedScroll = useRef(0);
 
   const T = THEMES[theme] || THEMES.eternia;
 
@@ -1181,15 +1186,7 @@ function App() {
       --gn:#34d399;--rd:#f87171;--bl:#60a5fa;--or:#fb923c;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
-    ${theme === 'motu' ? `
-    body, #root { background: #0d0b08; }
-    body::before {
-      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-      background-image:
-        repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px),
-        repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(255,255,255,.008) 3px,rgba(255,255,255,.008) 6px);
-    }
-    ` : ''}
+
   `;
 
   useEffect(() => {
@@ -1210,6 +1207,7 @@ function App() {
   }, []);
 
   useEffect(() => { localStorage.setItem('motu-sort', sortBy); }, [sortBy]);
+  useEffect(() => { if (srch) setTab('all'); }, [srch]);
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [activeLine, activeSubline, tab]);
@@ -1253,11 +1251,13 @@ function App() {
   // Import
   const doImport = useCallback((csvText, overwrite=false) => {
     const motuRows = parseCSV(csvText);
-    // Build both a 3-key index (name+line+group) and a 2-key index (name+line)
-    const idx3 = {}, idx2 = {};
+    // Build indexes: 2-key (name+line), 3-key (+group), 4-key (+wave)
+    const idx4 = {}, idx3 = {}, idx2 = {};
     figs.forEach(f => {
+      const k4 = normalize(f.name) + '|' + f.line + '|' + normalize(f.group||'') + '|' + normalize(f.wave||'');
       const k3 = normalize(f.name) + '|' + f.line + '|' + normalize(f.group||'');
       const k2 = normalize(f.name) + '|' + f.line;
+      if (!idx4[k4]) idx4[k4] = f;
       if (!idx3[k3]) idx3[k3] = f;
       idx2[k2] = idx2[k2] ? 'AMBIGUOUS' : f;
     });
@@ -1265,10 +1265,11 @@ function App() {
     const newColl = { ...coll };
     motuRows.forEach(row => {
       const lineId = SERIES_MAP[row.series];
+      const k4 = normalize(row.name) + '|' + lineId + '|' + normalize(row.group||'') + '|' + normalize(row.wave||'');
       const k3 = normalize(row.name) + '|' + lineId + '|' + normalize(row.group||'');
       const k2 = normalize(row.name) + '|' + lineId;
-      // Try 3-key first (precise), fall back to unambiguous 2-key
-      const fig = idx3[k3] || (idx2[k2] !== 'AMBIGUOUS' ? idx2[k2] : null);
+      // Try most specific first, fall back to less specific
+      const fig = idx4[k4] || idx3[k3] || (idx2[k2] !== 'AMBIGUOUS' ? idx2[k2] : null);
       if (!fig) { unmatched.push(ln(lineId) + ': ' + row.name + (row.group ? ' [' + row.group + ']' : '')); return; }
       if (!overwrite && newColl[fig.id]?.status === 'owned') { skipped++; return; }
       const note = [row.note, row.where ? 'From: ' + row.where : ''].filter(Boolean).join(' | ');
@@ -1358,7 +1359,15 @@ function App() {
         <style>{cssVars}</style>
         {/* Header */}
         <div style={{padding:'16px 16px 12px',paddingTop:'max(16px,env(safe-area-inset-top))',background:T.bg2,borderBottom:`1px solid ${T.bd}`,display:'flex',alignItems:'center',gap:12}}>
-          <button onClick={()=>setScreen('main')} style={{background:'none',border:'none',color:T.t1,padding:8,cursor:'pointer',borderRadius:8}}>
+          <button onClick={()=>{
+            setScreen('main');
+            // Restore scroll after DOM remounts — rAF fires after paint
+            requestAnimationFrame(()=>{
+              requestAnimationFrame(()=>{
+                if(scrollRef.current) scrollRef.current.scrollTop = savedScroll.current;
+              });
+            });
+          }} style={{background:'none',border:'none',color:T.t1,padding:8,cursor:'pointer',borderRadius:8}}>
             <Icon d={ICO.back} s={22}/>
           </button>
           <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:700,color:T.t1,lineHeight:1.3}}>{f.name}</div>
@@ -1574,7 +1583,10 @@ function App() {
                 customPhoto={customPhotos[f.id] ? photoStore.get(f.id) : null}
                 showLine={!!srch}
                 onImgErr={()=>setIErr(p=>({...p,[f.id]:true}))}
-                onTap={()=>{setActiveFig(f);setScreen('figure');}}
+                onTap={()=>{
+                  if(scrollRef.current) savedScroll.current = scrollRef.current.scrollTop;
+                  setActiveFig(f);setScreen('figure');
+                }}
                 onStatus={s=>setStatus(f.id,s)}/>
             ))}
             <div style={{height:'calc(80px + var(--safe-bottom))'}}/>
