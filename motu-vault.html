@@ -1518,26 +1518,21 @@ function App() {
           // ── Lines grid ──
           <div style={{padding:16,display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
             {lineStats.map(l => {
-              const repSlug = lineReps[l.id] || LINE_REP_DEFAULTS[l.id];
-              const repImg  = repSlug ? `${IMG}/${repSlug}.jpg` : null;
+              // Banner image: upload origins.jpg, masterverse.jpg etc. to your image repo
+              const bannerImg = `${IMG}/${l.id}.jpg`;
               return (
                 <div key={l.id} style={{position:'relative',borderRadius:18,overflow:'hidden',
                   border:`1px solid ${T.bd}`,aspectRatio:'3/4',cursor:'pointer'}}
                   onClick={()=>goToLine(l.id)}>
                   {/* Figure image background */}
-                  {repImg && <img src={repImg} alt={l.name}
-                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}}/>}
+                  <img src={bannerImg} alt={l.name}
+                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}}
+                    onError={e=>e.target.style.display='none'}/>
                   {/* Gradient overlay */}
                   <div style={{position:'absolute',inset:0,
                     background:'linear-gradient(to bottom, rgba(0,0,0,.1) 0%, rgba(0,0,0,.3) 40%, rgba(0,0,0,.85) 100%)'}}/>
-                  {/* Edit rep button */}
-                  <button onClick={e=>{e.stopPropagation();setRepPicker(l.id);}}
-                    style={{position:'absolute',top:8,right:8,width:28,height:28,borderRadius:8,
-                      background:'rgba(0,0,0,.5)',border:'1px solid rgba(255,255,255,.2)',
-                      color:'rgba(255,255,255,.7)',cursor:'pointer',display:'flex',
-                      alignItems:'center',justifyContent:'center',backdropFilter:'blur(4px)'}}>
-                    <Icon d={ICO.edit} s={13}/>
-                  </button>
+                  {/* Edit rep button — commented out, using custom banners instead */}
+                  {/* <button onClick={e=>{e.stopPropagation();setRepPicker(l.id);}}>...</button> */}
                   {/* Text overlay at bottom */}
                   <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 12px 14px'}}>
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700,
@@ -1587,18 +1582,8 @@ function App() {
         )}
       </div>
 
-      {/* Rep picker modal */}
-      {repPicker && (
-        <RepPickerModal
-          lineId={repPicker}
-          figs={figs}
-          T={T}
-          currentSlug={lineReps[repPicker] || LINE_REP_DEFAULTS[repPicker]}
-          onSelect={slug=>{setLineReps(p=>({...p,[repPicker]:slug}));setRepPicker(null);}}
-          onReset={()=>{setLineReps(p=>{const n={...p};delete n[repPicker];return n;});setRepPicker(null);}}
-          onClose={()=>setRepPicker(null)}
-        />
-      )}
+      {/* Rep picker modal — commented out, using custom banners instead */}
+      {/* {repPicker && <RepPickerModal ... />} */}
 
       {/* Bottom nav */}
       <div style={{background:T.bg2,borderTop:`1px solid ${T.bd}`,paddingBottom:'max(8px,var(--safe-bottom))',display:'grid',gridTemplateColumns:'1fr 1fr 1fr'}}>
