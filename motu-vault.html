@@ -1146,15 +1146,15 @@ function parseCSV(text) {
   };
   const headers = parseRow(lines[0]).map(h=>h.trim());
   const idx = h => headers.indexOf(h);
-  const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere] =
-    ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased'].map(idx);
+  const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere,iVariation] =
+    ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased','Variation Name'].map(idx);
   return lines.slice(1).map(l => {
     const c = parseRow(l);
     const csvGroup = c[iGroup]?.trim() || '';
     const mappedGroup = GROUP_MAP[csvGroup] || csvGroup;
     return { genre:c[iGenre], series:c[iSeries], name:c[iName]?.trim(),
       group:mappedGroup, wave:c[iWave]?.trim()||'', paid:c[iPaid]?.trim(), cond:COND_MAP[c[iCond]?.trim()]||'',
-      note:c[iNote]?.trim(), where:c[iWhere]?.trim() };
+      note:c[iNote]?.trim(), where:c[iWhere]?.trim(), variation:c[iVariation]?.trim()||'' };
   }).filter(r => r.genre === 'Masters of the Universe' && SERIES_MAP[r.series]);
 }
 
@@ -1295,7 +1295,8 @@ function App() {
       if (!idx3[k3]) idx3[k3] = f;
       idx2[k2] = idx2[k2] ? 'AMBIGUOUS' : f;
     });
-    let matched=0, skipped=0, unmatched=[];
+    const matchedIds = new Set();
+    let skipped=0, unmatched=[];
     const newColl = { ...coll };
     motuRows.forEach(row => {
       const lineId = SERIES_MAP[row.series];
@@ -1305,17 +1306,39 @@ function App() {
       // Try most specific first, fall back to less specific
       const fig = idx4[k4] || idx3[k3] || (idx2[k2] !== 'AMBIGUOUS' ? idx2[k2] : null);
       if (!fig) { unmatched.push(ln(lineId) + ': ' + row.name + (row.group ? ' [' + row.group + ']' : '')); return; }
+      // Build note string for this row
+      const noteParts = [
+        row.variation ? 'Variant: ' + row.variation : '',
+        row.note || '',
+        row.where  ? 'From: ' + row.where : '',
+      ].filter(Boolean);
+      const rowNote = noteParts.join(' | ');
+
+      if (matchedIds.has(fig.id)) {
+        // Already matched — append this variant to the variants field
+        if (row.variation) {
+          const existingVars = newColl[fig.id]?.variants || '';
+          if (!existingVars.split(',').map(v=>v.trim()).includes(row.variation)) {
+            newColl[fig.id] = { ...newColl[fig.id],
+              variants: [existingVars, row.variation].filter(Boolean).join(', ') };
+          }
+        }
+        skipped++;
+        return;
+      }
       if (!overwrite && newColl[fig.id]?.status === 'owned') { skipped++; return; }
-      const note = [row.note, row.where ? 'From: ' + row.where : ''].filter(Boolean).join(' | ');
+      // Store variation in its own field, notes separately
+      const importNote = [row.note, row.where ? 'From: ' + row.where : ''].filter(Boolean).join(' | ');
       newColl[fig.id] = { ...newColl[fig.id], status:'owned',
         ...(row.cond && {condition:row.cond}),
         ...(row.paid && {paid:row.paid}),
-        ...(note && {notes:note}),
+        ...(row.variation && {variants:row.variation}),
+        ...(importNote && {notes:importNote}),
       };
-      matched++;
+      matchedIds.add(fig.id);
     });
     saveColl(newColl);
-    return { matched, skipped, unmatched };
+    return { matched: matchedIds.size, skipped, unmatched };
   }, [figs, coll, saveColl]);
 
   // Export CSV
@@ -1479,6 +1502,13 @@ function App() {
                   style={{width:'100%',padding:'12px',background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,color:T.t1,fontSize:14,fontFamily:"'Outfit',sans-serif"}}/>
               </div>
               <div>
+                <div style={{fontSize:12,color:T.t3,marginBottom:4}}>Variants Owned</div>
+                <input type="text" value={c.variants||''} placeholder="e.g. Dark Face, Painted Back…"
+                  onChange={e=>updateColl(f.id,'variants',e.target.value)}
+                  style={{width:'100%',padding:'12px',background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,color:T.t1,fontSize:14,fontFamily:"'Outfit',sans-serif"}}/>
+                <div style={{fontSize:10,color:T.t3,marginTop:4}}>Comma-separate multiple variants</div>
+              </div>
+              <div>
                 <div style={{fontSize:12,color:T.t3,marginBottom:4}}>Notes</div>
                 <textarea value={c.notes||''} placeholder="Notes..."
                   onChange={e=>updateColl(f.id,'notes',e.target.value)} rows={3}
@@ -1506,7 +1536,7 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v2.0</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v2.2</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
@@ -1679,6 +1709,7 @@ function FigureRow({f, c, T, imgErr, customPhoto, showLine, onImgErr, onTap, onS
       </div>
       {/* Status dot / quick-own */}
       <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+        {c.variants && <div style={{fontSize:9,fontWeight:700,color:T.gold,letterSpacing:.5}}>VAR</div>}
         {c.status
           ? <div style={{width:10,height:10,borderRadius:'50%',background:statusColor}}/>
           : <button onClick={e=>{e.stopPropagation();onStatus('owned');}}
