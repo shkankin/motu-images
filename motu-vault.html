@@ -11,6 +11,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<!-- Content Security Policy: restrict resource origins -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com;
+  style-src 'unsafe-inline' https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  img-src 'self' data: blob: https://raw.githubusercontent.com;
+  connect-src https://api.anthropic.com;
+">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -25,6 +34,7 @@ body { font-family: 'Outfit', sans-serif; background: #08080f; color: #eae6f2; o
 const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 // ─── Storage ────────────────────────────────────────────────────────────────
+// Thin localStorage wrapper — all collection data lives here, never on a server.
 const store = {
   get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -1086,7 +1096,8 @@ const SUBLINES = {
 };
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 
-// Photo storage: stores base64 data URLs keyed by figure id
+// Photo storage: per-figure camera/file photos stored as compressed base64 JPEG.
+// Key format: motu-photo-{figureId}. Loaded lazily — only flags in React state.
 const photoStore = {
   get: id => { try { return localStorage.getItem('motu-photo-' + id) || null; } catch { return null; } },
   set: (id, dataUrl) => { try { localStorage.setItem('motu-photo-' + id, dataUrl); } catch {} },
@@ -1120,6 +1131,8 @@ const GROUP_MAP = {
 };
 
 function parseCSV(text) {
+  // Guard against absurdly large files (>10MB)
+  if (text.length > 10_000_000) throw new Error('File too large (max 10MB)');
   const lines = text.split('\n').filter(l => l.trim());
   const parseRow = line => {
     const cols=[]; let cur=''; let inQ=false;
@@ -1152,24 +1165,24 @@ const Icon = ({d,s=20,stroke=2}) => (
   </svg>
 );
 const ICO = {
-  lines:  'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
-  list:   'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
-  heart:  'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z',
-  search: 'M11 3a8 8 0 100 16 8 8 0 000-16zM21 21l-4.35-4.35',
-  filter: 'M4 6h16M7 12h10M10 18h4',
-  check:  'M20 6L9 17l-5-5',
-  plus:   'M12 5v14M5 12h14',
-  x:      'M18 6L6 18M6 6l12 12',
-  back:   'M19 12H5M12 19l-7-7 7-7',
-  edit:   'M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z',
-  trash:  'M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2',
-  csv:    'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3',
-  import: 'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 3v12',
-  palette:'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.55 0 1-.45 1-1 0-.26-.1-.5-.26-.69-.16-.2-.25-.44-.25-.69 0-.55.45-1 1-1h1.18c3.07 0 5.57-2.5 5.57-5.57C20.26 5.6 16.56 2 12 2z',
-  sort:   'M3 6h18M6 12h12M9 18h6',
-  sync:   'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15',
-  star:   'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
-  img:    'M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14l4-4h12a2 2 0 002-2zM8.5 12.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z',
+  lines:   'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+  list:    'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  heart:   'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z',
+  search:  'M11 3a8 8 0 100 16 8 8 0 000-16zM21 21l-4.35-4.35',
+  filter:  'M22 3H2l8 9.46V19l4 2V12.46L22 3z',
+  sort:    'M3 6h18M6 12h12M10 18h4',
+  check:   'M20 6L9 17l-5-5',
+  plus:    'M12 5v14M5 12h14',
+  x:       'M18 6L6 18M6 6l12 12',
+  back:    'M19 12H5M12 19l-7-7 7-7',
+  edit:    'M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z',
+  trash:   'M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2',
+  export:  'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3',
+  import:  'M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  palette: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.55 0 1-.45 1-1 0-.26-.1-.5-.26-.69-.16-.2-.25-.44-.25-.69 0-.55.45-1 1-1h1.18c3.07 0 5.57-2.5 5.57-5.57C20.26 5.6 16.56 2 12 2z',
+  img:     'M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14l4-4h12a2 2 0 002-2zM8.5 12.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z',
+  sync:    'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15',
+  star:    'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
 };
 
 // ─── App ─────────────────────────────────────────────────────────────────────
@@ -1186,8 +1199,7 @@ function App() {
   const [filterStatus, setFilterStatus]   = useState('');
   const [sortBy, setSortBy]   = useState(() => localStorage.getItem('motu-sort') || 'wave');
   const [theme, setTheme]     = useState(() => localStorage.getItem('motu-theme') || 'eternia');
-  const [lineReps, setLineReps] = useState(() => store.get('motu-line-reps') || {});
-  const [repPicker, setRepPicker] = useState(null); // lineId being edited
+  const [lineOrder, setLineOrder] = useState(() => store.get('motu-line-order') || LINES.map(l=>l.id)); // lineId being edited
   const [sheet, setSheet]     = useState(null);   // null | 'filter' | 'sort' | 'add' | 'edit' | 'import' | 'theme'
   const [iErr, setIErr]       = useState({});
   const [customPhotos, setCustomPhotos] = useState({});
@@ -1233,7 +1245,7 @@ function App() {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [activeLine, activeSubline, tab]);
   useEffect(() => { localStorage.setItem('motu-theme', theme); }, [theme]);
-  useEffect(() => { store.set('motu-line-reps', lineReps); }, [lineReps]);
+  useEffect(() => { store.set('motu-line-order', lineOrder); }, [lineOrder]);
 
   const goToLine = useCallback(lineId => {
     setActiveLine(lineId);
@@ -1272,7 +1284,8 @@ function App() {
   // Import
   const doImport = useCallback((csvText, overwrite=false) => {
     const motuRows = parseCSV(csvText);
-    // Build indexes: 2-key (name+line), 3-key (+group), 4-key (+wave)
+    // Match hierarchy: 4-key (name+line+group+wave) → 3-key → 2-key (unambiguous only).
+    // This handles figures like "Beast Man" which appear in multiple sublines/waves.
     const idx4 = {}, idx3 = {}, idx2 = {};
     figs.forEach(f => {
       const k4 = normalize(f.name) + '|' + f.line + '|' + normalize(f.group||'') + '|' + normalize(f.wave||'');
@@ -1313,9 +1326,14 @@ function App() {
       return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',c.condition||'',c.paid||'',c.notes||''];
     });
     const csv = [h,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-    a.download = 'motu-collection.csv'; a.click();
+    a.href = url;
+    a.download = 'motu-collection.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }, [figs, coll]);
 
   // Stats
@@ -1382,7 +1400,7 @@ function App() {
         <div style={{padding:'16px 16px 12px',paddingTop:'max(16px,env(safe-area-inset-top))',background:T.bg2,borderBottom:`1px solid ${T.bd}`,display:'flex',alignItems:'center',gap:12}}>
           <button onClick={()=>{
             setScreen('main');
-            // Restore scroll after DOM remounts — rAF fires after paint
+            // Two rAF frames: first lets React commit the DOM, second lets the browser paint.
             requestAnimationFrame(()=>{
               requestAnimationFrame(()=>{
                 if(scrollRef.current) scrollRef.current.scrollTop = savedScroll.current;
@@ -1486,12 +1504,12 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v1.4</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v1.9</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
             <TapButton icon={ICO.import} label="Import" onTap={()=>setSheet('import')} T={T}/>
-            <TapButton icon={ICO.csv}    label="Export" onTap={exportCSV} T={T}/>
+            <TapButton icon={ICO.export} label="Export" onTap={exportCSV} T={T}/>
             <TapButton icon={ICO.palette} label="Theme" onTap={()=>setSheet('theme')} T={T}/>
           </div>
         </div>
@@ -1515,6 +1533,7 @@ function App() {
           <button onClick={()=>setSheet('sort')}
             style={{padding:'11px 14px',borderRadius:12,border:`1px solid ${T.bd}`,background:T.bg3,color:T.t2,cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:14,fontFamily:"'Outfit',sans-serif"}}>
             <Icon d={ICO.sort} s={18}/>
+            <span style={{fontSize:11,color:T.t3}}>{sortBy==='wave'?'Wave':sortBy==='name'||sortBy==='name-desc'?'Name':sortBy.includes('year')?'Year':'Price'}</span>
           </button>
         </div>
         {/* Line pill if inside a line */}
@@ -1546,42 +1565,11 @@ function App() {
       <div ref={scrollRef} style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
         {tab==='lines' && !activeLine ? (
           // ── Lines grid ──
-          <div style={{padding:16,display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-            {lineStats.map(l => {
-              // Banner image: upload origins.jpg, masterverse.jpg etc. to your image repo
-              const bannerImg = `${IMG}/${l.id}.jpg`;
-              return (
-                <div key={l.id} style={{position:'relative',borderRadius:18,overflow:'hidden',
-                  border:`1px solid ${T.bd}`,aspectRatio:'3/4',cursor:'pointer'}}
-                  onClick={()=>goToLine(l.id)}>
-                  {/* Figure image background */}
-                  <img src={bannerImg} alt={l.name}
-                    style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}}
-                    onError={e=>e.target.style.display='none'}/>
-                  {/* Gradient overlay */}
-                  <div style={{position:'absolute',inset:0,
-                    background:'linear-gradient(to bottom, rgba(0,0,0,.1) 0%, rgba(0,0,0,.3) 40%, rgba(0,0,0,.85) 100%)'}}/>
-                  {/* Edit rep button — commented out, using custom banners instead */}
-                  {/* <button onClick={e=>{e.stopPropagation();setRepPicker(l.id);}}>...</button> */}
-                  {/* Text overlay at bottom */}
-                  <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 12px 14px'}}>
-                    <div style={{fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700,
-                      color:'#fff',lineHeight:1.2,marginBottom:2,
-                      textShadow:'0 1px 4px rgba(0,0,0,.8)'}}>{l.name}</div>
-                    <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginBottom:6}}>{l.yr}</div>
-                    {l.total > 0 && <>
-                      <div style={{height:2,background:'rgba(255,255,255,.2)',borderRadius:2,overflow:'hidden',marginBottom:4}}>
-                        <div style={{height:'100%',width:`${l.pct}%`,
-                          background:l.pct===100?'#34d399':T.gold,borderRadius:2}}/>
-                      </div>
-                      <div style={{fontSize:10,color:l.pct===100?'#34d399':'rgba(255,255,255,.7)',fontWeight:600}}>
-                        {l.owned}/{l.total} · {l.pct}%</div>
-                    </>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <LineGrid
+            lineStats={lineStats} lineOrder={lineOrder} setLineOrder={setLineOrder}
+            T={T} IMG={IMG} goToLine={goToLine}
+          />
+          
         ) : (!srch && activeLine && !activeSubline && SUBLINES[activeLine]) ? (
           // ── Subline cards ──
           <SublineCards lineId={activeLine} figs={figs} coll={coll} T={T}
@@ -1615,8 +1603,6 @@ function App() {
         )}
       </div>
 
-      {/* Rep picker modal — commented out, using custom banners instead */}
-      {/* {repPicker && <RepPickerModal ... />} */}
 
       {/* Bottom nav */}
       <div style={{background:T.bg2,borderTop:`1px solid ${T.bd}`,paddingBottom:'max(8px,var(--safe-bottom))',display:'grid',gridTemplateColumns:'1fr 1fr 1fr'}}>
@@ -1704,84 +1690,107 @@ function FigureRow({f, c, T, imgErr, customPhoto, showLine, onImgErr, onTap, onS
   );
 }
 
-// ── Rep Picker Modal ─────────────────────────────────────────────────────────
-function RepPickerModal({lineId, figs, T, currentSlug, onSelect, onReset, onClose}) {
-  const lineFigs = figs.filter(f => f.line === lineId && f.slug && f.image);
-  const [imgErrs, setImgErrs] = useState({});
+
+// ── Line Grid ───────────────────────────────────────────────────────────────
+function LineGrid({lineStats, lineOrder, setLineOrder, T, IMG, goToLine}) {
+  const [editing, setEditing] = useState(false);
+
+  const ordered = [...lineOrder]
+    .map(id => lineStats.find(l => l.id === id))
+    .filter(Boolean)
+    .concat(lineStats.filter(l => !lineOrder.includes(l.id)));
+
+  const move = (id, dir) => {
+    setLineOrder(prev => {
+      const arr = [...prev];
+      const i = arr.indexOf(id);
+      const j = i + dir;
+      if (j < 0 || j >= arr.length) return prev;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      return arr;
+    });
+  };
 
   return (
-    <div style={{position:'fixed',inset:0,zIndex:300,display:'flex',flexDirection:'column'}}
-      onClick={onClose}>
-      {/* Backdrop */}
-      <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.7)',backdropFilter:'blur(6px)'}}/>
-      {/* Sheet */}
-      <div style={{position:'absolute',bottom:0,left:0,right:0,
-        background:T.bg2,borderRadius:'20px 20px 0 0',
-        border:`1px solid ${T.bd}`,
-        paddingBottom:'max(20px,env(safe-area-inset-bottom))',
-        maxHeight:'80vh',display:'flex',flexDirection:'column'}}
-        onClick={e=>e.stopPropagation()}>
-        {/* Handle + header */}
-        <div style={{padding:'12px 20px 0',textAlign:'center'}}>
-          <div style={{width:36,height:4,borderRadius:2,background:T.bd,margin:'0 auto 12px'}}/>
+    <div>
+      {/* Edit order button */}
+      <div style={{display:'flex',justifyContent:'flex-end',padding:'0 16px 8px'}}>
+        <button onClick={()=>setEditing(e=>!e)}
+          style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:8,
+            border:`1px solid ${editing?T.acc:T.bd}`,
+            background:editing?`${T.acc}22`:'none',
+            color:editing?T.acc:T.t3,fontSize:11,
+            cursor:'pointer',fontFamily:"'Outfit',sans-serif",transition:'all .15s'}}>
+          {editing ? '✓ Done' : '⇅ Reorder'}
+        </button>
+      </div>
+      {editing ? (
+        // ── Reorder list ──
+        <div style={{padding:'0 16px 16px',display:'flex',flexDirection:'column',gap:8}}>
+          {ordered.map((l, idx) => (
+            <div key={l.id} style={{display:'flex',alignItems:'center',gap:10,
+              padding:'12px 14px',background:T.bg2,border:`1px solid ${T.bd}`,
+              borderRadius:14}}>
+              {/* Up/Down buttons */}
+              <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
+                <button onClick={()=>move(l.id,-1)} disabled={idx===0}
+                  style={{width:28,height:28,borderRadius:7,border:`1px solid ${idx===0?T.bd+'88':T.bd}`,
+                    background:T.bg3,color:idx===0?T.t3+'44':T.t1,cursor:idx===0?'default':'pointer',
+                    fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',
+                    transition:'all .1s'}}>↑</button>
+                <button onClick={()=>move(l.id,1)} disabled={idx===ordered.length-1}
+                  style={{width:28,height:28,borderRadius:7,border:`1px solid ${idx===ordered.length-1?T.bd+'88':T.bd}`,
+                    background:T.bg3,color:idx===ordered.length-1?T.t3+'44':T.t1,
+                    cursor:idx===ordered.length-1?'default':'pointer',
+                    fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',
+                    transition:'all .1s'}}>↓</button>
+              </div>
+              {/* Line name */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:14,fontWeight:700,color:T.t1}}>{l.name}</div>
+                <div style={{fontSize:11,color:T.t3,marginTop:2}}>{l.yr} · {l.total} figures · {l.owned} owned</div>
+              </div>
+              {/* Completion */}
+              <div style={{fontSize:12,fontWeight:600,color:l.pct===100?'#34d399':T.gold,flexShrink:0}}>
+                {l.pct}%
+              </div>
+            </div>
+          ))}
         </div>
-        <div style={{padding:'0 20px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:16,fontWeight:700,color:T.gold}}>
-            Choose Representative
-          </div>
-          <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <button onClick={onReset}
-              style={{fontSize:12,color:T.t3,background:'none',border:`1px solid ${T.bd}`,
-                borderRadius:8,padding:'6px 10px',cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-              Reset
-            </button>
-            <button onClick={onClose} style={{background:'none',border:'none',color:T.t3,cursor:'pointer',padding:4}}>
-              <Icon d={ICO.x} s={20}/>
-            </button>
-          </div>
-        </div>
-        {/* Grid */}
-        <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch',
-          padding:'0 16px 16px',
-          display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
-          {lineFigs.map(f => {
-            const isSelected = f.slug === currentSlug;
+      ) : (
+        // ── Normal grid ──
+        <div style={{padding:'0 16px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          {ordered.map(l => {
+            const bannerImg = `${IMG}/${l.id}.jpg`;
             return (
-              <button key={f.id} onClick={()=>onSelect(f.slug)}
-                style={{padding:0,background:'none',border:`2px solid ${isSelected?T.acc:T.bd}`,
-                  borderRadius:12,overflow:'hidden',cursor:'pointer',
-                  aspectRatio:'1',position:'relative',WebkitAppearance:'none'}}>
-                {f.image && !imgErrs[f.id]
-                  ? <img src={f.image} alt={f.name} loading="lazy"
-                      onError={()=>setImgErrs(p=>({...p,[f.id]:true}))}
-                      style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  : <div style={{width:'100%',height:'100%',background:T.bg3,
-                      display:'flex',alignItems:'center',justifyContent:'center',
-                      fontFamily:"'Cinzel',serif",fontSize:18,color:T.t3,fontWeight:700}}>
-                      {f.name[0]}
+              <div key={l.id}
+                onClick={()=>goToLine(l.id)}
+                style={{position:'relative',borderRadius:18,overflow:'hidden',
+                  border:`1px solid ${T.bd}`,aspectRatio:'3/4',cursor:'pointer'}}>
+                <img src={bannerImg} alt={l.name}
+                  style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}}
+                  onError={e=>e.target.style.display='none'}/>
+                <div style={{position:'absolute',inset:0,
+                  background:'linear-gradient(to bottom,rgba(0,0,0,.1) 0%,rgba(0,0,0,.3) 40%,rgba(0,0,0,.85) 100%)'}}/>
+                <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 12px 14px'}}>
+                  <div style={{fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700,
+                    color:'#fff',lineHeight:1.2,marginBottom:2,
+                    textShadow:'0 1px 4px rgba(0,0,0,.8)'}}>{l.name}</div>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginBottom:6}}>{l.yr}</div>
+                  {l.total > 0 && <>
+                    <div style={{height:2,background:'rgba(255,255,255,.2)',borderRadius:2,overflow:'hidden',marginBottom:4}}>
+                      <div style={{height:'100%',width:`${l.pct}%`,
+                        background:l.pct===100?'#34d399':T.gold,borderRadius:2}}/>
                     </div>
-                }
-                {isSelected && (
-                  <div style={{position:'absolute',inset:0,background:`${T.acc}44`,
-                    display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <div style={{background:T.acc,borderRadius:'50%',width:28,height:28,
-                      display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <Icon d={ICO.check} s={16}/>
-                    </div>
-                  </div>
-                )}
-                <div style={{position:'absolute',bottom:0,left:0,right:0,
-                  background:'linear-gradient(transparent,rgba(0,0,0,.75))',
-                  padding:'8px 4px 4px',fontSize:8,color:'rgba(255,255,255,.8)',
-                  textAlign:'center',lineHeight:1.2,
-                  fontFamily:"'Outfit',sans-serif"}}>
-                  {f.name.length > 18 ? f.name.slice(0,16)+'…' : f.name}
+                    <div style={{fontSize:10,color:l.pct===100?'#34d399':'rgba(255,255,255,.7)',fontWeight:600}}>
+                      {l.owned}/{l.total} · {l.pct}%</div>
+                  </>}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -1873,6 +1882,7 @@ function PhotoSection({f, imgUrl, T, hasCustom, onImgErr, onPhoto, onClearPhoto}
 
   const handleFile = e => {
     const file = e.target.files?.[0]; if(!file) return;
+    if (file.size > 20_000_000) { alert('Image too large. Please choose an image under 20MB.'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
       // Compress: resize to max 600px, JPEG quality 0.65
