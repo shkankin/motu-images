@@ -1193,9 +1193,15 @@ function App() {
   // Seed: baked-in fallback used before remote fetch completes
   const SEED = useMemo(() => _D.map(r=>({id:r[0],name:r[1],line:r[2],group:r[3],wave:r[4],year:r[5],retail:r[6],slug:r[7],faction:r[8]})), []);
   const [figs,  setFigs]  = useState(() => {
-    const c = store.get(CACHE_KEY);
-    if (c?.rows?.length) return c.rows;
-    return _D.map(r=>({id:r[0],name:r[1],line:r[2],group:r[3],wave:r[4],year:r[5],retail:r[6],slug:r[7],faction:r[8]}));
+    const cached = store.get(CACHE_KEY);
+    if (cached?.rows?.length) {
+      // Hydrate image URLs in case they were cached without them
+      return cached.rows.map(f => ({
+        ...f,
+        image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')
+      }));
+    }
+    return SEED;
   });
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | ok | err
   const [syncTs,     setSyncTs]     = useState(() => store.get(CACHE_KEY)?.ts || null);
@@ -1248,7 +1254,12 @@ function App() {
       setFigs(prev => {
         const custom = prev.filter(f => f.line === 'custom');
         const ids = new Set(remote.map(f => f.id));
-        const merged = [...remote, ...custom.filter(f => !ids.has(f.id))];
+        // Add image URL from slug (not stored in JSON to keep file small)
+        const hydrated = remote.map(f => ({
+          ...f,
+          image: f.slug ? `${IMG}/${f.slug}.jpg` : ''
+        }));
+        const merged = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
         const ts = Date.now();
         store.set(CACHE_KEY, { rows: merged, ts });
         setSyncTs(ts);
@@ -1577,7 +1588,7 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>{'v2.5' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>{'v2.6' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
