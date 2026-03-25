@@ -30,7 +30,7 @@ body { font-family: 'Outfit', sans-serif; background: #08080f; color: #eae6f2; o
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
 // ─── Storage ────────────────────────────────────────────────────────────────
@@ -1135,7 +1135,7 @@ const GROUP_MAP = {
 
 function parseCSV(text) {
   // Guard against absurdly large files (>10MB)
-  if (text.length > 10_000_000) throw new Error('File too large (max 10MB)');
+  if (text.length > 10000000) throw new Error('File too large (max 10MB)');
   const lines = text.split('\n').filter(l => l.trim());
   const parseRow = line => {
     const cols=[]; let cur=''; let inQ=false;
@@ -1236,7 +1236,8 @@ function App() {
 
   // Fetch the latest figures.json from GitHub and update the app.
   // Merges remote rows with local custom figures (line='custom') so user additions survive.
-  const fetchFigs = useCallback(async () => {
+  // manual=true shows red on failure; auto-fetch (background) silently ignores errors
+  const fetchFigs = useCallback(async (manual = false) => {
     setSyncStatus('syncing');
     try {
       const res = await fetch(FIGS_URL + '?t=' + Date.now()); // bust CDN cache
@@ -1254,9 +1255,10 @@ function App() {
         return merged;
       });
       setSyncStatus('ok');
+      setTimeout(() => setSyncStatus('idle'), 3000); // revert to idle after 3s
     } catch(e) {
       console.warn('figures.json fetch failed:', e.message);
-      setSyncStatus('err');
+      setSyncStatus(manual ? 'err' : 'idle'); // only show red on manual tap
     }
   }, []);
 
@@ -1274,8 +1276,8 @@ function App() {
     });
     setLoaded(true);
     // Auto-refresh if cache is missing or older than TTL
-    const c = store.get(CACHE_KEY);
-    if (!c?.ts || Date.now() - c.ts > CACHE_TTL) fetchFigs();
+    const cached = store.get(CACHE_KEY);
+    if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { localStorage.setItem('motu-sort', sortBy); }, [sortBy]);
@@ -1575,23 +1577,14 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>v2.3{syncTs ? ' · updated ' + new Date(syncTs).toLocaleDateString() : ''}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:.4}}>{'v2.5' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
             <TapButton icon={ICO.import} label="Import" onTap={()=>setSheet('import')} T={T}/>
             <TapButton icon={ICO.export} label="Export" onTap={exportCSV} T={T}/>
             <TapButton icon={ICO.palette} label="Theme" onTap={()=>setSheet('theme')} T={T}/>
-            {/* Sync button with spinner/status indicator */}
-            <button onClick={fetchFigs} disabled={syncStatus==='syncing'} title="Sync latest figures"
-              style={{width:38,height:38,borderRadius:10,border:`1px solid ${syncStatus==='err'?'#f87171':syncStatus==='ok'?'#34d399':T.bd}`,
-                background:T.bg3,color:syncStatus==='err'?'#f87171':syncStatus==='ok'?'#34d399':T.t2,
-                cursor:syncStatus==='syncing'?'default':'pointer',
-                display:'flex',alignItems:'center',justifyContent:'center',
-                fontFamily:"'Outfit',sans-serif",transition:'all .3s',
-                animation:syncStatus==='syncing'?'spin 1s linear infinite':'none'}}>
-              <Icon d={ICO.sync} s={16}/>
-            </button>
+            <SyncButton status={syncStatus} onTap={fetchFigs} T={T}/>
           </div>
         </div>
         {/* Search row */}
@@ -1738,7 +1731,7 @@ function FigureRow({f, c, T, imgErr, customPhoto, showLine, onImgErr, onTap, onS
   const statusColor = c.status ? STATUS_COLOR[c.status] : null;
   return (
     <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 4px',borderBottom:`1px solid ${T.bd}22`,cursor:'pointer'}}
-      onClick={onTap}>
+      onClick={()=>onTap(true)}>
       {/* Thumbnail */}
       <div style={{width:56,height:56,borderRadius:10,background:T.bg3,flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',border:`2px solid ${statusColor||T.bd}`}}>
         {(customPhoto||f.image) && !imgErr
@@ -1964,7 +1957,7 @@ function PhotoSection({f, imgUrl, T, hasCustom, onImgErr, onPhoto, onClearPhoto}
 
   const handleFile = e => {
     const file = e.target.files?.[0]; if(!file) return;
-    if (file.size > 20_000_000) { alert('Image too large. Please choose an image under 20MB.'); return; }
+    if (file.size > 20000000) { alert('Image too large. Please choose an image under 20MB.'); return; }
     const reader = new FileReader();
     reader.onload = ev => {
       // Compress: resize to max 600px, JPEG quality 0.65
@@ -2164,6 +2157,19 @@ function ThemeSheet({theme,setTheme}) {
 }
 
 // ── Tap Button (header) ─────────────────────────────────────────────────────
+function SyncButton({status, onTap, T}) {
+  const col = status==='err' ? '#f87171' : status==='ok' ? '#34d399' : T.t2;
+  return (
+    <button onClick={onTap} disabled={status==='syncing'} title="Sync figures"
+      style={{width:38,height:38,borderRadius:10,border:'1px solid '+col,
+        background:T.bg3,color:col,cursor:status==='syncing'?'default':'pointer',
+        display:'flex',alignItems:'center',justifyContent:'center',transition:'all .3s',
+        animation:status==='syncing'?'spin 1s linear infinite':'none'}}>
+      <Icon d={ICO.sync} s={16}/>
+    </button>
+  );
+}
+
 function TapButton({icon,label,onTap,T}) {
   return (
     <button onClick={onTap} title={label}
