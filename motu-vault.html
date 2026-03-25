@@ -24,8 +24,50 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body, #root { height: 100%; }
-body { font-family: 'Outfit', sans-serif; background: #08080f; color: #eae6f2; overscroll-behavior: none; }
+html, body { height: 100%; }
+
+/* ── Desktop: center the app as a phone frame ─────────────────────────────── */
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #08080f;
+  color: #eae6f2;
+  overscroll-behavior: none;
+}
+
+/* On desktop, body becomes the stage — subtle radial glow behind the frame */
+@media (min-width: 520px) {
+  body {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #04040a;
+    background-image: radial-gradient(ellipse 60% 50% at 50% 0%, #1a1040 0%, #04040a 70%);
+    min-height: 100%;
+    padding: 24px 0 40px;
+  }
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* On desktop: cap to phone width, full viewport height, add frame chrome */
+@media (min-width: 520px) {
+  #root {
+    width: 430px;
+    height: calc(100vh - 64px);
+    min-height: 600px;
+    max-height: 932px;
+    border-radius: 44px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.08),
+      0 32px 80px rgba(0,0,0,.8),
+      0 8px 24px rgba(0,0,0,.6);
+    flex-shrink: 0;
+  }
+}
 </style>
 </head>
 <body>
@@ -1587,7 +1629,7 @@ function App() {
             <div style={{width:36,height:36,borderRadius:8,background:`linear-gradient(135deg,${T.gold},${T.acc})`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Cinzel',serif",fontWeight:900,fontSize:18,color:T.bg}}>M</div>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.9' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.10' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
