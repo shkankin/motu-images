@@ -1494,7 +1494,7 @@ function App() {
     if (!isGlobalSearch && tab==='collection') list = list.filter(f=>coll[f.id]?.status);
     if (filterFaction) list = list.filter(f=>f.faction===filterFaction);
     if (filterStatus)  list = list.filter(f=>coll[f.id]?.status===filterStatus);
-    if (filterVariants) list = list.filter(f=>coll[f.id]?.variants?.trim());
+    if (filterVariants) list = list.filter(f=>(coll[f.id]?.variants||'').replace(/[,\s]/g,'').length>0);
     if (srch) { const s=srch.toLowerCase(); list=list.filter(f=>f.name.toLowerCase().includes(s)); }
     if (sortBy==='name')    list.sort((a,b)=>a.name.localeCompare(b.name));
     else if (sortBy==='name-desc') list.sort((a,b)=>b.name.localeCompare(a.name));
@@ -1644,7 +1644,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.13' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.14' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
@@ -1818,7 +1818,7 @@ function FigureRow({f, c, T, imgErr, customPhoto, showLine, onImgErr, onTap, onS
       </div>
       {/* Status dot / quick-own */}
       <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
-        {c.variants && <div style={{fontSize:9,fontWeight:700,color:T.gold,letterSpacing:.5}}>VAR</div>}
+        {(c.variants||'').replace(/[,\s]/g,'').length>0 && <div style={{fontSize:9,fontWeight:700,color:T.gold,letterSpacing:.5}}>VAR</div>}
         {c.status
           ? <div style={{width:10,height:10,borderRadius:'50%',background:statusColor}}/>
           : <button onClick={e=>{e.stopPropagation();onStatus('owned');}}
