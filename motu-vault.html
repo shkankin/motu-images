@@ -1327,8 +1327,19 @@ function App() {
   useEffect(() => {
     if (init.current) return; init.current = true;
     const c = store.get('motu-c2');
-    // figs already initialised from CACHE_KEY in useState — just load coll
-    if (c) setColl(c);
+    // figs already initialised from CACHE_KEY in useState — just load coll.
+    // Scrub any variants values that are whitespace/punctuation-only artifacts (e.g. ",", " , ")
+    if (c) {
+      const cleaned = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
+        if (entry?.variants !== undefined && (entry.variants||'').replace(/[,\s]/g,'').length === 0) {
+          const { variants, ...rest } = entry;
+          return [id, rest];
+        }
+        return [id, entry];
+      }));
+      store.set('motu-c2', cleaned);
+      setColl(cleaned);
+    }
     // Load custom photo index (just the keys, not the data - lazy load per figure)
     setCustomPhotos(prev => {
       const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
@@ -1644,7 +1655,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.14' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.15' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
