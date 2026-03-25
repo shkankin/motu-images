@@ -1145,7 +1145,16 @@ const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 // Key format: motu-photo-{figureId}. Loaded lazily — only flags in React state.
 const photoStore = {
   get: id => { try { return localStorage.getItem('motu-photo-' + id) || null; } catch { return null; } },
-  set: (id, dataUrl) => { try { localStorage.setItem('motu-photo-' + id, dataUrl); } catch {} },
+  set: (id, dataUrl) => {
+    try {
+      localStorage.setItem('motu-photo-' + id, dataUrl);
+      return true;
+    } catch(e) {
+      // QuotaExceededError — storage is full
+      console.error('photoStore.set failed:', e);
+      return false;
+    }
+  },
   del: id => { try { localStorage.removeItem('motu-photo-' + id); } catch {} },
 };
 
@@ -1495,7 +1504,7 @@ function App() {
     else if (sortBy==='retail') list.sort((a,b)=>(a.retail||0)-(b.retail||0));
     else if (sortBy==='retail-desc') list.sort((a,b)=>(b.retail||0)-(a.retail||0));
     return list;
-  }, [figs, coll, activeLine, activeSubline, tab, filterFaction, filterStatus, srch, sortBy]);
+  }, [figs, coll, activeLine, activeSubline, tab, filterFaction, filterStatus, filterVariants, srch, sortBy]);
 
   const hasFilters = srch || filterFaction || filterStatus || filterVariants;
 
@@ -1541,7 +1550,11 @@ function App() {
             hasCustom={!!customPhotos[f.id]}
             onImgErr={()=>setIErr(p=>({...p,[f.id]:true}))}
             onPhoto={dataUrl=>{
-              photoStore.set(f.id, dataUrl);
+              const ok = photoStore.set(f.id, dataUrl);
+              if (!ok) {
+                alert('Photo could not be saved — your device storage may be full. Try removing other photos first.');
+                return;
+              }
               setCustomPhotos(p=>({...p,[f.id]:true}));
               setIErr(p=>({...p,[f.id]:false}));
             }}
@@ -1631,7 +1644,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.12' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.13' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
@@ -1739,13 +1752,12 @@ function App() {
           {key:'all',   icon:ICO.list,  label:'All'},
           {key:'collection', icon:ICO.heart, label:`Collection`},
         ].map(({key,icon,label}) => {
-          const active = tab===key && !activeLine || (key==='lines'&&activeLine&&tab==='all');
-          const isActive = tab===key;
+          const active = (tab===key && !activeLine) || (key==='lines'&&activeLine&&tab==='all');
           return (
             <button key={key} onClick={()=>{setTab(key);if(key!=='all'||!activeLine)setActiveLine(null);}}
-              style={{padding:'10px 0 8px',background:'none',border:'none',color:isActive?T.acc:T.t3,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,fontFamily:"'Outfit',sans-serif",fontSize:10,fontWeight:isActive?600:400,transition:'color .15s'}}>
-              <Icon d={icon} s={22} stroke={isActive?2.5:1.5}/>
-              {label}{key==='collection'?<span style={{fontSize:9,background:isActive?T.acc:T.bd,color:isActive?T.bg:T.t3,borderRadius:8,padding:'1px 5px',marginLeft:2}}>{stats.owned}</span>:''}
+              style={{padding:'10px 0 8px',background:'none',border:'none',color:active?T.acc:T.t3,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,fontFamily:"'Outfit',sans-serif",fontSize:10,fontWeight:active?600:400,transition:'color .15s'}}>
+              <Icon d={icon} s={22} stroke={active?2.5:1.5}/>
+              {label}{key==='collection'?<span style={{fontSize:9,background:active?T.acc:T.bd,color:active?T.bg:T.t3,borderRadius:8,padding:'1px 5px',marginLeft:2}}>{stats.owned}</span>:''}
             </button>
           );
         })}
