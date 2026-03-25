@@ -1254,6 +1254,7 @@ function App() {
   const [srch, setSrch]       = useState('');
   const [filterFaction, setFilterFaction] = useState('');
   const [filterStatus, setFilterStatus]   = useState('');
+  const [filterVariants, setFilterVariants] = useState(false);
   const [sortBy, setSortBy]   = useState(() => localStorage.getItem('motu-sort') || 'wave');
   const [theme, setTheme]     = useState(() => localStorage.getItem('motu-theme') || 'eternia');
   const [lineOrder, setLineOrder] = useState(() => store.get('motu-line-order') || LINES.map(l=>l.id)); // lineId being edited
@@ -1484,6 +1485,7 @@ function App() {
     if (!isGlobalSearch && tab==='collection') list = list.filter(f=>coll[f.id]?.status);
     if (filterFaction) list = list.filter(f=>f.faction===filterFaction);
     if (filterStatus)  list = list.filter(f=>coll[f.id]?.status===filterStatus);
+    if (filterVariants) list = list.filter(f=>coll[f.id]?.variants?.trim());
     if (srch) { const s=srch.toLowerCase(); list=list.filter(f=>f.name.toLowerCase().includes(s)); }
     if (sortBy==='name')    list.sort((a,b)=>a.name.localeCompare(b.name));
     else if (sortBy==='name-desc') list.sort((a,b)=>b.name.localeCompare(a.name));
@@ -1495,7 +1497,7 @@ function App() {
     return list;
   }, [figs, coll, activeLine, activeSubline, tab, filterFaction, filterStatus, srch, sortBy]);
 
-  const hasFilters = srch || filterFaction || filterStatus;
+  const hasFilters = srch || filterFaction || filterStatus || filterVariants;
 
   if (!loaded) return (
     <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:T.bg}}>
@@ -1629,7 +1631,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.11' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.12' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
@@ -1757,7 +1759,8 @@ function App() {
           {sheet==='filter' && (
             <FilterSheet filterFaction={filterFaction} setFilterFaction={setFilterFaction}
               filterStatus={filterStatus} setFilterStatus={setFilterStatus}
-              onClear={()=>{setFilterFaction('');setFilterStatus('');setSrch('');}}
+              filterVariants={filterVariants} setFilterVariants={setFilterVariants}
+              onClear={()=>{setFilterFaction('');setFilterStatus('');setFilterVariants(false);setSrch('');}}
               hasFilters={hasFilters} T={T}/>
           )}
           {sheet==='sort' && (
@@ -2081,7 +2084,7 @@ function BottomSheet({title, onClose, children, T}) {
 }
 
 // ── Filter Sheet ────────────────────────────────────────────────────────────
-function FilterSheet({filterFaction,setFilterFaction,filterStatus,setFilterStatus,onClear,hasFilters,T}) {
+function FilterSheet({filterFaction,setFilterFaction,filterStatus,setFilterStatus,filterVariants,setFilterVariants,onClear,hasFilters,T}) {
   return (
     <div style={{padding:'0 20px 20px'}}>
       <div style={{fontSize:12,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>Faction</div>
@@ -2094,13 +2097,24 @@ function FilterSheet({filterFaction,setFilterFaction,filterStatus,setFilterStatu
         ))}
       </div>
       <div style={{fontSize:12,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>Status</div>
-      <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:24}}>
+      <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:20}}>
         {['',...STATUSES].map(s=>(
           <button key={s} onClick={()=>setFilterStatus(s)}
             style={{padding:'8px 16px',borderRadius:20,border:`1px solid ${filterStatus===s?(STATUS_COLOR[s]||T.acc):T.bd}`,background:filterStatus===s?`${STATUS_COLOR[s]||T.acc}22`:T.bg3,color:filterStatus===s?(STATUS_COLOR[s]||T.acc):T.t2,fontSize:13,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
             {s?STATUS_LABEL[s]:'All'}
           </button>
         ))}
+      </div>
+      <div style={{fontSize:12,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>Variants</div>
+      <div style={{display:'flex',gap:8,marginBottom:24}}>
+        <button onClick={()=>setFilterVariants(false)}
+          style={{padding:'8px 16px',borderRadius:20,border:`1px solid ${!filterVariants?T.acc:T.bd}`,background:!filterVariants?`${T.acc}22`:T.bg3,color:!filterVariants?T.acc:T.t2,fontSize:13,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
+          All
+        </button>
+        <button onClick={()=>setFilterVariants(true)}
+          style={{padding:'8px 16px',borderRadius:20,border:`1px solid ${filterVariants?T.gold:T.bd}`,background:filterVariants?`${T.gold}22`:T.bg3,color:filterVariants?T.gold:T.t2,fontSize:13,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
+          Has Variants
+        </button>
       </div>
       {hasFilters && <button onClick={onClear} style={{width:'100%',padding:'14px',borderRadius:12,border:`1px solid #f87171`,background:'rgba(248,113,113,.1)',color:'#f87171',fontSize:15,cursor:'pointer',fontWeight:600,fontFamily:"'Outfit',sans-serif"}}>Clear All Filters</button>}
     </div>
