@@ -307,6 +307,7 @@ function App() {
     return [{"id":"dev-0001","name":"He-Man (Dev)","line":"origins","group":"Action Figures","wave":"1","year":2020,"retail":14.99,"slug":"he-man-dev-0001","faction":"Heroic Warriors"}]; // Dev seed — replaced on fetch
   });
   const [fetchError, setFetchError] = useState(false);
+  // Dev: pre-seeded figs means we can show UI immediately
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | ok | err
   const [syncTs,     setSyncTs]     = useState(() => store.get(CACHE_KEY)?.ts || null);
   const [coll, setColl] = useState(() => {
@@ -339,7 +340,7 @@ function App() {
   const [sheet, setSheet]     = useState(null);   // null | 'filter' | 'sort' | 'add' | 'edit' | 'import' | 'theme'
   const [iErr, setIErr]       = useState({});
   const [customPhotos, setCustomPhotos] = useState({});
-  const [loaded, setLoaded]   = useState(false);
+  const [loaded, setLoaded]   = useState(true); // true: dev seed provides initial data
   const init = useRef(false);
   const scrollRef = useRef(null);
   const savedScroll = useRef(0);
@@ -712,19 +713,7 @@ function App() {
               </div>
             </div>
           )}
-          {/* Raw data debug — always visible so corrupt entries can be inspected and cleared */}
-          <div style={{padding:'0 16px 16px'}}>
-            <div style={{fontSize:11,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:8}}>Stored Data</div>
-            <div style={{background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,padding:'12px',fontFamily:'monospace',fontSize:11,color:T.t2,wordBreak:'break-all',lineHeight:1.6,marginBottom:8}}>
-              {JSON.stringify(coll[f.id] || {}, null, 2) || '(none)'}
-            </div>
-            {coll[f.id]?.variants !== undefined && (
-              <button onClick={()=>updateColl(f.id,'variants','')}
-                style={{padding:'8px 16px',borderRadius:8,border:'1px solid #f87171',background:'rgba(248,113,113,.1)',color:'#f87171',fontSize:12,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-                Clear variants field
-              </button>
-            )}
-          </div>
+
           <div style={{height:'calc(32px + var(--safe-bottom))'}}/>
         </div>
       </div>
@@ -745,7 +734,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.22' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.23' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
@@ -1352,28 +1341,6 @@ function ThemeSheet({theme, setTheme, coll, saveColl, T}) {
         </button>
       ))}
 
-      {/* Variants diagnostic — shows every coll entry passing the variants filter */}
-      {(() => {
-        const passing = Object.entries(coll).filter(([, e]) => /\w/.test(e?.variants||''));
-        if (!passing.length) return null;
-        return (
-          <div style={{marginTop:8,padding:'16px',borderRadius:14,border:`1px solid ${T.bd}`,background:T.bg3}}>
-            <div style={{fontSize:11,color:T.t3,textTransform:'uppercase',letterSpacing:1,marginBottom:10}}>Variant Filter Matches ({passing.length})</div>
-            {passing.map(([id, entry]) => (
-              <div key={id} style={{marginBottom:10,paddingBottom:10,borderBottom:`1px solid ${T.bd}`}}>
-                <div style={{fontSize:11,color:T.acc,fontFamily:'monospace',marginBottom:2}}>{id}</div>
-                <div style={{fontSize:11,color:T.t2,fontFamily:'monospace',wordBreak:'break-all',marginBottom:6}}>variants: "{entry.variants}"</div>
-                <button onClick={()=>{
-                  const {variants,...rest} = entry;
-                  saveColl({...coll,[id]:rest});
-                }} style={{padding:'5px 12px',borderRadius:7,border:'1px solid #f87171',background:'rgba(248,113,113,.1)',color:'#f87171',fontSize:11,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-                  Clear variants
-                </button>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
     </div>
   );
 }
