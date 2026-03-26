@@ -1655,7 +1655,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.15' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.16' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
@@ -1796,7 +1796,7 @@ function App() {
             }} T={T}/>
           )}
           {sheet==='theme' && (
-            <ThemeSheet theme={theme} setTheme={t=>{setTheme(t);setSheet(null);}}/>
+            <ThemeSheet theme={theme} setTheme={t=>{setTheme(t);setSheet(null);}} coll={coll} saveColl={saveColl} T={T}/>
           )}
         </BottomSheet>
       )}
@@ -2227,20 +2227,65 @@ function ImportSheet({onImport, T}) {
 }
 
 // ── Theme Sheet ─────────────────────────────────────────────────────────────
-function ThemeSheet({theme,setTheme}) {
+function ThemeSheet({theme, setTheme, coll, saveColl, T}) {
+  const [repairDone, setRepairDone] = useState(null); // null | { fixed, names }
+
+  // Find entries with a variants field that has no real characters
+  const corrupt = Object.entries(coll).filter(([, entry]) =>
+    entry?.variants !== undefined && (entry.variants||'').replace(/[,\s]/g,'').length === 0
+  );
+
+  const repair = () => {
+    const names = corrupt.map(([id]) => id);
+    const cleaned = Object.fromEntries(Object.entries(coll).map(([id, entry]) => {
+      if ((entry?.variants||'').replace(/[,\s]/g,'').length === 0) {
+        const { variants, ...rest } = entry;
+        return [id, rest];
+      }
+      return [id, entry];
+    }));
+    saveColl(cleaned);
+    setRepairDone({ fixed: names.length, names });
+  };
+
   return (
     <div style={{padding:'0 20px 20px',display:'flex',flexDirection:'column',gap:10}}>
-      {Object.entries(THEMES).map(([key,T])=>(
+      {Object.entries(THEMES).map(([key,Th])=>(
         <button key={key} onClick={()=>setTheme(key)}
-          style={{padding:'16px',borderRadius:14,border:`2px solid ${theme===key?T.acc:T.bd}`,background:T.bg2,cursor:'pointer',display:'flex',alignItems:'center',gap:14,textAlign:'left',fontFamily:"'Outfit',sans-serif"}}>
-          <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${T.gold},${T.acc})`,flexShrink:0}}/>
+          style={{padding:'16px',borderRadius:14,border:`2px solid ${theme===key?Th.acc:Th.bd}`,background:Th.bg2,cursor:'pointer',display:'flex',alignItems:'center',gap:14,textAlign:'left',fontFamily:"'Outfit',sans-serif"}}>
+          <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${Th.gold},${Th.acc})`,flexShrink:0}}/>
           <div>
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:700,color:T.t1}}>{T.name}</div>
-            <div style={{fontSize:12,color:T.t2,marginTop:2}}>{T.bg} · {T.acc}</div>
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:700,color:Th.t1}}>{Th.name}</div>
+            <div style={{fontSize:12,color:Th.t2,marginTop:2}}>{Th.bg} · {Th.acc}</div>
           </div>
-          {theme===key && <div style={{marginLeft:'auto',color:T.acc}}><Icon d={ICO.check} s={20}/></div>}
+          {theme===key && <div style={{marginLeft:'auto',color:Th.acc}}><Icon d={ICO.check} s={20}/></div>}
         </button>
       ))}
+
+      {/* Data repair — only shown when corrupt entries exist or just fixed */}
+      {(corrupt.length > 0 || repairDone) && (
+        <div style={{marginTop:8,padding:'16px',borderRadius:14,border:`1px solid ${repairDone?'#34d399':'#f87171'}`,background:repairDone?'rgba(52,211,153,.08)':'rgba(248,113,113,.08)'}}>
+          <div style={{fontSize:12,fontWeight:700,color:repairDone?'#34d399':'#f87171',marginBottom:6,textTransform:'uppercase',letterSpacing:1}}>
+            {repairDone ? '✓ Data Repaired' : '⚠ Corrupt Data Detected'}
+          </div>
+          {repairDone ? (
+            <div style={{fontSize:12,color:T.t2,lineHeight:1.6}}>
+              Fixed {repairDone.fixed} entr{repairDone.fixed===1?'y':'ies'} with empty variant fields.<br/>
+              <span style={{color:T.t3,fontSize:11}}>{repairDone.names.join(', ')}</span>
+            </div>
+          ) : (
+            <>
+              <div style={{fontSize:12,color:T.t2,marginBottom:10,lineHeight:1.6}}>
+                {corrupt.length} figure{corrupt.length>1?'s have':' has'} a corrupt variants field that may show up incorrectly in filters.
+              </div>
+              <button onClick={repair}
+                style={{width:'100%',padding:'12px',borderRadius:10,border:'1px solid #f87171',background:'rgba(248,113,113,.15)',color:'#f87171',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
+                Fix Now
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
