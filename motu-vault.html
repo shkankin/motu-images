@@ -714,6 +714,19 @@ function App() {
               </div>
             </div>
           )}
+          {/* Raw data debug — always visible so corrupt entries can be inspected and cleared */}
+          <div style={{padding:'0 16px 16px'}}>
+            <div style={{fontSize:11,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:8}}>Stored Data</div>
+            <div style={{background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,padding:'12px',fontFamily:'monospace',fontSize:11,color:T.t2,wordBreak:'break-all',lineHeight:1.6,marginBottom:8}}>
+              {JSON.stringify(coll[f.id] || {}, null, 2) || '(none)'}
+            </div>
+            {coll[f.id]?.variants !== undefined && (
+              <button onClick={()=>updateColl(f.id,'variants','')}
+                style={{padding:'8px 16px',borderRadius:8,border:'1px solid #f87171',background:'rgba(248,113,113,.1)',color:'#f87171',fontSize:12,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
+                Clear variants field
+              </button>
+            )}
+          </div>
           <div style={{height:'calc(32px + var(--safe-bottom))'}}/>
         </div>
       </div>
@@ -734,7 +747,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.18' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.19' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
