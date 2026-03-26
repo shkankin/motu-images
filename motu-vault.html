@@ -309,7 +309,21 @@ function App() {
   const [fetchError, setFetchError] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | ok | err
   const [syncTs,     setSyncTs]     = useState(() => store.get(CACHE_KEY)?.ts || null);
-  const [coll, setColl]       = useState({});
+  const [coll, setColl] = useState(() => {
+    const c = store.get('motu-c2');
+    if (!c) return {};
+    // Scrub variants fields with no real word characters on load
+    const cleaned = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
+      if (entry?.variants !== undefined && !/\w/.test(entry.variants)) {
+        const { variants, ...rest } = entry;
+        return [id, rest];
+      }
+      return [id, entry];
+    }));
+    // Write back if anything changed
+    if (JSON.stringify(cleaned) !== JSON.stringify(c)) store.set('motu-c2', cleaned);
+    return cleaned;
+  });
   const [tab, setTab]         = useState('lines');   // lines | all | collection
   const [activeLine, setActiveLine] = useState(null);
   const [activeSubline, setActiveSubline] = useState(null);
@@ -383,22 +397,6 @@ function App() {
 
   useEffect(() => {
     if (init.current) return; init.current = true;
-    const c = store.get('motu-c2');
-    // figs already initialised from CACHE_KEY in useState — just load coll.
-    // Scrub any variants values that are whitespace/punctuation-only artifacts (e.g. ",", " , ")
-    if (c) {
-      // Scrub variants fields that contain no real word characters —
-      // catches artifacts like ",", " , ", or any other punctuation-only value
-      const cleaned = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
-        if (entry?.variants !== undefined && !/\w/.test(entry.variants)) {
-          const { variants, ...rest } = entry;
-          return [id, rest];
-        }
-        return [id, entry];
-      }));
-      store.set('motu-c2', cleaned);
-      setColl(cleaned);
-    }
     // Load custom photo index (just the keys, not the data - lazy load per figure)
     setCustomPhotos(prev => {
       const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
@@ -747,7 +745,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.20' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.21' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
