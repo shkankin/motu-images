@@ -373,7 +373,7 @@ function App() {
       const remote = await res.json();
       if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
       setFigs(prev => {
-        const custom = prev.filter(f => f.line === 'custom');
+        const custom = prev.filter(f => f.line === 'custom' && f.id !== 'dev-0001');
         const ids = new Set(remote.map(f => f.id));
         const hydrated = remote.map(f => ({
           ...f,
@@ -526,7 +526,7 @@ function App() {
   // Export CSV
   const exportCSV = useCallback(() => {
     const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Condition','Paid','Notes'];
-    const rows = figs.map(f => {
+    const rows = figs.filter(f => f.id !== 'dev-0001').map(f => {
       const c = coll[f.id] || {};
       return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',c.condition||'',c.paid||'',c.notes||''];
     });
@@ -544,24 +544,25 @@ function App() {
   // Stats — derived from figs cross-referenced with coll to avoid counting
   // orphaned coll entries (figures that were deleted or not in current seed).
   const stats = useMemo(() => {
-    const owned = figs.filter(f=>coll[f.id]?.status==='owned').length;
-    const wish  = figs.filter(f=>coll[f.id]?.status==='wishlist').length;
-    const ord   = figs.filter(f=>coll[f.id]?.status==='ordered').length;
-    const paid  = figs.filter(f=>coll[f.id]?.status==='owned'&&coll[f.id]?.paid)
+    const real = figs.filter(f => f.id !== 'dev-0001');
+    const owned = real.filter(f=>coll[f.id]?.status==='owned').length;
+    const wish  = real.filter(f=>coll[f.id]?.status==='wishlist').length;
+    const ord   = real.filter(f=>coll[f.id]?.status==='ordered').length;
+    const paid  = real.filter(f=>coll[f.id]?.status==='owned'&&coll[f.id]?.paid)
                       .reduce((s,f)=>s+Number(coll[f.id].paid),0);
-    return { total:figs.length, owned, wish, ord, paid };
+    return { total:real.length, owned, wish, ord, paid };
   }, [figs, coll]);
 
   // Line stats
   const lineStats = useMemo(() => LINES.map(l => {
-    const t = figs.filter(f=>f.line===l.id).length;
-    const o = figs.filter(f=>f.line===l.id&&coll[f.id]?.status==='owned').length;
+    const t = figs.filter(f=>f.line===l.id&&f.id!=='dev-0001').length;
+    const o = figs.filter(f=>f.line===l.id&&f.id!=='dev-0001'&&coll[f.id]?.status==='owned').length;
     return { ...l, total:t, owned:o, pct: t ? Math.round(o/t*100) : 0 };
   }), [figs, coll]);
 
   // Filtered + sorted figures
   const sortedFigs = useMemo(() => {
-    let list = [...figs];
+    let list = figs.filter(f => f.id !== 'dev-0001');
     // When searching, go global — ignore line/subline/tab constraints
     const isGlobalSearch = srch.length > 0;
     if (!isGlobalSearch && activeLine) list = list.filter(f=>f.line===activeLine);
@@ -734,7 +735,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.24' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.27' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
