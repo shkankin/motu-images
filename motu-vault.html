@@ -334,8 +334,8 @@ function App() {
   const [filterFaction, setFilterFaction] = useState('');
   const [filterStatus, setFilterStatus]   = useState('');
   const [filterVariants, setFilterVariants] = useState(false);
-  const [sortBy, setSortBy]   = useState(() => localStorage.getItem('motu-sort') || 'wave');
-  const [theme, setTheme]     = useState(() => localStorage.getItem('motu-theme') || 'eternia');
+  const [sortBy, setSortBy]   = useState(() => store.get('motu-sort') || 'wave');
+  const [theme, setTheme]     = useState(() => store.get('motu-theme') || 'eternia');
   const [lineOrder, setLineOrder] = useState(() => store.get('motu-line-order') || LINES.map(l=>l.id)); // lineId being edited
   const [sheet, setSheet]     = useState(null);   // null | 'filter' | 'sort' | 'add' | 'edit' | 'import' | 'theme'
   const [iErr, setIErr]       = useState({});
@@ -413,12 +413,12 @@ function App() {
     if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs(false, !hasCache);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { localStorage.setItem('motu-sort', sortBy); }, [sortBy]);
+  useEffect(() => { store.set('motu-sort', sortBy); }, [sortBy]);
   useEffect(() => { if (srch) setTab('all'); }, [srch]);
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [activeLine, activeSubline, tab]);
-  useEffect(() => { localStorage.setItem('motu-theme', theme); }, [theme]);
+  useEffect(() => { store.set('motu-theme', theme); }, [theme]);
   useEffect(() => { store.set('motu-line-order', lineOrder); }, [lineOrder]);
 
   const goToLine = useCallback(lineId => {
@@ -734,7 +734,7 @@ function App() {
             <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
             <div>
               <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.23' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
+              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.24' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
             </div>
           </div>
           <div style={{display:'flex',gap:4}}>
@@ -875,7 +875,7 @@ function App() {
             }} T={T}/>
           )}
           {sheet==='theme' && (
-            <ThemeSheet theme={theme} setTheme={t=>{setTheme(t);setSheet(null);}} coll={coll} saveColl={saveColl} T={T}/>
+            <ThemeSheet theme={theme} setTheme={t=>{setTheme(t);setSheet(null);}} T={T}/>
           )}
         </BottomSheet>
       )}
@@ -1306,27 +1306,7 @@ function ImportSheet({onImport, T}) {
 }
 
 // ── Theme Sheet ─────────────────────────────────────────────────────────────
-function ThemeSheet({theme, setTheme, coll, saveColl, T}) {
-  const [repairDone, setRepairDone] = useState(null); // null | { fixed, names }
-
-  // Find entries with a variants field that has no real characters
-  const corrupt = Object.entries(coll).filter(([, entry]) =>
-    entry?.variants !== undefined && !/\w/.test(entry.variants)
-  );
-
-  const repair = () => {
-    const names = corrupt.map(([id]) => id);
-    const cleaned = Object.fromEntries(Object.entries(coll).map(([id, entry]) => {
-      if ((entry?.variants||'').replace(/[,\s]/g,'').length === 0) {
-        const { variants, ...rest } = entry;
-        return [id, rest];
-      }
-      return [id, entry];
-    }));
-    saveColl(cleaned);
-    setRepairDone({ fixed: names.length, names });
-  };
-
+function ThemeSheet({theme, setTheme, T}) {
   return (
     <div style={{padding:'0 20px 20px',display:'flex',flexDirection:'column',gap:10}}>
       {Object.entries(THEMES).map(([key,Th])=>(
