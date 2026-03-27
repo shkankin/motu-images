@@ -4972,127 +4972,6 @@
     "faction": "Heroic Warriors"
   },
   {
-    "id": "eternia-minis-5550",
-    "name": "Battle Armor Skeletor",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "battle-armor-skeletor-5550",
-    "faction": "Evil Warriors"
-  },
-  {
-    "id": "eternia-minis-5551",
-    "name": "Grizzlor",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "grizzlor-5551",
-    "faction": "Evil Horde"
-  },
-  {
-    "id": "eternia-minis-5552",
-    "name": "Hordak",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "hordak-5552",
-    "faction": "Evil Horde"
-  },
-  {
-    "id": "eternia-minis-5553",
-    "name": "Man-at-Arms",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "man-at-arms-5553",
-    "faction": "Heroic Warriors"
-  },
-  {
-    "id": "eternia-minis-5554",
-    "name": "Shadow Weaver",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "shadow-weaver-5554",
-    "faction": "Evil Horde"
-  },
-  {
-    "id": "eternia-minis-5555",
-    "name": "She-Ra",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "2",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "she-ra-5555",
-    "faction": "Great Rebellion"
-  },
-  {
-    "id": "eternia-minis-5556",
-    "name": "Webstor",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "2",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "webstor-5556",
-    "faction": "Evil Warriors"
-  },
-  {
-    "id": "eternia-minis-5557",
-    "name": "Leech",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "2",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "leech-5557",
-    "faction": "Evil Horde"
-  },
-  {
-    "id": "eternia-minis-5558",
-    "name": "Mer-Man (2)",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "2",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "mer-man-5558",
-    "faction": "Evil Warriors"
-  },
-  {
-    "id": "eternia-minis-5559",
-    "name": "He-Man (2)",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "2",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "he-man-5559",
-    "faction": "Heroic Warriors"
-  },
-  {
-    "id": "eternia-minis-5560",
-    "name": "Skeletor (2)",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "2",
-    "year": 2022,
-    "retail": 4.99,
-    "slug": "skeletor-5560",
-    "faction": "Evil Warriors"
-  },
-  {
     "id": "classics-3992",
     "name": "He-Man",
     "line": "classics",
@@ -10271,6 +10150,149 @@
     "year": 1985,
     "retail": 10.99,
     "slug": "battle-bones-3762",
+    "faction": "Other"
+  },
+  {
+    "id": "eternia-minis-5550",
+    "name": "Beast Man (Netflix)",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "5",
+    "year": 2022,
+    "retail": 4.99,
+    "slug": "beast-man-netflix-5550",
+    "faction": "Evil Warriors"
+  },
+  {
+    "id": "eternia-minis-5551",
+    "name": "Man-At-Arms (Netflix)",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "5",
+    "year": 2022,
+    "retail": 4.99,
+    "slug": "man-at-arms-netflix-5551",
+    "faction": "Heroic Warriors"
+  },
+  {
+    "id": "eternia-minis-5552",
+    "name": "Evil-Lyn (Netflix)",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "5",
+    "year": 2022,
+    "retail": 4.99,
+    "slug": "evil-lyn-netflix-5552",
+    "faction": "Evil Warriors"
+  },
+  {
+    "id": "eternia-minis-5553",
+    "name": "Jitsu",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "5",
+    "year": 2022,
+    "retail": 4.99,
+    "slug": "jitsu-5553",
+    "faction": "Evil Warriors"
+  },
+  {
+    "id": "eternia-minis-5554",
+    "name": "Ram-Man",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "5",
+    "year": 2022,
+    "retail": 4.99,
+    "slug": "ram-man-5554",
+    "faction": "Heroic Warriors"
+  },
+  {
+    "id": "eternia-minis-2628",
+    "name": "Battle Armor He-Man & Mer-Man 2 Pack",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 2014,
+    "retail": 14.99,
+    "slug": "battle-armor-he-man-mer-man-2-pack-2628",
+    "faction": "Heroic Warriors"
+  },
+  {
+    "id": "eternia-minis-2626",
+    "name": "Mossman & Battle Armor Skeletor 2 Pack",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 2014,
+    "retail": 14.99,
+    "slug": "mossman-battle-armor-skeletor-2-pack-2626",
+    "faction": "Other"
+  },
+  {
+    "id": "eternia-minis-2627",
+    "name": "Scare Glow & Stratos 2 Pack",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 2014,
+    "retail": 14.99,
+    "slug": "scare-glow-stratos-2-pack-2627",
+    "faction": "Evil Warriors"
+  },
+  {
+    "id": "eternia-minis-2629",
+    "name": "Zodac & Beast Man 2 Pack",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 2014,
+    "retail": 14.99,
+    "slug": "zodac-beast-man-2-pack-2629",
+    "faction": "Other"
+  },
+  {
+    "id": "eternia-minis-2624",
+    "name": "King He-Man & Clawful 2 Pack",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 2014,
+    "retail": 14.99,
+    "slug": "king-he-man-clawful-2-pack-2624",
+    "faction": "Heroic Warriors"
+  },
+  {
+    "id": "eternia-minis-2614",
+    "name": "Eternia Minis 4 pack (Grayskull)",
+    "line": "eternia-minis",
+    "group": "Vehicles & Playsets",
+    "wave": "",
+    "year": 2020,
+    "retail": 19.99,
+    "slug": "eternia-minis-4-pack-grayskull-2614",
+    "faction": "Other"
+  },
+  {
+    "id": "eternia-minis-2615",
+    "name": "Eternia Minis 4 pack (Snake Mountain)",
+    "line": "eternia-minis",
+    "group": "Vehicles & Playsets",
+    "wave": "",
+    "year": 2020,
+    "retail": 19.99,
+    "slug": "eternia-minis-4-pack-snake-mountain-2615",
+    "faction": "Other"
+  },
+  {
+    "id": "eternia-minis-2616",
+    "name": "Slime Pit Multipack",
+    "line": "eternia-minis",
+    "group": "Vehicles & Playsets",
+    "wave": "",
+    "year": 2021,
+    "retail": 19.99,
+    "slug": "slime-pit-multipack-2616",
     "faction": "Other"
   }
 ]
