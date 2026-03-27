@@ -6838,7 +6838,7 @@
     "wave": "",
     "year": 2012,
     "retail": 20.0,
-    "slug": "tung-lashor-5113",
+    "slug": "tung-lashor-5156",
     "faction": "Snake Men"
   },
   {
@@ -6919,15 +6919,15 @@
     "faction": "Evil Warriors"
   },
   {
-    "id": "classics-4013",
-    "name": "Battle Armor He-Man vs Battle Armor Skeletor",
+    "id": "classics-5203",
+    "name": "Snake He-Man vs Battle Armor King Hssss",
     "line": "classics",
-    "group": "Battle Sets",
+    "group": "Packs",
     "wave": "",
-    "year": 2009,
-    "retail": 40.0,
-    "slug": "battle-armor-he-man-vs-battle-armor-skeletor-4013",
-    "faction": "Evil Warriors"
+    "year": 2015,
+    "retail": 52.0,
+    "slug": "snake-he-man-vs-battle-armor-king-hssss-5203",
+    "faction": "Other"
   },
   {
     "id": "classics-4014",
