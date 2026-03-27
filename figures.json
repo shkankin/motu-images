@@ -6816,7 +6816,7 @@
     "wave": "",
     "year": 2011,
     "retail": 20.0,
-    "slug": "rattlor-5110",
+    "slug": "rattlor-5111",
     "faction": "Snake Men"
   },
   {
@@ -6827,7 +6827,7 @@
     "wave": "",
     "year": 2012,
     "retail": 20.0,
-    "slug": "snake-face-5111",
+    "slug": "snake-face-5133",
     "faction": "Snake Men"
   },
   {
@@ -6842,17 +6842,6 @@
     "faction": "Snake Men"
   },
   {
-    "id": "classics-5133",
-    "name": "King Hssss (Battle Armor)",
-    "line": "classics",
-    "group": "Snake Men",
-    "wave": "",
-    "year": 2013,
-    "retail": 25.0,
-    "slug": "king-hssss-battle-armor-5133",
-    "faction": "Snake Men"
-  },
-  {
     "id": "classics-5134",
     "name": "Sssqueeze",
     "line": "classics",
@@ -6860,7 +6849,7 @@
     "wave": "",
     "year": 2013,
     "retail": 25.0,
-    "slug": "sssqueeze-5134",
+    "slug": "sssqueeze-5187",
     "faction": "Snake Men"
   },
   {
@@ -6871,63 +6860,8 @@
     "wave": "",
     "year": 2014,
     "retail": 25.0,
-    "slug": "snake-man-at-arms-5156",
+    "slug": "snake-man-at-arms-5110",
     "faction": "Snake Men"
-  },
-  {
-    "id": "classics-5218",
-    "name": "Snake Face (Filmation)",
-    "line": "classics",
-    "group": "Snake Men",
-    "wave": "",
-    "year": 2016,
-    "retail": 25.0,
-    "slug": "snake-face-filmation-5218",
-    "faction": "Snake Men"
-  },
-  {
-    "id": "classics-5171",
-    "name": "Ninjor (Filmation)",
-    "line": "classics",
-    "group": "Filmation",
-    "wave": "",
-    "year": 2014,
-    "retail": 25.0,
-    "slug": "ninjor-filmation-5171",
-    "faction": "Evil Warriors"
-  },
-  {
-    "id": "classics-5163",
-    "name": "Two Bad (Filmation)",
-    "line": "classics",
-    "group": "Filmation",
-    "wave": "",
-    "year": 2014,
-    "retail": 25.0,
-    "slug": "two-bad-filmation-5163",
-    "faction": "Other"
-  },
-  {
-    "id": "classics-5162",
-    "name": "Webstor (Filmation)",
-    "line": "classics",
-    "group": "Filmation",
-    "wave": "",
-    "year": 2014,
-    "retail": 25.0,
-    "slug": "webstor-filmation-5162",
-    "faction": "Evil Warriors"
-  },
-  {
-    "id": "classics-5169",
-    "name": "Strobo (Filmation)",
-    "line": "classics",
-    "group": "Other",
-    "wave": "",
-    "year": 2015,
-    "retail": 26.0,
-    "slug": "strobo-filmation-5169",
-    "faction": "Heroic Warriors"
   },
   {
     "id": "classics-5168",
@@ -6937,7 +6871,7 @@
     "wave": "",
     "year": 2015,
     "retail": 26.0,
-    "slug": "nepthu-5168",
+    "slug": "nepthu-5134",
     "faction": "Other"
   },
   {
