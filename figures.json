@@ -5885,15 +5885,15 @@
     "faction": "Other"
   },
   {
-    "id": "classics-2895",
-    "name": "Sea Hawk 2.0",
-    "line": "classics",
-    "group": "Great Rebellion",
+    "id": "super7-2895",
+    "name": "Chopper (Jitsu)",
+    "line": "super7",
+    "group": "Club Grayskull",
     "wave": "",
-    "year": 2016,
-    "retail": 24.0,
-    "slug": "sea-hawk-2-0-2895",
-    "faction": "Great Rebellion"
+    "year": 2018,
+    "retail": 45.0,
+    "slug": "chopper-jitsu-2895",
+    "faction": "Evil Warriors"
   },
   {
     "id": "classics-5086",
@@ -6876,47 +6876,47 @@
   },
   {
     "id": "classics-5164",
-    "name": "Kowl",
+    "name": "Panthor",
     "line": "classics",
-    "group": "Other",
+    "group": "Creatures",
     "wave": "",
-    "year": 2015,
-    "retail": 26.0,
-    "slug": "kowl-5164",
-    "faction": "Other"
+    "year": 2011,
+    "retail": 30.0,
+    "slug": "panthor-5164",
+    "faction": "Evil Warriors"
   },
   {
     "id": "classics-5165",
-    "name": "Rokkon",
+    "name": "Shadow Beast",
     "line": "classics",
-    "group": "Other",
+    "group": "Creatures",
     "wave": "",
-    "year": 2015,
-    "retail": 26.0,
-    "slug": "rokkon-5165",
+    "year": 2011,
+    "retail": 30.0,
+    "slug": "shadow-beast-5165",
     "faction": "Other"
   },
   {
     "id": "classics-5166",
-    "name": "Stonedar",
+    "name": "Griffin",
     "line": "classics",
-    "group": "Other",
+    "group": "Creatures",
     "wave": "",
-    "year": 2015,
-    "retail": 26.0,
-    "slug": "stonedar-5166",
+    "year": 2012,
+    "retail": 30.0,
+    "slug": "griffin-5166",
     "faction": "Other"
   },
   {
     "id": "classics-5167",
-    "name": "Granamyr",
+    "name": "Snake Men",
     "line": "classics",
-    "group": "Other",
+    "group": "Packs",
     "wave": "",
-    "year": 2014,
-    "retail": 80.0,
-    "slug": "granamyr-5167",
-    "faction": "Other"
+    "year": 2012,
+    "retail": 40.0,
+    "slug": "snake-men-5167",
+    "faction": "Evil Warriors"
   },
   {
     "id": "classics-4013",
@@ -9758,14 +9758,14 @@
   },
   {
     "id": "origins-3244",
-    "name": "Castle Grayskull (Mark Taylor)",
+    "name": "Sun-Man (Creations)",
     "line": "origins",
-    "group": "Vehicles & Playsets",
+    "group": "Action Figures",
     "wave": "",
     "year": 2022,
-    "retail": 124.99,
-    "slug": "castle-grayskull-mark-taylor-3244",
-    "faction": "Other"
+    "retail": 18.99,
+    "slug": "sun-man-creations-3244",
+    "faction": "Heroic Warriors"
   },
   {
     "id": "origins-3245",
@@ -9780,25 +9780,25 @@
   },
   {
     "id": "origins-3246",
-    "name": "Moat Monster",
+    "name": "Shogun Masters Skeletor (Golden Havoc Edition)",
     "line": "origins",
-    "group": "Vehicles & Playsets",
+    "group": "Exclusives",
     "wave": "",
     "year": 2022,
     "retail": null,
-    "slug": "moat-monster-3246",
-    "faction": "Other"
+    "slug": "shogun-masters-skeletor-golden-havoc-edition-3246",
+    "faction": "Evil Warriors"
   },
   {
     "id": "origins-3247",
-    "name": "Stridor",
+    "name": "Shogun Masters Skeletor",
     "line": "origins",
-    "group": "Vehicles & Playsets",
+    "group": "Exclusives",
     "wave": "",
     "year": 2022,
     "retail": 24.99,
-    "slug": "stridor-3247",
-    "faction": "Other"
+    "slug": "shogun-masters-skeletor-3247",
+    "faction": "Evil Warriors"
   },
   {
     "id": "origins-3248",
