@@ -131,7 +131,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .bottom-nav {
   background: var(--bg2);
   border-top: 1px solid var(--bd);
-  padding-bottom: max(8px, var(--safe-bottom));
+  padding-bottom: max(4px, var(--safe-bottom));
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   flex-shrink: 0;
@@ -139,12 +139,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 
 .bottom-nav button {
-  padding: 6px 0 5px;
+  padding: 5px 0 3px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
-  font-size: 9px;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
   color: var(--t3);
   font-weight: 400;
   transition: color 0.15s;
@@ -157,7 +158,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   color: var(--t3);
   border-radius: 8px;
   padding: 1px 5px;
-  margin-left: 2px;
+  margin-left: 0px;
 }
 .bottom-nav button.active .badge { background: var(--acc); color: var(--bg); }
 
@@ -302,7 +303,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 /* ── Lines Grid ──────────────────────────────────────────────────── */
 .lines-grid {
-  padding: 0 16px 16px;
+  padding: 14px 16px 16px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
@@ -827,7 +828,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fade-in { animation: fadeIn 0.3s ease both; }
 
 /* ── Spacers ─────────────────────────────────────────────────────── */
-.bottom-spacer { height: calc(80px + var(--safe-bottom)); }
+.bottom-spacer { height: calc(48px + var(--safe-bottom)); }
 .detail-spacer { height: calc(32px + var(--safe-bottom)); }
 </style>
 </head>
@@ -1283,7 +1284,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.1</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.2</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1357,7 +1358,8 @@ function renderMain() {
 
 function renderNavBtn(key, ico, label, extra='') {
   const active = (S.tab === key && !S.activeLine) || (key === 'lines' && S.activeLine && S.tab === 'all');
-  return `<button class="${active?'active':''}" onclick="navTo('${key}')">${icon(ico,18,active?2.5:1.5)}${label}${extra}</button>`;
+  const showIcon = key !== 'collection';
+  return `<button class="${active?'active':''}" onclick="navTo('${key}')">${showIcon ? icon(ico,14,active?2.5:1.5) : ''}${label}${extra}</button>`;
 }
 
 function renderBreadcrumb() {
