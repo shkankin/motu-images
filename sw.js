@@ -1,7 +1,7 @@
-// MOTU Vault — Service Worker v3.0
+// MOTU Vault — Service Worker v3.1
 // Strategy: cache-first for app shell, network-first for figures.json
 
-const CACHE = 'motu-vault-v3';
+const CACHE = 'motu-vault-v3.1';
 
 // App shell files to pre-cache on install
 const SHELL = [
