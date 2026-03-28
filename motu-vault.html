@@ -1305,7 +1305,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.5</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.6</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1373,16 +1373,14 @@ function renderMain() {
       const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
       if (nearBottom) return;
       if (delta > 6 && st > 50) {
-        if (hideTimeout) clearTimeout(hideTimeout);
+        if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
         sb.classList.add('hidden');
       } else if (delta < -6 || st < 20) {
-        // Debounce reveal to avoid flicker
-        if (!hideTimeout) {
-          hideTimeout = setTimeout(() => {
-            sb.classList.remove('hidden');
-            hideTimeout = null;
-          }, 80);
-        }
+        if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+        hideTimeout = setTimeout(() => {
+          sb.classList.remove('hidden');
+          hideTimeout = null;
+        }, 60);
       }
     };
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
@@ -1646,10 +1644,10 @@ function renderSheet() {
 
 function renderMenuSheet() {
   const menuItems = [
-    {label:'Reorder Lines', icon:ICO.sort, action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
-    {label:'Import CSV', icon:ICO.import, action:"openSheet('import')"},
-    {label:'Export CSV', icon:ICO.export, action:"exportCSV();closeSheet()"},
-    {label:'Theme',      icon:ICO.palette, action:"openSheet('theme')"},
+    {label:'Theme',              icon:ICO.palette, action:"openSheet('theme')"},
+    {label:'Manage Collections', icon:ICO.sort, action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
+    {label:'Import CSV',         icon:ICO.import, action:"openSheet('import')"},
+    {label:'Export CSV',         icon:ICO.export, action:"exportCSV();closeSheet()"},
   ];
   return menuItems.map(m => `
     <button onclick="${m.action}" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
