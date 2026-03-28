@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>MOTU Vault</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════════════
    MOTU VAULT — Pure CSS, Zero Dependencies
@@ -95,16 +95,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 /* ── Typography ──────────────────────────────────────────────────── */
 .font-display { font-family: 'Cinzel', serif; font-weight: 700; }
-.font-display-heavy { font-family: 'Cinzel', serif; font-weight: 900; }
 .text-gold { color: var(--gold); }
-.text-acc { color: var(--acc); }
 .text-muted { color: var(--t2); }
 .text-dim { color: var(--t3); }
 .text-xs { font-size: 10px; }
 .text-sm { font-size: 12px; }
 .text-md { font-size: 14px; }
-.text-lg { font-size: 16px; }
-.text-xl { font-size: 20px; }
 .text-upper { text-transform: uppercase; letter-spacing: 1.5px; }
 
 /* ── Layout Shell ────────────────────────────────────────────────── */
@@ -777,6 +773,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   border-color: var(--acc);
   background: var(--acc);
 }
+.checkbox span { display: none; }
+.checkbox.checked span { display: flex; }
 
 .clear-all-btn {
   width: 100%;
@@ -797,7 +795,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   background: var(--bg);
   padding: 32px;
 }
-.loading-logo { width: 120px; margin-bottom: 8px; }
 .loading-name {
   font-size: 13px; letter-spacing: 3px;
   color: var(--t3);
@@ -825,7 +822,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 /* ── Animations ──────────────────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.fade-in { animation: fadeIn 0.3s ease both; }
 
 /* ── Spacers ─────────────────────────────────────────────────────── */
 .bottom-spacer { height: calc(48px + var(--safe-bottom)); }
@@ -1120,10 +1116,6 @@ function init() {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 function saveColl() { store.set('motu-c2', S.coll); }
-function isHidden(lineId, subKey) {
-  if (subKey) return S.hiddenItems.includes(lineId + ':' + subKey);
-  return S.hiddenItems.includes(lineId);
-}
 function toggleHidden(key) {
   const i = S.hiddenItems.indexOf(key);
   if (i >= 0) S.hiddenItems.splice(i, 1);
@@ -1160,7 +1152,7 @@ function updateColl(id, key, val) {
 }
 
 function getStats() {
-  const real = S.figs.filter(f => f.id !== 'dev-0001' && !figIsHidden(f));
+  const real = S.figs.filter(f => !figIsHidden(f));
   const owned = real.filter(f => S.coll[f.id]?.status === 'owned').length;
   const wish  = real.filter(f => S.coll[f.id]?.status === 'wishlist').length;
   const ord   = real.filter(f => S.coll[f.id]?.status === 'ordered').length;
@@ -1169,14 +1161,14 @@ function getStats() {
 
 function getLineStats() {
   return LINES.map(l => {
-    const t = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001' && !figIsHidden(f)).length;
-    const o = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001' && !figIsHidden(f) && S.coll[f.id]?.status === 'owned').length;
+    const t = S.figs.filter(f => f.line === l.id && !figIsHidden(f)).length;
+    const o = S.figs.filter(f => f.line === l.id && !figIsHidden(f) && S.coll[f.id]?.status === 'owned').length;
     return {...l, total: t, owned: o, pct: t ? Math.round(o/t*100) : 0};
   });
 }
 
 function getSortedFigs() {
-  let list = S.figs.filter(f => f.id !== 'dev-0001' && !figIsHidden(f));
+  let list = S.figs.filter(f => !figIsHidden(f));
   const isSearch = S.search.length > 0;
   if (!isSearch && S.activeLine) list = list.filter(f => f.line === S.activeLine);
   if (!isSearch && S.activeSubline && S.activeSubline !== '__all__') {
@@ -1214,7 +1206,7 @@ function progressRing(pct, size=48, color='var(--acc)') {
 
 function exportCSV() {
   const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Condition','Paid','Notes'];
-  const rows = S.figs.filter(f => f.id !== 'dev-0001').map(f => {
+  const rows = S.figs.map(f => {
     const c = S.coll[f.id] || {};
     return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',c.condition||'',c.paid||'',c.notes||''];
   });
@@ -1313,7 +1305,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.4</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.5</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1701,7 +1693,7 @@ function renderImportSheet() {
     Export your collection from ActionFigure411.com, then drop the CSV file below. Only MOTU figures will be imported.
   </p>
   <div class="overwrite-toggle" onclick="this.querySelector('.checkbox').classList.toggle('checked')">
-    <div class="checkbox"><span style="color:#fff;display:none">${icon(ICO.check,14)}</span></div>
+    <div class="checkbox"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
     <div>
       <div class="text-md" style="font-weight:500">Overwrite existing</div>
       <div class="text-sm text-dim">Re-import figures already marked as owned</div>
