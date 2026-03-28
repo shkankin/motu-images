@@ -2,278 +2,844 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MOTU Vault">
+<meta name="theme-color" content="#06060c">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>MOTU Vault</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<!-- Content Security Policy: restrict resource origins -->
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  script-src 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com;
-  style-src 'unsafe-inline' https://fonts.googleapis.com;
-  font-src https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://raw.githubusercontent.com;
-  connect-src https://api.anthropic.com https://raw.githubusercontent.com;
-">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; }
+/* ═══════════════════════════════════════════════════════════════════
+   MOTU VAULT — Pure CSS, Zero Dependencies
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Desktop: center the app as a phone frame ─────────────────────────────── */
-body {
+/* ── Theme Variables ─────────────────────────────────────────────── */
+:root {
+  --bg:  #06060c;
+  --bg2: #0d0d18;
+  --bg3: #151525;
+  --bd:  #252545;
+  --acc: #8b5cf6;
+  --gold:#d4a843;
+  --t1:  #eae6f2;
+  --t2:  #9a92b0;
+  --t3:  #5e5678;
+  --gn:  #34d399;
+  --rd:  #f87171;
+  --bl:  #60a5fa;
+  --or:  #fb923c;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+[data-theme="skeletor"] {
+  --bg: #0a0514; --bg2: #110a24; --bg3: #1a1035; --bd: #3d2a6e;
+  --acc: #a78bfa; --gold: #c084fc; --t1: #ede9f8; --t2: #9c87cc; --t3: #5e4a8a;
+}
+[data-theme="heman"] {
+  --bg: #0f0a03; --bg2: #1a1205; --bg3: #241908; --bd: #5a3a10;
+  --acc: #f59e0b; --gold: #fbbf24; --t1: #fef3c7; --t2: #b45309; --t3: #78450f;
+}
+[data-theme="grayskull"] {
+  --bg: #080a08; --bg2: #0f1410; --bg3: #171f18; --bd: #2a3d2c;
+  --acc: #22c55e; --gold: #86efac; --t1: #e8f5e9; --t2: #6b9e70; --t3: #3d5e40;
+}
+
+/* ── Reset & Base ────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #app {
+  height: 100%; width: 100%;
+  overflow: hidden;
   font-family: 'Outfit', sans-serif;
-  background: #08080f;
-  color: #eae6f2;
-  overscroll-behavior: none;
+  background: var(--bg);
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* On desktop, body becomes the stage — subtle radial glow behind the frame */
-@media (min-width: 520px) {
-  body {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    background: #04040a;
-    background-image: radial-gradient(ellipse 60% 50% at 50% 0%, #1a1040 0%, #04040a 70%);
-    min-height: 100%;
-    padding: 24px 0 40px;
-  }
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+input, select, textarea {
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg3);
+  border: 1px solid var(--bd);
+  border-radius: var(--radius-sm);
+  color: var(--t1);
+  font-size: 14px;
+  padding: 12px;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--acc);
+}
+input::placeholder, textarea::placeholder { color: var(--t3); }
+
+button {
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  transition: all 0.15s ease;
+}
+button:active { opacity: 0.7; transform: scale(0.97); }
+
+/* ── Typography ──────────────────────────────────────────────────── */
+.font-display { font-family: 'Cinzel', serif; font-weight: 700; }
+.font-display-heavy { font-family: 'Cinzel', serif; font-weight: 900; }
+.text-gold { color: var(--gold); }
+.text-acc { color: var(--acc); }
+.text-muted { color: var(--t2); }
+.text-dim { color: var(--t3); }
+.text-xs { font-size: 10px; }
+.text-sm { font-size: 12px; }
+.text-md { font-size: 14px; }
+.text-lg { font-size: 16px; }
+.text-xl { font-size: 20px; }
+.text-upper { text-transform: uppercase; letter-spacing: 1.5px; }
+
+/* ── Layout Shell ────────────────────────────────────────────────── */
+#app {
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-#root {
-  height: 100%;
+.top-bar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--bd);
+  padding-top: max(12px, var(--safe-top));
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bottom-nav {
+  background: var(--bg2);
+  border-top: 1px solid var(--bd);
+  padding-bottom: max(8px, var(--safe-bottom));
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.bottom-nav button {
+  padding: 10px 0 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--t3);
+  font-weight: 400;
+  transition: color 0.15s;
+}
+.bottom-nav button.active { color: var(--acc); font-weight: 600; }
+.bottom-nav button.active svg { stroke-width: 2.5; }
+.bottom-nav .badge {
+  font-size: 9px;
+  background: var(--bd);
+  color: var(--t3);
+  border-radius: 8px;
+  padding: 1px 5px;
+  margin-left: 2px;
+}
+.bottom-nav button.active .badge { background: var(--acc); color: var(--bg); }
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 12px;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.logo-title {
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+.logo-subtitle {
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:hover { border-color: var(--acc); color: var(--acc); }
+.icon-btn.syncing { animation: spin 1s linear infinite; }
+.icon-btn.sync-ok { border-color: var(--gn); color: var(--gn); }
+.icon-btn.sync-err { border-color: var(--rd); color: var(--rd); }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ── Search Bar ──────────────────────────────────────────────────── */
+.search-bar-wrap {
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  max-height: 80px;
+  opacity: 1;
+}
+.search-bar-wrap.hidden {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.search-row {
+  padding: 0 16px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-wrap {
+  flex: 1;
+  position: relative;
+}
+.search-wrap .search-icon {
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--t3); pointer-events: none;
+}
+.search-wrap input {
+  padding: 11px 36px 11px 38px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+.search-clear {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--t3);
+  padding: 4px;
+}
+
+.filter-btn, .sort-btn {
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.filter-btn.active { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); color: var(--acc); }
+.filter-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  display: inline-block;
+}
+
+.sort-label { font-size: 11px; color: var(--t3); }
+
+/* ── Breadcrumb ──────────────────────────────────────────────────── */
+.breadcrumb {
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.breadcrumb button {
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  padding: 2px 0;
+}
+.breadcrumb .sep { color: var(--t3); }
+.breadcrumb .current {
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.breadcrumb .crumb-link {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+}
+
+/* ── Lines Grid ──────────────────────────────────────────────────── */
+.lines-grid {
+  padding: 0 16px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.line-card {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--bd);
+  aspect-ratio: 3/4;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.line-card:hover { transform: scale(1.02); }
+.line-card img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top;
+}
+.line-card .overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.1) 0%, rgba(0,0,0,.3) 40%, rgba(0,0,0,.85) 100%);
+}
+.line-card .card-info {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px 12px 14px;
+}
+.line-card .card-name {
+  font-size: 13px; line-height: 1.2;
+  color: #fff; margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+}
+.line-card .card-year { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 6px; }
+.line-card .progress-bar {
+  height: 2px; background: rgba(255,255,255,.2);
+  border-radius: 2px; overflow: hidden; margin-bottom: 4px;
+}
+.line-card .progress-fill {
+  height: 100%; border-radius: 2px;
+  background: var(--gold);
+  transition: width 0.4s;
+}
+.line-card .progress-fill.complete { background: var(--gn); }
+.line-card .card-stats { font-size: 10px; color: rgba(255,255,255,.7); font-weight: 600; }
+.line-card .card-stats.complete { color: var(--gn); }
+
+.reorder-toggle {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px 8px;
+}
+.reorder-toggle button {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 8px;
+  border: 1px solid var(--bd);
+  color: var(--t3); font-size: 11px;
+  transition: all 0.15s;
+}
+.reorder-toggle button.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+/* ── Reorder List ────────────────────────────────────────────────── */
+.reorder-list {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reorder-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: var(--radius);
+}
+.reorder-arrows {
+  display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+}
+.reorder-arrows button {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t1);
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.reorder-arrows button:disabled { color: color-mix(in srgb, var(--t3) 30%, transparent); cursor: default; }
+
+/* ── Subline Cards ───────────────────────────────────────────────── */
+.subline-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subline-card {
+  padding: 18px 20px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.15s;
   width: 100%;
 }
-
-/* On desktop: cap to phone width, full viewport height, add frame chrome */
-@media (min-width: 520px) {
-  #root {
-    width: 430px;
-    height: calc(100vh - 64px);
-    min-height: 600px;
-    max-height: 932px;
-    border-radius: 44px;
-    overflow: hidden;
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,.08),
-      0 32px 80px rgba(0,0,0,.8),
-      0 8px 24px rgba(0,0,0,.6);
-    flex-shrink: 0;
-  }
+.subline-card:hover { border-color: var(--acc); }
+.subline-card.all-card {
+  background: var(--bg3);
+  border-width: 2px;
 }
+
+.subline-ring { flex-shrink: 0; }
+.subline-info { flex: 1; min-width: 0; }
+.subline-name {
+  font-family: 'Cinzel', serif;
+  font-size: 15px; font-weight: 700;
+  color: var(--t1); margin-bottom: 4px;
+}
+.subline-card.all-card .subline-name { color: var(--gold); }
+.subline-stats { font-size: 12px; color: var(--t3); }
+.subline-progress {
+  height: 3px; background: var(--bd);
+  border-radius: 2px; margin-top: 8px;
+  overflow: hidden;
+}
+.subline-progress-fill {
+  height: 100%; border-radius: 2px;
+  background: var(--acc);
+  transition: width 0.4s;
+}
+.subline-progress-fill.complete { background: var(--gn); }
+.subline-arrow { flex-shrink: 0; color: var(--t3); }
+
+/* ── Figure List ─────────────────────────────────────────────────── */
+.fig-list { padding: 12px 12px 0; }
+.fig-count { font-size: 11px; color: var(--t3); margin-bottom: 8px; padding-left: 4px; }
+
+.fig-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bd) 15%, transparent);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.fig-row:hover { background: color-mix(in srgb, var(--bg3) 50%, transparent); }
+
+.fig-thumb {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-sm);
+  background: var(--bg3);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bd);
+}
+.fig-thumb.owned { border-color: var(--gn); }
+.fig-thumb.wishlist { border-color: var(--bl); }
+.fig-thumb.ordered { border-color: var(--or); }
+.fig-thumb.for-sale { border-color: var(--rd); }
+.fig-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.fig-thumb .initial {
+  font-family: 'Cinzel', serif;
+  font-size: 20px; color: var(--t3); font-weight: 700;
+}
+
+.fig-text { flex: 1; min-width: 0; }
+.fig-name {
+  font-size: 14px; font-weight: 600;
+  color: var(--t1); line-height: 1.3;
+  margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fig-meta {
+  font-size: 11px; color: var(--t3);
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.fig-meta .line-name { color: var(--acc); font-weight: 600; }
+
+.fig-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fig-var-badge { font-size: 9px; font-weight: 700; color: var(--gold); letter-spacing: 0.5px; }
+.fig-status-dot { width: 10px; height: 10px; border-radius: 50%; }
+.fig-status-dot.owned { background: var(--gn); }
+.fig-status-dot.wishlist { background: var(--bl); }
+.fig-status-dot.ordered { background: var(--or); }
+.fig-status-dot.for-sale { background: var(--rd); }
+
+.quick-own {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t3);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Empty State ─────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--t3);
+}
+.empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+.empty-state .title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px; color: var(--t2); margin-bottom: 4px;
+}
+
+/* ── Figure Detail ───────────────────────────────────────────────── */
+.detail-header {
+  padding: 16px 16px 12px;
+  padding-top: max(16px, var(--safe-top));
+  background: var(--bg2);
+  border-bottom: 1px solid var(--bd);
+  display: flex; align-items: center; gap: 12px;
+}
+.detail-title {
+  flex: 1;
+  font-family: 'Cinzel', serif;
+  font-size: 15px; font-weight: 700;
+  color: var(--t1); line-height: 1.3;
+}
+.detail-back, .detail-delete {
+  padding: 8px; border-radius: 8px;
+}
+.detail-back { color: var(--t1); }
+.detail-delete { color: var(--rd); }
+
+.detail-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+.photo-section {
+  position: relative;
+  background: var(--bg3);
+}
+.photo-container {
+  aspect-ratio: 1;
+  max-height: 320px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.photo-container img { width: 100%; height: 100%; object-fit: contain; }
+.photo-container .initial-large {
+  font-family: 'Cinzel', serif;
+  font-size: 72px; color: var(--t3); font-weight: 900;
+}
+.photo-controls {
+  position: absolute; bottom: 10px; right: 10px;
+  display: flex; gap: 8px;
+}
+.photo-btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff; font-size: 12px;
+  display: flex; align-items: center; gap: 6px;
+  backdrop-filter: blur(4px);
+}
+.photo-btn.remove {
+  border-color: rgba(248,113,113,.4);
+  color: var(--rd);
+}
+
+.detail-pills {
+  padding: 16px;
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--bd);
+  font-size: 12px; color: var(--t2);
+}
+
+.detail-retail {
+  padding: 0 16px 16px;
+  font-size: 14px; color: var(--t2);
+}
+.detail-retail .price { color: var(--gold); font-weight: 600; }
+
+.status-grid {
+  padding: 0 16px 16px;
+}
+.status-grid .label {
+  font-size: 11px; color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+.status-grid .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.status-btn {
+  padding: 14px 8px;
+  border-radius: 12px;
+  border: 2px solid var(--bd);
+  background: var(--bg2);
+  color: var(--t2);
+  font-size: 14px; font-weight: 600;
+  transition: all 0.15s;
+}
+.status-btn.active { background: color-mix(in srgb, var(--status-color) 12%, transparent); border-color: var(--status-color); color: var(--status-color); }
+
+.detail-fields {
+  padding: 0 16px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.detail-fields .field-label {
+  font-size: 12px; color: var(--t3); margin-bottom: 4px;
+}
+.detail-fields .field-hint {
+  font-size: 10px; color: var(--t3); margin-top: 4px;
+}
+
+/* ── Bottom Sheet ────────────────────────────────────────────────── */
+.sheet-overlay {
+  position: absolute; inset: 0;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.sheet-overlay.visible { opacity: 1; }
+.sheet-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(4px);
+}
+.sheet-panel {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border-radius: 20px 20px 0 0;
+  border: 1px solid var(--bd);
+  padding-bottom: max(20px, var(--safe-bottom));
+  max-height: 85%;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-overlay.visible .sheet-panel { transform: translateY(0); }
+
+.sheet-handle {
+  padding: 12px 20px 0;
+  display: flex; justify-content: center;
+}
+.sheet-handle-bar {
+  width: 36px; height: 4px;
+  border-radius: 2px; background: var(--bd);
+  margin-bottom: 12px;
+}
+.sheet-header {
+  padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-shrink: 0;
+}
+.sheet-title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px; font-weight: 700; color: var(--gold);
+}
+.sheet-close { color: var(--t3); padding: 4px; }
+.sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding: 0 20px 20px;
+}
+
+/* ── Filter/Sort Sheet Buttons ───────────────────────────────────── */
+.chip-group {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+}
+.chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
+  font-size: 13px;
+}
+.chip.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+.sort-option {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t1);
+  font-size: 15px;
+  text-align: left;
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  margin-bottom: 4px;
+}
+.sort-option.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+/* ── Theme Picker ────────────────────────────────────────────────── */
+.theme-option {
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 2px solid var(--bd);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 14px;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 10px;
+  transition: all 0.15s;
+}
+.theme-option .swatch {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* ── Import Sheet ────────────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed var(--bd);
+  border-radius: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.drop-zone.dragover {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+}
+.overwrite-toggle {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg3);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.checkbox {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: 2px solid var(--bd);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.checkbox.checked {
+  border-color: var(--acc);
+  background: var(--acc);
+}
+
+.clear-all-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--rd);
+  background: color-mix(in srgb, var(--rd) 8%, transparent);
+  color: var(--rd);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ── Loading Screen ──────────────────────────────────────────────── */
+.loading-screen {
+  height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--bg);
+  padding: 32px;
+}
+.loading-logo { width: 120px; margin-bottom: 8px; }
+.loading-name {
+  font-size: 13px; letter-spacing: 3px;
+  color: var(--t3);
+  font-family: 'Cinzel', serif;
+  margin-bottom: 32px;
+}
+.loading-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--bd);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+.loading-text { font-size: 12px; color: var(--t3); letter-spacing: 1px; }
+
+.retry-btn {
+  padding: 12px 32px;
+  border-radius: 12px;
+  border: 1px solid var(--rd);
+  background: color-mix(in srgb, var(--rd) 8%, transparent);
+  color: var(--rd);
+  font-size: 14px; font-weight: 600;
+}
+
+/* ── Animations ──────────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.3s ease both; }
+
+/* ── Spacers ─────────────────────────────────────────────────────── */
+.bottom-spacer { height: calc(80px + var(--safe-bottom)); }
+.detail-spacer { height: calc(32px + var(--safe-bottom)); }
 </style>
 </head>
 <body>
-<div id="root"></div>
-<script type="text/babel" data-presets="env,react">
-const { useState, useEffect, useCallback, useMemo, useRef } = React;
+<div id="app"></div>
 
-// ─── Storage ────────────────────────────────────────────────────────────────
-// Thin localStorage wrapper — all collection data lives here, never on a server.
-const store = {
-  get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   MOTU VAULT — Pure Vanilla JS, Zero Dependencies
+   ═══════════════════════════════════════════════════════════════════ */
 
-// ─── Seed Data ───────────────────────────────────────────────────────────────
-const DEV_MODE  = true; // SET TO false BEFORE RELEASING TO USERS
-const IMG       = "https://raw.githubusercontent.com/shkankin/motu-images/main";
-const FIGS_URL  = IMG + "/figures.json";
-const CACHE_KEY = 'motu-figs-cache';   // { rows:[], ts:number }
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in ms
-
-const LINES = [
-  {id:'origins',    name:'Origins',         yr:'2019–2026', mfr:'Mattel',  sc:'5.5"'},
-  {id:'masterverse',name:'Masterverse',     yr:'2021–2026', mfr:'Mattel',  sc:'7"'},
-  {id:'chronicles', name:'Chronicles',      yr:'2026',      mfr:'Mattel',  sc:'7"'},
-  {id:'classics',   name:'Mattel Classics', yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
-  {id:'200x',       name:'Mattel 200x',     yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
-  {id:'original',   name:'Original',        yr:'1981–1988', mfr:'Mattel',  sc:'5.5"'},
-  {id:'new-adventures', name:'New Adventures', yr:'1989–1992', mfr:'Mattel', sc:'5.5"'},
-  {id:'mondo',      name:'Mondo',           yr:'2018–2025', mfr:'Mondo',   sc:'1/6'},
-  {id:'super7',     name:'Super7',          yr:'2016–2020', mfr:'Super7',  sc:'7"'},
-  {id:'eternia-minis', name:'Eternia Minis', yr:'2013–2022', mfr:'Mattel', sc:'2"'},
-];
-
-const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
-const CONDITIONS = ['Mint in Box','Mint on Card','Loose Complete','Loose Incomplete','Damaged','New/Sealed'];
-const STATUSES = ['owned','wishlist','ordered','for-sale'];
-const STATUS_LABEL = {owned:'Owned',wishlist:'Wishlist',ordered:'Ordered','for-sale':'For Sale'};
-const STATUS_COLOR = {owned:'#34d399',wishlist:'#60a5fa',ordered:'#fb923c','for-sale':'#f87171'};
-
-const THEMES = {
-  eternia: { name:'Eternia', bg:'#08080f', bg2:'#10101c', bg3:'#181830', bd:'#2a2a48', acc:'#8b5cf6', gold:'#d4a843', t1:'#eae6f2', t2:'#9a92b0', t3:'#5e5678' },
-  skeletor:{ name:'Skeletor',bg:'#0a0514', bg2:'#110a24', bg3:'#1a1035', bd:'#3d2a6e', acc:'#a78bfa', gold:'#c084fc', t1:'#ede9f8', t2:'#9c87cc', t3:'#5e4a8a' },
-  heman:   { name:'He-Man',  bg:'#0f0a03', bg2:'#1a1205', bg3:'#241908', bd:'#5a3a10', acc:'#f59e0b', gold:'#fbbf24', t1:'#fef3c7', t2:'#b45309', t3:'#78450f' },
-};
-
-const ln = id => LINES.find(l => l.id === id)?.name || id;
-
-// Default representative figure slugs per line
-const LINE_REP_DEFAULTS = {
-  'origins':        'he-man-2393',
-  'masterverse':    'skeletor-2743',
-  'chronicles':     'he-man-12460',
-  'classics':       'he-man-3992',
-  '200x':           'skeletor-6551',
-  'original':       'he-man-2435',
-  'new-adventures': 'he-man-12935',
-  'mondo':          'skeletor-10490',
-  'super7':         'he-man-2750',
-  'eternia-minis':  'he-man-grayskull-2597',
-};
-
-
-
-// Sublines: line -> ordered list of {key, label, groups[]}
-// 'groups' are the seed group values that belong to this subline
-const SUBLINES = {
-  origins: [
-    { key:'action',   label:'Action Figures',       groups:['Action Figures'] },
-    { key:'deluxe',   label:'Deluxe',                groups:['Deluxe'] },
-    { key:'exclusives',label:'Exclusives',           groups:['Exclusives'] },
-    { key:'vehicles', label:'Vehicles & Playsets',   groups:['Vehicles & Playsets'] },
-    { key:'turtles',  label:'Turtles of Grayskull',  groups:['Turtles of Grayskull'] },
-    { key:'crossovers',label:'Crossovers',           groups:['Crossovers'] },
-  ],
-  masterverse: [
-    { key:'revelation',      label:'Revelation',         groups:['Revelation','Revelation Deluxe'] },
-    { key:'new-eternia',     label:'New Eternia',        groups:['New Eternia'] },
-    { key:'new-etheria',     label:'New Etheria',        groups:['New Etheria'] },
-    { key:'princess-power',  label:'Princess of Power',  groups:['Princess of Power'] },
-    { key:'revolution',      label:'Revolution',         groups:['Revolution'] },
-    { key:'new-adventures',  label:'New Adventures',     groups:['New Adventures'] },
-    { key:'movie',           label:'Movie (1987)',        groups:['Movie'] },
-    { key:'cgi',             label:'CGI Cartoon',        groups:['CGI Cartoon'] },
-    { key:'40th',            label:'40th Anniversary',   groups:['40th Anniversary'] },
-    { key:'rulers',          label:'Rulers of the Sun',  groups:['Rulers of the Sun'] },
-    { key:'vintage',         label:'Vintage Collection', groups:['Vintage Collection'] },
-  ],
-  classics: [
-    { key:'heroic',    label:'Heroic Warriors',     groups:['Heroic Warriors'] },
-    { key:'evil',      label:'Evil Warriors',       groups:['Evil Warriors'] },
-    { key:'horde',     label:'Evil Horde',          groups:['Evil Horde'] },
-    { key:'snake',     label:'Snake Men',           groups:['Snake Men'] },
-    { key:'rebellion', label:'Great Rebellion',     groups:['Great Rebellion'] },
-    { key:'galactic',  label:'Galactic Protectors', groups:['Galactic Protectors'] },
-    { key:'mutants',   label:'Evil Mutants',        groups:['Evil Mutants'] },
-    { key:'filmation', label:'Filmation',           groups:['Filmation'] },
-    { key:'other',     label:'Other / Packs',       groups:['Other','Packs','Battle Sets','Creatures'] },
-  ],
-  original: [
-    { key:'action',   label:'Action Figures',     groups:['Action Figures'] },
-    { key:'vehicles', label:'Vehicles & Playsets', groups:['Vehicles and Playsets','Vehicles & Playsets'] },
-  ],
-  '200x': [
-    { key:'action',   label:'Action Figures', groups:['Action Figures'] },
-    { key:'creatures',label:'Creatures',      groups:['Creatures'] },
-  ],
-  super7: [
-    { key:'ultimate',     label:'Ultimate',       groups:['Ultimate'] },
-    { key:'club',         label:'Club Grayskull',  groups:['Club Grayskull'] },
-    { key:'vintage',      label:'Vintage',        groups:['Vintage'] },
-    { key:'classics',     label:'Classics',       groups:['Classics'] },
-  ],
-  chronicles: [
-    { key:'movie',    label:'Movie',           groups:['Movie'] },
-    { key:'core',     label:'Core (Non-Movie)', groups:['Core (Non-Movie)'] },
-  ],
-  'new-adventures': [
-    { key:'action',   label:'Action Figures', groups:['Action Figures'] },
-    { key:'vehicles', label:'Vehicles',       groups:['Vehicles'] },
-    { key:'playsets', label:'Playsets',       groups:['Playsets'] },
-  ],
-  'eternia-minis': [
-    { key:'action',   label:'Action Figures',     groups:['Action Figures'] },
-    { key:'vehicles', label:'Vehicles & Playsets', groups:['Vehicles & Playsets'] },
-  ],
-};
-const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-
-// Photo storage: per-figure camera/file photos stored as compressed base64 JPEG.
-// Key format: motu-photo-{figureId}. Loaded lazily — only flags in React state.
-const photoStore = {
-  get: id => { try { return localStorage.getItem('motu-photo-' + id) || null; } catch { return null; } },
-  set: (id, dataUrl) => {
-    try {
-      localStorage.setItem('motu-photo-' + id, dataUrl);
-      return true;
-    } catch(e) {
-      // QuotaExceededError — storage is full
-      console.error('photoStore.set failed:', e);
-      return false;
-    }
-  },
-  del: id => { try { localStorage.removeItem('motu-photo-' + id); } catch {} },
-};
-
-// ─── CSV Import ──────────────────────────────────────────────────────────────
-const SERIES_MAP = {
-  'Origins':'origins','Masterverse':'masterverse','Mattel Classics':'classics',
-  'Mattel 200x':'200x','Eternia Minis':'eternia-minis','Mondo':'mondo',
-  'Super7':'super7','The New Adventures of He-Man':'new-adventures','Original':'original',
-};
-const COND_MAP = {'Boxed':'Mint in Box','Loose':'Loose Complete','Incomplete':'Loose Incomplete','Damaged':'Damaged','':''};
-
-// Maps AF411 CSV group names to seed group names
-const GROUP_MAP = {
-  'Origins Action Figures':'Action Figures',
-  'Origins Deluxe':'Action Figures',
-  'Origins Exclusives':'Exclusives',
-  'Origins Beasts, Vehicles and Playsets':'Vehicles & Playsets',
-  'Turtles of Grayskull':'Turtles of Grayskull',
-  'Stranger Things Crossover':'Crossovers',
-  'Thundercats Crossover':'Crossovers',
-  'Transformers Collaboration':'Crossovers',
-  'Revelation Action Figures':'Revelation',
-  'Revelation Deluxe Figures':'Revelation Deluxe',
-  'Eternia Action Figures':'Action Figures',
-  'Eternia Vehicles and Playsets':'Vehicles & Playsets',
-  'Original Action Figures':'Action Figures',
-  'Original Vehicles and Playsets':'Vehicles and Playsets',
-};
-
-function parseCSV(text) {
-  // Guard against absurdly large files (>10MB)
-  if (text.length > 10000000) throw new Error('File too large (max 10MB)');
-  const lines = text.split('\n').filter(l => l.trim());
-  const parseRow = line => {
-    const cols=[]; let cur=''; let inQ=false;
-    for(let i=0;i<line.length;i++){
-      const c=line[i];
-      if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
-      else if(c===','&&!inQ){cols.push(cur);cur='';}
-      else cur+=c;
-    }
-    cols.push(cur); return cols;
-  };
-  const headers = parseRow(lines[0]).map(h=>h.trim());
-  const idx = h => headers.indexOf(h);
-  const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere,iVariation] =
-    ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased','Variation Name'].map(idx);
-  return lines.slice(1).map(l => {
-    const c = parseRow(l);
-    const csvGroup = c[iGroup]?.trim() || '';
-    const mappedGroup = GROUP_MAP[csvGroup] || csvGroup;
-    return { genre:c[iGenre], series:c[iSeries], name:c[iName]?.trim(),
-      group:mappedGroup, wave:c[iWave]?.trim()||'', paid:c[iPaid]?.trim(), cond:COND_MAP[c[iCond]?.trim()]||'',
-      note:c[iNote]?.trim(), where:c[iWhere]?.trim(), variation:c[iVariation]?.trim()||'' };
-  }).filter(r => r.genre === 'Masters of the Universe' && SERIES_MAP[r.series]);
-}
-
-// ─── Icons ───────────────────────────────────────────────────────────────────
-const Icon = ({d,s=20,stroke=2}) => (
-  <svg viewBox="0 0 24 24" width={s} height={s} fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
-    <path d={d}/>
-  </svg>
-);
+// ─── SVG Icon paths ───────────────────────────────────────────────
 const ICO = {
   lines:   'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
   list:    'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -292,1108 +858,1012 @@ const ICO = {
   palette: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.55 0 1-.45 1-1 0-.26-.1-.5-.26-.69-.16-.2-.25-.44-.25-.69 0-.55.45-1 1-1h1.18c3.07 0 5.57-2.5 5.57-5.57C20.26 5.6 16.56 2 12 2z',
   img:     'M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14l4-4h12a2 2 0 002-2zM8.5 12.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z',
   sync:    'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15',
-  star:    'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+  chevR:   'M9 18l6-6-6-6',
 };
 
-// ─── App ─────────────────────────────────────────────────────────────────────
-function App() {
-  const [figs,  setFigs]  = useState(() => {
-    const cached = store.get(CACHE_KEY);
-    if (cached?.rows?.length) {
-      return cached.rows.map(f => ({
-        ...f,
-        image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')
-      }));
+function icon(d, size = 20, strokeW = 2) {
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+}
+
+// ─── Constants ────────────────────────────────────────────────────
+const IMG = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
+const FIGS_URL = IMG + '/figures.json';
+const CACHE_KEY = 'motu-figs-cache';
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+const LINES = [
+  {id:'origins',    name:'Origins',         yr:'2019–2026', mfr:'Mattel',  sc:'5.5"'},
+  {id:'masterverse',name:'Masterverse',     yr:'2021–2026', mfr:'Mattel',  sc:'7"'},
+  {id:'chronicles', name:'Chronicles',      yr:'2026',      mfr:'Mattel',  sc:'7"'},
+  {id:'classics',   name:'Mattel Classics', yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
+  {id:'200x',       name:'Mattel 200x',     yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
+  {id:'original',   name:'Original',        yr:'1981–1988', mfr:'Mattel',  sc:'5.5"'},
+  {id:'new-adventures', name:'New Adventures', yr:'1989–1992', mfr:'Mattel', sc:'5.5"'},
+  {id:'mondo',      name:'Mondo',           yr:'2018–2025', mfr:'Mondo',   sc:'1/6'},
+  {id:'super7',     name:'Super7',          yr:'2016–2020', mfr:'Super7',  sc:'7"'},
+  {id:'eternia-minis', name:'Eternia Minis', yr:'2013–2022', mfr:'Mattel', sc:'2"'},
+];
+
+const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
+const CONDITIONS = ['Mint in Box','Mint on Card','Loose Complete','Loose Incomplete','Damaged','New/Sealed'];
+const STATUSES = ['owned','wishlist','ordered','for-sale'];
+const STATUS_LABEL = {owned:'Owned',wishlist:'Wishlist',ordered:'Ordered','for-sale':'For Sale'};
+const STATUS_COLOR = {owned:'var(--gn)',wishlist:'var(--bl)',ordered:'var(--or)','for-sale':'var(--rd)'};
+const STATUS_HEX = {owned:'#34d399',wishlist:'#60a5fa',ordered:'#fb923c','for-sale':'#f87171'};
+
+const THEMES = {
+  eternia:  {name:'Eternia',  bg:'#08080f', acc:'#8b5cf6', gold:'#d4a843'},
+  skeletor: {name:'Skeletor', bg:'#0a0514', acc:'#a78bfa', gold:'#c084fc'},
+  heman:    {name:'He-Man',   bg:'#0f0a03', acc:'#f59e0b', gold:'#fbbf24'},
+  grayskull:{name:'Grayskull',bg:'#080a08', acc:'#22c55e', gold:'#86efac'},
+};
+
+const SUBLINES = {
+  origins: [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'deluxe',label:'Deluxe',groups:['Deluxe']},
+    {key:'exclusives',label:'Exclusives',groups:['Exclusives']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
+    {key:'turtles',label:'Turtles of Grayskull',groups:['Turtles of Grayskull']},
+    {key:'crossovers',label:'Crossovers',groups:['Crossovers']},
+  ],
+  masterverse: [
+    {key:'revelation',label:'Revelation',groups:['Revelation','Revelation Deluxe']},
+    {key:'new-eternia',label:'New Eternia',groups:['New Eternia']},
+    {key:'new-etheria',label:'New Etheria',groups:['New Etheria']},
+    {key:'princess-power',label:'Princess of Power',groups:['Princess of Power']},
+    {key:'revolution',label:'Revolution',groups:['Revolution']},
+    {key:'new-adventures',label:'New Adventures',groups:['New Adventures']},
+    {key:'movie',label:'Movie (1987)',groups:['Movie']},
+    {key:'cgi',label:'CGI Cartoon',groups:['CGI Cartoon']},
+    {key:'40th',label:'40th Anniversary',groups:['40th Anniversary']},
+    {key:'rulers',label:'Rulers of the Sun',groups:['Rulers of the Sun']},
+    {key:'vintage',label:'Vintage Collection',groups:['Vintage Collection']},
+  ],
+  classics: [
+    {key:'heroic',label:'Heroic Warriors',groups:['Heroic Warriors']},
+    {key:'evil',label:'Evil Warriors',groups:['Evil Warriors']},
+    {key:'horde',label:'Evil Horde',groups:['Evil Horde']},
+    {key:'snake',label:'Snake Men',groups:['Snake Men']},
+    {key:'rebellion',label:'Great Rebellion',groups:['Great Rebellion']},
+    {key:'galactic',label:'Galactic Protectors',groups:['Galactic Protectors']},
+    {key:'mutants',label:'Evil Mutants',groups:['Evil Mutants']},
+    {key:'filmation',label:'Filmation',groups:['Filmation']},
+    {key:'other',label:'Other / Packs',groups:['Other','Packs','Battle Sets','Creatures']},
+  ],
+  original: [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles and Playsets','Vehicles & Playsets']},
+  ],
+  '200x': [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'creatures',label:'Creatures',groups:['Creatures']},
+  ],
+  super7: [
+    {key:'ultimate',label:'Ultimate',groups:['Ultimate']},
+    {key:'club',label:'Club Grayskull',groups:['Club Grayskull']},
+    {key:'vintage',label:'Vintage',groups:['Vintage']},
+    {key:'classics',label:'Classics',groups:['Classics']},
+  ],
+  chronicles: [
+    {key:'movie',label:'Movie',groups:['Movie']},
+    {key:'core',label:'Core (Non-Movie)',groups:['Core (Non-Movie)']},
+  ],
+  'new-adventures': [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'vehicles',label:'Vehicles',groups:['Vehicles']},
+    {key:'playsets',label:'Playsets',groups:['Playsets']},
+  ],
+  'eternia-minis': [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
+  ],
+};
+
+const SERIES_MAP = {
+  'Origins':'origins','Masterverse':'masterverse','Mattel Classics':'classics',
+  'Mattel 200x':'200x','Eternia Minis':'eternia-minis','Mondo':'mondo',
+  'Super7':'super7','The New Adventures of He-Man':'new-adventures','Original':'original',
+};
+const COND_MAP = {'Boxed':'Mint in Box','Loose':'Loose Complete','Incomplete':'Loose Incomplete','Damaged':'Damaged','':''};
+const GROUP_MAP = {
+  'Origins Action Figures':'Action Figures','Origins Deluxe':'Action Figures',
+  'Origins Exclusives':'Exclusives','Origins Beasts, Vehicles and Playsets':'Vehicles & Playsets',
+  'Turtles of Grayskull':'Turtles of Grayskull','Stranger Things Crossover':'Crossovers',
+  'Thundercats Crossover':'Crossovers','Transformers Collaboration':'Crossovers',
+  'Revelation Action Figures':'Revelation','Revelation Deluxe Figures':'Revelation Deluxe',
+  'Eternia Action Figures':'Action Figures','Eternia Vehicles and Playsets':'Vehicles & Playsets',
+  'Original Action Figures':'Action Figures','Original Vehicles and Playsets':'Vehicles and Playsets',
+};
+
+const ln = id => LINES.find(l => l.id === id)?.name || id;
+const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ─── Storage ──────────────────────────────────────────────────────
+const store = {
+  get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const photoStore = {
+  get: id => { try { return localStorage.getItem('motu-photo-' + id) || null; } catch { return null; } },
+  set: (id, url) => { try { localStorage.setItem('motu-photo-' + id, url); return true; } catch { return false; } },
+  del: id => { try { localStorage.removeItem('motu-photo-' + id); } catch {} },
+};
+
+// ─── App State ────────────────────────────────────────────────────
+const S = {
+  figs: [],
+  coll: {},
+  customPhotos: {},
+  imgErrors: {},
+  tab: 'lines',       // lines | all | collection
+  activeLine: null,
+  activeSubline: null,
+  screen: 'main',     // main | figure
+  activeFig: null,
+  search: '',
+  filterFaction: '',
+  filterStatus: '',
+  filterVariants: false,
+  sortBy: store.get('motu-sort') || 'wave',
+  theme: store.get('motu-theme') || 'eternia',
+  lineOrder: store.get('motu-line-order') || LINES.map(l => l.id),
+  sheet: null,
+  loaded: false,
+  fetchError: false,
+  syncStatus: 'idle',
+  syncTs: null,
+  editingOrder: false,
+  savedScroll: 0,
+  titleIdx: 0,
+};
+
+const VAULT_TITLES = ['MOTU Vault', 'NYAAAH!', 'I Must Possess All'];
+
+// ─── CSV Parser ───────────────────────────────────────────────────
+function parseCSV(text) {
+  if (text.length > 10000000) throw new Error('File too large');
+  const lines = text.split('\n').filter(l => l.trim());
+  const parseRow = line => {
+    const cols = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else cur += c;
     }
-    return DEV_MODE ? [{"id":"dev-0001","name":"He-Man (Dev)","line":"origins","group":"Action Figures","wave":"1","year":2020,"retail":14.99,"slug":"he-man-dev-0001","faction":"Heroic Warriors"}] : []; // Dev seed
-  });
-  const [fetchError, setFetchError] = useState(false);
-  // Dev: pre-seeded figs means we can show UI immediately
-  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | ok | err
-  const [syncTs,     setSyncTs]     = useState(() => store.get(CACHE_KEY)?.ts || null);
-  const [coll, setColl] = useState(() => {
-    const c = store.get('motu-c2');
-    if (!c) return {};
-    // Scrub variants fields with no real word characters on load
-    const cleaned = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
+    cols.push(cur); return cols;
+  };
+  const headers = parseRow(lines[0]).map(h => h.trim());
+  const idx = h => headers.indexOf(h);
+  const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere,iVariation] =
+    ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased','Variation Name'].map(idx);
+  return lines.slice(1).map(l => {
+    const c = parseRow(l);
+    const csvGroup = c[iGroup]?.trim() || '';
+    return { genre:c[iGenre], series:c[iSeries], name:c[iName]?.trim(),
+      group:GROUP_MAP[csvGroup]||csvGroup, wave:c[iWave]?.trim()||'', paid:c[iPaid]?.trim(),
+      cond:COND_MAP[c[iCond]?.trim()]||'', note:c[iNote]?.trim(), where:c[iWhere]?.trim(),
+      variation:c[iVariation]?.trim()||'' };
+  }).filter(r => r.genre === 'Masters of the Universe' && SERIES_MAP[r.series]);
+}
+
+// ─── Data Fetching ────────────────────────────────────────────────
+async function fetchFigs(manual = false, firstLoad = false) {
+  S.syncStatus = 'syncing'; render();
+  S.fetchError = false;
+  try {
+    const res = await fetch(FIGS_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const remote = await res.json();
+    if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
+    const custom = S.figs.filter(f => f.line === 'custom');
+    const ids = new Set(remote.map(f => f.id));
+    const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
+    S.figs = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
+    S.syncTs = Date.now();
+    store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
+    S.syncStatus = 'ok';
+    if (firstLoad) { S.loaded = true; }
+    render();
+    setTimeout(() => { S.syncStatus = 'idle'; render(); }, 3000);
+  } catch(e) {
+    console.error('Fetch failed:', e);
+    S.syncStatus = manual ? 'err' : 'idle';
+    if (manual) setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000);
+    if (firstLoad) { S.fetchError = true; render(); }
+    else render();
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+function init() {
+  // Load collection
+  const c = store.get('motu-c2');
+  if (c) {
+    S.coll = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
       if (entry?.variants !== undefined && !/\w/.test(entry.variants)) {
         const { variants, ...rest } = entry;
         return [id, rest];
       }
       return [id, entry];
     }));
-    // Write back if anything changed
-    if (JSON.stringify(cleaned) !== JSON.stringify(c)) store.set('motu-c2', cleaned);
-    return cleaned;
+  }
+  // Load custom photo index
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
+  keys.forEach(k => { S.customPhotos[k.replace('motu-photo-','')] = true; });
+  // Load cached figs
+  const cached = store.get(CACHE_KEY);
+  if (cached?.rows?.length) {
+    S.figs = cached.rows.map(f => ({...f, image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')}));
+    S.syncTs = cached.ts;
+    S.loaded = true;
+  }
+  // Apply theme
+  document.documentElement.setAttribute('data-theme', S.theme);
+  // Fetch if stale
+  const hasCache = !!(cached?.rows?.length);
+  if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs(false, !hasCache);
+  render();
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────
+function saveColl() { store.set('motu-c2', S.coll); }
+function setStatus(id, status) {
+  if (!S.coll[id]) S.coll[id] = {};
+  if (S.coll[id].status === status) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
+  else S.coll[id] = {...S.coll[id], status};
+  saveColl(); render();
+}
+function updateColl(id, key, val) {
+  S.coll[id] = {...(S.coll[id]||{}), [key]: val};
+  saveColl();
+}
+
+function getStats() {
+  const real = S.figs.filter(f => f.id !== 'dev-0001');
+  const owned = real.filter(f => S.coll[f.id]?.status === 'owned').length;
+  const wish  = real.filter(f => S.coll[f.id]?.status === 'wishlist').length;
+  const ord   = real.filter(f => S.coll[f.id]?.status === 'ordered').length;
+  return { total: real.length, owned, wish, ord };
+}
+
+function getLineStats() {
+  return LINES.map(l => {
+    const t = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001').length;
+    const o = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001' && S.coll[f.id]?.status === 'owned').length;
+    return {...l, total: t, owned: o, pct: t ? Math.round(o/t*100) : 0};
   });
-  const [tab, setTab]         = useState('lines');   // lines | all | collection
-  const [activeLine, setActiveLine] = useState(null);
-  const [activeSubline, setActiveSubline] = useState(null);
-  const [screen, setScreen]   = useState('main');    // main | detail | figure
-  const [activeFig, setActiveFig] = useState(null);
-  const [srch, setSrch]       = useState('');
-  const [filterFaction, setFilterFaction] = useState('');
-  const [filterStatus, setFilterStatus]   = useState('');
-  const [filterVariants, setFilterVariants] = useState(false);
-  const [sortBy, setSortBy]   = useState(() => store.get('motu-sort') || 'wave');
-  const [theme, setTheme]     = useState(() => store.get('motu-theme') || 'eternia');
-  const [lineOrder, setLineOrder] = useState(() => store.get('motu-line-order') || LINES.map(l=>l.id)); // lineId being edited
-  const [sheet, setSheet]     = useState(null);   // null | 'filter' | 'sort' | 'add' | 'edit' | 'import' | 'theme'
-  const [iErr, setIErr]       = useState({});
-  const [customPhotos, setCustomPhotos] = useState({});
-  const [loaded, setLoaded]   = useState(DEV_MODE); // true only in dev: seed bypasses loading screen
-  const init = useRef(false);
-  const scrollRef = useRef(null);
-  const savedScroll = useRef(0);
+}
 
-  const T = THEMES[theme] || THEMES.eternia;
+function getSortedFigs() {
+  let list = S.figs.filter(f => f.id !== 'dev-0001');
+  const isSearch = S.search.length > 0;
+  if (!isSearch && S.activeLine) list = list.filter(f => f.line === S.activeLine);
+  if (!isSearch && S.activeSubline && S.activeSubline !== '__all__') {
+    const subs = SUBLINES[S.activeLine] || [];
+    const sl = subs.find(s => s.key === S.activeSubline);
+    if (sl) list = list.filter(f => sl.groups.includes(f.group));
+  }
+  if (!isSearch && S.tab === 'collection') list = list.filter(f => S.coll[f.id]?.status);
+  if (S.filterFaction) list = list.filter(f => f.faction === S.filterFaction);
+  if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
+  if (S.filterVariants) list = list.filter(f => /\w/.test(S.coll[f.id]?.variants||''));
+  if (S.search) { const s = S.search.toLowerCase(); list = list.filter(f => f.name.toLowerCase().includes(s)); }
+  const sb = S.sortBy;
+  if (sb === 'name') list.sort((a,b) => a.name.localeCompare(b.name));
+  else if (sb === 'name-desc') list.sort((a,b) => b.name.localeCompare(a.name));
+  else if (sb === 'year') list.sort((a,b) => (a.year||9999)-(b.year||9999));
+  else if (sb === 'year-desc') list.sort((a,b) => (b.year||0)-(a.year||0));
+  else if (sb === 'wave') list.sort((a,b) => { const na=parseFloat(a.wave||''),nb=parseFloat(b.wave||''); return (isNaN(na)?99:na)-(isNaN(nb)?99:nb); });
+  else if (sb === 'retail') list.sort((a,b) => (a.retail||0)-(b.retail||0));
+  else if (sb === 'retail-desc') list.sort((a,b) => (b.retail||0)-(a.retail||0));
+  return list;
+}
 
-  // CSS vars
-  const cssVars = `
-    :root {
-      --bg:${T.bg};--bg2:${T.bg2};--bg3:${T.bg3};--bd:${T.bd};
-      --acc:${T.acc};--gold:${T.gold};
-      --t1:${T.t1};--t2:${T.t2};--t3:${T.t3};
-      --gn:#34d399;--rd:#f87171;--bl:#60a5fa;--or:#fb923c;
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
+function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants; }
 
-  `;
+function progressRing(pct, size=48, color='var(--acc)') {
+  const r = (size/2)-4, circ = 2*Math.PI*r;
+  const complete = pct === 100;
+  const c = complete ? 'var(--gn)' : color;
+  return `<svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--bd)" stroke-width="3"/>` +
+    `<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${c}" stroke-width="3" ` +
+    `stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-pct/100)}" stroke-linecap="round" transform="rotate(-90 ${size/2} ${size/2})" style="transition:stroke-dashoffset .4s"/>` +
+    `<text x="${size/2}" y="${size/2+4}" text-anchor="middle" fill="${c}" font-size="11" font-weight="700" font-family="'Outfit',sans-serif">${pct}%</text></svg>`;
+}
 
+function exportCSV() {
+  const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Condition','Paid','Notes'];
+  const rows = S.figs.filter(f => f.id !== 'dev-0001').map(f => {
+    const c = S.coll[f.id] || {};
+    return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',c.condition||'',c.paid||'',c.notes||''];
+  });
+  const csv = [h,...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'motu-collection.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
-  // Fetch the latest figures.json from GitHub and update the app.
-  // Merges remote rows with local custom figures (line='custom') so user additions survive.
-  // manual=true shows red on failure; auto-fetch (background) silently ignores errors.
-  // firstLoad=true means figs is empty — we stay on loading screen until this resolves.
-  const fetchFigs = useCallback(async (manual = false, firstLoad = false) => {
-    setSyncStatus('syncing');
-    setFetchError(false);
-    try {
-      const res = await fetch(FIGS_URL + '?t=' + Date.now());
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const remote = await res.json();
-      if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
-      setFigs(prev => {
-        const custom = prev.filter(f => f.line === 'custom' && f.id !== 'dev-0001');
-        const ids = new Set(remote.map(f => f.id));
-        const hydrated = remote.map(f => ({
-          ...f,
-          image: f.slug ? `${IMG}/${f.slug}.jpg` : ''
-        }));
-        const merged = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
-        const ts = Date.now();
-        store.set(CACHE_KEY, { rows: merged, ts });
-        setSyncTs(ts);
-        return merged;
-      });
-      setSyncStatus('ok');
-      setTimeout(() => setSyncStatus('idle'), 3000);
-      if (firstLoad) setLoaded(true);
-    } catch(e) {
-      console.error('figures.json fetch failed:', e.message, e);
-      setSyncStatus(manual ? 'err' : 'idle');
-      if (manual) setTimeout(() => setSyncStatus('idle'), 5000);
-      if (firstLoad) setFetchError(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (init.current) return; init.current = true;
-    // Load custom photo index (just the keys, not the data - lazy load per figure)
-    setCustomPhotos(prev => {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
-      const map = {};
-      keys.forEach(k => { map[k.replace('motu-photo-','')] = true; });
-      return map;
-    });
-    const cached = store.get(CACHE_KEY);
-    const hasCache = !!(cached?.rows?.length);
-    // Only mark loaded immediately if we have cached figures to show.
-    // Otherwise stay on loading screen until fetchFigs resolves.
-    if (hasCache) setLoaded(true);
-    if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs(false, !hasCache);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { store.set('motu-sort', sortBy); }, [sortBy]);
-  useEffect(() => { if (srch) setTab('all'); }, [srch]);
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [activeLine, activeSubline, tab]);
-  useEffect(() => { store.set('motu-theme', theme); }, [theme]);
-  useEffect(() => { store.set('motu-line-order', lineOrder); }, [lineOrder]);
-
-  const goToLine = useCallback(lineId => {
-    setActiveLine(lineId);
-    setActiveSubline(null);
-    setTab('all');
-  }, []);
-
-  const saveFigs = useCallback(f => { setFigs(f); }, []);
-  const saveColl = useCallback(c => { setColl(c); store.set('motu-c2', c); }, []);
-
-  const setStatus = useCallback((id, status) => {
-    setColl(prev => {
-      const n = { ...prev };
-      if (!n[id]) n[id] = {};
-      if (n[id].status === status) { delete n[id].status; if (!Object.keys(n[id]).length) delete n[id]; }
-      else n[id] = { ...n[id], status };
-      store.set('motu-c2', n);
-      return n;
-    });
-  }, []);
-
-  const updateColl = useCallback((id, key, val) => {
-    setColl(prev => {
-      const n = { ...prev, [id]: { ...prev[id], [key]: val } };
-      store.set('motu-c2', n);
-      return n;
-    });
-  }, []);
-
-  const deleteFig = useCallback(id => {
-    const f = figs.filter(x => x.id !== id);
-    saveFigs(f);
-    setColl(prev => { const n = { ...prev }; delete n[id]; store.set('motu-c2', n); return n; });
-  }, [figs, saveFigs]);
-
-  // Import
-  const doImport = useCallback((csvText, overwrite=false) => {
-    const motuRows = parseCSV(csvText);
-    // Match hierarchy: 4-key (name+line+group+wave) → 3-key → 2-key (unambiguous only).
-    // This handles figures like "Beast Man" which appear in multiple sublines/waves.
-    const idx4 = {}, idx3 = {}, idx2 = {};
-    figs.forEach(f => {
-      const k4 = normalize(f.name) + '|' + f.line + '|' + normalize(f.group||'') + '|' + normalize(f.wave||'');
-      const k3 = normalize(f.name) + '|' + f.line + '|' + normalize(f.group||'');
-      const k2 = normalize(f.name) + '|' + f.line;
-      if (!idx4[k4]) idx4[k4] = f;
-      if (!idx3[k3]) idx3[k3] = f;
-      idx2[k2] = idx2[k2] ? 'AMBIGUOUS' : f;
-    });
-    const matchedIds = new Set();
-    let skipped=0, unmatched=[];
-    const newColl = { ...coll };
-    motuRows.forEach(row => {
-      const lineId = SERIES_MAP[row.series];
-      const k4 = normalize(row.name) + '|' + lineId + '|' + normalize(row.group||'') + '|' + normalize(row.wave||'');
-      const k3 = normalize(row.name) + '|' + lineId + '|' + normalize(row.group||'');
-      const k2 = normalize(row.name) + '|' + lineId;
-      // Try most specific first, fall back to less specific.
-      // k2 fallback only matches if the normalized names are identical (guards against
-      // "Ninjor" in CSV matching "Ninjor (Filmation)" in the app via loose line-only key).
-      const fig = idx4[k4] || idx3[k3] || (() => {
-        const candidate = idx2[k2];
-        if (!candidate || candidate === 'AMBIGUOUS') return null;
-        // Require the normalized names to actually match
-        if (normalize(candidate.name) !== normalize(row.name)) return null;
-        return candidate;
-      })();
-      if (!fig) { unmatched.push(ln(lineId) + ': ' + row.name + (row.group ? ' [' + row.group + ']' : '')); return; }
-      // Build note string for this row
-      const noteParts = [
-        row.variation ? 'Variant: ' + row.variation : '',
-        row.note || '',
-        row.where  ? 'From: ' + row.where : '',
-      ].filter(Boolean);
-      const rowNote = noteParts.join(' | ');
-
-      if (matchedIds.has(fig.id)) {
-        // Already matched — append this variant to the variants field
-        if (row.variation) {
-          const existingVars = newColl[fig.id]?.variants || '';
-          if (!existingVars.split(',').map(v=>v.trim()).includes(row.variation)) {
-            newColl[fig.id] = { ...newColl[fig.id],
-              variants: [existingVars, row.variation].filter(Boolean).join(', ') };
-          }
-        }
-        skipped++;
-        return;
+function doImport(csvText, overwrite = false) {
+  const motuRows = parseCSV(csvText);
+  const idx4 = {}, idx3 = {}, idx2 = {};
+  S.figs.forEach(f => {
+    const k4 = normalize(f.name)+'|'+f.line+'|'+normalize(f.group||'')+'|'+normalize(f.wave||'');
+    const k3 = normalize(f.name)+'|'+f.line+'|'+normalize(f.group||'');
+    const k2 = normalize(f.name)+'|'+f.line;
+    if (!idx4[k4]) idx4[k4] = f;
+    if (!idx3[k3]) idx3[k3] = f;
+    idx2[k2] = idx2[k2] ? 'AMBIGUOUS' : f;
+  });
+  const matchedIds = new Set();
+  let skipped = 0; const unmatched = [];
+  motuRows.forEach(row => {
+    const lineId = SERIES_MAP[row.series];
+    const k4 = normalize(row.name)+'|'+lineId+'|'+normalize(row.group||'')+'|'+normalize(row.wave||'');
+    const k3 = normalize(row.name)+'|'+lineId+'|'+normalize(row.group||'');
+    const k2 = normalize(row.name)+'|'+lineId;
+    const fig = idx4[k4] || idx3[k3] || (() => {
+      const c = idx2[k2];
+      if (!c || c === 'AMBIGUOUS') return null;
+      if (normalize(c.name) !== normalize(row.name)) return null;
+      return c;
+    })();
+    if (!fig) { unmatched.push(ln(lineId)+': '+row.name+(row.group?' ['+row.group+']':'')); return; }
+    if (matchedIds.has(fig.id)) {
+      if (row.variation) {
+        const ex = S.coll[fig.id]?.variants || '';
+        if (!ex.split(',').map(v=>v.trim()).includes(row.variation))
+          S.coll[fig.id] = {...S.coll[fig.id], variants: [ex, row.variation].filter(Boolean).join(', ')};
       }
-      if (!overwrite && newColl[fig.id]?.status === 'owned') { skipped++; return; }
-      // Store variation in its own field, notes separately
-      const importNote = [row.note, row.where ? 'From: ' + row.where : ''].filter(Boolean).join(' | ');
-      newColl[fig.id] = { ...newColl[fig.id], status:'owned',
-        ...(row.cond && {condition:row.cond}),
-        ...(row.paid && {paid:row.paid}),
-        ...(row.variation && {variants:row.variation}),
-        ...(importNote && {notes:importNote}),
-      };
-      matchedIds.add(fig.id);
-    });
-    saveColl(newColl);
-    return { matched: matchedIds.size, skipped, unmatched };
-  }, [figs, coll, saveColl]);
-
-  // Export CSV
-  const exportCSV = useCallback(() => {
-    const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Condition','Paid','Notes'];
-    const rows = figs.filter(f => f.id !== 'dev-0001').map(f => {
-      const c = coll[f.id] || {};
-      return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',c.condition||'',c.paid||'',c.notes||''];
-    });
-    const csv = [h,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-    const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'motu-collection.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [figs, coll]);
-
-  // Stats — derived from figs cross-referenced with coll to avoid counting
-  // orphaned coll entries (figures that were deleted or not in current seed).
-  const stats = useMemo(() => {
-    const real = figs.filter(f => f.id !== 'dev-0001');
-    const owned = real.filter(f=>coll[f.id]?.status==='owned').length;
-    const wish  = real.filter(f=>coll[f.id]?.status==='wishlist').length;
-    const ord   = real.filter(f=>coll[f.id]?.status==='ordered').length;
-    const paid  = real.filter(f=>coll[f.id]?.status==='owned'&&coll[f.id]?.paid)
-                      .reduce((s,f)=>s+Number(coll[f.id].paid),0);
-    return { total:real.length, owned, wish, ord, paid };
-  }, [figs, coll]);
-
-  // Line stats
-  const lineStats = useMemo(() => LINES.map(l => {
-    const t = figs.filter(f=>f.line===l.id&&f.id!=='dev-0001').length;
-    const o = figs.filter(f=>f.line===l.id&&f.id!=='dev-0001'&&coll[f.id]?.status==='owned').length;
-    return { ...l, total:t, owned:o, pct: t ? Math.round(o/t*100) : 0 };
-  }), [figs, coll]);
-
-  // Filtered + sorted figures
-  const sortedFigs = useMemo(() => {
-    let list = figs.filter(f => f.id !== 'dev-0001');
-    // When searching, go global — ignore line/subline/tab constraints
-    const isGlobalSearch = srch.length > 0;
-    if (!isGlobalSearch && activeLine) list = list.filter(f=>f.line===activeLine);
-    if (!isGlobalSearch && activeSubline && activeSubline !== '__all__') {
-      const sublines = SUBLINES[activeLine] || [];
-      const sl = sublines.find(s=>s.key===activeSubline);
-      if (sl) list = list.filter(f=>sl.groups.includes(f.group));
+      skipped++; return;
     }
-    if (!isGlobalSearch && tab==='collection') list = list.filter(f=>coll[f.id]?.status);
-    if (filterFaction) list = list.filter(f=>f.faction===filterFaction);
-    if (filterStatus)  list = list.filter(f=>coll[f.id]?.status===filterStatus);
-    if (filterVariants) list = list.filter(f => /\w/.test(coll[f.id]?.variants||''));
-    if (srch) { const s=srch.toLowerCase(); list=list.filter(f=>f.name.toLowerCase().includes(s)); }
-    if (sortBy==='name')    list.sort((a,b)=>a.name.localeCompare(b.name));
-    else if (sortBy==='name-desc') list.sort((a,b)=>b.name.localeCompare(a.name));
-    else if (sortBy==='year')   list.sort((a,b)=>(a.year||9999)-(b.year||9999));
-    else if (sortBy==='year-desc') list.sort((a,b)=>(b.year||0)-(a.year||0));
-    else if (sortBy==='wave') list.sort((a,b)=>{const na=parseFloat(a.wave||''),nb=parseFloat(b.wave||'');return(isNaN(na)?99:na)-(isNaN(nb)?99:nb);});
-    else if (sortBy==='retail') list.sort((a,b)=>(a.retail||0)-(b.retail||0));
-    else if (sortBy==='retail-desc') list.sort((a,b)=>(b.retail||0)-(a.retail||0));
-    return list;
-  }, [figs, coll, activeLine, activeSubline, tab, filterFaction, filterStatus, filterVariants, srch, sortBy]);
-
-  const hasFilters = srch || filterFaction || filterStatus || filterVariants;
-
-  if (!loaded) return (
-    <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:T.bg,padding:32}}>
-      <style>{cssVars}</style>
-      <img src="motu-images/masters_logo.png" alt="Masters of the Universe" style={{width:120,marginBottom:8}} />
-      <div style={{color:T.t3,fontSize:13,fontFamily:"'Cinzel',serif",letterSpacing:3,marginBottom:32}}>MOTU VAULT</div>
-      {fetchError ? <>
-        <div style={{color:'#f87171',fontSize:14,fontWeight:600,marginBottom:8}}>Could not load figures</div>
-        <div style={{color:T.t3,fontSize:12,marginBottom:24,textAlign:'center',lineHeight:1.6}}>Check your connection and try again.</div>
-        <button onClick={()=>fetchFigs(true, true)}
-          style={{padding:'12px 32px',borderRadius:12,border:'1px solid #f87171',background:'rgba(248,113,113,.1)',color:'#f87171',fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-          Retry
-        </button>
-      </> : <>
-        <div style={{color:T.t3,fontSize:12,letterSpacing:1}}>Loading figures…</div>
-      </>}
-    </div>
-  );
-
-  // ── Figure Detail Screen ──────────────────────────────────────────────────
-  if (screen === 'figure' && activeFig) {
-    const f = activeFig;
-    const c = coll[f.id] || {};
-    const customPhoto = customPhotos[f.id] ? photoStore.get(f.id) : null;
-    const imgUrl = customPhoto || (f.image && !iErr[f.id] ? f.image : null);
-    return (
-      <div style={{height:'100%',display:'flex',flexDirection:'column',background:T.bg,overflow:'hidden'}}>
-        <style>{cssVars}</style>
-        {/* Header */}
-        <div style={{padding:'16px 16px 12px',paddingTop:'max(16px,env(safe-area-inset-top))',background:T.bg2,borderBottom:`1px solid ${T.bd}`,display:'flex',alignItems:'center',gap:12}}>
-          <button onClick={()=>{
-            setScreen('main');
-            // Two rAF frames: first lets React commit the DOM, second lets the browser paint.
-            requestAnimationFrame(()=>{
-              requestAnimationFrame(()=>{
-                if(scrollRef.current) scrollRef.current.scrollTop = savedScroll.current;
-              });
-            });
-          }} style={{background:'none',border:'none',color:T.t1,padding:8,cursor:'pointer',borderRadius:8}}>
-            <Icon d={ICO.back} s={22}/>
-          </button>
-          <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:700,color:T.t1,lineHeight:1.3}}>{f.name}</div>
-          <button onClick={()=>{if(confirm(`Delete "${f.name}"?`)){deleteFig(f.id);setScreen('main');}}} style={{background:'none',border:'none',color:'#f87171',padding:8,cursor:'pointer',borderRadius:8}}>
-            <Icon d={ICO.trash} s={20}/>
-          </button>
-        </div>
-        {/* Scrollable content */}
-        <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-          {/* Image + photo capture */}
-          <PhotoSection f={f} imgUrl={imgUrl} T={T}
-            hasCustom={!!customPhotos[f.id]}
-            onImgErr={()=>setIErr(p=>({...p,[f.id]:true}))}
-            onPhoto={dataUrl=>{
-              const ok = photoStore.set(f.id, dataUrl);
-              if (!ok) {
-                alert('Photo could not be saved — your device storage may be full. Try removing other photos first.');
-                return;
-              }
-              setCustomPhotos(p=>({...p,[f.id]:true}));
-              setIErr(p=>({...p,[f.id]:false}));
-            }}
-            onClearPhoto={()=>{
-              photoStore.del(f.id);
-              setCustomPhotos(p=>{const n={...p};delete n[f.id];return n;});
-            }}
-          />
-          {/* Info pills */}
-          <div style={{padding:'16px',display:'flex',flexWrap:'wrap',gap:8}}>
-            {[ln(f.line),f.group,f.wave?`Wave ${f.wave}`:'',f.year,f.faction].filter(Boolean).map((tag,i)=>(
-              <span key={i} style={{padding:'5px 12px',borderRadius:20,background:T.bg3,border:`1px solid ${T.bd}`,fontSize:12,color:T.t2}}>{tag}</span>
-            ))}
-          </div>
-          {/* Retail price */}
-          {f.retail && <div style={{padding:'0 16px 16px',fontSize:14,color:T.t2}}>Retail: <span style={{color:T.gold,fontWeight:600}}>${f.retail.toFixed(2)}</span></div>}
-
-          {/* Status buttons */}
-          <div style={{padding:'0 16px 16px'}}>
-            <div style={{fontSize:11,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>Status</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-              {STATUSES.map(s => {
-                const active = c.status === s;
-                const col = STATUS_COLOR[s];
-                return (
-                  <button key={s} onClick={()=>setStatus(f.id,s)}
-                    style={{padding:'14px 8px',borderRadius:12,border:`2px solid ${active?col:T.bd}`,
-                      background:active?`${col}22`:T.bg2,color:active?col:T.t2,
-                      fontSize:14,fontWeight:600,cursor:'pointer',transition:'all .15s',fontFamily:"'Outfit',sans-serif"}}>
-                    {active && '✓ '}{STATUS_LABEL[s]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Collection details */}
-          {c.status && (
-            <div style={{padding:'0 16px 16px',display:'flex',flexDirection:'column',gap:12}}>
-              <div style={{fontSize:11,color:T.t3,textTransform:'uppercase',letterSpacing:1.5}}>Collection Details</div>
-              <div>
-                <div style={{fontSize:12,color:T.t3,marginBottom:4}}>Condition</div>
-                <select value={c.condition||''} onChange={e=>updateColl(f.id,'condition',e.target.value)}
-                  style={{width:'100%',padding:'12px',background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,color:T.t1,fontSize:14,fontFamily:"'Outfit',sans-serif"}}>
-                  <option value=''>Select...</option>
-                  {CONDITIONS.map(x=><option key={x} value={x}>{x}</option>)}
-                </select>
-              </div>
-              <div>
-                <div style={{fontSize:12,color:T.t3,marginBottom:4}}>Price Paid</div>
-                <input type="number" step="0.01" value={c.paid||''} placeholder="$0.00"
-                  onChange={e=>updateColl(f.id,'paid',e.target.value)}
-                  style={{width:'100%',padding:'12px',background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,color:T.t1,fontSize:14,fontFamily:"'Outfit',sans-serif"}}/>
-              </div>
-              <div>
-                <div style={{fontSize:12,color:T.t3,marginBottom:4}}>Variants Owned</div>
-                <input type="text" value={c.variants||''} placeholder="e.g. Dark Face, Painted Back…"
-                  onChange={e=>updateColl(f.id,'variants',e.target.value)}
-                  style={{width:'100%',padding:'12px',background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,color:T.t1,fontSize:14,fontFamily:"'Outfit',sans-serif"}}/>
-                <div style={{fontSize:10,color:T.t3,marginTop:4}}>Comma-separate multiple variants</div>
-              </div>
-              <div>
-                <div style={{fontSize:12,color:T.t3,marginBottom:4}}>Notes</div>
-                <textarea value={c.notes||''} placeholder="Notes..."
-                  onChange={e=>updateColl(f.id,'notes',e.target.value)} rows={3}
-                  style={{width:'100%',padding:'12px',background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:10,color:T.t1,fontSize:14,resize:'vertical',fontFamily:"'Outfit',sans-serif"}}/>
-              </div>
-            </div>
-          )}
-
-          <div style={{height:'calc(32px + var(--safe-bottom))'}}/>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Main Screen ───────────────────────────────────────────────────────────
-  return (
-    <div style={{height:'100%',display:'flex',flexDirection:'column',background:T.bg,overflow:'hidden'}}>
-      <style>{cssVars}</style>
-      <GlobalStyles/>
-
-      {/* Top bar */}
-      <div style={{background:T.bg2,borderBottom:`1px solid ${T.bd}`,paddingTop:'max(12px,env(safe-area-inset-top))'}}>
-        {/* Logo row */}
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px 12px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <img src={`${IMG}/skeletor-icon.png`} alt="Skeletor" style={{width:36,height:36,borderRadius:8,objectFit:'cover',display:'block'}}/>
-            <div>
-              <div style={{fontFamily:"'Cinzel',serif",fontWeight:700,fontSize:16,color:T.gold,letterSpacing:.5}}>MOTU Vault</div>
-              <div style={{fontSize:9,color:T.t3,letterSpacing:2,textTransform:'uppercase'}}>{stats.total} Figures · {stats.owned} Owned · <span style={{opacity:1,color:T.gold,fontWeight:700}}>{'v2.28' + (syncTs ? ' · ' + new Date(syncTs).toLocaleDateString() : '')}</span></div>
-            </div>
-          </div>
-          <div style={{display:'flex',gap:4}}>
-            <TapButton icon={ICO.import} label="Import" onTap={()=>setSheet('import')} T={T}/>
-            <TapButton icon={ICO.export} label="Export" onTap={exportCSV} T={T}/>
-            <TapButton icon={ICO.palette} label="Theme" onTap={()=>setSheet('theme')} T={T}/>
-            <SyncButton status={syncStatus} onTap={fetchFigs} T={T}/>
-          </div>
-        </div>
-        {/* Search row */}
-        <div style={{padding:'0 16px 12px',display:'flex',gap:8,alignItems:'center'}}>
-          <div style={{flex:1,position:'relative'}}>
-            <div style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:T.t3,pointerEvents:'none'}}>
-              <Icon d={ICO.search} s={16}/>
-            </div>
-            <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Search figures..."
-              style={{width:'100%',padding:'11px 12px 11px 38px',background:T.bg3,border:`1px solid ${T.bd}`,borderRadius:12,color:T.t1,fontSize:15,fontFamily:"'Outfit',sans-serif",outline:'none'}}/>
-            {srch && <button onClick={()=>setSrch('')} style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:T.t3,cursor:'pointer',padding:4}}>
-              <Icon d={ICO.x} s={14}/>
-            </button>}
-          </div>
-          <button onClick={()=>setSheet('filter')}
-            style={{padding:'11px 14px',borderRadius:12,border:`1px solid ${hasFilters?T.acc:T.bd}`,background:hasFilters?`${T.acc}22`:T.bg3,color:hasFilters?T.acc:T.t2,cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:14,fontFamily:"'Outfit',sans-serif"}}>
-            <Icon d={ICO.filter} s={18}/>
-            {hasFilters && <span style={{width:6,height:6,borderRadius:'50%',background:T.acc,display:'inline-block'}}/>}
-          </button>
-          <button onClick={()=>setSheet('sort')}
-            style={{padding:'11px 14px',borderRadius:12,border:`1px solid ${T.bd}`,background:T.bg3,color:T.t2,cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontSize:14,fontFamily:"'Outfit',sans-serif"}}>
-            <Icon d={ICO.sort} s={18}/>
-            <span style={{fontSize:11,color:T.t3}}>{sortBy==='wave'?'Wave':sortBy==='name'||sortBy==='name-desc'?'Name':sortBy.includes('year')?'Year':'Price'}</span>
-          </button>
-        </div>
-        {/* Line pill if inside a line */}
-        {activeLine && (
-          <div>
-            {/* Breadcrumb */}
-            <div style={{padding:'0 16px 10px',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-              <button onClick={()=>{setActiveLine(null);setActiveSubline(null);setTab('lines');}} style={{background:'none',border:'none',color:T.t2,cursor:'pointer',padding:'2px 0',display:'flex',alignItems:'center',gap:4,fontSize:13}}>
-                <Icon d={ICO.back} s={14}/> Lines
-              </button>
-              <span style={{color:T.t3}}>›</span>
-              {activeSubline
-                ? <button onClick={()=>setActiveSubline(null)} style={{background:'none',border:'none',color:T.t2,cursor:'pointer',padding:'2px 0',fontSize:13,fontFamily:"'Cinzel',serif",fontWeight:700}}>{ln(activeLine)}</button>
-                : <span style={{color:T.gold,fontFamily:"'Cinzel',serif",fontSize:14,fontWeight:700}}>{ln(activeLine)}</span>
-              }
-              {activeSubline && <>
-                <span style={{color:T.t3}}>›</span>
-                <span style={{color:T.gold,fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700}}>
-                  {activeSubline==='__all__'?'All Figures':(SUBLINES[activeLine]||[]).find(s=>s.key===activeSubline)?.label}
-                </span>
-              </>}
-            </div>
-
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div ref={scrollRef} style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-        {tab==='lines' && !activeLine ? (
-          // ── Lines grid ──
-          <LineGrid
-            lineStats={lineStats} lineOrder={lineOrder} setLineOrder={setLineOrder}
-            T={T} IMG={IMG} goToLine={goToLine}
-          />
-          
-        ) : (!srch && activeLine && !activeSubline && SUBLINES[activeLine]) ? (
-          // ── Subline cards ──
-          <SublineCards lineId={activeLine} figs={figs} coll={coll} T={T}
-            onSelect={sl=>{setActiveSubline(sl);setTab('all');}}/>
-        ) : (
-          // ── Figure list ──
-          <div style={{padding:'12px 12px 0'}}>
-            <div style={{fontSize:11,color:T.t3,marginBottom:8,paddingLeft:4}}>
-              {sortedFigs.length} figure{sortedFigs.length!==1?'s':''}{srch?' across all lines':hasFilters?' (filtered)':''}
-            </div>
-            {sortedFigs.length === 0 ? (
-              <div style={{textAlign:'center',padding:'60px 20px',color:T.t3}}>
-                <div style={{fontSize:40,marginBottom:12}}>🔍</div>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:T.t2,marginBottom:4}}>No figures found</div>
-                <div style={{fontSize:13}}>Try adjusting your search or filters</div>
-              </div>
-            ) : sortedFigs.map(f => (
-              <FigureRow key={f.id} f={f} c={coll[f.id]||{}} T={T}
-                imgErr={iErr[f.id]}
-                customPhoto={customPhotos[f.id] ? photoStore.get(f.id) : null}
-                showLine={!!srch}
-                onImgErr={()=>setIErr(p=>({...p,[f.id]:true}))}
-                onTap={()=>{
-                  if(scrollRef.current) savedScroll.current = scrollRef.current.scrollTop;
-                  setActiveFig(f);setScreen('figure');
-                }}
-                onStatus={s=>setStatus(f.id,s)}/>
-            ))}
-            <div style={{height:'calc(80px + var(--safe-bottom))'}}/>
-          </div>
-        )}
-      </div>
-
-
-      {/* Bottom nav */}
-      <div style={{background:T.bg2,borderTop:`1px solid ${T.bd}`,paddingBottom:'max(8px,var(--safe-bottom))',display:'grid',gridTemplateColumns:'1fr 1fr 1fr'}}>
-        {[
-          {key:'lines', icon:ICO.lines, label:'Lines'},
-          {key:'all',   icon:ICO.list,  label:'All'},
-          {key:'collection', icon:ICO.heart, label:`Collection`},
-        ].map(({key,icon,label}) => {
-          const active = (tab===key && !activeLine) || (key==='lines'&&activeLine&&tab==='all');
-          return (
-            <button key={key} onClick={()=>{setTab(key);if(key!=='all'||!activeLine)setActiveLine(null);}}
-              style={{padding:'10px 0 8px',background:'none',border:'none',color:active?T.acc:T.t3,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,fontFamily:"'Outfit',sans-serif",fontSize:10,fontWeight:active?600:400,transition:'color .15s'}}>
-              <Icon d={icon} s={22} stroke={active?2.5:1.5}/>
-              {label}{key==='collection'?<span style={{fontSize:9,background:active?T.acc:T.bd,color:active?T.bg:T.t3,borderRadius:8,padding:'1px 5px',marginLeft:2}}>{stats.owned}</span>:''}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Bottom sheets */}
-      {sheet && (
-        <BottomSheet title={
-          sheet==='filter'?'Filter':sheet==='sort'?'Sort By':sheet==='import'?'Import CSV':sheet==='theme'?'Theme':'Options'
-        } onClose={()=>setSheet(null)} T={T}>
-          {sheet==='filter' && (
-            <FilterSheet filterFaction={filterFaction} setFilterFaction={setFilterFaction}
-              filterStatus={filterStatus} setFilterStatus={setFilterStatus}
-              filterVariants={filterVariants} setFilterVariants={setFilterVariants}
-              onClear={()=>{setFilterFaction('');setFilterStatus('');setFilterVariants(false);setSrch('');}}
-              hasFilters={hasFilters} T={T}/>
-          )}
-          {sheet==='sort' && (
-            <SortSheet sortBy={sortBy} setSortBy={s=>{setSortBy(s);setSheet(null);}} T={T}/>
-          )}
-          {sheet==='import' && (
-            <ImportSheet onImport={(text,overwrite)=>{
-              const r=doImport(text,overwrite);
-              return r;
-            }} T={T}/>
-          )}
-          {sheet==='theme' && (
-            <ThemeSheet theme={theme} setTheme={t=>{setTheme(t);setSheet(null);}} T={T}/>
-          )}
-        </BottomSheet>
-      )}
-    </div>
-  );
+    if (!overwrite && S.coll[fig.id]?.status === 'owned') { skipped++; return; }
+    const importNote = [row.note, row.where ? 'From: '+row.where : ''].filter(Boolean).join(' | ');
+    S.coll[fig.id] = {...S.coll[fig.id], status:'owned',
+      ...(row.cond && {condition:row.cond}), ...(row.paid && {paid:row.paid}),
+      ...(row.variation && {variants:row.variation}), ...(importNote && {notes:importNote})};
+    matchedIds.add(fig.id);
+  });
+  saveColl();
+  return { matched: matchedIds.size, skipped, unmatched };
 }
 
-// ── Figure Row ─────────────────────────────────────────────────────────────
-function FigureRow({f, c, T, imgErr, customPhoto, showLine, onImgErr, onTap, onStatus}) {
-  const statusColor = c.status ? STATUS_COLOR[c.status] : null;
-  return (
-    <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 4px',borderBottom:`1px solid ${T.bd}22`,cursor:'pointer'}}
-      onClick={()=>onTap(true)}>
-      {/* Thumbnail */}
-      <div style={{width:56,height:56,borderRadius:10,background:T.bg3,flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',border:`2px solid ${statusColor||T.bd}`}}>
-        {(customPhoto||f.image) && !imgErr
-          ? <img src={customPhoto||f.image} alt={f.name} onError={onImgErr} style={{width:'100%',height:'100%',objectFit:'cover'}} loading="lazy"/>
-          : <span style={{fontFamily:"'Cinzel',serif",fontSize:20,color:T.t3,fontWeight:700}}>{f.name[0]}</span>
-        }
-      </div>
-      {/* Text */}
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:14,fontWeight:600,color:T.t1,lineHeight:1.3,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{f.name}</div>
-        <div style={{fontSize:11,color:T.t3,display:'flex',gap:6,flexWrap:'wrap'}}>
-          {showLine && <span style={{color:T.acc,fontWeight:600}}>{ln(f.line)}</span>}
-          {f.group && <span>{showLine ? '· ' : ''}{f.group}</span>}
-          {f.wave && <span>· W{f.wave}</span>}
-          {f.year && <span>· {f.year}</span>}
-        </div>
-      </div>
-      {/* Status dot / quick-own */}
-      <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
-        {/\w/.test(c.variants||'') && <div style={{fontSize:9,fontWeight:700,color:T.gold,letterSpacing:.5}}>VAR</div>}
-        {c.status
-          ? <div style={{width:10,height:10,borderRadius:'50%',background:statusColor}}/>
-          : <button onClick={e=>{e.stopPropagation();onStatus('owned');}}
-              style={{width:36,height:36,borderRadius:10,border:`1px solid ${T.bd}`,background:T.bg3,color:T.t3,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}
-              title="Mark owned">
-              <Icon d={ICO.check} s={16}/>
-            </button>
-        }
-      </div>
-    </div>
-  );
+// ─── Render Engine ────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const app = () => document.getElementById('app');
+
+function render() {
+  if (!S.loaded) { renderLoading(); return; }
+  if (S.screen === 'figure' && S.activeFig) { renderDetail(); return; }
+  renderMain();
 }
 
-
-// ── Line Grid ───────────────────────────────────────────────────────────────
-function LineGrid({lineStats, lineOrder, setLineOrder, T, IMG, goToLine}) {
-  const [editing, setEditing] = useState(false);
-
-  const ordered = [...lineOrder]
-    .map(id => lineStats.find(l => l.id === id))
-    .filter(Boolean)
-    .concat(lineStats.filter(l => !lineOrder.includes(l.id)));
-
-  const move = (id, dir) => {
-    setLineOrder(prev => {
-      const arr = [...prev];
-      const i = arr.indexOf(id);
-      const j = i + dir;
-      if (j < 0 || j >= arr.length) return prev;
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-      return arr;
-    });
-  };
-
-  return (
-    <div>
-      {/* Edit order button */}
-      <div style={{display:'flex',justifyContent:'flex-end',padding:'0 16px 8px'}}>
-        <button onClick={()=>setEditing(e=>!e)}
-          style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:8,
-            border:`1px solid ${editing?T.acc:T.bd}`,
-            background:editing?`${T.acc}22`:'none',
-            color:editing?T.acc:T.t3,fontSize:11,
-            cursor:'pointer',fontFamily:"'Outfit',sans-serif",transition:'all .15s'}}>
-          {editing ? '✓ Done' : '⇅ Reorder'}
-        </button>
-      </div>
-      {editing ? (
-        // ── Reorder list ──
-        <div style={{padding:'0 16px 16px',display:'flex',flexDirection:'column',gap:8}}>
-          {ordered.map((l, idx) => (
-            <div key={l.id} style={{display:'flex',alignItems:'center',gap:10,
-              padding:'12px 14px',background:T.bg2,border:`1px solid ${T.bd}`,
-              borderRadius:14}}>
-              {/* Up/Down buttons */}
-              <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
-                <button onClick={()=>move(l.id,-1)} disabled={idx===0}
-                  style={{width:28,height:28,borderRadius:7,border:`1px solid ${idx===0?T.bd+'88':T.bd}`,
-                    background:T.bg3,color:idx===0?T.t3+'44':T.t1,cursor:idx===0?'default':'pointer',
-                    fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',
-                    transition:'all .1s'}}>↑</button>
-                <button onClick={()=>move(l.id,1)} disabled={idx===ordered.length-1}
-                  style={{width:28,height:28,borderRadius:7,border:`1px solid ${idx===ordered.length-1?T.bd+'88':T.bd}`,
-                    background:T.bg3,color:idx===ordered.length-1?T.t3+'44':T.t1,
-                    cursor:idx===ordered.length-1?'default':'pointer',
-                    fontSize:13,display:'flex',alignItems:'center',justifyContent:'center',
-                    transition:'all .1s'}}>↓</button>
-              </div>
-              {/* Line name */}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:14,fontWeight:700,color:T.t1}}>{l.name}</div>
-                <div style={{fontSize:11,color:T.t3,marginTop:2}}>{l.yr} · {l.total} figures · {l.owned} owned</div>
-              </div>
-              {/* Completion */}
-              <div style={{fontSize:12,fontWeight:600,color:l.pct===100?'#34d399':T.gold,flexShrink:0}}>
-                {l.pct}%
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        // ── Normal grid ──
-        <div style={{padding:'0 16px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
-          {ordered.map(l => {
-            const bannerImg = `${IMG}/${l.id}.jpg`;
-            return (
-              <div key={l.id}
-                onClick={()=>goToLine(l.id)}
-                style={{position:'relative',borderRadius:18,overflow:'hidden',
-                  border:`1px solid ${T.bd}`,aspectRatio:'3/4',cursor:'pointer'}}>
-                <img src={bannerImg} alt={l.name}
-                  style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}}
-                  onError={e=>e.target.style.display='none'}/>
-                <div style={{position:'absolute',inset:0,
-                  background:'linear-gradient(to bottom,rgba(0,0,0,.1) 0%,rgba(0,0,0,.3) 40%,rgba(0,0,0,.85) 100%)'}}/>
-                <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'12px 12px 14px'}}>
-                  <div style={{fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700,
-                    color:'#fff',lineHeight:1.2,marginBottom:2,
-                    textShadow:'0 1px 4px rgba(0,0,0,.8)'}}>{l.name}</div>
-                  <div style={{fontSize:10,color:'rgba(255,255,255,.6)',marginBottom:6}}>{l.yr}</div>
-                  {l.total > 0 && <>
-                    <div style={{height:2,background:'rgba(255,255,255,.2)',borderRadius:2,overflow:'hidden',marginBottom:4}}>
-                      <div style={{height:'100%',width:`${l.pct}%`,
-                        background:l.pct===100?'#34d399':T.gold,borderRadius:2}}/>
-                    </div>
-                    <div style={{fontSize:10,color:l.pct===100?'#34d399':'rgba(255,255,255,.7)',fontWeight:600}}>
-                      {l.owned}/{l.total} · {l.pct}%</div>
-                  </>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+function renderLoading() {
+  app().innerHTML = `
+    <div class="loading-screen">
+      <div class="loading-name font-display text-upper">MOTU VAULT</div>
+      ${S.fetchError ? `
+        <div style="color:var(--rd);font-size:14px;font-weight:600;margin-bottom:8px">Could not load figures</div>
+        <div class="text-dim text-sm" style="margin-bottom:24px;text-align:center;line-height:1.6">Check your connection and try again.</div>
+        <button class="retry-btn" onclick="fetchFigs(true,true)">Retry</button>
+      ` : `
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading figures…</div>
+      `}
+    </div>`;
 }
 
-// ── Subline Cards ────────────────────────────────────────────────────────────
-function SublineCards({lineId, figs, coll, T, onSelect}) {
-  const sublines = SUBLINES[lineId] || [];
-  const allFigs  = figs.filter(f=>f.line===lineId);
-  const allOwned = allFigs.filter(f=>coll[f.id]?.status==='owned').length;
-  const allPct   = allFigs.length ? Math.round(allOwned/allFigs.length*100) : 0;
-  return (
-    <div style={{padding:16,display:'flex',flexDirection:'column',gap:12}}>
-      {/* All figures card */}
-      <button onClick={()=>onSelect('__all__')}
-        style={{padding:'18px 20px',background:T.bg3,border:`2px solid ${T.bd}`,borderRadius:16,
-          cursor:'pointer',textAlign:'left',WebkitAppearance:'none',fontFamily:"'Outfit',sans-serif",
-          display:'flex',alignItems:'center',gap:16,transition:'all .15s'}}>
-        <svg width={48} height={48} style={{flexShrink:0}}>
-          <circle cx={24} cy={24} r={20} fill="none" stroke={T.bd} strokeWidth={3}/>
-          <circle cx={24} cy={24} r={20} fill="none" stroke={allPct===100?'#34d399':T.gold} strokeWidth={3}
-            strokeDasharray={`${2*Math.PI*20}`}
-            strokeDashoffset={`${2*Math.PI*20*(1-allPct/100)}`}
-            strokeLinecap="round" transform="rotate(-90 24 24)"
-            style={{transition:'stroke-dashoffset .4s'}}/>
-          <text x={24} y={28} textAnchor="middle" fill={allPct===100?'#34d399':T.gold}
-            fontSize={11} fontWeight={700} fontFamily="'Outfit',sans-serif">{allPct}%</text>
-        </svg>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:700,color:T.gold,marginBottom:4}}>All Figures</div>
-          <div style={{fontSize:12,color:T.t3}}>{allOwned} owned of {allFigs.length}</div>
-          <div style={{height:3,background:T.bd,borderRadius:2,marginTop:8,overflow:'hidden'}}>
-            <div style={{height:'100%',width:`${allPct}%`,background:allPct===100?'#34d399':T.gold,borderRadius:2,transition:'width .4s'}}/>
-          </div>
+function renderMain() {
+  // Capture scroll before wiping DOM — prevents scroll-lock bug
+  const _prevCa = document.getElementById('contentArea');
+  const _preservedScroll = _prevCa ? _prevCa.scrollTop : 0;
+
+  const stats = getStats();
+  const sortLabel = S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : S.sortBy.includes('year') ? 'Year' : 'Price';
+  const hf = hasFilters();
+  const syncCls = S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '';
+
+  let html = `
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="header-row">
+      <div class="logo-group">
+        <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
+        <div>
+          <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · v3.0${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
-        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={T.t3} strokeWidth={2} strokeLinecap="round">
-          <path d="M9 18l6-6-6-6"/>
-        </svg>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" title="Import" onclick="openSheet('import')">${icon(ICO.import,18)}</button>
+        <button class="icon-btn" title="Export" onclick="exportCSV()">${icon(ICO.export,18)}</button>
+        <button class="icon-btn" title="Theme" onclick="openSheet('theme')">${icon(ICO.palette,18)}</button>
+        <button class="icon-btn ${syncCls}" title="Sync" onclick="fetchFigs(true)">${icon(ICO.sync,16)}</button>
+      </div>
+    </div>
+    <div class="search-bar-wrap" id="searchBar">
+    <div class="search-row">
+      <div class="search-wrap">
+        <span class="search-icon">${icon(ICO.search,16)}</span>
+        <input id="searchInput" value="${esc(S.search)}" placeholder="Search figures…" oninput="onSearch(this.value)">
+        ${S.search ? `<button class="search-clear" onclick="onSearch('')">${icon(ICO.x,14)}</button>` : ''}
+      </div>
+      <button class="filter-btn ${hf?'active':''}" onclick="openSheet('filter')">
+        ${icon(ICO.filter,18)}${hf ? '<span class="filter-dot"></span>' : ''}
       </button>
-      {/* Divider */}
-      <div style={{height:1,background:T.bd,margin:'0 4px'}}/>
-      {sublines.map(sl => {
-        const slFigs = figs.filter(f=>f.line===lineId && sl.groups.includes(f.group));
-        const owned  = slFigs.filter(f=>coll[f.id]?.status==='owned').length;
-        const pct    = slFigs.length ? Math.round(owned/slFigs.length*100) : 0;
-        if (!slFigs.length) return null;
-        return (
-          <button key={sl.key} onClick={()=>onSelect(sl.key)}
-            style={{padding:'18px 20px',background:T.bg2,border:`1px solid ${T.bd}`,borderRadius:16,
-              cursor:'pointer',textAlign:'left',WebkitAppearance:'none',fontFamily:"'Outfit',sans-serif",
-              display:'flex',alignItems:'center',gap:16,transition:'all .15s'}}>
-            {/* Progress ring */}
-            <svg width={48} height={48} style={{flexShrink:0}}>
-              <circle cx={24} cy={24} r={20} fill="none" stroke={T.bd} strokeWidth={3}/>
-              <circle cx={24} cy={24} r={20} fill="none" stroke={pct===100?'#34d399':T.acc} strokeWidth={3}
-                strokeDasharray={`${2*Math.PI*20}`}
-                strokeDashoffset={`${2*Math.PI*20*(1-pct/100)}`}
-                strokeLinecap="round" transform="rotate(-90 24 24)"
-                style={{transition:'stroke-dashoffset .4s'}}/>
-              <text x={24} y={28} textAnchor="middle" fill={pct===100?'#34d399':T.t1}
-                fontSize={11} fontWeight={700} fontFamily="'Outfit',sans-serif">{pct}%</text>
-            </svg>
-            {/* Text */}
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:700,color:T.t1,marginBottom:4}}>{sl.label}</div>
-              <div style={{fontSize:12,color:T.t3}}>{owned} owned of {slFigs.length}</div>
-              {/* Mini progress bar */}
-              <div style={{height:3,background:T.bd,borderRadius:2,marginTop:8,overflow:'hidden'}}>
-                <div style={{height:'100%',width:`${pct}%`,background:pct===100?'#34d399':T.acc,borderRadius:2,transition:'width .4s'}}/>
-              </div>
-            </div>
-            {/* Arrow */}
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={T.t3} strokeWidth={2} strokeLinecap="round">
-              <path d="M9 18l6-6-6-6"/>
-            </svg>
-          </button>
-        );
-      })}
+      <button class="sort-btn" onclick="openSheet('sort')">
+        ${icon(ICO.sort,18)}<span class="sort-label">${sortLabel}</span>
+      </button>
     </div>
-  );
-}
-
-// ── Photo Section ────────────────────────────────────────────────────────────
-function PhotoSection({f, imgUrl, T, hasCustom, onImgErr, onPhoto, onClearPhoto}) {
-  const fileRef = useRef();
-  const [localUrl, setLocalUrl] = useState(imgUrl);
-
-  // Keep in sync if imgUrl changes (e.g. iErr clears)
-  useEffect(()=>setLocalUrl(imgUrl),[imgUrl]);
-
-  const handleFile = e => {
-    const file = e.target.files?.[0]; if(!file) return;
-    if (file.size > 20000000) { alert('Image too large. Please choose an image under 20MB.'); return; }
-    const reader = new FileReader();
-    reader.onload = ev => {
-      // Compress: resize to max 600px, JPEG quality 0.65
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 600;
-        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
-        setLocalUrl(dataUrl);
-        onPhoto(dataUrl);
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  return (
-    <div style={{position:'relative',background:T.bg3}}>
-      <div style={{aspectRatio:'1',maxHeight:320,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
-        {localUrl
-          ? <img src={localUrl} alt={f.name} onError={onImgErr}
-              style={{width:'100%',height:'100%',objectFit:'contain'}}/>
-          : <div style={{fontFamily:"'Cinzel',serif",fontSize:72,color:T.t3,fontWeight:900}}>{f.name[0]}</div>
-        }
-      </div>
-      {/* Photo controls overlay */}
-      <div style={{position:'absolute',bottom:10,right:10,display:'flex',gap:8}}>
-        <button onClick={()=>fileRef.current.click()}
-          style={{padding:'8px 14px',borderRadius:10,background:'rgba(0,0,0,.65)',border:'1px solid rgba(255,255,255,.15)',color:'#fff',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontFamily:"'Outfit',sans-serif",backdropFilter:'blur(4px)'}}>
-          <Icon d={ICO.img} s={14}/> {hasCustom ? 'Replace photo' : 'Add photo'}
-        </button>
-        {hasCustom && (
-          <button onClick={()=>{setLocalUrl(f.image||null);onClearPhoto();}}
-            style={{padding:'8px 12px',borderRadius:10,background:'rgba(0,0,0,.65)',border:'1px solid rgba(248,113,113,.4)',color:'#f87171',fontSize:12,cursor:'pointer',fontFamily:"'Outfit',sans-serif",backdropFilter:'blur(4px)'}}>
-            Remove
-          </button>
-        )}
-      </div>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment"
-        style={{display:'none'}} onChange={handleFile}/>
     </div>
-  );
-}
+    ${S.activeLine ? renderBreadcrumb() : ''}
+  </div>
 
-// ── Bottom Sheet ────────────────────────────────────────────────────────────
-function BottomSheet({title, onClose, children, T}) {
-  return (
-    <div style={{position:'fixed',inset:0,zIndex:200}} onClick={onClose}>
-      <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.5)',backdropFilter:'blur(4px)'}}/>
-      <div style={{position:'absolute',bottom:0,left:0,right:0,background:T.bg2,borderRadius:'20px 20px 0 0',border:`1px solid ${T.bd}`,paddingBottom:'max(20px,env(safe-area-inset-bottom))',maxHeight:'85vh',overflow:'hidden',display:'flex',flexDirection:'column'}}
-        onClick={e=>e.stopPropagation()}>
-        <div style={{padding:'12px 20px 0',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-          <div style={{width:36,height:4,borderRadius:2,background:T.bd,margin:'0 auto 12px'}}/>
-        </div>
-        <div style={{padding:'0 20px',display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexShrink:0}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:16,fontWeight:700,color:T.gold}}>{title}</div>
-          <button onClick={onClose} style={{background:'none',border:'none',color:T.t3,cursor:'pointer',padding:4}}><Icon d={ICO.x} s={20}/></button>
-        </div>
-        <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch',flex:1}}>{children}</div>
-      </div>
-    </div>
-  );
-}
+  <!-- Content -->
+  <div class="content-area" id="contentArea">
+    ${renderContent()}
+  </div>
 
-// ── Filter Sheet ────────────────────────────────────────────────────────────
-function FilterSheet({filterFaction,setFilterFaction,filterStatus,setFilterStatus,filterVariants,setFilterVariants,onClear,hasFilters,T}) {
-  return (
-    <div style={{padding:'0 20px 20px'}}>
-      <div style={{fontSize:12,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>Faction</div>
-      <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:20}}>
-        {['', ...FACTIONS].map(f=>(
-          <button key={f} onClick={()=>setFilterFaction(f)}
-            style={{padding:'8px 16px',borderRadius:20,border:`1px solid ${filterFaction===f?T.acc:T.bd}`,background:filterFaction===f?`${T.acc}22`:T.bg3,color:filterFaction===f?T.acc:T.t2,fontSize:13,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-            {f||'All'}
-          </button>
-        ))}
-      </div>
-      <div style={{fontSize:12,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>Status</div>
-      <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:20}}>
-        {['',...STATUSES].map(s=>(
-          <button key={s} onClick={()=>setFilterStatus(s)}
-            style={{padding:'8px 16px',borderRadius:20,border:`1px solid ${filterStatus===s?(STATUS_COLOR[s]||T.acc):T.bd}`,background:filterStatus===s?`${STATUS_COLOR[s]||T.acc}22`:T.bg3,color:filterStatus===s?(STATUS_COLOR[s]||T.acc):T.t2,fontSize:13,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-            {s?STATUS_LABEL[s]:'All'}
-          </button>
-        ))}
-      </div>
-      <div style={{fontSize:12,color:T.t3,textTransform:'uppercase',letterSpacing:1.5,marginBottom:10}}>Variants</div>
-      <div style={{display:'flex',gap:8,marginBottom:24}}>
-        <button onClick={()=>setFilterVariants(false)}
-          style={{padding:'8px 16px',borderRadius:20,border:`1px solid ${!filterVariants?T.acc:T.bd}`,background:!filterVariants?`${T.acc}22`:T.bg3,color:!filterVariants?T.acc:T.t2,fontSize:13,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-          All
-        </button>
-        <button onClick={()=>setFilterVariants(true)}
-          style={{padding:'8px 16px',borderRadius:20,border:`1px solid ${filterVariants?T.gold:T.bd}`,background:filterVariants?`${T.gold}22`:T.bg3,color:filterVariants?T.gold:T.t2,fontSize:13,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>
-          Has Variants
-        </button>
-      </div>
-      {hasFilters && <button onClick={onClear} style={{width:'100%',padding:'14px',borderRadius:12,border:`1px solid #f87171`,background:'rgba(248,113,113,.1)',color:'#f87171',fontSize:15,cursor:'pointer',fontWeight:600,fontFamily:"'Outfit',sans-serif"}}>Clear All Filters</button>}
-    </div>
-  );
-}
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    ${renderNavBtn('lines', ICO.lines, 'Lines')}
+    ${renderNavBtn('all', ICO.list, 'All')}
+    ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned}</span>`)}
+  </div>`;
 
-// ── Sort Sheet ──────────────────────────────────────────────────────────────
-function SortSheet({sortBy,setSortBy,T}) {
-  const opts = [
-    {v:'wave',      l:'Wave (default)'},
-    {v:'name',      l:'Name A → Z'},
-    {v:'name-desc', l:'Name Z → A'},
-    {v:'year',      l:'Year (oldest first)'},
-    {v:'year-desc', l:'Year (newest first)'},
-    {v:'retail',    l:'Price (low → high)'},
-    {v:'retail-desc',l:'Price (high → low)'},
-  ];
-  return (
-    <div style={{padding:'0 20px 20px',display:'flex',flexDirection:'column',gap:4}}>
-      {opts.map(o=>(
-        <button key={o.v} onClick={()=>setSortBy(o.v)}
-          style={{padding:'14px 16px',borderRadius:12,border:`1px solid ${sortBy===o.v?T.acc:T.bd}`,background:sortBy===o.v?`${T.acc}22`:T.bg3,color:sortBy===o.v?T.acc:T.t1,fontSize:15,cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between',fontFamily:"'Outfit',sans-serif"}}>
-          {o.l}
-          {sortBy===o.v && <Icon d={ICO.check} s={18}/>}
-        </button>
-      ))}
-    </div>
-  );
-}
+  if (S.sheet) html += renderSheet();
+  app().innerHTML = html;
 
-// ── Import Sheet ────────────────────────────────────────────────────────────
-function ImportSheet({onImport, T}) {
-  const [result, setResult] = useState(null);
-  const [busy, setBusy]     = useState(false);
-  const [overwrite, setOverwrite] = useState(false);
-  const [drag, setDrag]     = useState(false);
-  const fileRef = useRef();
-
-  const handle = text => {
-    setBusy(true);
-    setTimeout(()=>{ setResult(onImport(text, overwrite)); setBusy(false); }, 50);
-  };
-
-  return (
-    <div style={{padding:'0 20px 20px'}}>
-      {!result && !busy && <>
-        <p style={{fontSize:14,color:T.t2,marginBottom:16,lineHeight:1.6}}>
-          Export your collection from ActionFigure411.com, then drop the CSV file below. Only MOTU figures will be imported.
-        </p>
-        {/* Overwrite toggle */}
-        <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',background:T.bg3,borderRadius:12,marginBottom:16,cursor:'pointer'}} onClick={()=>setOverwrite(o=>!o)}>
-          <div style={{width:24,height:24,borderRadius:6,border:`2px solid ${overwrite?T.acc:T.bd}`,background:overwrite?T.acc:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all .15s'}}>
-            {overwrite && <Icon d={ICO.check} s={14}/>}
-          </div>
-          <div>
-            <div style={{fontSize:14,color:T.t1,fontWeight:500}}>Overwrite existing</div>
-            <div style={{fontSize:12,color:T.t3}}>Re-import figures already marked as owned</div>
-          </div>
-        </div>
-        {/* Drop zone */}
-        <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f){const r=new FileReader();r.onload=ev=>handle(ev.target.result);r.readAsText(f);}}} onClick={()=>fileRef.current.click()}
-          style={{border:`2px dashed ${drag?T.acc:T.bd}`,borderRadius:16,padding:'40px 20px',textAlign:'center',cursor:'pointer',background:drag?`${T.acc}11`:'transparent',transition:'all .15s'}}>
-          <div style={{fontSize:48,marginBottom:12}}>📂</div>
-          <div style={{fontSize:15,color:T.t1,fontWeight:500,marginBottom:4}}>Drop export.csv here</div>
-          <div style={{fontSize:13,color:T.t3}}>or tap to browse files</div>
-          <input ref={fileRef} type="file" accept=".csv" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>handle(ev.target.result);r.readAsText(f);}}}/>
-        </div>
-      </>}
-      {busy && <div style={{textAlign:'center',padding:'40px 0'}}>
-        <div style={{fontSize:32,marginBottom:12}}>⚙️</div>
-        <div style={{color:T.t2,fontSize:15}}>Importing...</div>
-      </div>}
-      {result && <div style={{textAlign:'center',padding:'20px 0'}}>
-        <div style={{fontSize:48,marginBottom:12}}>{result.matched>0?'✅':'🤷'}</div>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:22,color:T.gold,marginBottom:4}}>{result.matched} imported</div>
-        {result.skipped>0 && <div style={{fontSize:13,color:T.t3,marginBottom:8}}>{result.skipped} already owned, skipped</div>}
-        {result.unmatched.length>0 && <details style={{textAlign:'left',marginTop:16}}>
-          <summary style={{fontSize:13,color:T.t3,cursor:'pointer',padding:'8px 0'}}>{result.unmatched.length} not found in app</summary>
-          <div style={{marginTop:8,maxHeight:160,overflowY:'auto',fontSize:12,color:T.t3,lineHeight:2}}>
-            {result.unmatched.map((u,i)=><div key={i}>{u}</div>)}
-          </div>
-        </details>}
-        <button onClick={()=>setResult(null)} style={{marginTop:20,padding:'12px 32px',borderRadius:12,border:`1px solid ${T.bd}`,background:T.bg3,color:T.t1,fontSize:14,cursor:'pointer',fontFamily:"'Outfit',sans-serif"}}>Import Another</button>
-      </div>}
-    </div>
-  );
-}
-
-// ── Theme Sheet ─────────────────────────────────────────────────────────────
-function ThemeSheet({theme, setTheme, T}) {
-  return (
-    <div style={{padding:'0 20px 20px',display:'flex',flexDirection:'column',gap:10}}>
-      {Object.entries(THEMES).map(([key,Th])=>(
-        <button key={key} onClick={()=>setTheme(key)}
-          style={{padding:'16px',borderRadius:14,border:`2px solid ${theme===key?Th.acc:Th.bd}`,background:Th.bg2,cursor:'pointer',display:'flex',alignItems:'center',gap:14,textAlign:'left',fontFamily:"'Outfit',sans-serif"}}>
-          <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${Th.gold},${Th.acc})`,flexShrink:0}}/>
-          <div>
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:700,color:Th.t1}}>{Th.name}</div>
-            <div style={{fontSize:12,color:Th.t2,marginTop:2}}>{Th.bg} · {Th.acc}</div>
-          </div>
-          {theme===key && <div style={{marginLeft:'auto',color:Th.acc}}><Icon d={ICO.check} s={20}/></div>}
-        </button>
-      ))}
-
-    </div>
-  );
-}
-
-// ── Tap Button (header) ─────────────────────────────────────────────────────
-function SyncButton({status, onTap, T}) {
-  const col = status==='err' ? '#f87171' : status==='ok' ? '#34d399' : T.t2;
-  return (
-    <button onClick={()=>onTap(true)} disabled={status==='syncing'} title="Sync: pull latest figures from GitHub"
-      style={{width:38,height:38,borderRadius:10,border:'1px solid '+col,
-        background:T.bg3,color:col,cursor:status==='syncing'?'default':'pointer',
-        display:'flex',alignItems:'center',justifyContent:'center',transition:'all .3s',
-        animation:status==='syncing'?'spin 1s linear infinite':'none'}}>
-      <Icon d={ICO.sync} s={16}/>
-    </button>
-  );
-}
-
-function TapButton({icon,label,onTap,T}) {
-  return (
-    <button onClick={onTap} title={label}
-      style={{width:38,height:38,borderRadius:10,border:`1px solid ${T.bd}`,background:T.bg3,color:T.t2,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Outfit',sans-serif"}}>
-      <Icon d={icon} s={18}/>
-    </button>
-  );
-}
-
-// ── Global Styles ───────────────────────────────────────────────────────────
-function GlobalStyles() {
-  return <style>{`
-    input, select, textarea { outline: none; }
-    input::placeholder { color: var(--t3); }
-    button:active { opacity: .75; }
-    ::-webkit-scrollbar { display: none; }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    * { scrollbar-width: none; }
-  `}</style>;
-}
-
-// ── Error Boundary ──────────────────────────────────────────────────────────
-// Catches any render-time throw and shows a readable crash screen instead of
-// a blank page. Without this, React 18 silently unmounts the entire tree.
-class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { err: null }; }
-  static getDerivedStateFromError(err) { return { err }; }
-  componentDidCatch(err, info) { console.error('MOTU Vault render error:', err, info); }
-  render() {
-    if (this.state.err) {
-      return (
-        <div style={{height:'100%',display:'flex',flexDirection:'column',alignItems:'center',
-          justifyContent:'center',background:'#08080f',padding:32,fontFamily:"'Outfit',sans-serif"}}>
-          <img src="motu-images/masters_logo.png" alt="Masters of the Universe" style={{width:120,marginBottom:8}} />
-          <div style={{color:'#f87171',fontSize:15,fontWeight:600,marginBottom:8}}>Something went wrong</div>
-          <div style={{color:'#9a92b0',fontSize:12,marginBottom:24,textAlign:'center',maxWidth:320,lineHeight:1.6}}>
-            {this.state.err.message || 'Unknown error'}
-          </div>
-          <button onClick={()=>this.setState({err:null})}
-            style={{padding:'10px 24px',borderRadius:10,border:'1px solid #d4a843',background:'none',
-              color:'#d4a843',cursor:'pointer',fontSize:14,fontFamily:"'Outfit',sans-serif"}}>
-            Try Again
-          </button>
-        </div>
-      );
+  // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
+  const ca = document.getElementById('contentArea');
+  if (ca) {
+    if (S.savedScroll && S.screen === 'main') {
+      ca.scrollTop = S.savedScroll;
+      S.savedScroll = 0;
+    } else if (_preservedScroll > 0 && !S.sheet) {
+      ca.scrollTop = _preservedScroll;
     }
-    return this.props.children;
+  }
+
+  // Scroll-hide search bar: hide on scroll down, reveal on scroll up
+  if (ca) {
+    let lastScrollTop = ca.scrollTop;
+    ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
+    ca._scrollHandler = () => {
+      const sb = document.getElementById('searchBar');
+      if (!sb) return;
+      const delta = ca.scrollTop - lastScrollTop;
+      lastScrollTop = ca.scrollTop;
+      if (delta > 4 && ca.scrollTop > 40) {
+        sb.classList.add('hidden');
+      } else if (delta < -4 || ca.scrollTop < 20) {
+        sb.classList.remove('hidden');
+      }
+    };
+    ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <ErrorBoundary><App/></ErrorBoundary>
-);
+function renderNavBtn(key, ico, label, extra='') {
+  const active = (S.tab === key && !S.activeLine) || (key === 'lines' && S.activeLine && S.tab === 'all');
+  return `<button class="${active?'active':''}" onclick="navTo('${key}')">${icon(ico,22,active?2.5:1.5)}${label}${extra}</button>`;
+}
+
+function renderBreadcrumb() {
+  let html = '<div class="breadcrumb">';
+  html += `<button onclick="goBack()">${icon(ICO.back,14)} Lines</button><span class="sep">›</span>`;
+  if (S.activeSubline) {
+    html += `<button class="crumb-link" onclick="clearSubline()">${esc(ln(S.activeLine))}</button><span class="sep">›</span>`;
+    const slLabel = S.activeSubline === '__all__' ? 'All Figures' : (SUBLINES[S.activeLine]||[]).find(s=>s.key===S.activeSubline)?.label || '';
+    html += `<span class="current">${esc(slLabel)}</span>`;
+  } else {
+    html += `<span class="current">${esc(ln(S.activeLine))}</span>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderContent() {
+  if (S.tab === 'lines' && !S.activeLine) return renderLinesGrid();
+  if (!S.search && S.activeLine && !S.activeSubline && SUBLINES[S.activeLine]) return renderSublines();
+  return renderFigList();
+}
+
+function renderLinesGrid() {
+  const lineStats = getLineStats();
+  const ordered = [...S.lineOrder].map(id => lineStats.find(l => l.id === id)).filter(Boolean)
+    .concat(lineStats.filter(l => !S.lineOrder.includes(l.id)));
+
+  let html = `<div class="reorder-toggle"><button class="${S.editingOrder?'active':''}" onclick="toggleReorder()">${S.editingOrder?'✓ Done':'⇅ Reorder'}</button></div>`;
+
+  if (S.editingOrder) {
+    html += '<div class="reorder-list">';
+    ordered.forEach((l, i) => {
+      html += `<div class="reorder-item">
+        <div class="reorder-arrows">
+          <button ${i===0?'disabled':''} onclick="moveLine('${l.id}',-1)">↑</button>
+          <button ${i===ordered.length-1?'disabled':''} onclick="moveLine('${l.id}',1)">↓</button>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(l.name)}</div>
+          <div class="text-sm text-dim" style="margin-top:2px">${l.yr} · ${l.total} figures · ${l.owned} owned</div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:${l.pct===100?'var(--gn)':'var(--gold)'};flex-shrink:0">${l.pct}%</div>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="lines-grid">';
+    ordered.forEach(l => {
+      const completeCls = l.pct === 100 ? 'complete' : '';
+      html += `<div class="line-card" onclick="goToLine('${l.id}')">
+        <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.style.display='none'" loading="lazy">
+        <div class="overlay"></div>
+        <div class="card-info">
+          <div class="card-name font-display">${esc(l.name)}</div>
+          <div class="card-year">${l.yr}</div>
+          ${l.total > 0 ? `
+            <div class="progress-bar"><div class="progress-fill ${completeCls}" style="width:${l.pct}%"></div></div>
+            <div class="card-stats ${completeCls}">${l.owned}/${l.total} · ${l.pct}%</div>
+          ` : ''}
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  return html;
+}
+
+function renderSublines() {
+  const subs = SUBLINES[S.activeLine] || [];
+  const allFigs = S.figs.filter(f => f.line === S.activeLine);
+  const allOwned = allFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
+  const allPct = allFigs.length ? Math.round(allOwned/allFigs.length*100) : 0;
+
+  let html = '<div class="subline-list">';
+  html += `<button class="subline-card all-card" onclick="selectSubline('__all__')">
+    <div class="subline-ring">${progressRing(allPct, 48, 'var(--gold)')}</div>
+    <div class="subline-info">
+      <div class="subline-name">${esc(ln(S.activeLine))} — All Figures</div>
+      <div class="subline-stats">${allOwned} owned of ${allFigs.length}</div>
+      <div class="subline-progress"><div class="subline-progress-fill ${allPct===100?'complete':''}" style="width:${allPct}%"></div></div>
+    </div>
+    <div class="subline-arrow">${icon(ICO.chevR,18)}</div>
+  </button>`;
+  html += '<div style="height:1px;background:var(--bd);margin:0 4px"></div>';
+  subs.forEach(sl => {
+    const slFigs = S.figs.filter(f => f.line === S.activeLine && sl.groups.includes(f.group));
+    if (!slFigs.length) return;
+    const owned = slFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
+    const pct = Math.round(owned/slFigs.length*100);
+    html += `<button class="subline-card" onclick="selectSubline('${sl.key}')">
+      <div class="subline-ring">${progressRing(pct)}</div>
+      <div class="subline-info">
+        <div class="subline-name">${esc(sl.label)}</div>
+        <div class="subline-stats">${owned} owned of ${slFigs.length}</div>
+        <div class="subline-progress"><div class="subline-progress-fill ${pct===100?'complete':''}" style="width:${pct}%"></div></div>
+      </div>
+      <div class="subline-arrow">${icon(ICO.chevR,18)}</div>
+    </button>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderFigList() {
+  const figs = getSortedFigs();
+  const hf = hasFilters();
+  let html = '<div class="fig-list">';
+  html += `<div class="fig-count">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}</div>`;
+  if (!figs.length) {
+    html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
+  } else {
+    figs.forEach(f => {
+      const c = S.coll[f.id] || {};
+      const statusCls = c.status || '';
+      const hasVar = /\w/.test(c.variants || '');
+      const hasCustom = S.customPhotos[f.id];
+      const imgErr = S.imgErrors[f.id];
+      const showImg = (hasCustom || f.image) && !imgErr;
+      const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
+
+      html += `<div class="fig-row" onclick="openFig('${f.id}')">
+        <div class="fig-thumb ${statusCls}">
+          ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
+            `<span class="initial">${esc(f.name[0])}</span>`}
+        </div>
+        <div class="fig-text">
+          <div class="fig-name">${esc(f.name)}</div>
+          <div class="fig-meta">
+            ${S.search ? `<span class="line-name">${esc(ln(f.line))}</span>` : ''}
+            ${f.group ? `<span>${S.search?'· ':''}${esc(f.group)}</span>` : ''}
+            ${f.wave ? `<span>· W${esc(f.wave)}</span>` : ''}
+            ${f.year ? `<span>· ${f.year}</span>` : ''}
+          </div>
+        </div>
+        <div class="fig-actions">
+          ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
+          ${c.status ? `<div class="fig-status-dot ${statusCls}"></div>` :
+            `<button class="quick-own" onclick="event.stopPropagation();setStatus('${f.id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
+        </div>
+      </div>`;
+    });
+  }
+  html += '<div class="bottom-spacer"></div></div>';
+  return html;
+}
+
+// ─── Detail Screen ────────────────────────────────────────────────
+function renderDetail() {
+  const f = S.activeFig;
+  const c = S.coll[f.id] || {};
+  const hasCustom = S.customPhotos[f.id];
+  const customPhoto = hasCustom ? photoStore.get(f.id) : null;
+  const imgUrl = customPhoto || (f.image && !S.imgErrors[f.id] ? f.image : null);
+  const pills = [ln(f.line), f.group, f.wave?'Wave '+f.wave:'', f.year, f.faction].filter(Boolean);
+
+  let html = `
+  <div class="detail-header">
+    <button class="detail-back" onclick="closeDetail()">${icon(ICO.back,22)}</button>
+    <div class="detail-title">${esc(f.name)}</div>
+    <button class="detail-delete" onclick="deleteFig('${f.id}')">${icon(ICO.trash,20)}</button>
+  </div>
+  <div class="detail-scroll">
+    <div class="photo-section">
+      <div class="photo-container">
+        ${imgUrl ? `<img src="${esc(imgUrl)}" alt="${esc(f.name)}" onerror="imgErr('${f.id}')">` :
+          `<span class="initial-large">${esc(f.name[0])}</span>`}
+      </div>
+      <div class="photo-controls">
+        <button class="photo-btn" onclick="document.getElementById('photoInput').click()">
+          ${icon(ICO.img,14)} ${hasCustom ? 'Replace photo' : 'Add photo'}
+        </button>
+        ${hasCustom ? `<button class="photo-btn remove" onclick="clearPhoto('${f.id}')">Remove</button>` : ''}
+      </div>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,'${f.id}')">
+    </div>
+    <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
+    ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
+    <div class="status-grid">
+      <div class="label text-upper text-dim text-xs">Status</div>
+      <div class="grid">
+        ${STATUSES.map(s => {
+          const active = c.status === s;
+          return `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${f.id}','${s}');renderDetail()">
+            ${active?'✓ ':''}${STATUS_LABEL[s]}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+    ${c.status ? `
+    <div class="detail-fields">
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Collection Details</div>
+      <div>
+        <div class="field-label text-dim text-sm">Condition</div>
+        <select onchange="updateColl('${f.id}','condition',this.value);saveColl()">
+          <option value="">Select...</option>
+          ${CONDITIONS.map(x => `<option value="${esc(x)}" ${c.condition===x?'selected':''}>${esc(x)}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <div class="field-label text-dim text-sm">Price Paid</div>
+        <input type="number" step="0.01" value="${esc(c.paid||'')}" placeholder="$0.00" onchange="updateColl('${f.id}','paid',this.value);saveColl()">
+      </div>
+      <div>
+        <div class="field-label text-dim text-sm">Variants Owned</div>
+        <input type="text" value="${esc(c.variants||'')}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateColl('${f.id}','variants',this.value);saveColl()">
+        <div class="field-hint">Comma-separate multiple variants</div>
+      </div>
+      <div>
+        <div class="field-label text-dim text-sm">Notes</div>
+        <textarea rows="3" placeholder="Notes…" onchange="updateColl('${f.id}','notes',this.value);saveColl()">${esc(c.notes||'')}</textarea>
+      </div>
+    </div>` : ''}
+    <div class="detail-spacer"></div>
+  </div>`;
+  app().innerHTML = html;
+}
+
+// ─── Sheets ───────────────────────────────────────────────────────
+function renderSheet() {
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import CSV', theme:'Theme'};
+  let body = '';
+  if (S.sheet === 'filter') body = renderFilterSheet();
+  else if (S.sheet === 'sort') body = renderSortSheet();
+  else if (S.sheet === 'import') body = renderImportSheet();
+  else if (S.sheet === 'theme') body = renderThemeSheet();
+
+  return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
+    <div class="sheet-backdrop"></div>
+    <div class="sheet-panel">
+      <div class="sheet-handle"><div class="sheet-handle-bar"></div></div>
+      <div class="sheet-header">
+        <div class="sheet-title">${titles[S.sheet]||'Options'}</div>
+        <button class="sheet-close" onclick="closeSheet()">${icon(ICO.x,20)}</button>
+      </div>
+      <div class="sheet-body">${body}</div>
+    </div>
+  </div>`;
+}
+
+function renderFilterSheet() {
+  let html = '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Faction</div><div class="chip-group">';
+  ['', ...FACTIONS].forEach(f => {
+    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="S.filterFaction='${esc(f)}';render()">${f||'All'}</button>`;
+  });
+  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Status</div><div class="chip-group">';
+  ['',...STATUSES].forEach(s => {
+    const active = S.filterStatus === s;
+    html += `<button class="chip ${active?'active':''}" onclick="S.filterStatus='${s}';render()">${s?STATUS_LABEL[s]:'All'}</button>`;
+  });
+  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Variants</div><div class="chip-group">';
+  html += `<button class="chip ${!S.filterVariants?'active':''}" onclick="S.filterVariants=false;render()">All</button>`;
+  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="S.filterVariants=true;render()">Has Variants</button>`;
+  html += '</div>';
+  if (hasFilters()) html += `<button class="clear-all-btn" onclick="S.filterFaction='';S.filterStatus='';S.filterVariants=false;S.search='';render()">Clear All Filters</button>`;
+  return html;
+}
+
+function renderSortSheet() {
+  const opts = [
+    {v:'wave',l:'Wave (default)'},{v:'name',l:'Name A → Z'},{v:'name-desc',l:'Name Z → A'},
+    {v:'year',l:'Year (oldest first)'},{v:'year-desc',l:'Year (newest first)'},
+    {v:'retail',l:'Price (low → high)'},{v:'retail-desc',l:'Price (high → low)'},
+  ];
+  return opts.map(o => `<button class="sort-option ${S.sortBy===o.v?'active':''}" onclick="S.sortBy='${o.v}';store.set('motu-sort',S.sortBy);closeSheet()">
+    ${o.l}${S.sortBy===o.v ? icon(ICO.check,18) : ''}
+  </button>`).join('');
+}
+
+function renderImportSheet() {
+  return `<p class="text-md text-muted" style="margin-bottom:16px;line-height:1.6">
+    Export your collection from ActionFigure411.com, then drop the CSV file below. Only MOTU figures will be imported.
+  </p>
+  <div class="overwrite-toggle" onclick="this.querySelector('.checkbox').classList.toggle('checked')">
+    <div class="checkbox"><span style="color:#fff;display:none">${icon(ICO.check,14)}</span></div>
+    <div>
+      <div class="text-md" style="font-weight:500">Overwrite existing</div>
+      <div class="text-sm text-dim">Re-import figures already marked as owned</div>
+    </div>
+  </div>
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvInput').click()">
+    <div style="font-size:48px;margin-bottom:12px">📂</div>
+    <div class="text-md" style="font-weight:500;margin-bottom:4px">Drop export.csv here</div>
+    <div class="text-sm text-dim">or tap to browse files</div>
+    <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(this)">
+  </div>`;
+}
+
+function renderThemeSheet() {
+  return Object.entries(THEMES).map(([key, th]) =>
+    `<button class="theme-option" style="border-color:${S.theme===key?th.acc:'var(--bd)'};background:${th.bg}" onclick="setTheme('${key}')">
+      <div class="swatch" style="background:linear-gradient(135deg,${th.gold},${th.acc})"></div>
+      <div style="flex:1">
+        <div class="font-display" style="font-size:15px;color:#eae6f2">${th.name}</div>
+        <div class="text-sm" style="color:#9a92b0;margin-top:2px">${th.bg} · ${th.acc}</div>
+      </div>
+      ${S.theme===key ? `<div style="color:${th.acc}">${icon(ICO.check,20)}</div>` : ''}
+    </button>`
+  ).join('');
+}
+
+// ─── History Management ───────────────────────────────────────────
+// Each navigation action pushes a state so Android/browser back button
+// walks backward through the app instead of closing it.
+let _skipPush = false; // flag to avoid pushing during popstate handling
+
+function navState() {
+  // Snapshot of the navigable state (not the full S — just what back needs)
+  return {
+    screen: S.screen,
+    tab: S.tab,
+    activeLine: S.activeLine,
+    activeSubline: S.activeSubline,
+    activeFigId: S.activeFig?.id || null,
+    sheet: S.sheet,
+    search: S.search,
+  };
+}
+
+function pushNav() {
+  if (_skipPush) return;
+  history.pushState(navState(), '');
+}
+
+function restoreNav(state) {
+  if (!state) return;
+  S.screen = state.screen || 'main';
+  S.tab = state.tab || 'lines';
+  S.activeLine = state.activeLine || null;
+  S.activeSubline = state.activeSubline || null;
+  S.activeFig = state.activeFigId ? S.figs.find(f => f.id === state.activeFigId) || null : null;
+  S.sheet = state.sheet || null;
+  S.search = state.search || '';
+}
+
+// Listen for back button (Android hardware back, browser back, swipe back)
+window.addEventListener('popstate', e => {
+  _skipPush = true;
+
+  // If a sheet is open, just close it (don't go further back)
+  if (S.sheet) {
+    S.sheet = null;
+    render();
+    _skipPush = false;
+    return;
+  }
+
+  // If on figure detail, go back to list
+  if (S.screen === 'figure') {
+    S.screen = 'main';
+    render();
+    _skipPush = false;
+    return;
+  }
+
+  // If viewing a subline, go back to line
+  if (S.activeSubline) {
+    S.activeSubline = null;
+    render();
+    _skipPush = false;
+    return;
+  }
+
+  // If viewing a line, go back to lines grid
+  if (S.activeLine) {
+    S.activeLine = null;
+    S.activeSubline = null;
+    S.tab = 'lines';
+    render();
+    _skipPush = false;
+    return;
+  }
+
+  // If searching, clear search
+  if (S.search) {
+    S.search = '';
+    render();
+    _skipPush = false;
+    return;
+  }
+
+  // At root — push a state back so next back press has something to pop
+  // This prevents the app from closing on the first back press at home
+  history.pushState(navState(), '');
+  _skipPush = false;
+});
+
+// Seed the initial history entry so we always have something to pop
+history.replaceState(navState(), '');
+
+// ─── Event Handlers ───────────────────────────────────────────────
+window.onSearch = val => { S.search = val; if (val) S.tab = 'all'; pushNav(); render(); };
+window.navTo = key => { S.tab = key; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
+window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; pushNav(); render(); };
+window.goBack = () => { history.back(); };
+window.clearSubline = () => { history.back(); };
+window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; pushNav(); render(); };
+window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
+window.moveLine = (id, dir) => {
+  const arr = [...S.lineOrder]; const i = arr.indexOf(id); const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  S.lineOrder = arr; store.set('motu-line-order', arr); render();
+};
+
+window.openFig = id => {
+  const ca = document.getElementById('contentArea');
+  if (ca) S.savedScroll = ca.scrollTop;
+  S.activeFig = S.figs.find(f => f.id === id);
+  S.screen = 'figure'; pushNav(); render();
+};
+window.closeDetail = () => { history.back(); };
+window.deleteFig = id => {
+  if (!confirm('Delete this figure?')) return;
+  S.figs = S.figs.filter(f => f.id !== id);
+  delete S.coll[id]; saveColl();
+  S.screen = 'main'; render();
+};
+
+window.openSheet = name => { S.sheet = name; pushNav(); render();
+  requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
+};
+window.closeSheet = () => { history.back(); };
+window.setTheme = t => { S.theme = t; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
+window.imgErr = id => { S.imgErrors[id] = true; };
+
+window.handlePhoto = (input, figId) => {
+  const file = input.files?.[0]; if (!file) return;
+  if (file.size > 20000000) { alert('Image too large (max 20MB).'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 600;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      if (!photoStore.set(figId, dataUrl)) { alert('Storage full.'); return; }
+      S.customPhotos[figId] = true;
+      S.imgErrors[figId] = false;
+      renderDetail();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+window.clearPhoto = id => {
+  photoStore.del(id); delete S.customPhotos[id]; renderDetail();
+};
+
+window.handleCSV = input => {
+  const file = input.files?.[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const overwrite = document.querySelector('.checkbox.checked') !== null;
+    const result = doImport(ev.target.result, overwrite);
+    const body = document.querySelector('.sheet-body');
+    if (body) {
+      body.innerHTML = `<div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:12px">${result.matched>0?'✅':'🤷'}</div>
+        <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${result.matched} imported</div>
+        ${result.skipped>0 ? `<div class="text-sm text-dim" style="margin-bottom:8px">${result.skipped} already owned, skipped</div>` : ''}
+        ${result.unmatched.length>0 ? `<details style="text-align:left;margin-top:16px">
+          <summary class="text-sm text-dim" style="cursor:pointer;padding:8px 0">${result.unmatched.length} not found in app</summary>
+          <div style="margin-top:8px;max-height:160px;overflow-y:auto;font-size:12px;color:var(--t3);line-height:2">${result.unmatched.map(u=>'<div>'+esc(u)+'</div>').join('')}</div>
+        </details>` : ''}
+      </div>`;
+    }
+  };
+  reader.readAsText(file);
+};
+
+// Drop zone support
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  const dz = document.getElementById('dropZone');
+  if (dz) dz.classList.add('dragover');
+});
+document.addEventListener('dragleave', () => {
+  const dz = document.getElementById('dropZone');
+  if (dz) dz.classList.remove('dragover');
+});
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const dz = document.getElementById('dropZone');
+  if (dz) {
+    dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const r = new FileReader();
+      r.onload = ev => {
+        const overwrite = document.querySelector('.checkbox.checked') !== null;
+        const result = doImport(ev.target.result, overwrite);
+        const body = document.querySelector('.sheet-body');
+        if (body) {
+          body.innerHTML = `<div style="text-align:center;padding:20px 0">
+            <div style="font-size:48px;margin-bottom:12px">${result.matched>0?'✅':'🤷'}</div>
+            <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${result.matched} imported</div>
+          </div>`;
+        }
+      };
+      r.readAsText(file);
+    }
+  }
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+init();
 </script>
 </body>
 </html>
