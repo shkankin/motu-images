@@ -1,0 +1,106 @@
+name: Sync AF411 Catalog
+
+# On-demand only — trigger from GitHub Actions tab or via API
+on:
+  workflow_dispatch:
+    inputs:
+      line:
+        description: 'Sync a specific line only (leave empty for all)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - origins
+          - masterverse
+          - chronicles
+          - classics
+          - 200x
+          - original
+          - new-adventures
+          - mondo
+          - super7
+          - eternia-minis
+      audit_only:
+        description: 'Audit only (no changes committed)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for clean commits
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run sync script
+        run: |
+          cd ${{ github.workspace }}
+          
+          # Build the command
+          CMD="python scripts/sync_af411.py"
+          
+          # Add --commit unless audit-only
+          if [ "${{ inputs.audit_only }}" != "true" ]; then
+            CMD="$CMD --commit"
+          else
+            CMD="$CMD --audit"
+          fi
+          
+          # Add --line if specified
+          if [ -n "${{ inputs.line }}" ]; then
+            CMD="$CMD --line ${{ inputs.line }}"
+          fi
+          
+          echo "Running: $CMD"
+          $CMD
+
+      - name: Commit and push changes
+        if: ${{ inputs.audit_only != true }}
+        run: |
+          cd ${{ github.workspace }}
+          
+          # Configure git
+          git config user.name "MOTU Vault Bot"
+          git config user.email "motu-vault-bot@users.noreply.github.com"
+          
+          # Check if there are changes
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Stage all changes (figures.json + any new .jpg images)
+          git add figures.json
+          git add "*.jpg" 2>/dev/null || true
+          
+          # Count what changed
+          NEW_FIGS=$(git diff --cached --numstat figures.json | awk '{print $1}')
+          NEW_IMGS=$(git diff --cached --name-only -- "*.jpg" | wc -l | tr -d ' ')
+          
+          # Build commit message
+          LINE_MSG=""
+          if [ -n "${{ inputs.line }}" ]; then
+            LINE_MSG=" (${{ inputs.line }})"
+          fi
+          
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          
+          git commit -m "sync: update catalog from AF411${LINE_MSG} — ${TIMESTAMP}" \
+                     -m "Figures updated: +${NEW_FIGS:-0} lines changed" \
+                     -m "Images added: ${NEW_IMGS}"
+          
+          git push
+          
+          echo "✅ Changes committed and pushed"
