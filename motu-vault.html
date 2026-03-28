@@ -131,7 +131,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .bottom-nav {
   background: var(--bg2);
   border-top: 1px solid var(--bd);
-  padding-bottom: max(4px, var(--safe-bottom));
+  padding-bottom: max(6px, var(--safe-bottom));
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   flex-shrink: 0;
@@ -139,13 +139,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 
 .bottom-nav button {
-  padding: 5px 0 3px;
+  padding: 7px 0 5px;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--t3);
   font-weight: 400;
   transition: color 0.15s;
@@ -1017,6 +1017,7 @@ const S = {
   sortBy: store.get('motu-sort') || 'wave',
   theme: store.get('motu-theme') || 'eternia',
   lineOrder: store.get('motu-line-order') || LINES.map(l => l.id),
+  hiddenItems: store.get('motu-hidden') || [],
   sheet: null,
   loaded: false,
   fetchError: false,
@@ -1119,6 +1120,34 @@ function init() {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 function saveColl() { store.set('motu-c2', S.coll); }
+function isHidden(lineId, subKey) {
+  if (subKey) return S.hiddenItems.includes(lineId + ':' + subKey);
+  return S.hiddenItems.includes(lineId);
+}
+function toggleHidden(key) {
+  const i = S.hiddenItems.indexOf(key);
+  if (i >= 0) S.hiddenItems.splice(i, 1);
+  else S.hiddenItems.push(key);
+  store.set('motu-hidden', S.hiddenItems);
+  render();
+}
+function isLineFullyHidden(lineId) {
+  // A line is fully hidden if the line itself is hidden
+  return S.hiddenItems.includes(lineId);
+}
+function isSublineHidden(lineId, subKey) {
+  return S.hiddenItems.includes(lineId + ':' + subKey);
+}
+function figIsHidden(f) {
+  if (isLineFullyHidden(f.line)) return true;
+  const subs = SUBLINES[f.line];
+  if (!subs) return false;
+  // Find which subline this figure belongs to
+  for (const sl of subs) {
+    if (sl.groups.includes(f.group) && isSublineHidden(f.line, sl.key)) return true;
+  }
+  return false;
+}
 function setStatus(id, status) {
   if (!S.coll[id]) S.coll[id] = {};
   if (S.coll[id].status === status) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
@@ -1131,7 +1160,7 @@ function updateColl(id, key, val) {
 }
 
 function getStats() {
-  const real = S.figs.filter(f => f.id !== 'dev-0001');
+  const real = S.figs.filter(f => f.id !== 'dev-0001' && !figIsHidden(f));
   const owned = real.filter(f => S.coll[f.id]?.status === 'owned').length;
   const wish  = real.filter(f => S.coll[f.id]?.status === 'wishlist').length;
   const ord   = real.filter(f => S.coll[f.id]?.status === 'ordered').length;
@@ -1140,14 +1169,14 @@ function getStats() {
 
 function getLineStats() {
   return LINES.map(l => {
-    const t = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001').length;
-    const o = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001' && S.coll[f.id]?.status === 'owned').length;
+    const t = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001' && !figIsHidden(f)).length;
+    const o = S.figs.filter(f => f.line === l.id && f.id !== 'dev-0001' && !figIsHidden(f) && S.coll[f.id]?.status === 'owned').length;
     return {...l, total: t, owned: o, pct: t ? Math.round(o/t*100) : 0};
   });
 }
 
 function getSortedFigs() {
-  let list = S.figs.filter(f => f.id !== 'dev-0001');
+  let list = S.figs.filter(f => f.id !== 'dev-0001' && !figIsHidden(f));
   const isSearch = S.search.length > 0;
   if (!isSearch && S.activeLine) list = list.filter(f => f.line === S.activeLine);
   if (!isSearch && S.activeSubline && S.activeSubline !== '__all__') {
@@ -1284,7 +1313,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.2</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.4</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1340,16 +1369,28 @@ function renderMain() {
   // Scroll-hide search bar: hide on scroll down, reveal on scroll up
   if (ca) {
     let lastScrollTop = ca.scrollTop;
+    let hideTimeout = null;
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
       const sb = document.getElementById('searchBar');
       if (!sb) return;
-      const delta = ca.scrollTop - lastScrollTop;
-      lastScrollTop = ca.scrollTop;
-      if (delta > 4 && ca.scrollTop > 40) {
+      const st = ca.scrollTop;
+      const delta = st - lastScrollTop;
+      lastScrollTop = st;
+      // Near the bottom — don't toggle (prevents bounce jitter)
+      const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
+      if (nearBottom) return;
+      if (delta > 6 && st > 50) {
+        if (hideTimeout) clearTimeout(hideTimeout);
         sb.classList.add('hidden');
-      } else if (delta < -4 || ca.scrollTop < 20) {
-        sb.classList.remove('hidden');
+      } else if (delta < -6 || st < 20) {
+        // Debounce reveal to avoid flicker
+        if (!hideTimeout) {
+          hideTimeout = setTimeout(() => {
+            sb.classList.remove('hidden');
+            hideTimeout = null;
+          }, 80);
+        }
       }
     };
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
@@ -1395,7 +1436,8 @@ function renderLinesGrid() {
   if (S.editingOrder) {
     html += '<div class="reorder-list">';
     ordered.forEach((l, i) => {
-      html += `<div class="reorder-item">
+      const hidden = isLineFullyHidden(l.id);
+      html += `<div class="reorder-item" style="${hidden?'opacity:0.4':''}">
         <div class="reorder-arrows">
           <button ${i===0?'disabled':''} onclick="moveLine('${l.id}',-1)">↑</button>
           <button ${i===ordered.length-1?'disabled':''} onclick="moveLine('${l.id}',1)">↓</button>
@@ -1404,13 +1446,16 @@ function renderLinesGrid() {
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(l.name)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">${l.yr} · ${l.total} figures · ${l.owned} owned</div>
         </div>
+        <button onclick="event.stopPropagation();toggleHidden('${l.id}')" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
+          ${hidden?'Hidden':'Hide'}
+        </button>
         <div style="font-size:12px;font-weight:600;color:${l.pct===100?'var(--gn)':'var(--gold)'};flex-shrink:0">${l.pct}%</div>
       </div>`;
     });
     html += '</div>';
   } else {
     html += '<div class="lines-grid">';
-    ordered.forEach(l => {
+    ordered.filter(l => !isLineFullyHidden(l.id)).forEach(l => {
       const completeCls = l.pct === 100 ? 'complete' : '';
       html += `<div class="line-card" onclick="goToLine('${l.id}')">
         <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.style.display='none'" loading="lazy">
@@ -1432,7 +1477,7 @@ function renderLinesGrid() {
 
 function renderSublines() {
   const subs = SUBLINES[S.activeLine] || [];
-  const allFigs = S.figs.filter(f => f.line === S.activeLine);
+  const allFigs = S.figs.filter(f => f.line === S.activeLine && !figIsHidden(f));
   const allOwned = allFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
   const allPct = allFigs.length ? Math.round(allOwned/allFigs.length*100) : 0;
 
@@ -1450,17 +1495,21 @@ function renderSublines() {
   subs.forEach(sl => {
     const slFigs = S.figs.filter(f => f.line === S.activeLine && sl.groups.includes(f.group));
     if (!slFigs.length) return;
-    const owned = slFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
-    const pct = Math.round(owned/slFigs.length*100);
-    html += `<button class="subline-card" onclick="selectSubline('${sl.key}')">
+    const hidden = isSublineHidden(S.activeLine, sl.key);
+    const visibleFigs = hidden ? [] : slFigs;
+    const owned = visibleFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
+    const pct = visibleFigs.length ? Math.round(owned/visibleFigs.length*100) : 0;
+    html += `<div class="subline-card" style="${hidden?'opacity:0.4':''}" onclick="if(!event.target.closest('.hide-btn'))selectSubline('${sl.key}')">
       <div class="subline-ring">${progressRing(pct)}</div>
       <div class="subline-info">
         <div class="subline-name">${esc(sl.label)}</div>
-        <div class="subline-stats">${owned} owned of ${slFigs.length}</div>
-        <div class="subline-progress"><div class="subline-progress-fill ${pct===100?'complete':''}" style="width:${pct}%"></div></div>
+        <div class="subline-stats">${hidden ? slFigs.length + ' figures (hidden)' : owned + ' owned of ' + slFigs.length}</div>
+        ${!hidden ? `<div class="subline-progress"><div class="subline-progress-fill ${pct===100?'complete':''}" style="width:${pct}%"></div></div>` : ''}
       </div>
-      <div class="subline-arrow">${icon(ICO.chevR,18)}</div>
-    </button>`;
+      <button class="hide-btn" onclick="event.stopPropagation();toggleHidden('${S.activeLine}:${sl.key}')" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
+        ${hidden?'Show':'Hide'}
+      </button>
+    </div>`;
   });
   html += '</div>';
   return html;
@@ -1776,6 +1825,7 @@ window.goBack = () => { history.back(); };
 window.clearSubline = () => { history.back(); };
 window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S._justNavigated = true; pushNav(); render(); };
 window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
+window.toggleHidden = toggleHidden;
 window.moveLine = (id, dir) => {
   const arr = [...S.lineOrder]; const i = arr.indexOf(id); const j = i + dir;
   if (j < 0 || j >= arr.length) return;
