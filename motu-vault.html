@@ -1283,7 +1283,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.0</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.1</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1385,7 +1385,10 @@ function renderLinesGrid() {
   const ordered = [...S.lineOrder].map(id => lineStats.find(l => l.id === id)).filter(Boolean)
     .concat(lineStats.filter(l => !S.lineOrder.includes(l.id)));
 
-  let html = `<div class="reorder-toggle"><button class="${S.editingOrder?'active':''}" onclick="toggleReorder()">${S.editingOrder?'✓ Done':'⇅ Reorder'}</button></div>`;
+  let html = '';
+  if (S.editingOrder) {
+    html += `<div class="reorder-toggle"><button class="active" onclick="toggleReorder()">✓ Done</button></div>`;
+  }
 
   if (S.editingOrder) {
     html += '<div class="reorder-list">';
@@ -1600,6 +1603,7 @@ function renderSheet() {
 
 function renderMenuSheet() {
   const menuItems = [
+    {label:'Reorder Lines', icon:ICO.sort, action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
     {label:'Import CSV', icon:ICO.import, action:"openSheet('import')"},
     {label:'Export CSV', icon:ICO.export, action:"exportCSV();closeSheet()"},
     {label:'Theme',      icon:ICO.palette, action:"openSheet('theme')"},
