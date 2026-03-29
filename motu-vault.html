@@ -1259,6 +1259,84 @@ function renderExportSheet() {
 }
 
 function doImport(csvText, overwrite = false) {
+  // Detect format: MOTU Vault export has 'Line' header, AF411 has 'Series'
+  const firstLine = csvText.split('\n')[0] || '';
+  const isVaultFormat = /\bLine\b/.test(firstLine) && !/\bSeries\b/.test(firstLine);
+
+  if (isVaultFormat) return doImportVault(csvText, overwrite);
+  return doImportAF411(csvText, overwrite);
+}
+
+// Reverse map: line name → line id
+const LINE_ID_MAP = Object.fromEntries(LINES.map(l => [l.name, l.id]));
+
+function doImportVault(csvText, overwrite) {
+  const lines = csvText.split('\n').filter(l => l.trim());
+  const parseRow = line => {
+    const cols = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur); return cols;
+  };
+  const headers = parseRow(lines[0]).map(h => h.trim());
+  const col = h => headers.indexOf(h);
+  const [iName,iLine,iGroup,iWave,iStatus,iCond,iPaid,iNotes] =
+    ['Name','Line','Group','Wave','Status','Condition','Paid','Notes'].map(col);
+
+  const idx4 = {}, idx3 = {}, idx2 = {};
+  S.figs.forEach(f => {
+    const k4 = normalize(f.name)+'|'+f.line+'|'+normalize(f.group||'')+'|'+normalize(f.wave||'');
+    const k3 = normalize(f.name)+'|'+f.line+'|'+normalize(f.group||'');
+    const k2 = normalize(f.name)+'|'+f.line;
+    if (!idx4[k4]) idx4[k4] = f;
+    if (!idx3[k3]) idx3[k3] = f;
+    idx2[k2] = idx2[k2] ? 'AMBIGUOUS' : f;
+  });
+
+  const matchedIds = new Set();
+  let skipped = 0; const unmatched = [];
+
+  lines.slice(1).forEach(l => {
+    const c = parseRow(l);
+    const name = c[iName]?.trim();
+    if (!name) return;
+    const lineName = c[iLine]?.trim() || '';
+    const lineId = LINE_ID_MAP[lineName] || lineName.toLowerCase().replace(/\s+/g,'-');
+    const group = c[iGroup]?.trim() || '';
+    const wave = c[iWave]?.trim() || '';
+    const status = c[iStatus]?.trim() || '';
+    const cond = c[iCond]?.trim() || '';
+    const paid = c[iPaid]?.trim() || '';
+    const notes = c[iNotes]?.trim() || '';
+
+    const k4 = normalize(name)+'|'+lineId+'|'+normalize(group)+'|'+normalize(wave);
+    const k3 = normalize(name)+'|'+lineId+'|'+normalize(group);
+    const k2 = normalize(name)+'|'+lineId;
+    const fig = idx4[k4] || idx3[k3] || (() => {
+      const c2 = idx2[k2];
+      if (!c2 || c2 === 'AMBIGUOUS') return null;
+      return c2;
+    })();
+
+    if (!fig) { unmatched.push(lineName + ': ' + name + (group ? ' [' + group + ']' : '')); return; }
+    if (matchedIds.has(fig.id)) { skipped++; return; }
+    if (!overwrite && S.coll[fig.id]?.status && status) { skipped++; return; }
+
+    if (status) {
+      S.coll[fig.id] = {...(S.coll[fig.id]||{}), status,
+        ...(cond && {condition:cond}), ...(paid && {paid}), ...(notes && {notes})};
+    }
+    matchedIds.add(fig.id);
+  });
+  saveColl();
+  return { matched: matchedIds.size, skipped, unmatched };
+}
+
+function doImportAF411(csvText, overwrite) {
   const motuRows = parseCSV(csvText);
   const idx4 = {}, idx3 = {}, idx2 = {};
   S.figs.forEach(f => {
@@ -1346,7 +1424,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.11</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.12</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1735,7 +1813,7 @@ function renderSortSheet() {
 
 function renderImportSheet() {
   return `<p class="text-md text-muted" style="margin-bottom:16px;line-height:1.6">
-    Export your collection from ActionFigure411.com, then drop the CSV file below. Only MOTU figures will be imported.
+    Export your collection from ActionFigure411.com, or use a MOTU Vault export CSV. Drop the file below to import.
   </p>
   <div class="overwrite-toggle" onclick="this.querySelector('.checkbox').classList.toggle('checked')">
     <div class="checkbox"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
