@@ -1186,7 +1186,8 @@ function getSortedFigs() {
   }
   if (!isSearch && S.tab === 'collection') list = list.filter(f => S.coll[f.id]?.status);
   if (S.filterFaction) list = list.filter(f => f.faction === S.filterFaction);
-  if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
+  if (S.filterStatus === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
+  else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
   if (S.filterVariants) list = list.filter(f => /\w/.test(S.coll[f.id]?.variants||''));
   if (S.search) { const s = S.search.toLowerCase(); list = list.filter(f => f.name.toLowerCase().includes(s)); }
   const sb = S.sortBy;
@@ -1212,18 +1213,49 @@ function progressRing(pct, size=48, color='var(--acc)') {
     `<text x="${size/2}" y="${size/2+4}" text-anchor="middle" fill="${c}" font-size="11" font-weight="700" font-family="'Outfit',sans-serif">${pct}%</text></svg>`;
 }
 
-function exportCSV() {
+function exportCSV(filter) {
   const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Condition','Paid','Notes'];
-  const rows = S.figs.map(f => {
+  let list = S.figs;
+  if (filter === 'owned') list = list.filter(f => S.coll[f.id]?.status === 'owned');
+  else if (filter === 'wishlist') list = list.filter(f => S.coll[f.id]?.status === 'wishlist');
+  else if (filter === 'ordered') list = list.filter(f => S.coll[f.id]?.status === 'ordered');
+  else if (filter === 'for-sale') list = list.filter(f => S.coll[f.id]?.status === 'for-sale');
+  else if (filter === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
+  else if (filter === 'any-status') list = list.filter(f => S.coll[f.id]?.status);
+  const rows = list.map(f => {
     const c = S.coll[f.id] || {};
     return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',c.condition||'',c.paid||'',c.notes||''];
   });
   const csv = [h,...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   const a = document.createElement('a');
-  a.href = url; a.download = 'motu-collection.csv';
+  const suffix = filter ? '-' + filter : '';
+  a.href = url; a.download = 'motu' + suffix + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function renderExportSheet() {
+  const stats = getStats();
+  const anyStatus = S.figs.filter(f => S.coll[f.id]?.status).length;
+  const wish = S.figs.filter(f => S.coll[f.id]?.status === 'wishlist').length;
+  const ord = S.figs.filter(f => S.coll[f.id]?.status === 'ordered').length;
+  const sale = S.figs.filter(f => S.coll[f.id]?.status === 'for-sale').length;
+  const unowned = S.figs.filter(f => !S.coll[f.id]?.status).length;
+  const opts = [
+    {filter:'', label:'Full Catalog', count:S.figs.length},
+    {filter:'any-status', label:'All w/ Status', count:anyStatus},
+    {filter:'owned', label:'Owned', count:stats.owned},
+    {filter:'wishlist', label:'Wishlist', count:wish},
+    {filter:'ordered', label:'Ordered', count:ord},
+    {filter:'for-sale', label:'For Sale', count:sale},
+    {filter:'unowned', label:'Unowned', count:unowned},
+  ];
+  return opts.map(o => `
+    <button onclick="exportCSV('${o.filter}');closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+      <span>${o.label}</span>
+      <span style="color:var(--t3);font-size:12px">${o.count} figures</span>
+    </button>`).join('');
 }
 
 function doImport(csvText, overwrite = false) {
@@ -1314,7 +1346,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.10</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.11</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1632,11 +1664,12 @@ function renderDetail() {
 
 // ─── Sheets ───────────────────────────────────────────────────────
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import CSV', theme:'Theme', menu:'Settings'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import CSV', export:'Export CSV', theme:'Theme', menu:'Settings'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
   else if (S.sheet === 'import') body = renderImportSheet();
+  else if (S.sheet === 'export') body = renderExportSheet();
   else if (S.sheet === 'theme') body = renderThemeSheet();
   else if (S.sheet === 'menu') body = renderMenuSheet();
 
@@ -1658,7 +1691,7 @@ function renderMenuSheet() {
     {label:'Theme',              icon:ICO.palette, action:"openSheet('theme')"},
     {label:'Manage Collections', icon:ICO.sort, action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
     {label:'Import CSV',         icon:ICO.import, action:"openSheet('import')"},
-    {label:'Export CSV',         icon:ICO.export, action:"exportCSV();closeSheet()"},
+    {label:'Export CSV',         icon:ICO.export, action:"openSheet('export')"},
   ];
   return menuItems.map(m => `
     <button onclick="${m.action}" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
@@ -1671,18 +1704,21 @@ function renderMenuSheet() {
 function renderFilterSheet() {
   let html = '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Faction</div><div class="chip-group">';
   ['', ...FACTIONS].forEach(f => {
-    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="S.filterFaction='${esc(f)}';render()">${f||'All'}</button>`;
+    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="S.filterFaction='${esc(f)}';S.savedScroll=0;render()">${f||'All'}</button>`;
   });
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Status</div><div class="chip-group">';
-  ['',...STATUSES].forEach(s => {
-    const active = S.filterStatus === s;
-    html += `<button class="chip ${active?'active':''}" onclick="S.filterStatus='${s}';render()">${s?STATUS_LABEL[s]:'All'}</button>`;
+  const statusOpts = [
+    {v:'', l:'All'}, ...STATUSES.map(s => ({v:s, l:STATUS_LABEL[s]})), {v:'unowned', l:'Unowned'}
+  ];
+  statusOpts.forEach(s => {
+    const active = S.filterStatus === s.v;
+    html += `<button class="chip ${active?'active':''}" onclick="S.filterStatus='${s.v}';S.savedScroll=0;render()">${s.l}</button>`;
   });
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Variants</div><div class="chip-group">';
-  html += `<button class="chip ${!S.filterVariants?'active':''}" onclick="S.filterVariants=false;render()">All</button>`;
-  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="S.filterVariants=true;render()">Has Variants</button>`;
+  html += `<button class="chip ${!S.filterVariants?'active':''}" onclick="S.filterVariants=false;S.savedScroll=0;render()">All</button>`;
+  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="S.filterVariants=true;S.savedScroll=0;render()">Has Variants</button>`;
   html += '</div>';
-  if (hasFilters()) html += `<button class="clear-all-btn" onclick="S.filterFaction='';S.filterStatus='';S.filterVariants=false;S.search='';render()">Clear All Filters</button>`;
+  if (hasFilters()) html += `<button class="clear-all-btn" onclick="S.filterFaction='';S.filterStatus='';S.filterVariants=false;S.search='';S.savedScroll=0;render()">Clear All Filters</button>`;
   return html;
 }
 
