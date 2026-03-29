@@ -1021,6 +1021,7 @@ const S = {
   syncTs: null,
   editingOrder: false,
   savedScroll: 0,
+  searchBarHidden: false,
   titleIdx: 0,
   _justNavigated: false,
 };
@@ -1305,7 +1306,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.6</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.7</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1313,7 +1314,7 @@ function renderMain() {
         <button class="icon-btn" title="Menu" onclick="openSheet('menu')">${icon(ICO.menu,20)}</button>
       </div>
     </div>
-    <div class="search-bar-wrap" id="searchBar">
+    <div class="search-bar-wrap${S.searchBarHidden?' hidden':''}" id="searchBar">
     <div class="search-row">
       <div class="search-wrap">
         <span class="search-icon">${icon(ICO.search,16)}</span>
@@ -1375,10 +1376,12 @@ function renderMain() {
       if (delta > 6 && st > 50) {
         if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
         sb.classList.add('hidden');
+        S.searchBarHidden = true;
       } else if (delta < -6 || st < 20) {
         if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
         hideTimeout = setTimeout(() => {
           sb.classList.remove('hidden');
+          S.searchBarHidden = false;
           hideTimeout = null;
         }, 60);
       }
@@ -1809,11 +1812,11 @@ history.replaceState(navState(), '');
 
 // ─── Event Handlers ───────────────────────────────────────────────
 window.onSearch = val => { S.search = val; if (val) S.tab = 'all'; pushNav(); render(); };
-window.navTo = key => { S.tab = key; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
-window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S._justNavigated = true; pushNav(); render(); };
+window.navTo = key => { S.tab = key; S.searchBarHidden = false; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
+window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
 window.clearSubline = () => { history.back(); };
-window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S._justNavigated = true; pushNav(); render(); };
+window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
 window.toggleHidden = toggleHidden;
 window.moveLine = (id, dir) => {
