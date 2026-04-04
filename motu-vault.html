@@ -116,6 +116,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   padding-top: max(12px, var(--safe-top));
   flex-shrink: 0;
   z-index: 10;
+  transition: transform 0.28s cubic-bezier(0.25,0.1,0.25,1), opacity 0.22s ease;
+}
+.top-bar.immersive-hide {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .content-area {
@@ -132,6 +138,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   grid-template-columns: 1fr 1fr 1fr;
   flex-shrink: 0;
   z-index: 10;
+  transition: transform 0.28s cubic-bezier(0.25,0.1,0.25,1), opacity 0.22s ease;
+}
+.bottom-nav.immersive-hide {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .bottom-nav button {
@@ -296,6 +308,42 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-family: 'Cinzel', serif;
   font-weight: 700;
 }
+
+/* ── Stats Bar ───────────────────────────────────────────────────── */
+.stats-bar {
+  padding: 12px 16px 4px;
+}
+.stats-segments {
+  height: 8px; border-radius: 4px;
+  background: var(--bg3);
+  display: flex; overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid var(--bd);
+}
+.stats-segments .seg {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+.stats-segments .seg.owned { background: var(--gn); }
+.stats-segments .seg.wishlist { background: var(--bl); }
+.stats-segments .seg.ordered { background: var(--or); }
+.stats-segments .seg.for-sale { background: var(--rd); }
+.stats-legend {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 11px; color: var(--t2);
+}
+.stats-legend .stat-item {
+  display: flex; align-items: center; gap: 4px;
+}
+.stats-legend .stat-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.stats-legend .stat-dot.owned { background: var(--gn); }
+.stats-legend .stat-dot.wishlist { background: var(--bl); }
+.stats-legend .stat-dot.ordered { background: var(--or); }
+.stats-legend .stat-dot.for-sale { background: var(--rd); }
+.stats-legend .stat-dot.unowned { background: var(--bd); }
+.stats-legend .stat-val { font-weight: 600; }
 
 /* ── Lines Grid ──────────────────────────────────────────────────── */
 .lines-grid {
@@ -1023,7 +1071,9 @@ const S = {
   editingOrder: false,
   savedScroll: 0,
   searchBarHidden: false,
+  barsHidden: false,
   titleIdx: 0,
+  newFigIds: new Set(),     // IDs added since last sync
   _justNavigated: false,
 };
 
@@ -1071,9 +1121,15 @@ async function fetchFigs(manual = false, firstLoad = false) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const remote = await res.json();
     if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
+    // Detect newly added figures
+    const prevIds = new Set(S.figs.map(f => f.id));
     const custom = S.figs.filter(f => f.line === 'custom');
     const ids = new Set(remote.map(f => f.id));
     const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
+    // Only flag as new if we had a previous catalog loaded (not first boot)
+    if (prevIds.size > 100) {
+      hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
+    }
     S.figs = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
     S.syncTs = Date.now();
     store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
@@ -1165,7 +1221,8 @@ function getStats() {
   const owned = real.filter(f => S.coll[f.id]?.status === 'owned').length;
   const wish  = real.filter(f => S.coll[f.id]?.status === 'wishlist').length;
   const ord   = real.filter(f => S.coll[f.id]?.status === 'ordered').length;
-  return { total: real.length, owned, wish, ord };
+  const sale  = real.filter(f => S.coll[f.id]?.status === 'for-sale').length;
+  return { total: real.length, owned, wish, ord, sale };
 }
 
 function getLineStats() {
@@ -1236,6 +1293,71 @@ function exportCSV(filter) {
   URL.revokeObjectURL(url);
 }
 
+function exportJSON() {
+  const backup = {
+    version: 'motu-vault-backup-v1',
+    exported: new Date().toISOString(),
+    collection: S.coll,
+    photos: {}
+  };
+  // Include custom photos
+  Object.keys(S.customPhotos).forEach(id => {
+    const data = photoStore.get(id);
+    if (data) backup.photos[id] = data;
+  });
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'motu-vault-backup.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const backup = JSON.parse(ev.target.result);
+      if (backup.version !== 'motu-vault-backup-v1') throw new Error('Unknown format');
+      if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
+      const overwrite = document.querySelector('.checkbox.checked') !== null;
+      let imported = 0, skipped = 0, photos = 0;
+      Object.entries(backup.collection).forEach(([id, entry]) => {
+        if (!overwrite && S.coll[id]?.status) { skipped++; return; }
+        S.coll[id] = {...(overwrite ? {} : (S.coll[id]||{})), ...entry};
+        imported++;
+      });
+      saveColl();
+      // Restore photos
+      if (backup.photos) {
+        Object.entries(backup.photos).forEach(([id, data]) => {
+          if (photoStore.set(id, data)) { S.customPhotos[id] = true; photos++; }
+        });
+      }
+      const body = document.querySelector('.sheet-body');
+      if (body) {
+        body.innerHTML = `<div style="text-align:center;padding:20px 0">
+          <div style="font-size:48px;margin-bottom:12px">${imported>0?'✅':'🤷'}</div>
+          <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${imported} restored</div>
+          ${skipped>0 ? `<div class="text-sm text-dim" style="margin-bottom:4px">${skipped} skipped (already set)</div>` : ''}
+          ${photos>0 ? `<div class="text-sm text-dim">${photos} photos restored</div>` : ''}
+        </div>`;
+      }
+      render();
+    } catch(e) {
+      alert('Invalid backup file: ' + e.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+window.exportJSON = exportJSON;
+window.handleImportFile = input => {
+  const file = input.files?.[0]; if (!file) return;
+  if (file.name.endsWith('.json')) { importJSON(file); return; }
+  handleCSV(input);
+};
+
 function renderExportSheet() {
   const stats = getStats();
   const anyStatus = S.figs.filter(f => S.coll[f.id]?.status).length;
@@ -1243,6 +1365,7 @@ function renderExportSheet() {
   const ord = S.figs.filter(f => S.coll[f.id]?.status === 'ordered').length;
   const sale = S.figs.filter(f => S.coll[f.id]?.status === 'for-sale').length;
   const unowned = S.figs.filter(f => !S.coll[f.id]?.status).length;
+  const photoCount = Object.keys(S.customPhotos).length;
   const opts = [
     {filter:'', label:'Full Catalog', count:S.figs.length},
     {filter:'any-status', label:'All w/ Status', count:anyStatus},
@@ -1252,11 +1375,20 @@ function renderExportSheet() {
     {filter:'for-sale', label:'For Sale', count:sale},
     {filter:'unowned', label:'Unowned', count:unowned},
   ];
-  return opts.map(o => `
+  let html = '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">CSV Export</div>';
+  html += opts.map(o => `
     <button onclick="exportCSV('${o.filter}');closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
       <span>${o.label}</span>
       <span style="color:var(--t3);font-size:12px">${o.count} figures</span>
     </button>`).join('');
+  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Full Backup (JSON)</div>';
+  html += `<button onclick="exportJSON();closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--gold);background:color-mix(in srgb, var(--gold) 8%, transparent);margin-bottom:8px;text-align:left;font-size:15px;color:var(--gold)">
+    <span>Backup Collection + Photos</span>
+    <span style="color:var(--t3);font-size:12px">${anyStatus} entries · ${photoCount} photos</span>
+  </button>`;
+  html += '<div class="text-sm text-dim" style="line-height:1.5">Includes all statuses, conditions, notes, variants, and custom photos. Use to restore your full collection.</div>';
+  return html;
 }
 
 function doImport(csvText, overwrite = false) {
@@ -1419,14 +1551,13 @@ function renderMain() {
   const syncCls = S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '';
 
   let html = `
-  <!-- Top Bar -->
-  <div class="top-bar">
+  <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.16</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.17</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1457,8 +1588,7 @@ function renderMain() {
     ${renderContent()}
   </div>
 
-  <!-- Bottom Nav -->
-  <div class="bottom-nav">
+  <div class="bottom-nav" id="bottomNav">
     ${renderNavBtn('lines', ICO.lines, 'Lines')}
     ${renderNavBtn('all', ICO.list, 'All')}
     ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned}</span>`)}
@@ -1471,6 +1601,14 @@ function renderMain() {
   if (S.sheet) {
     const el = document.getElementById('sheetOverlay');
     if (el) requestAnimationFrame(() => el.classList.add('visible'));
+  }
+
+  // Re-apply immersive state after innerHTML rebuild
+  if (S.barsHidden && !S.sheet) {
+    const tb = document.getElementById('topBar');
+    const bn = document.getElementById('bottomNav');
+    if (tb) tb.classList.add('immersive-hide');
+    if (bn) bn.classList.add('immersive-hide');
   }
 
   // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
@@ -1486,14 +1624,16 @@ function renderMain() {
     S._justNavigated = false;
   }
 
-  // Scroll-hide search bar: hide on scroll down, reveal on scroll up
+  // Immersive scroll: hide top bar + bottom nav on scroll up, reveal on scroll down
   if (ca) {
     let lastScrollTop = ca.scrollTop;
     let hideTimeout = null;
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
+      const tb = document.getElementById('topBar');
+      const bn = document.getElementById('bottomNav');
       const sb = document.getElementById('searchBar');
-      if (!sb) return;
+      if (!tb || !bn) return;
       const st = ca.scrollTop;
       const delta = st - lastScrollTop;
       lastScrollTop = st;
@@ -1502,13 +1642,17 @@ function renderMain() {
       if (nearBottom) return;
       if (delta > 6 && st > 50) {
         if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
-        sb.classList.add('hidden');
-        S.searchBarHidden = true;
+        tb.classList.add('immersive-hide');
+        bn.classList.add('immersive-hide');
+        if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
+        S.barsHidden = true;
       } else if (delta < -6 || st < 20) {
         if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
         hideTimeout = setTimeout(() => {
-          sb.classList.remove('hidden');
-          S.searchBarHidden = false;
+          tb.classList.remove('immersive-hide');
+          bn.classList.remove('immersive-hide');
+          if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
+          S.barsHidden = false;
           hideTimeout = null;
         }, 60);
       }
@@ -1543,12 +1687,41 @@ function renderContent() {
   return renderFigList();
 }
 
+function renderStatsBar() {
+  const stats = getStats();
+  const unowned = stats.total - stats.owned - stats.wish - stats.ord - stats.sale;
+  const pct = n => stats.total ? (n / stats.total * 100).toFixed(1) : 0;
+  // Spent total
+  let totalSpent = 0;
+  S.figs.filter(f => !figIsHidden(f) && S.coll[f.id]?.status === 'owned' && S.coll[f.id]?.paid).forEach(f => {
+    totalSpent += parseFloat(S.coll[f.id].paid) || 0;
+  });
+  const spentStr = totalSpent > 0 ? `<span style="margin-left:auto;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent</span>` : '';
+  return `<div class="stats-bar">
+    <div class="stats-segments">
+      ${stats.owned ? `<div class="seg owned" style="width:${pct(stats.owned)}%"></div>` : ''}
+      ${stats.wish ? `<div class="seg wishlist" style="width:${pct(stats.wish)}%"></div>` : ''}
+      ${stats.ord ? `<div class="seg ordered" style="width:${pct(stats.ord)}%"></div>` : ''}
+      ${stats.sale ? `<div class="seg for-sale" style="width:${pct(stats.sale)}%"></div>` : ''}
+    </div>
+    <div class="stats-legend">
+      <div class="stat-item"><div class="stat-dot owned"></div><span class="stat-val">${stats.owned}</span> owned</div>
+      <div class="stat-item"><div class="stat-dot wishlist"></div><span class="stat-val">${stats.wish}</span> wish</div>
+      <div class="stat-item"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ord</div>
+      ${stats.sale ? `<div class="stat-item"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> sale</div>` : ''}
+      <div class="stat-item"><div class="stat-dot unowned"></div><span class="stat-val">${unowned}</span> unowned</div>
+      ${spentStr}
+    </div>
+  </div>`;
+}
+
 function renderLinesGrid() {
   const lineStats = getLineStats();
   const ordered = [...S.lineOrder].map(id => lineStats.find(l => l.id === id)).filter(Boolean)
     .concat(lineStats.filter(l => !S.lineOrder.includes(l.id)));
 
   let html = '';
+  if (!S.editingOrder) html += renderStatsBar();
   if (S.editingOrder) {
     html += `<div class="reorder-toggle"><button class="active" onclick="toggleReorder()">✓ Done</button></div>`;
   }
@@ -1639,7 +1812,17 @@ function renderFigList() {
   const figs = getSortedFigs();
   const hf = hasFilters();
   let html = '<div class="fig-list">';
-  html += `<div class="fig-count">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}</div>`;
+  // Compute spent for collection tab
+  let spentInfo = '';
+  if (S.tab === 'collection') {
+    let spent = 0, paidCount = 0;
+    figs.forEach(f => { const p = parseFloat(S.coll[f.id]?.paid); if (p > 0) { spent += p; paidCount++; } });
+    if (spent > 0) {
+      const avg = (spent / paidCount).toFixed(2);
+      spentInfo = ` · <span style="color:var(--gold)">$${spent.toFixed(2)} spent</span> · <span style="color:var(--t2)">$${avg} avg</span>`;
+    }
+  }
+  html += `<div class="fig-count">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>`;
   if (!figs.length) {
     html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
   } else {
@@ -1647,6 +1830,7 @@ function renderFigList() {
       const c = S.coll[f.id] || {};
       const statusCls = c.status || '';
       const hasVar = /\w/.test(c.variants || '');
+      const isNew = S.newFigIds.has(f.id);
       const hasCustom = S.customPhotos[f.id];
       const imgErr = S.imgErrors[f.id];
       const showImg = (hasCustom || f.image) && !imgErr;
@@ -1667,8 +1851,9 @@ function renderFigList() {
           </div>
         </div>
         <div class="fig-actions">
+          ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
           ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
-          ${c.status ? `<div class="fig-status-dot ${statusCls}"></div>` :
+          ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${f.id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
             `<button class="quick-own" onclick="event.stopPropagation();setStatus('${f.id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
         </div>
       </div>`;
@@ -1822,7 +2007,7 @@ function renderSortSheet() {
 
 function renderImportSheet() {
   return `<p class="text-md text-muted" style="margin-bottom:16px;line-height:1.6">
-    Export your collection from ActionFigure411.com, or use a MOTU Vault export CSV. Drop the file below to import.
+    Import from ActionFigure411.com CSV, a MOTU Vault CSV export, or restore a JSON backup.
   </p>
   <div class="overwrite-toggle" onclick="this.querySelector('.checkbox').classList.toggle('checked')">
     <div class="checkbox"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
@@ -1833,9 +2018,9 @@ function renderImportSheet() {
   </div>
   <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvInput').click()">
     <div style="font-size:48px;margin-bottom:12px">📂</div>
-    <div class="text-md" style="font-weight:500;margin-bottom:4px">Drop export.csv here</div>
+    <div class="text-md" style="font-weight:500;margin-bottom:4px">Drop CSV or JSON backup here</div>
     <div class="text-sm text-dim">or tap to browse files</div>
-    <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleCSV(this)">
+    <input type="file" id="csvInput" accept=".csv,.json" style="display:none" onchange="handleImportFile(this)">
   </div>`;
 }
 
@@ -1954,8 +2139,8 @@ window.onSearch = val => {
     inp.setSelectionRange(inp.value.length, inp.value.length);
   }
 };
-window.navTo = key => { S.tab = key; S.searchBarHidden = false; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
-window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
+window.navTo = key => { S.tab = key; S.searchBarHidden = false; S.barsHidden = false; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
+window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
 window.clearSubline = () => { history.back(); };
 window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
@@ -1988,6 +2173,22 @@ window.openSheet = name => { S.sheet = name; pushNav(); render();
 window.closeSheet = () => { history.back(); };
 window.setTheme = t => { S.theme = t; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
 window.imgErr = id => { S.imgErrors[id] = true; };
+
+// Long-press status cycle: owned → wishlist → ordered → for-sale → clear
+const STATUS_CYCLE = ['owned','wishlist','ordered','for-sale', ''];
+window.cycleStatus = (e, id) => {
+  e.stopPropagation();
+  const cur = S.coll[id]?.status || '';
+  const idx = STATUS_CYCLE.indexOf(cur);
+  const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  if (next) {
+    if (!S.coll[id]) S.coll[id] = {};
+    S.coll[id].status = next;
+  } else {
+    if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
+  }
+  saveColl(); render();
+};
 
 window.handlePhoto = (input, figId) => {
   const file = input.files?.[0]; if (!file) return;
@@ -2055,19 +2256,23 @@ document.addEventListener('drop', e => {
     dz.classList.remove('dragover');
     const file = e.dataTransfer.files[0];
     if (file) {
-      const r = new FileReader();
-      r.onload = ev => {
-        const overwrite = document.querySelector('.checkbox.checked') !== null;
-        const result = doImport(ev.target.result, overwrite);
-        const body = document.querySelector('.sheet-body');
-        if (body) {
-          body.innerHTML = `<div style="text-align:center;padding:20px 0">
-            <div style="font-size:48px;margin-bottom:12px">${result.matched>0?'✅':'🤷'}</div>
-            <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${result.matched} imported</div>
-          </div>`;
-        }
-      };
-      r.readAsText(file);
+      if (file.name.endsWith('.json')) {
+        importJSON(file);
+      } else {
+        const r = new FileReader();
+        r.onload = ev => {
+          const overwrite = document.querySelector('.checkbox.checked') !== null;
+          const result = doImport(ev.target.result, overwrite);
+          const body = document.querySelector('.sheet-body');
+          if (body) {
+            body.innerHTML = `<div style="text-align:center;padding:20px 0">
+              <div style="font-size:48px;margin-bottom:12px">${result.matched>0?'✅':'🤷'}</div>
+              <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${result.matched} imported</div>
+            </div>`;
+          }
+        };
+        r.readAsText(file);
+      }
     }
   }
 });
