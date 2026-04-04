@@ -117,8 +117,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 10;
-  transition: transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.12s ease;
-  will-change: transform, opacity;
+  transform: translateY(0);
+  transition: transform 0.18s ease-out, opacity 0.15s ease-out;
 }
 .top-bar.immersive-hide {
   transform: translateY(-100%);
@@ -127,10 +127,10 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 
 .content-area {
-  flex: 1;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  transition: padding 0.15s cubic-bezier(0.2,0,0,1);
 }
 
 .bottom-nav {
@@ -142,8 +142,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 10;
-  transition: transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.12s ease;
-  will-change: transform, opacity;
+  transform: translateY(0);
+  transition: transform 0.18s ease-out, opacity 0.15s ease-out;
 }
 .bottom-nav.immersive-hide {
   transform: translateY(100%);
@@ -1562,7 +1562,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.18</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.19</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1590,6 +1590,7 @@ function renderMain() {
 
   <!-- Content -->
   <div class="content-area" id="contentArea">
+    <div id="topSpacer"></div>
     ${renderContent()}
   </div>
 
@@ -1608,20 +1609,17 @@ function renderMain() {
     if (el) requestAnimationFrame(() => el.classList.add('visible'));
   }
 
-  // Apply dynamic padding for fixed top/bottom bars (synchronous to prevent stutter)
+  // Set top spacer height to match fixed top bar, so content starts below it
   const tb = document.getElementById('topBar');
   const bn = document.getElementById('bottomNav');
   const ca = document.getElementById('contentArea');
-  if (ca && tb && bn) {
-    if (S.barsHidden && !S.sheet) {
-      tb.classList.add('immersive-hide');
-      bn.classList.add('immersive-hide');
-      ca.style.paddingTop = '0px';
-      ca.style.paddingBottom = '0px';
-    } else {
-      ca.style.paddingTop = tb.offsetHeight + 'px';
-      ca.style.paddingBottom = bn.offsetHeight + 'px';
-    }
+  const ts = document.getElementById('topSpacer');
+  if (ts && tb) ts.style.height = tb.offsetHeight + 'px';
+
+  // Re-apply immersive state after innerHTML rebuild
+  if (S.barsHidden && !S.sheet) {
+    if (tb) tb.classList.add('immersive-hide');
+    if (bn) bn.classList.add('immersive-hide');
   }
 
   // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
@@ -1636,7 +1634,7 @@ function renderMain() {
     S._justNavigated = false;
   }
 
-  // Immersive scroll: hide top bar + bottom nav on scroll up, reveal on scroll down
+  // Immersive scroll: hide/show bars via transform only — no layout changes
   if (ca) {
     let lastScrollTop = ca.scrollTop;
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
@@ -1648,21 +1646,16 @@ function renderMain() {
       const st = ca.scrollTop;
       const delta = st - lastScrollTop;
       lastScrollTop = st;
-      // Near the bottom — don't toggle (prevents bounce jitter)
       const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
       if (nearBottom) return;
       if (delta > 4 && st > 40 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
-        ca.style.paddingTop = '0px';
-        ca.style.paddingBottom = '0px';
         if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
         S.barsHidden = true;
       } else if ((delta < -4 || st < 20) && S.barsHidden) {
         tb.classList.remove('immersive-hide');
         bn.classList.remove('immersive-hide');
-        ca.style.paddingTop = tb.offsetHeight + 'px';
-        ca.style.paddingBottom = bn.offsetHeight + 'px';
         if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
         S.barsHidden = false;
       }
