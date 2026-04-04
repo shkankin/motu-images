@@ -1,13 +1,13 @@
-// MOTU Vault — Service Worker v3.1
-// Strategy: cache-first for app shell, network-first for figures.json
+// MOTU Vault — Service Worker v3.16
+// HTML: stale-while-revalidate (fast load, background update)
+// figures.json: network-first
+// Images: cache-first
 
-const CACHE = 'motu-vault-v3.2';
+const CACHE = 'motu-vault-v3.16';
 
-// App shell files to pre-cache on install
 const SHELL = [
   'motu-vault.html',
   'manifest.json',
-  'https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap',
 ];
 
 self.addEventListener('install', e => {
@@ -41,8 +41,8 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Figure images — cache first, network fallback
-  if (url.hostname === 'raw.githubusercontent.com' && url.pathname.endsWith('.jpg')) {
+  // Figure images & sounds — cache first, network fallback
+  if (url.hostname === 'raw.githubusercontent.com' && (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.png') || url.pathname.endsWith('.mp3'))) {
     e.respondWith(
       caches.match(e.request).then(cached => {
         if (cached) return cached;
@@ -56,7 +56,38 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // App shell — cache first
+  // HTML & app shell — stale-while-revalidate
+  // Serve cached version immediately, fetch fresh in background
+  if (e.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const fetchPromise = fetch(e.request).then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+            // Notify page that a new version is available
+            if (cached) {
+              cached.clone().text().then(oldText => {
+                clone.clone().text().then(newText => {
+                  if (oldText !== newText) {
+                    self.clients.matchAll().then(clients => {
+                      clients.forEach(c => c.postMessage({type: 'UPDATE_AVAILABLE'}));
+                    });
+                  }
+                });
+              });
+            }
+          }
+          return res;
+        }).catch(() => cached);
+
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // Everything else — cache first
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );

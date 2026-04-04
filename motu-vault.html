@@ -1426,7 +1426,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.15</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.16</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2075,6 +2075,19 @@ document.addEventListener('drop', e => {
 // ─── Boot ─────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Listen for background update notification from SW
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'UPDATE_AVAILABLE') {
+      // Auto-reload on next user interaction to pick up new version
+      const handler = () => {
+        window.removeEventListener('touchstart', handler);
+        window.removeEventListener('click', handler);
+        window.location.reload();
+      };
+      window.addEventListener('touchstart', handler, {once: true});
+      window.addEventListener('click', handler, {once: true});
+    }
+  });
 }
 init();
 </script>
