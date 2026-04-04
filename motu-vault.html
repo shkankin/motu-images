@@ -114,9 +114,11 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   background: var(--bg2);
   border-bottom: 1px solid var(--bd);
   padding-top: max(12px, var(--safe-top));
-  flex-shrink: 0;
+  position: fixed;
+  top: 0; left: 0; right: 0;
   z-index: 10;
-  transition: transform 0.28s cubic-bezier(0.25,0.1,0.25,1), opacity 0.22s ease;
+  transition: transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.12s ease;
+  will-change: transform, opacity;
 }
 .top-bar.immersive-hide {
   transform: translateY(-100%);
@@ -128,6 +130,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  transition: padding 0.15s cubic-bezier(0.2,0,0,1);
 }
 
 .bottom-nav {
@@ -136,9 +139,11 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   padding-bottom: max(6px, var(--safe-bottom));
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  flex-shrink: 0;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
   z-index: 10;
-  transition: transform 0.28s cubic-bezier(0.25,0.1,0.25,1), opacity 0.22s ease;
+  transition: transform 0.15s cubic-bezier(0.2,0,0,1), opacity 0.12s ease;
+  will-change: transform, opacity;
 }
 .bottom-nav.immersive-hide {
   transform: translateY(100%);
@@ -1603,16 +1608,25 @@ function renderMain() {
     if (el) requestAnimationFrame(() => el.classList.add('visible'));
   }
 
+  // Apply dynamic padding for fixed top/bottom bars
+  const tb = document.getElementById('topBar');
+  const bn = document.getElementById('bottomNav');
+  const ca = document.getElementById('contentArea');
+  if (ca && tb && bn) {
+    requestAnimationFrame(() => {
+      ca.style.paddingTop = tb.offsetHeight + 'px';
+      ca.style.paddingBottom = bn.offsetHeight + 'px';
+    });
+  }
+
   // Re-apply immersive state after innerHTML rebuild
   if (S.barsHidden && !S.sheet) {
-    const tb = document.getElementById('topBar');
-    const bn = document.getElementById('bottomNav');
     if (tb) tb.classList.add('immersive-hide');
     if (bn) bn.classList.add('immersive-hide');
+    if (ca) { ca.style.paddingTop = '0px'; ca.style.paddingBottom = '0px'; }
   }
 
   // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
-  const ca = document.getElementById('contentArea');
   if (ca) {
     const maxScroll = Math.max(0, ca.scrollHeight - ca.clientHeight);
     if (S.savedScroll && S.screen === 'main') {
@@ -1627,7 +1641,6 @@ function renderMain() {
   // Immersive scroll: hide top bar + bottom nav on scroll up, reveal on scroll down
   if (ca) {
     let lastScrollTop = ca.scrollTop;
-    let hideTimeout = null;
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
       const tb = document.getElementById('topBar');
@@ -1640,21 +1653,20 @@ function renderMain() {
       // Near the bottom — don't toggle (prevents bounce jitter)
       const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
       if (nearBottom) return;
-      if (delta > 6 && st > 50) {
-        if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+      if (delta > 4 && st > 40 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
+        ca.style.paddingTop = '0px';
+        ca.style.paddingBottom = '0px';
         if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
         S.barsHidden = true;
-      } else if (delta < -6 || st < 20) {
-        if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
-        hideTimeout = setTimeout(() => {
-          tb.classList.remove('immersive-hide');
-          bn.classList.remove('immersive-hide');
-          if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
-          S.barsHidden = false;
-          hideTimeout = null;
-        }, 60);
+      } else if ((delta < -4 || st < 20) && S.barsHidden) {
+        tb.classList.remove('immersive-hide');
+        bn.classList.remove('immersive-hide');
+        ca.style.paddingTop = tb.offsetHeight + 'px';
+        ca.style.paddingBottom = bn.offsetHeight + 'px';
+        if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
+        S.barsHidden = false;
       }
     };
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
@@ -1687,17 +1699,19 @@ function renderContent() {
   return renderFigList();
 }
 
-function renderStatsBar() {
+function renderStatsSheet() {
   const stats = getStats();
   const unowned = stats.total - stats.owned - stats.wish - stats.ord - stats.sale;
   const pct = n => stats.total ? (n / stats.total * 100).toFixed(1) : 0;
-  // Spent total
-  let totalSpent = 0;
+  // Spent totals
+  let totalSpent = 0, paidCount = 0;
   S.figs.filter(f => !figIsHidden(f) && S.coll[f.id]?.status === 'owned' && S.coll[f.id]?.paid).forEach(f => {
-    totalSpent += parseFloat(S.coll[f.id].paid) || 0;
+    const v = parseFloat(S.coll[f.id].paid) || 0;
+    if (v > 0) { totalSpent += v; paidCount++; }
   });
-  const spentStr = totalSpent > 0 ? `<span style="margin-left:auto;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent</span>` : '';
-  return `<div class="stats-bar">
+  const avgStr = paidCount > 0 ? `$${(totalSpent / paidCount).toFixed(2)} avg` : '';
+
+  let html = `<div class="stats-bar" style="padding:0 0 16px">
     <div class="stats-segments">
       ${stats.owned ? `<div class="seg owned" style="width:${pct(stats.owned)}%"></div>` : ''}
       ${stats.wish ? `<div class="seg wishlist" style="width:${pct(stats.wish)}%"></div>` : ''}
@@ -1710,9 +1724,31 @@ function renderStatsBar() {
       <div class="stat-item"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ord</div>
       ${stats.sale ? `<div class="stat-item"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> sale</div>` : ''}
       <div class="stat-item"><div class="stat-dot unowned"></div><span class="stat-val">${unowned}</span> unowned</div>
-      ${spentStr}
     </div>
+    ${totalSpent > 0 ? `<div style="margin-top:10px;font-size:13px;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent${avgStr ? ` · ${avgStr}` : ''}</div>` : ''}
   </div>`;
+
+  // Per-line breakdown
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">By Line</div>';
+  const lineStats = getLineStats();
+  const ordered = [...S.lineOrder].map(id => lineStats.find(l => l.id === id)).filter(Boolean)
+    .concat(lineStats.filter(l => !S.lineOrder.includes(l.id)));
+  ordered.filter(l => !isLineFullyHidden(l.id) && l.total > 0).forEach(l => {
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(l.name)}</div>
+        <div style="height:4px;background:var(--bd);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${l.pct}%;background:${l.pct===100?'var(--gn)':'var(--acc)'};border-radius:2px;transition:width 0.3s"></div>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:13px;font-weight:700;color:${l.pct===100?'var(--gn)':'var(--gold)'}">${l.pct}%</div>
+        <div style="font-size:10px;color:var(--t3)">${l.owned}/${l.total}</div>
+      </div>
+    </div>`;
+  });
+
+  return html;
 }
 
 function renderLinesGrid() {
@@ -1721,7 +1757,6 @@ function renderLinesGrid() {
     .concat(lineStats.filter(l => !S.lineOrder.includes(l.id)));
 
   let html = '';
-  if (!S.editingOrder) html += renderStatsBar();
   if (S.editingOrder) {
     html += `<div class="reorder-toggle"><button class="active" onclick="toggleReorder()">✓ Done</button></div>`;
   }
@@ -1936,7 +1971,7 @@ function renderDetail() {
 
 // ─── Sheets ───────────────────────────────────────────────────────
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import CSV', export:'Export CSV', theme:'Theme', menu:'Settings'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -1944,6 +1979,7 @@ function renderSheet() {
   else if (S.sheet === 'export') body = renderExportSheet();
   else if (S.sheet === 'theme') body = renderThemeSheet();
   else if (S.sheet === 'menu') body = renderMenuSheet();
+  else if (S.sheet === 'stats') body = renderStatsSheet();
 
   return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
     <div class="sheet-backdrop"></div>
@@ -1960,10 +1996,11 @@ function renderSheet() {
 
 function renderMenuSheet() {
   const menuItems = [
+    {label:'Collection Stats',    icon:ICO.heart, action:"openSheet('stats')"},
     {label:'Theme',              icon:ICO.palette, action:"openSheet('theme')"},
     {label:'Manage Collections', icon:ICO.sort, action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
-    {label:'Import CSV',         icon:ICO.import, action:"openSheet('import')"},
-    {label:'Export CSV',         icon:ICO.export, action:"openSheet('export')"},
+    {label:'Import',             icon:ICO.import, action:"openSheet('import')"},
+    {label:'Export / Backup',    icon:ICO.export, action:"openSheet('export')"},
   ];
   return menuItems.map(m => `
     <button onclick="${m.action}" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
