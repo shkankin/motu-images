@@ -339,6 +339,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .stats-legend .stat-item {
   display: flex; align-items: center; gap: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.stats-legend .stat-item:active {
+  background: color-mix(in srgb, var(--acc) 15%, transparent);
 }
 .stats-legend .stat-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -405,6 +412,11 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: flex;
   justify-content: flex-end;
   padding: 0 16px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding-top: 8px;
 }
 .reorder-toggle button {
   display: flex; align-items: center; gap: 5px;
@@ -1214,7 +1226,37 @@ function setStatus(id, status) {
   if (!S.coll[id]) S.coll[id] = {};
   if (S.coll[id].status === status) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   else S.coll[id] = {...S.coll[id], status};
-  saveColl(); render();
+  saveColl();
+  if (!patchFigRow(id)) render();
+}
+
+function patchFigRow(id) {
+  const row = document.querySelector(`.fig-row[data-fig-id="${id}"]`);
+  if (!row) return false;
+  const c = S.coll[id] || {};
+  const statusCls = c.status || '';
+  // Update thumb border
+  const thumb = row.querySelector('.fig-thumb');
+  if (thumb) { thumb.className = 'fig-thumb ' + statusCls; }
+  // Update actions area
+  const actions = row.querySelector('.fig-actions');
+  if (actions) {
+    const hasVar = /\w/.test(c.variants || '');
+    const isNew = S.newFigIds.has(id);
+    actions.innerHTML =
+      (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
+      (hasVar ? '<div class="fig-var-badge">VAR</div>' : '') +
+      (c.status
+        ? `<button class="quick-own" onclick="cycleStatus(event,'${id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
+        : `<button class="quick-own" onclick="event.stopPropagation();setStatus('${id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
+  }
+  // Update badge count in bottom nav
+  const badge = document.querySelector('.bottom-nav .badge');
+  if (badge) {
+    const owned = S.figs.filter(f => !figIsHidden(f) && S.coll[f.id]?.status === 'owned').length;
+    badge.textContent = owned;
+  }
+  return true;
 }
 function updateColl(id, key, val) {
   S.coll[id] = {...(S.coll[id]||{}), [key]: val};
@@ -1562,7 +1604,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.20</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.22</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1641,7 +1683,7 @@ function renderMain() {
     requestAnimationFrame(() => { _suppressed = false; lastScrollTop = ca.scrollTop; });
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
-      if (_suppressed) return;
+      if (_suppressed || S.editingOrder) return;
       const tb = document.getElementById('topBar');
       const bn = document.getElementById('bottomNav');
       const sb = document.getElementById('searchBar');
@@ -1713,11 +1755,11 @@ function renderStatsSheet() {
       ${stats.sale ? `<div class="seg for-sale" style="width:${pct(stats.sale)}%"></div>` : ''}
     </div>
     <div class="stats-legend">
-      <div class="stat-item"><div class="stat-dot owned"></div><span class="stat-val">${stats.owned}</span> owned</div>
-      <div class="stat-item"><div class="stat-dot wishlist"></div><span class="stat-val">${stats.wish}</span> wish</div>
-      <div class="stat-item"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ord</div>
-      ${stats.sale ? `<div class="stat-item"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> sale</div>` : ''}
-      <div class="stat-item"><div class="stat-dot unowned"></div><span class="stat-val">${unowned}</span> unowned</div>
+      <button class="stat-item" onclick="goToFiltered('owned')"><div class="stat-dot owned"></div><span class="stat-val">${stats.owned}</span> owned</button>
+      <button class="stat-item" onclick="goToFiltered('wishlist')"><div class="stat-dot wishlist"></div><span class="stat-val">${stats.wish}</span> wish</button>
+      <button class="stat-item" onclick="goToFiltered('ordered')"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ord</button>
+      ${stats.sale ? `<button class="stat-item" onclick="goToFiltered('for-sale')"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> sale</button>` : ''}
+      <button class="stat-item" onclick="goToFiltered('unowned')"><div class="stat-dot unowned"></div><span class="stat-val">${unowned}</span> unowned</button>
     </div>
     ${totalSpent > 0 ? `<div style="margin-top:10px;font-size:13px;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent${avgStr ? ` · ${avgStr}` : ''}</div>` : ''}
   </div>`;
@@ -1865,7 +1907,7 @@ function renderFigList() {
       const showImg = (hasCustom || f.image) && !imgErr;
       const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
 
-      html += `<div class="fig-row" onclick="openFig('${f.id}')">
+      html += `<div class="fig-row" data-fig-id="${f.id}" onclick="openFig('${f.id}')">
         <div class="fig-thumb ${statusCls}">
           ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
             `<span class="initial">${esc(f.name[0])}</span>`}
@@ -2176,6 +2218,20 @@ window.goBack = () => { history.back(); };
 window.clearSubline = () => { history.back(); };
 window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
+window.goToFiltered = status => {
+  S.sheet = null;
+  S.filterStatus = status;
+  S.filterFaction = '';
+  S.filterVariants = false;
+  S.activeLine = null;
+  S.activeSubline = null;
+  S.tab = 'all';
+  S.savedScroll = 0;
+  S.barsHidden = false;
+  S.searchBarHidden = false;
+  pushNav();
+  render();
+};
 window.toggleHidden = toggleHidden;
 window.moveLine = (id, dir) => {
   const arr = [...S.lineOrder]; const i = arr.indexOf(id); const j = i + dir;
@@ -2218,7 +2274,8 @@ window.cycleStatus = (e, id) => {
   } else {
     if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   }
-  saveColl(); render();
+  saveColl();
+  if (!patchFigRow(id)) render();
 };
 
 window.handlePhoto = (input, figId) => {
