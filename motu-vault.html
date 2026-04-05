@@ -1604,7 +1604,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.22</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.23</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2200,17 +2200,34 @@ window.addEventListener('popstate', e => {
 history.replaceState(navState(), '');
 
 // ─── Event Handlers ───────────────────────────────────────────────
+let _searchTimer = null;
 window.onSearch = val => {
   S.search = val;
   if (val) S.tab = 'all';
-  pushNav();
-  render();
-  // Refocus search input after DOM rebuild to keep keyboard open
-  const inp = document.getElementById('searchInput');
-  if (inp && val !== '') {
-    inp.focus();
-    inp.setSelectionRange(inp.value.length, inp.value.length);
-  }
+  // Clearing search — do full render to restore UI (clear button, breadcrumbs, tab state)
+  if (!val) { pushNav(); render(); return; }
+  // Typing — surgical content update only, preserves input focus
+  if (_searchTimer) cancelAnimationFrame(_searchTimer);
+  _searchTimer = requestAnimationFrame(() => {
+    const ca = document.getElementById('contentArea');
+    if (ca) {
+      ca.innerHTML = '<div id="topSpacer"></div>' + renderContent();
+      const tb = document.getElementById('topBar');
+      const ts = document.getElementById('topSpacer');
+      if (ts && tb) ts.style.height = tb.offsetHeight + 'px';
+    }
+    // Show clear button if it's not already there
+    const wrap = document.querySelector('.search-wrap');
+    const inp = document.getElementById('searchInput');
+    if (wrap && inp && !wrap.querySelector('.search-clear')) {
+      const btn = document.createElement('button');
+      btn.className = 'search-clear';
+      btn.innerHTML = icon(ICO.x, 14);
+      btn.onclick = () => onSearch('');
+      wrap.appendChild(btn);
+    }
+    _searchTimer = null;
+  });
 };
 window.navTo = key => { S.tab = key; S.searchBarHidden = false; S.barsHidden = false; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };

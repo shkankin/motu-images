@@ -1,9 +1,9 @@
-// MOTU Vault — Service Worker v3.22
+// MOTU Vault — Service Worker v3.23
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
 
-const CACHE = 'motu-vault-v3.22';
+const CACHE = 'motu-vault-v3.23';
 
 const SHELL = [
   'motu-vault.html',
