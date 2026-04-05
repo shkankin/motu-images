@@ -1562,7 +1562,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.19</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.20</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1637,8 +1637,11 @@ function renderMain() {
   // Immersive scroll: hide/show bars via transform only — no layout changes
   if (ca) {
     let lastScrollTop = ca.scrollTop;
+    let _suppressed = true; // suppress initial scroll events from restore
+    requestAnimationFrame(() => { _suppressed = false; lastScrollTop = ca.scrollTop; });
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
+      if (_suppressed) return;
       const tb = document.getElementById('topBar');
       const bn = document.getElementById('bottomNav');
       const sb = document.getElementById('searchBar');
