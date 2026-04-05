@@ -1055,10 +1055,144 @@ const store = {
   get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
+// ─── Photo Storage (OPFS with localStorage fallback) ─────────────
+const photoURLs = {};  // In-memory cache: { figId: objectURL }
+let _opfsDir = null;   // OPFS directory handle
+let _opfsReady = false;
+
+async function initOPFS() {
+  try {
+    if (!navigator.storage?.getDirectory) return false;
+    _opfsDir = await navigator.storage.getDirectory();
+    _opfsReady = true;
+    return true;
+  } catch { return false; }
+}
+
 const photoStore = {
-  get: id => { try { return localStorage.getItem('motu-photo-' + id) || null; } catch { return null; } },
-  set: (id, url) => { try { localStorage.setItem('motu-photo-' + id, url); return true; } catch { return false; } },
-  del: id => { try { localStorage.removeItem('motu-photo-' + id); } catch {} },
+  // Synchronous get — returns cached object URL or null
+  get: id => photoURLs[id] || null,
+
+  // Async save — stores blob in OPFS, falls back to localStorage
+  save: async (id, blob) => {
+    try {
+      if (_opfsReady) {
+        const fh = await _opfsDir.getFileHandle('photo-' + id + '.jpg', {create: true});
+        const writable = await fh.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        // Revoke old URL if any
+        if (photoURLs[id]) URL.revokeObjectURL(photoURLs[id]);
+        photoURLs[id] = URL.createObjectURL(blob);
+        // Clean up localStorage copy if it exists (migration)
+        try { localStorage.removeItem('motu-photo-' + id); } catch {}
+        return true;
+      }
+      // Fallback: localStorage as base64
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try { localStorage.setItem('motu-photo-' + id, reader.result); resolve(true); }
+          catch { resolve(false); }
+        };
+        reader.onerror = () => resolve(false);
+        reader.readAsDataURL(blob);
+      });
+    } catch { return false; }
+  },
+
+  // Async delete
+  del: async id => {
+    if (photoURLs[id]) { URL.revokeObjectURL(photoURLs[id]); delete photoURLs[id]; }
+    try {
+      if (_opfsReady) await _opfsDir.removeEntry('photo-' + id + '.jpg');
+    } catch {}
+    try { localStorage.removeItem('motu-photo-' + id); } catch {}
+  },
+
+  // Load all photos into URL cache (called during init)
+  loadAll: async () => {
+    if (_opfsReady) {
+      try {
+        for await (const [name, handle] of _opfsDir) {
+          if (name.startsWith('photo-') && name.endsWith('.jpg') && handle.kind === 'file') {
+            const id = name.slice(6, -4); // strip 'photo-' and '.jpg'
+            const file = await handle.getFile();
+            photoURLs[id] = URL.createObjectURL(file);
+            S.customPhotos[id] = true;
+          }
+        }
+      } catch(e) { console.error('OPFS loadAll error:', e); }
+    }
+    // Also load any remaining localStorage photos (pre-migration or fallback)
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
+      keys.forEach(k => {
+        const id = k.replace('motu-photo-', '');
+        if (!photoURLs[id]) {
+          photoURLs[id] = localStorage.getItem(k);
+          S.customPhotos[id] = true;
+        }
+      });
+    } catch {}
+  },
+
+  // Migrate localStorage photos to OPFS (one-time)
+  migrate: async () => {
+    if (!_opfsReady) return 0;
+    let migrated = 0;
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
+      for (const k of keys) {
+        const id = k.replace('motu-photo-', '');
+        const dataUrl = localStorage.getItem(k);
+        if (!dataUrl) continue;
+        try {
+          // Convert data URL to blob
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          const fh = await _opfsDir.getFileHandle('photo-' + id + '.jpg', {create: true});
+          const writable = await fh.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          // Update URL cache with blob URL instead of data URL
+          if (photoURLs[id]) URL.revokeObjectURL(photoURLs[id]);
+          photoURLs[id] = URL.createObjectURL(blob);
+          // Remove from localStorage
+          localStorage.removeItem(k);
+          migrated++;
+        } catch(e) { console.error('Failed to migrate photo ' + id, e); }
+      }
+    } catch {}
+    return migrated;
+  },
+
+  // Export photo as base64 data URL (for JSON backup)
+  exportAsDataURL: async id => {
+    if (_opfsReady) {
+      try {
+        const fh = await _opfsDir.getFileHandle('photo-' + id + '.jpg');
+        const file = await fh.getFile();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } catch { /* fall through */ }
+    }
+    // Fallback: check localStorage
+    try { return localStorage.getItem('motu-photo-' + id) || null; } catch { return null; }
+  },
+
+  // Import from base64 data URL (from JSON backup)
+  importFromDataURL: async (id, dataUrl) => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      return photoStore.save(id, blob);
+    } catch { return false; }
+  },
 };
 
 // ─── App State ────────────────────────────────────────────────────
@@ -1164,7 +1298,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────
-function init() {
+async function init() {
   // Load collection
   const c = store.get('motu-c2');
   if (c) {
@@ -1176,9 +1310,15 @@ function init() {
       return [id, entry];
     }));
   }
-  // Load custom photo index
-  const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
-  keys.forEach(k => { S.customPhotos[k.replace('motu-photo-','')] = true; });
+  // Initialize OPFS for photo storage
+  await initOPFS();
+  // Load all photos into URL cache (OPFS + localStorage fallback)
+  await photoStore.loadAll();
+  // One-time migration: move localStorage photos to OPFS
+  if (_opfsReady) {
+    const migrated = await photoStore.migrate();
+    if (migrated > 0) console.log(`Migrated ${migrated} photos to OPFS`);
+  }
   // Load cached figs
   const cached = store.get(CACHE_KEY);
   if (cached?.rows?.length) {
@@ -1340,18 +1480,18 @@ function exportCSV(filter) {
   URL.revokeObjectURL(url);
 }
 
-function exportJSON() {
+async function exportJSON() {
   const backup = {
     version: 'motu-vault-backup-v1',
     exported: new Date().toISOString(),
     collection: S.coll,
     photos: {}
   };
-  // Include custom photos
-  Object.keys(S.customPhotos).forEach(id => {
-    const data = photoStore.get(id);
+  // Include custom photos as base64 data URLs
+  for (const id of Object.keys(S.customPhotos)) {
+    const data = await photoStore.exportAsDataURL(id);
     if (data) backup.photos[id] = data;
-  });
+  }
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1362,7 +1502,7 @@ function exportJSON() {
 
 function importJSON(file) {
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     try {
       const backup = JSON.parse(ev.target.result);
       if (backup.version !== 'motu-vault-backup-v1') throw new Error('Unknown format');
@@ -1377,9 +1517,10 @@ function importJSON(file) {
       saveColl();
       // Restore photos
       if (backup.photos) {
-        Object.entries(backup.photos).forEach(([id, data]) => {
-          if (photoStore.set(id, data)) { S.customPhotos[id] = true; photos++; }
-        });
+        for (const [id, data] of Object.entries(backup.photos)) {
+          const ok = await photoStore.importFromDataURL(id, data);
+          if (ok) { S.customPhotos[id] = true; photos++; }
+        }
       }
       const body = document.querySelector('.sheet-body');
       if (body) {
@@ -1604,7 +1745,7 @@ function renderMain() {
         <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
         <div>
           <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.23</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.24</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2301,15 +2442,16 @@ window.handlePhoto = (input, figId) => {
   const reader = new FileReader();
   reader.onload = ev => {
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       const MAX = 600;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
-      if (!photoStore.set(figId, dataUrl)) { alert('Storage full.'); return; }
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.65));
+      const ok = await photoStore.save(figId, blob);
+      if (!ok) { alert('Storage full.'); return; }
       S.customPhotos[figId] = true;
       S.imgErrors[figId] = false;
       renderDetail();
@@ -2318,8 +2460,8 @@ window.handlePhoto = (input, figId) => {
   };
   reader.readAsDataURL(file);
 };
-window.clearPhoto = id => {
-  photoStore.del(id); delete S.customPhotos[id]; renderDetail();
+window.clearPhoto = async id => {
+  await photoStore.del(id); delete S.customPhotos[id]; renderDetail();
 };
 
 window.handleCSV = input => {
