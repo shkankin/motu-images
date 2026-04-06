@@ -956,7 +956,7 @@ const STATUS_COLOR = {owned:'var(--gn)',wishlist:'var(--bl)',ordered:'var(--or)'
 const STATUS_HEX = {owned:'#34d399',wishlist:'#60a5fa',ordered:'#fb923c','for-sale':'#f87171'};
 
 const THEMES = {
-  eternia:  {name:'Eternia',  bg:'#08080f', acc:'#8b5cf6', gold:'#d4a843', icons:['eternia1-icon.png','eternia2-icon.png']},
+  eternia:  {name:'Eternia',  bg:'#08080f', acc:'#8b5cf6', gold:'#d4a843', icons:['eternia1-icon.png']},
   skeletor: {name:'Skeletor', bg:'#0a0514', acc:'#a78bfa', gold:'#c084fc', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
   heman:    {name:'He-Man',   bg:'#0f0a03', acc:'#f59e0b', gold:'#fbbf24', icons:['he-man-icon.png']},
   grayskull:{name:'Grayskull',bg:'#080a08', acc:'#22c55e', gold:'#86efac', icons:['grayskull-icon.png']},
@@ -1224,7 +1224,6 @@ const S = {
   searchBarHidden: false,
   barsHidden: false,
   titleIdx: 0,
-  iconIdx: 0,
   newFigIds: new Set(),     // IDs added since last sync
   _justNavigated: false,
 };
@@ -1239,10 +1238,6 @@ function getThemeSounds() {
 }
 function getThemeIcon() {
   const icons = THEMES[S.theme]?.icons || ['eternia1-icon.png'];
-  if (icons.length > 1) {
-    // Multi-icon: cycle on S.iconIdx
-    return IMG + '/' + icons[S.iconIdx % icons.length];
-  }
   return IMG + '/' + icons[0];
 }
 function playTitleSound(idx) {
@@ -1755,21 +1750,17 @@ function renderMain() {
 
   const themeTitles = getThemeTitles();
   const themeIcon = getThemeIcon();
-  const hasMultiIcons = (THEMES[S.theme]?.icons?.length || 1) > 1;
   const hasTitleCycle = themeTitles.length > 1;
-  // Icon click: if multi-icon theme, cycle icons; otherwise go home
-  const iconClick = hasMultiIcons ? `S.iconIdx=(S.iconIdx+1)%${THEMES[S.theme].icons.length};render()` : 'goHome()';
-  // Title click: if theme has title cycling, cycle; otherwise no-op
   const titleClick = hasTitleCycle ? `S.titleIdx=(S.titleIdx+1)%${themeTitles.length};playTitleSound(S.titleIdx);render()` : 'goHome()';
 
   let html = `
   <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
-        <img src="${themeIcon}" alt="" class="logo-icon" onclick="${iconClick}" style="cursor:pointer">
+        <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.27</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.28</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2458,7 +2449,7 @@ window.openSheet = name => { S.sheet = name; pushNav(); render();
   requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
 };
 window.closeSheet = () => { history.back(); };
-window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconIdx = 0; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
+window.setTheme = t => { S.theme = t; S.titleIdx = 0; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
 window.imgErr = id => { S.imgErrors[id] = true; };
 
 // Long-press status cycle: owned → wishlist → ordered → for-sale → clear
