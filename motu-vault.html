@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#06060c">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>MOTU Vault</title>
+<title>MOTU Collector</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -956,10 +956,10 @@ const STATUS_COLOR = {owned:'var(--gn)',wishlist:'var(--bl)',ordered:'var(--or)'
 const STATUS_HEX = {owned:'#34d399',wishlist:'#60a5fa',ordered:'#fb923c','for-sale':'#f87171'};
 
 const THEMES = {
-  eternia:  {name:'Eternia',  bg:'#08080f', acc:'#8b5cf6', gold:'#d4a843'},
-  skeletor: {name:'Skeletor', bg:'#0a0514', acc:'#a78bfa', gold:'#c084fc'},
-  heman:    {name:'He-Man',   bg:'#0f0a03', acc:'#f59e0b', gold:'#fbbf24'},
-  grayskull:{name:'Grayskull',bg:'#080a08', acc:'#22c55e', gold:'#86efac'},
+  eternia:  {name:'Eternia',  bg:'#08080f', acc:'#8b5cf6', gold:'#d4a843', icons:['eternia1-icon.png','eternia2-icon.png']},
+  skeletor: {name:'Skeletor', bg:'#0a0514', acc:'#a78bfa', gold:'#c084fc', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
+  heman:    {name:'He-Man',   bg:'#0f0a03', acc:'#f59e0b', gold:'#fbbf24', icons:['he-man-icon.png']},
+  grayskull:{name:'Grayskull',bg:'#080a08', acc:'#22c55e', gold:'#86efac', icons:['grayskull-icon.png']},
 };
 
 const SUBLINES = {
@@ -1224,14 +1224,30 @@ const S = {
   searchBarHidden: false,
   barsHidden: false,
   titleIdx: 0,
+  iconIdx: 0,
   newFigIds: new Set(),     // IDs added since last sync
   _justNavigated: false,
 };
 
-const VAULT_TITLES = ['MOTU Vault', 'NYAAAH!', 'I Must Possess All'];
-const VAULT_SOUNDS = [null, IMG + '/nyaaah.mp3', IMG + '/i-must-possess-all.mp3'];
+const DEFAULT_TITLE = 'MOTU Collector';
+
+function getThemeTitles() {
+  return THEMES[S.theme]?.titles || [DEFAULT_TITLE];
+}
+function getThemeSounds() {
+  return (THEMES[S.theme]?.sounds || [null]).map(s => s ? IMG + s : null);
+}
+function getThemeIcon() {
+  const icons = THEMES[S.theme]?.icons || ['eternia1-icon.png'];
+  if (icons.length > 1) {
+    // Multi-icon: cycle on S.iconIdx
+    return IMG + '/' + icons[S.iconIdx % icons.length];
+  }
+  return IMG + '/' + icons[0];
+}
 function playTitleSound(idx) {
-  const src = VAULT_SOUNDS[idx];
+  const sounds = getThemeSounds();
+  const src = sounds[idx];
   if (src) { const a = new Audio(src); a.volume = 0.8; a.play().catch(() => {}); }
 }
 
@@ -1531,7 +1547,6 @@ function importJSON(file) {
           ${photos>0 ? `<div class="text-sm text-dim">${photos} photos restored</div>` : ''}
         </div>`;
       }
-      render();
     } catch(e) {
       alert('Invalid backup file: ' + e.message);
     }
@@ -1715,7 +1730,7 @@ function renderLoading() {
   app().innerHTML = `
     <div class="loading-screen">
       <img src="${IMG}/masters_logo.png" alt="" style="width:180px;margin-bottom:12px;opacity:0.85">
-      <div class="loading-name font-display text-upper">MOTU VAULT</div>
+      <div class="loading-name font-display text-upper">MOTU COLLECTOR</div>
       ${S.fetchError ? `
         <div style="color:var(--rd);font-size:14px;font-weight:600;margin-bottom:8px">Could not load figures</div>
         <div class="text-dim text-sm" style="margin-bottom:24px;text-align:center;line-height:1.6">Check your connection and try again.</div>
@@ -1738,14 +1753,23 @@ function renderMain() {
   const hf = hasFilters();
   const syncCls = S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '';
 
+  const themeTitles = getThemeTitles();
+  const themeIcon = getThemeIcon();
+  const hasMultiIcons = (THEMES[S.theme]?.icons?.length || 1) > 1;
+  const hasTitleCycle = themeTitles.length > 1;
+  // Icon click: if multi-icon theme, cycle icons; otherwise go home
+  const iconClick = hasMultiIcons ? `S.iconIdx=(S.iconIdx+1)%${THEMES[S.theme].icons.length};render()` : 'goHome()';
+  // Title click: if theme has title cycling, cycle; otherwise no-op
+  const titleClick = hasTitleCycle ? `S.titleIdx=(S.titleIdx+1)%${themeTitles.length};playTitleSound(S.titleIdx);render()` : 'goHome()';
+
   let html = `
   <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
-        <img src="${IMG}/skeletor-icon.png" alt="" class="logo-icon">
+        <img src="${themeIcon}" alt="" class="logo-icon" onclick="${iconClick}" style="cursor:pointer">
         <div>
-          <div class="logo-title font-display text-gold" onclick="S.titleIdx=(S.titleIdx+1)%VAULT_TITLES.length;playTitleSound(S.titleIdx);render()" style="cursor:pointer;user-select:none">${VAULT_TITLES[S.titleIdx]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.24</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.27</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2020,6 +2044,41 @@ function renderSublines() {
   return html;
 }
 
+const BATCH_SIZE = 80;
+
+function renderFigRow(f) {
+  const c = S.coll[f.id] || {};
+  const statusCls = c.status || '';
+  const hasVar = /\w/.test(c.variants || '');
+  const isNew = S.newFigIds.has(f.id);
+  const hasCustom = S.customPhotos[f.id];
+  const imgErr = S.imgErrors[f.id];
+  const showImg = (hasCustom || f.image) && !imgErr;
+  const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
+
+  return `<div class="fig-row" data-fig-id="${f.id}" onclick="openFig('${f.id}')">
+    <div class="fig-thumb ${statusCls}">
+      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
+        `<span class="initial">${esc(f.name[0])}</span>`}
+    </div>
+    <div class="fig-text">
+      <div class="fig-name">${esc(f.name)}</div>
+      <div class="fig-meta">
+        ${S.search ? `<span class="line-name">${esc(ln(f.line))}</span>` : ''}
+        ${f.group ? `<span>${S.search?'· ':''}${esc(f.group)}</span>` : ''}
+        ${f.wave ? `<span>· W${esc(f.wave)}</span>` : ''}
+        ${f.year ? `<span>· ${f.year}</span>` : ''}
+      </div>
+    </div>
+    <div class="fig-actions">
+      ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
+      ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
+      ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${f.id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
+        `<button class="quick-own" onclick="event.stopPropagation();setStatus('${f.id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
+    </div>
+  </div>`;
+}
+
 function renderFigList() {
   const figs = getSortedFigs();
   const hf = hasFilters();
@@ -2038,38 +2097,20 @@ function renderFigList() {
   if (!figs.length) {
     html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
   } else {
-    figs.forEach(f => {
-      const c = S.coll[f.id] || {};
-      const statusCls = c.status || '';
-      const hasVar = /\w/.test(c.variants || '');
-      const isNew = S.newFigIds.has(f.id);
-      const hasCustom = S.customPhotos[f.id];
-      const imgErr = S.imgErrors[f.id];
-      const showImg = (hasCustom || f.image) && !imgErr;
-      const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
-
-      html += `<div class="fig-row" data-fig-id="${f.id}" onclick="openFig('${f.id}')">
-        <div class="fig-thumb ${statusCls}">
-          ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
-            `<span class="initial">${esc(f.name[0])}</span>`}
-        </div>
-        <div class="fig-text">
-          <div class="fig-name">${esc(f.name)}</div>
-          <div class="fig-meta">
-            ${S.search ? `<span class="line-name">${esc(ln(f.line))}</span>` : ''}
-            ${f.group ? `<span>${S.search?'· ':''}${esc(f.group)}</span>` : ''}
-            ${f.wave ? `<span>· W${esc(f.wave)}</span>` : ''}
-            ${f.year ? `<span>· ${f.year}</span>` : ''}
-          </div>
-        </div>
-        <div class="fig-actions">
-          ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
-          ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
-          ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${f.id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
-            `<button class="quick-own" onclick="event.stopPropagation();setStatus('${f.id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
-        </div>
-      </div>`;
-    });
+    // Render first batch immediately
+    const first = figs.slice(0, BATCH_SIZE);
+    const rest = figs.slice(BATCH_SIZE);
+    first.forEach(f => { html += renderFigRow(f); });
+    // Placeholder for remaining rows
+    if (rest.length) html += `<div id="figListRest"></div>`;
+    // Schedule remaining rows for next frame
+    if (rest.length) {
+      requestAnimationFrame(() => {
+        const container = document.getElementById('figListRest');
+        if (!container) return;
+        container.innerHTML = rest.map(f => renderFigRow(f)).join('');
+      });
+    }
   }
   html += '<div class="bottom-spacer"></div></div>';
   return html;
@@ -2373,6 +2414,7 @@ window.onSearch = val => {
 window.navTo = key => { S.tab = key; S.searchBarHidden = false; S.barsHidden = false; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
+window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; pushNav(); render(); };
 window.clearSubline = () => { history.back(); };
 window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
@@ -2416,7 +2458,7 @@ window.openSheet = name => { S.sheet = name; pushNav(); render();
   requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
 };
 window.closeSheet = () => { history.back(); };
-window.setTheme = t => { S.theme = t; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
+window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconIdx = 0; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
 window.imgErr = id => { S.imgErrors[id] = true; };
 
 // Long-press status cycle: owned → wishlist → ordered → for-sale → clear
