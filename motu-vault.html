@@ -577,6 +577,91 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: flex; align-items: center; justify-content: center;
 }
 
+/* ── View Toggle ────────────────────────────────────────────────── */
+.view-toggle {
+  display: flex; gap: 4px;
+}
+.view-toggle button {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1px solid var(--bd); background: var(--bg3);
+  color: var(--t3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; font-family: 'Outfit', sans-serif;
+}
+.view-toggle button:active { opacity: 0.7; transform: scale(0.97); }
+.view-toggle button.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+/* ── Figure Grid ────────────────────────────────────────────────── */
+.fig-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; padding: 0 12px;
+}
+.fig-card {
+  position: relative; border-radius: var(--radius);
+  overflow: hidden; border: 2px solid var(--bd);
+  background: var(--bg3); aspect-ratio: 3/4;
+  cursor: pointer; transition: transform 0.15s;
+}
+.fig-card:active { transform: scale(0.97); }
+.fig-card.owned { border-color: var(--gn); }
+.fig-card.wishlist { border-color: var(--bl); }
+.fig-card.ordered { border-color: var(--or); }
+.fig-card.for-sale { border-color: var(--rd); }
+
+.fig-card img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top;
+}
+.fig-card .card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,.85) 100%);
+}
+.fig-card .card-info {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 10px;
+}
+.fig-card .card-fig-name {
+  font-size: 12px; font-weight: 600; color: #fff;
+  line-height: 1.3; margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.fig-card .card-fig-meta {
+  font-size: 9px; color: rgba(255,255,255,.6);
+}
+.fig-card .card-initial {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cinzel', serif; font-size: 36px;
+  color: var(--t3); font-weight: 900;
+}
+.fig-card .status-badge {
+  position: absolute; top: 8px; right: 8px;
+  width: 26px; height: 26px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(0,0,0,.5);
+  z-index: 2;
+}
+.fig-card .status-badge.owned { background: rgba(52,211,153,.25); border-color: rgba(52,211,153,.4); }
+.fig-card .status-badge.wishlist { background: rgba(96,165,250,.25); border-color: rgba(96,165,250,.4); }
+.fig-card .status-badge.ordered { background: rgba(251,146,60,.25); border-color: rgba(251,146,60,.4); }
+.fig-card .status-badge.for-sale { background: rgba(248,113,113,.25); border-color: rgba(248,113,113,.4); }
+.fig-card .new-badge {
+  position: absolute; top: 8px; left: 8px;
+  font-size: 9px; font-weight: 700; color: var(--acc);
+  letter-spacing: 0.5px; background: rgba(0,0,0,.6);
+  padding: 2px 6px; border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
 /* ── Empty State ─────────────────────────────────────────────────── */
 .empty-state {
   text-align: center;
@@ -1211,6 +1296,7 @@ const S = {
   filterStatus: '',
   filterVariants: false,
   sortBy: store.get('motu-sort') || 'year',
+  viewMode: store.get('motu-view') || 'list',  // list | grid
   theme: store.get('motu-theme') || 'eternia',
   lineOrder: store.get('motu-line-order') || LINES.map(l => l.id),
   hiddenItems: store.get('motu-hidden') || [],
@@ -1382,32 +1468,57 @@ function setStatus(id, status) {
 }
 
 function patchFigRow(id) {
-  const row = document.querySelector(`.fig-row[data-fig-id="${id}"]`);
-  if (!row) return false;
   const c = S.coll[id] || {};
   const statusCls = c.status || '';
-  // Update thumb border
-  const thumb = row.querySelector('.fig-thumb');
-  if (thumb) { thumb.className = 'fig-thumb ' + statusCls; }
-  // Update actions area
-  const actions = row.querySelector('.fig-actions');
-  if (actions) {
-    const hasVar = /\w/.test(c.variants || '');
-    const isNew = S.newFigIds.has(id);
-    actions.innerHTML =
-      (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
-      (hasVar ? '<div class="fig-var-badge">VAR</div>' : '') +
-      (c.status
-        ? `<button class="quick-own" onclick="cycleStatus(event,'${id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
-        : `<button class="quick-own" onclick="event.stopPropagation();setStatus('${id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
+
+  // Try list view row
+  const row = document.querySelector(`.fig-row[data-fig-id="${id}"]`);
+  if (row) {
+    const thumb = row.querySelector('.fig-thumb');
+    if (thumb) { thumb.className = 'fig-thumb ' + statusCls; }
+    const actions = row.querySelector('.fig-actions');
+    if (actions) {
+      const hasVar = /\w/.test(c.variants || '');
+      const isNew = S.newFigIds.has(id);
+      actions.innerHTML =
+        (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
+        (hasVar ? '<div class="fig-var-badge">VAR</div>' : '') +
+        (c.status
+          ? `<button class="quick-own" onclick="cycleStatus(event,'${id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
+          : `<button class="quick-own" onclick="event.stopPropagation();setStatus('${id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
+    }
+    updateNavBadge();
+    return true;
   }
-  // Update badge count in bottom nav
+
+  // Try grid view card
+  const card = document.querySelector(`.fig-card[data-fig-id="${id}"]`);
+  if (card) {
+    card.className = 'fig-card ' + statusCls;
+    const badge = card.querySelector('.status-badge');
+    if (badge) {
+      badge.className = 'status-badge ' + statusCls;
+      const badgeAction = c.status
+        ? `cycleStatus(event,'${id}')`
+        : `event.stopPropagation();setStatus('${id}','owned')`;
+      badge.setAttribute('onclick', badgeAction);
+      badge.innerHTML = c.status
+        ? `<div class="fig-status-dot ${statusCls}"></div>`
+        : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
+    }
+    updateNavBadge();
+    return true;
+  }
+
+  return false;
+}
+
+function updateNavBadge() {
   const badge = document.querySelector('.bottom-nav .badge');
   if (badge) {
     const owned = S.figs.filter(f => !figIsHidden(f) && S.coll[f.id]?.status === 'owned').length;
     badge.textContent = owned;
   }
-  return true;
 }
 function updateColl(id, key, val) {
   S.coll[id] = {...(S.coll[id]||{}), [key]: val};
@@ -1760,7 +1871,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.28</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.29</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2070,9 +2181,42 @@ function renderFigRow(f) {
   </div>`;
 }
 
+function renderFigCard(f) {
+  const c = S.coll[f.id] || {};
+  const statusCls = c.status || '';
+  const isNew = S.newFigIds.has(f.id);
+  const hasCustom = S.customPhotos[f.id];
+  const imgErr = S.imgErrors[f.id];
+  const showImg = (hasCustom || f.image) && !imgErr;
+  const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
+  const statusIcon = c.status
+    ? `<div class="fig-status-dot ${statusCls}"></div>`
+    : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
+  const badgeAction = c.status
+    ? `cycleStatus(event,'${f.id}')`
+    : `event.stopPropagation();setStatus('${f.id}','owned')`;
+
+  return `<div class="fig-card ${statusCls}" data-fig-id="${f.id}" onclick="openFig('${f.id}')">
+    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
+      `<div class="card-initial">${esc(f.name[0])}</div>`}
+    <div class="card-overlay"></div>
+    ${isNew ? '<div class="new-badge">NEW</div>' : ''}
+    <button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>
+    <div class="card-info">
+      <div class="card-fig-name">${esc(f.name)}</div>
+      <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
+    </div>
+  </div>`;
+}
+
+function renderFigItem(f) {
+  return S.viewMode === 'grid' ? renderFigCard(f) : renderFigRow(f);
+}
+
 function renderFigList() {
   const figs = getSortedFigs();
   const hf = hasFilters();
+  const isGrid = S.viewMode === 'grid';
   let html = '<div class="fig-list">';
   // Compute spent for collection tab
   let spentInfo = '';
@@ -2084,22 +2228,35 @@ function renderFigList() {
       spentInfo = ` · <span style="color:var(--gold)">$${spent.toFixed(2)} spent</span> · <span style="color:var(--t2)">$${avg} avg</span>`;
     }
   }
-  html += `<div class="fig-count">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>`;
+  // View toggle + count row
+  const listActive = !isGrid ? 'active' : '';
+  const gridActive = isGrid ? 'active' : '';
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px">
+    <div class="fig-count" style="margin-bottom:0">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
+    <div class="view-toggle">
+      <button class="${listActive}" onclick="setViewMode('list')" title="List view">${icon(ICO.list,14)}</button>
+      <button class="${gridActive}" onclick="setViewMode('grid')" title="Grid view">${icon(ICO.lines,14)}</button>
+    </div>
+  </div>`;
   if (!figs.length) {
     html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
   } else {
-    // Render first batch immediately
     const first = figs.slice(0, BATCH_SIZE);
     const rest = figs.slice(BATCH_SIZE);
-    first.forEach(f => { html += renderFigRow(f); });
-    // Placeholder for remaining rows
-    if (rest.length) html += `<div id="figListRest"></div>`;
-    // Schedule remaining rows for next frame
+    if (isGrid) {
+      html += '<div class="fig-grid">';
+      first.forEach(f => { html += renderFigCard(f); });
+      if (rest.length) html += `<div id="figListRest" style="display:contents"></div>`;
+      html += '</div>';
+    } else {
+      first.forEach(f => { html += renderFigRow(f); });
+      if (rest.length) html += `<div id="figListRest"></div>`;
+    }
     if (rest.length) {
       requestAnimationFrame(() => {
         const container = document.getElementById('figListRest');
         if (!container) return;
-        container.innerHTML = rest.map(f => renderFigRow(f)).join('');
+        container.innerHTML = rest.map(f => renderFigItem(f)).join('');
       });
     }
   }
@@ -2409,6 +2566,7 @@ window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = 
 window.clearSubline = () => { history.back(); };
 window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
+window.setViewMode = mode => { S.viewMode = mode; store.set('motu-view', mode); render(); };
 window.goToFiltered = status => {
   S.sheet = null;
   S.filterStatus = status;
