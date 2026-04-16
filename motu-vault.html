@@ -973,6 +973,20 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-size: 14px; font-weight: 600;
 }
 
+/* ── Pull to Refresh ─────────────────────────────────────────────── */
+.ptr-indicator {
+  text-align: center; padding: 12px 0;
+  font-size: 11px; color: var(--t3);
+  letter-spacing: 1px;
+  transition: opacity 0.2s;
+}
+.ptr-indicator .ptr-spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid var(--bd); border-top-color: var(--gold);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+
 /* ── Toast Notifications ─────────────────────────────────────────── */
 .toast-container {
   position: fixed; bottom: 70px; left: 0; right: 0;
@@ -1332,6 +1346,7 @@ const S = {
   barsHidden: false,
   titleIdx: 0,
   newFigIds: new Set(),     // IDs added since last sync
+  _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
 };
 
@@ -1472,8 +1487,8 @@ function toast(msg) {
   setTimeout(() => { if (el.parentNode) el.remove(); }, 2200);
 }
 
-function haptic(ms = 10) {
-  try { navigator.vibrate?.(ms); } catch {}
+function haptic(ms = 15) {
+  if (navigator.vibrate) navigator.vibrate(ms);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -1508,6 +1523,7 @@ function setStatus(id, status) {
   if (S.coll[id].status === status) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   else S.coll[id] = {...S.coll[id], status};
   saveColl(); haptic();
+  S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   const fig = S.figs.find(f => f.id === id);
   const name = fig ? fig.name : id;
   const newStatus = S.coll[id]?.status;
@@ -1933,7 +1949,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.32</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.33</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2035,6 +2051,23 @@ function renderMain() {
       }
     };
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
+
+    // Pull-to-refresh
+    let _ptrStart = 0, _ptrActive = false;
+    ca._ptrTouchStart && ca.removeEventListener('touchstart', ca._ptrTouchStart);
+    ca._ptrTouchEnd && ca.removeEventListener('touchend', ca._ptrTouchEnd);
+    ca._ptrTouchStart = e => { if (ca.scrollTop <= 0) _ptrStart = e.touches[0].clientY; else _ptrStart = 0; };
+    ca._ptrTouchEnd = e => {
+      if (_ptrStart && e.changedTouches[0].clientY - _ptrStart > 80 && ca.scrollTop <= 0 && !_ptrActive) {
+        _ptrActive = true;
+        haptic(20);
+        toast('↻ Syncing…');
+        fetchFigs(true).then(() => { _ptrActive = false; });
+      }
+      _ptrStart = 0;
+    };
+    ca.addEventListener('touchstart', ca._ptrTouchStart, {passive: true});
+    ca.addEventListener('touchend', ca._ptrTouchEnd, {passive: true});
   }
 }
 
@@ -2275,6 +2308,24 @@ function renderFigItem(f) {
   return S.viewMode === 'grid' ? renderFigCard(f) : renderFigRow(f);
 }
 
+function yearHeader(year) {
+  return `<div style="padding:12px 4px 6px;font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:1px;border-bottom:1px solid var(--bd);margin-bottom:4px">${year || 'Unknown'}</div>`;
+}
+
+function renderFigsWithHeaders(figs, renderFn) {
+  const showHeaders = !S.search && (S.sortBy === 'year' || S.sortBy === 'year-desc') && S.viewMode === 'list';
+  let html = '';
+  let lastYear = null;
+  figs.forEach(f => {
+    if (showHeaders && f.year !== lastYear) {
+      lastYear = f.year;
+      html += yearHeader(f.year);
+    }
+    html += renderFn(f);
+  });
+  return html;
+}
+
 function renderFigList() {
   const figs = getSortedFigs();
   const hf = hasFilters();
@@ -2303,6 +2354,15 @@ function renderFigList() {
   if (!figs.length) {
     html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
   } else {
+    // Recently changed section for collection tab
+    if (S.tab === 'collection' && !S.search && !hf && S._recentChanges?.length) {
+      const recent = S._recentChanges.slice(0, 5).map(id => S.figs.find(f => f.id === id)).filter(Boolean);
+      if (recent.length) {
+        html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px">Recently changed</div>`;
+        recent.forEach(f => { html += isGrid ? renderFigCard(f) : renderFigRow(f); });
+        html += `<div style="height:1px;background:var(--bd);margin:12px 0"></div>`;
+      }
+    }
     const first = figs.slice(0, BATCH_SIZE);
     const rest = figs.slice(BATCH_SIZE);
     if (isGrid) {
@@ -2311,14 +2371,18 @@ function renderFigList() {
       if (rest.length) html += `<div id="figListRest" style="display:contents"></div>`;
       html += '</div>';
     } else {
-      first.forEach(f => { html += renderFigRow(f); });
+      html += renderFigsWithHeaders(first, renderFigRow);
       if (rest.length) html += `<div id="figListRest"></div>`;
     }
     if (rest.length) {
       requestAnimationFrame(() => {
         const container = document.getElementById('figListRest');
         if (!container) return;
-        container.innerHTML = rest.map(f => renderFigItem(f)).join('');
+        if (isGrid) {
+          container.innerHTML = rest.map(f => renderFigCard(f)).join('');
+        } else {
+          container.innerHTML = renderFigsWithHeaders(rest, renderFigRow);
+        }
       });
     }
   }
@@ -2339,7 +2403,6 @@ function renderDetail() {
   <div class="detail-header">
     <button class="detail-back" onclick="closeDetail()">${icon(ICO.back,22)}</button>
     <div class="detail-title">${esc(f.name)}</div>
-    <button class="detail-delete" onclick="deleteFig('${f.id}')">${icon(ICO.trash,20)}</button>
   </div>
   <div class="detail-scroll">
     <div class="photo-section">
@@ -2358,7 +2421,7 @@ function renderDetail() {
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
-      ${f.source === 'af411' && f.slug ? `<a href="https://actionfigure411.com/masters-of-the-universe/figure/${f.slug}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
+      ${f.source === 'af411' ? `<a href="https://www.actionfigure411.com/masters-of-the-universe/search.php?search=${encodeURIComponent(f.name)}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
         ${icon(ICO.export,14)} View on AF411
       </a>` : ''}
       <button onclick="searchCharacter('${esc(f.name.replace(/'/g,"\\\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
@@ -2713,6 +2776,7 @@ window.cycleStatus = (e, id) => {
     if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   }
   saveColl(); haptic();
+  S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   const fig = S.figs.find(f => f.id === id);
   const name = fig ? fig.name : id;
   const newStatus = S.coll[id]?.status;
