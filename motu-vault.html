@@ -145,7 +145,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   transform: translateY(0);
   transition: transform 0.18s ease-out, opacity 0.15s ease-out;
 }
-.bottom-nav.immersive-hide {
+.bottom-nav.immersive-hide,
+.bottom-nav.hidden {
   transform: translateY(100%);
   opacity: 0;
   pointer-events: none;
@@ -713,23 +714,148 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-family: 'Cinzel', serif;
   font-size: 72px; color: var(--t3); font-weight: 900;
 }
+
+/* Multi-photo carousel */
+.photo-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg3);
+}
+.photo-carousel::-webkit-scrollbar { display: none; }
+.photo-slide {
+  position: relative;
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  aspect-ratio: 1;
+  max-height: 360px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-in;
+}
+.photo-slide img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+.photo-slide-label {
+  position: absolute; bottom: 12px; left: 12px;
+  background: rgba(0,0,0,.7); color: #fff;
+  padding: 4px 10px; border-radius: 8px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+.photo-slide-remove {
+  position: absolute; top: 10px; right: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,.6); color: var(--rd);
+  border: 1px solid rgba(248,113,113,.4);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px); cursor: pointer;
+}
+.photo-dots {
+  display: flex; justify-content: center; gap: 6px;
+  padding: 10px 0 4px;
+  background: var(--bg3);
+}
+.photo-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--bd);
+  transition: all 0.2s;
+}
+.photo-dot.active { background: var(--gold); width: 18px; border-radius: 3px; }
+
 .photo-controls {
   position: absolute; bottom: 10px; right: 10px;
   display: flex; gap: 8px;
+  z-index: 5;
 }
 .photo-btn {
   padding: 8px 14px;
   border-radius: var(--radius-sm);
-  background: rgba(0,0,0,.65);
+  background: rgba(0,0,0,.7);
   border: 1px solid rgba(255,255,255,.15);
   color: #fff; font-size: 12px;
   display: flex; align-items: center; gap: 6px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px); cursor: pointer;
 }
 .photo-btn.remove {
   border-color: rgba(248,113,113,.4);
   color: var(--rd);
 }
+
+.photo-labels {
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.photo-label-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.photo-label-num {
+  font-size: 11px; color: var(--t3); font-weight: 600;
+  width: 24px; flex-shrink: 0;
+}
+.photo-label-row input {
+  flex: 1; font-size: 13px;
+  padding: 8px 12px;
+}
+
+/* Full-screen photo viewer */
+.photo-viewer {
+  position: fixed; inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,.92);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.18s ease-out;
+}
+.photo-viewer-img-wrap {
+  position: relative;
+  max-width: 100%; max-height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.photo-viewer-img-wrap img {
+  max-width: 100%; max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.photo-viewer-close {
+  position: absolute; top: max(16px, var(--safe-top));
+  right: 16px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,.1); color: #fff;
+  border: 1px solid rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; backdrop-filter: blur(8px);
+  z-index: 2;
+}
+.photo-viewer-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,.1); color: #fff;
+  border: 1px solid rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; backdrop-filter: blur(8px);
+}
+.photo-viewer-nav.prev { left: 12px; }
+.photo-viewer-nav.next { right: 12px; }
+.photo-viewer-label {
+  margin-top: 12px; padding: 6px 14px;
+  background: rgba(255,255,255,.1); color: #fff;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(8px);
+}
+.photo-viewer-counter {
+  position: absolute; bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px; color: rgba(255,255,255,.7);
+  background: rgba(0,0,0,.4); padding: 4px 10px;
+  border-radius: 12px; backdrop-filter: blur(4px);
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .detail-pills {
   padding: 16px;
@@ -985,6 +1111,105 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   border: 2px solid var(--bd); border-top-color: var(--gold);
   border-radius: 50%; animation: spin 0.8s linear infinite;
   vertical-align: middle; margin-right: 6px;
+}
+
+/* ── Select Mode ─────────────────────────────────────────────────── */
+.select-btn {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--t2);
+  padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--bd); background: var(--bg3);
+  cursor: pointer;
+}
+.select-btn.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+.select-checkbox {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid var(--bd);
+  background: rgba(0,0,0,.3);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.select-checkbox.checked {
+  background: var(--acc);
+  border-color: var(--acc);
+}
+.select-checkbox svg { opacity: 0; transition: opacity 0.15s; color: #fff; }
+.select-checkbox.checked svg { opacity: 1; }
+
+.fig-row.selected {
+  background: color-mix(in srgb, var(--acc) 10%, transparent);
+}
+.fig-card.selected {
+  outline: 3px solid var(--acc);
+  outline-offset: -3px;
+}
+.fig-card .select-checkbox-corner {
+  position: absolute; top: 8px; left: 8px;
+  z-index: 3;
+}
+
+.select-actionbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 20;
+  background: var(--bg2);
+  border-top: 1px solid var(--acc);
+  padding: 10px 12px;
+  padding-bottom: max(10px, var(--safe-bottom));
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 -6px 20px rgba(0,0,0,.4);
+  transform: translateY(100%);
+  transition: transform 0.22s cubic-bezier(0.2,0,0,1);
+}
+.select-actionbar.visible { transform: translateY(0); }
+.select-actionbar .count {
+  font-size: 13px; font-weight: 600; color: var(--gold);
+  flex-shrink: 0; padding: 0 4px;
+}
+.select-actionbar .spacer { flex: 1; }
+.select-actionbar button {
+  padding: 8px 12px; border-radius: 10px;
+  border: 1px solid var(--bd); background: var(--bg3);
+  color: var(--t1); font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+}
+.select-actionbar button:active { opacity: 0.7; transform: scale(0.95); }
+.select-actionbar button.primary {
+  background: var(--acc); border-color: var(--acc); color: #fff;
+}
+.select-actionbar button.danger {
+  color: var(--rd); border-color: color-mix(in srgb, var(--rd) 30%, var(--bd));
+}
+
+/* ── Offline Banner ──────────────────────────────────────────────── */
+.offline-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  background: var(--rd);
+  color: #fff;
+  padding: 6px 16px;
+  padding-top: max(6px, var(--safe-top));
+  font-size: 12px; font-weight: 600;
+  text-align: center; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transform: translateY(-100%);
+  transition: transform 0.25s ease-out;
+  pointer-events: none;
+}
+.offline-banner.visible {
+  transform: translateY(0);
+}
+.icon-btn.offline {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ── Toast Notifications ─────────────────────────────────────────── */
@@ -1333,10 +1558,17 @@ const store = {
   get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-// ─── Photo Storage (OPFS with localStorage fallback) ─────────────
-const photoURLs = {};  // In-memory cache: { figId: objectURL }
-let _opfsDir = null;   // OPFS directory handle
+
+// ─── Photo Storage (OPFS, multi-photo with labels) ──────────────
+// Per figure: up to MAX_PHOTOS photos, each with optional label.
+// OPFS filename: photo-{figId}-{n}.jpg  (n = 0..MAX_PHOTOS-1)
+// Labels stored separately in localStorage: { [figId]: { [n]: label } }
+const MAX_PHOTOS = 8;
+const PHOTO_LABELS_KEY = 'motu-photo-labels';
+const photoURLs = {};   // { "figId-n": objectURL }
+let _opfsDir = null;
 let _opfsReady = false;
+let _photoLabels = {};  // { [figId]: { [n]: label } }
 
 async function initOPFS() {
   try {
@@ -1347,129 +1579,259 @@ async function initOPFS() {
   } catch { return false; }
 }
 
-const photoStore = {
-  // Synchronous get — returns cached object URL or null
-  get: id => photoURLs[id] || null,
+function loadPhotoLabels() {
+  try { _photoLabels = JSON.parse(localStorage.getItem(PHOTO_LABELS_KEY) || '{}'); } catch { _photoLabels = {}; }
+}
+function savePhotoLabels() {
+  try { localStorage.setItem(PHOTO_LABELS_KEY, JSON.stringify(_photoLabels)); } catch {}
+}
 
-  // Async save — stores blob in OPFS, falls back to localStorage
-  save: async (id, blob) => {
+const photoStore = {
+  // Sync: get primary (first) photo URL for a figure — used in list/grid thumbnails
+  get: id => {
+    const arr = S.customPhotos[id];
+    if (!arr || !arr.length) return null;
+    return photoURLs[id + '-' + arr[0].n] || null;
+  },
+
+  // Sync: get all photos for a figure — { url, label, n }[]
+  getAll: id => {
+    const arr = S.customPhotos[id] || [];
+    return arr.map(({n, label}) => ({
+      n, label: label || '',
+      url: photoURLs[id + '-' + n] || null,
+    })).filter(p => p.url);
+  },
+
+  // Async: add a new photo to a figure. Returns index (n) on success, -1 on failure.
+  add: async (id, blob, label = '') => {
     try {
+      const existing = S.customPhotos[id] || [];
+      if (existing.length >= MAX_PHOTOS) return -1;
+      // Find first free slot n
+      const used = new Set(existing.map(p => p.n));
+      let n = 0;
+      while (used.has(n) && n < MAX_PHOTOS) n++;
+      if (n >= MAX_PHOTOS) return -1;
+
       if (_opfsReady) {
-        const fh = await _opfsDir.getFileHandle('photo-' + id + '.jpg', {create: true});
+        const fh = await _opfsDir.getFileHandle(`photo-${id}-${n}.jpg`, {create: true});
         const writable = await fh.createWritable();
         await writable.write(blob);
         await writable.close();
-        // Revoke old URL if any
-        if (photoURLs[id]) URL.revokeObjectURL(photoURLs[id]);
-        photoURLs[id] = URL.createObjectURL(blob);
-        // Clean up localStorage copy if it exists (migration)
-        try { localStorage.removeItem('motu-photo-' + id); } catch {}
-        return true;
+        const key = id + '-' + n;
+        if (photoURLs[key]) URL.revokeObjectURL(photoURLs[key]);
+        photoURLs[key] = URL.createObjectURL(blob);
+      } else {
+        // Fallback: localStorage base64
+        const dataUrl = await new Promise((res, rej) => {
+          const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob);
+        });
+        try { localStorage.setItem(`motu-photo-${id}-${n}`, dataUrl); }
+        catch { return -1; }
+        photoURLs[id + '-' + n] = dataUrl;
       }
-      // Fallback: localStorage as base64
-      return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          try { localStorage.setItem('motu-photo-' + id, reader.result); resolve(true); }
-          catch { resolve(false); }
-        };
-        reader.onerror = () => resolve(false);
-        reader.readAsDataURL(blob);
-      });
-    } catch { return false; }
+
+      // Update state
+      const arr = [...(S.customPhotos[id] || []), {n, label}];
+      S.customPhotos[id] = arr;
+      if (label) {
+        if (!_photoLabels[id]) _photoLabels[id] = {};
+        _photoLabels[id][n] = label;
+        savePhotoLabels();
+      }
+      return n;
+    } catch { return -1; }
   },
 
-  // Async delete
-  del: async id => {
-    if (photoURLs[id]) { URL.revokeObjectURL(photoURLs[id]); delete photoURLs[id]; }
+  // Async: remove photo at index n for a figure
+  remove: async (id, n) => {
+    const key = id + '-' + n;
+    if (photoURLs[key]) { URL.revokeObjectURL(photoURLs[key]); delete photoURLs[key]; }
     try {
-      if (_opfsReady) await _opfsDir.removeEntry('photo-' + id + '.jpg');
+      if (_opfsReady) await _opfsDir.removeEntry(`photo-${id}-${n}.jpg`);
     } catch {}
-    try { localStorage.removeItem('motu-photo-' + id); } catch {}
+    try { localStorage.removeItem(`motu-photo-${id}-${n}`); } catch {}
+    // Update state
+    const arr = (S.customPhotos[id] || []).filter(p => p.n !== n);
+    if (arr.length) S.customPhotos[id] = arr;
+    else delete S.customPhotos[id];
+    // Clean label
+    if (_photoLabels[id]) {
+      delete _photoLabels[id][n];
+      if (!Object.keys(_photoLabels[id]).length) delete _photoLabels[id];
+      savePhotoLabels();
+    }
+  },
+
+  // Async: update label for photo n of figure id
+  setLabel: async (id, n, label) => {
+    if (!_photoLabels[id]) _photoLabels[id] = {};
+    if (label) _photoLabels[id][n] = label;
+    else delete _photoLabels[id][n];
+    if (!Object.keys(_photoLabels[id]).length) delete _photoLabels[id];
+    savePhotoLabels();
+    const arr = S.customPhotos[id] || [];
+    const idx = arr.findIndex(p => p.n === n);
+    if (idx >= 0) arr[idx] = {...arr[idx], label};
+  },
+
+  // Delete all photos for a figure (used by clearPhoto legacy API)
+  delAll: async id => {
+    const arr = [...(S.customPhotos[id] || [])];
+    for (const p of arr) await photoStore.remove(id, p.n);
   },
 
   // Load all photos into URL cache (called during init)
   loadAll: async () => {
+    loadPhotoLabels();
+    // Parse filename: photo-{figId}-{n}.jpg
+    // Note: figId itself may contain hyphens, so we must match -{digit}.jpg at the end
+    const parsePhotoName = name => {
+      if (!name.startsWith('photo-') || !name.endsWith('.jpg')) return null;
+      const core = name.slice(6, -4);
+      const m = core.match(/^(.+)-(\d+)$/);
+      if (!m) return null;
+      return {id: m[1], n: parseInt(m[2], 10)};
+    };
+
+    const buckets = {};  // { figId: [{n, url}, ...] }
+
     if (_opfsReady) {
       try {
         for await (const [name, handle] of _opfsDir) {
-          if (name.startsWith('photo-') && name.endsWith('.jpg') && handle.kind === 'file') {
-            const id = name.slice(6, -4); // strip 'photo-' and '.jpg'
-            const file = await handle.getFile();
-            photoURLs[id] = URL.createObjectURL(file);
-            S.customPhotos[id] = true;
-          }
+          if (handle.kind !== 'file') continue;
+          const parsed = parsePhotoName(name);
+          if (!parsed) continue;
+          const file = await handle.getFile();
+          photoURLs[parsed.id + '-' + parsed.n] = URL.createObjectURL(file);
+          (buckets[parsed.id] = buckets[parsed.id] || []).push(parsed.n);
         }
       } catch(e) { console.error('OPFS loadAll error:', e); }
     }
-    // Also load any remaining localStorage photos (pre-migration or fallback)
+
+    // Load localStorage fallback photos (new multi-photo format)
     try {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
+      const keys = Object.keys(localStorage).filter(k => /^motu-photo-.+-\d+$/.test(k));
       keys.forEach(k => {
-        const id = k.replace('motu-photo-', '');
-        if (!photoURLs[id]) {
-          photoURLs[id] = localStorage.getItem(k);
-          S.customPhotos[id] = true;
+        const core = k.slice('motu-photo-'.length);
+        const m = core.match(/^(.+)-(\d+)$/);
+        if (!m) return;
+        const id = m[1], n = parseInt(m[2], 10);
+        const cacheKey = id + '-' + n;
+        if (!photoURLs[cacheKey]) {
+          photoURLs[cacheKey] = localStorage.getItem(k);
+          (buckets[id] = buckets[id] || []).push(n);
         }
       });
     } catch {}
+
+    // Populate customPhotos from buckets, sorted by n
+    Object.entries(buckets).forEach(([id, ns]) => {
+      ns.sort((a, b) => a - b);
+      S.customPhotos[id] = ns.map(n => ({n, label: _photoLabels[id]?.[n] || ''}));
+    });
   },
 
-  // Migrate localStorage photos to OPFS (one-time)
-  migrate: async () => {
+  // One-time migration: rename photo-{figId}.jpg → photo-{figId}-0.jpg
+  migrateToMulti: async () => {
     if (!_opfsReady) return 0;
     let migrated = 0;
     try {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('motu-photo-'));
-      for (const k of keys) {
-        const id = k.replace('motu-photo-', '');
-        const dataUrl = localStorage.getItem(k);
-        if (!dataUrl) continue;
+      const toMigrate = [];
+      for await (const [name, handle] of _opfsDir) {
+        if (handle.kind !== 'file') continue;
+        if (name.startsWith('photo-') && name.endsWith('.jpg')) {
+          const core = name.slice(6, -4);
+          // If core doesn't end with -digit, it's the old format
+          if (!/-\d+$/.test(core)) toMigrate.push({name, id: core});
+        }
+      }
+      for (const {name, id} of toMigrate) {
         try {
-          // Convert data URL to blob
-          const res = await fetch(dataUrl);
-          const blob = await res.blob();
-          const fh = await _opfsDir.getFileHandle('photo-' + id + '.jpg', {create: true});
-          const writable = await fh.createWritable();
-          await writable.write(blob);
+          const oldHandle = await _opfsDir.getFileHandle(name);
+          const file = await oldHandle.getFile();
+          const newHandle = await _opfsDir.getFileHandle(`photo-${id}-0.jpg`, {create: true});
+          const writable = await newHandle.createWritable();
+          await writable.write(await file.arrayBuffer());
           await writable.close();
-          // Update URL cache with blob URL instead of data URL
-          if (photoURLs[id]) URL.revokeObjectURL(photoURLs[id]);
-          photoURLs[id] = URL.createObjectURL(blob);
-          // Remove from localStorage
-          localStorage.removeItem(k);
+          await _opfsDir.removeEntry(name);
           migrated++;
-        } catch(e) { console.error('Failed to migrate photo ' + id, e); }
+        } catch(e) { console.error('Migration failed for ' + name, e); }
       }
     } catch {}
     return migrated;
   },
 
-  // Export photo as base64 data URL (for JSON backup)
-  exportAsDataURL: async id => {
-    if (_opfsReady) {
-      try {
-        const fh = await _opfsDir.getFileHandle('photo-' + id + '.jpg');
-        const file = await fh.getFile();
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      } catch { /* fall through */ }
-    }
-    // Fallback: check localStorage
-    try { return localStorage.getItem('motu-photo-' + id) || null; } catch { return null; }
+  // Legacy migration: localStorage old single-photo format → OPFS multi-photo format
+  migrateLegacyLS: async () => {
+    if (!_opfsReady) return 0;
+    let migrated = 0;
+    try {
+      // Old single-photo format: motu-photo-{figId}  (no trailing -digit)
+      const keys = Object.keys(localStorage).filter(k =>
+        k.startsWith('motu-photo-') && !/-\d+$/.test(k)
+      );
+      for (const k of keys) {
+        const id = k.slice('motu-photo-'.length);
+        const dataUrl = localStorage.getItem(k);
+        if (!dataUrl) continue;
+        try {
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          const fh = await _opfsDir.getFileHandle(`photo-${id}-0.jpg`, {create: true});
+          const writable = await fh.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          photoURLs[id + '-0'] = URL.createObjectURL(blob);
+          localStorage.removeItem(k);
+          migrated++;
+        } catch(e) { console.error('LS migration failed for ' + id, e); }
+      }
+    } catch {}
+    return migrated;
   },
 
-  // Import from base64 data URL (from JSON backup)
-  importFromDataURL: async (id, dataUrl) => {
-    try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      return photoStore.save(id, blob);
-    } catch { return false; }
+  // Export all photos for a figure as [{label, dataUrl}, ...] (for JSON backup)
+  exportAllAsDataURLs: async id => {
+    const arr = S.customPhotos[id] || [];
+    const result = [];
+    for (const {n, label} of arr) {
+      const key = id + '-' + n;
+      const url = photoURLs[key];
+      if (!url) continue;
+      try {
+        let dataUrl;
+        if (url.startsWith('data:')) dataUrl = url;
+        else {
+          // Object URL — need to fetch blob and read as data URL
+          const res = await fetch(url);
+          const blob = await res.blob();
+          dataUrl = await new Promise((r, rj) => {
+            const fr = new FileReader();
+            fr.onload = () => r(fr.result);
+            fr.onerror = rj;
+            fr.readAsDataURL(blob);
+          });
+        }
+        result.push({label: label || '', dataUrl});
+      } catch {}
+    }
+    return result;
+  },
+
+  // Import photos for a figure from backup
+  importPhotos: async (id, photos) => {
+    let count = 0;
+    for (const p of photos) {
+      try {
+        const res = await fetch(p.dataUrl);
+        const blob = await res.blob();
+        const n = await photoStore.add(id, blob, p.label || '');
+        if (n >= 0) count++;
+      } catch {}
+    }
+    return count;
   },
 };
 
@@ -1496,6 +1858,7 @@ const S = {
   sheet: null,
   loaded: false,
   fetchError: false,
+  isOffline: typeof navigator !== 'undefined' && navigator.onLine === false,
   syncStatus: 'idle',
   syncTs: null,
   editingOrder: false,
@@ -1506,6 +1869,9 @@ const S = {
   newFigIds: new Set(),     // IDs added since last sync
   _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
+  photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
+  selectMode: false,        // batch selection active
+  selected: new Set(),      // selected figure IDs
 };
 
 const DEFAULT_TITLE = 'MOTU Collector';
@@ -1584,7 +1950,17 @@ async function fetchFigs(manual = false, firstLoad = false) {
   } catch(e) {
     console.error('Fetch failed:', e);
     S.syncStatus = manual ? 'err' : 'idle';
-    if (manual) { toast('✗ Sync failed'); setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000); }
+    if (manual) {
+      // Detect offline vs other error
+      const isNetwork = !navigator.onLine || /network|failed to fetch/i.test(e.message);
+      if (isNetwork) {
+        S.isOffline = !navigator.onLine;
+        toast('✗ No connection — using cached data');
+      } else {
+        toast('✗ Sync failed');
+      }
+      setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000);
+    }
     if (firstLoad) { S.fetchError = true; render(); }
     else render();
   }
@@ -1608,13 +1984,14 @@ async function init() {
   if (rc && Array.isArray(rc)) S._recentChanges = rc;
   // Initialize OPFS for photo storage
   await initOPFS();
+  // One-time migrations (must run BEFORE loadAll so URL cache is correct)
+  if (_opfsReady) {
+    const m1 = await photoStore.migrateLegacyLS();     // Old LS single → OPFS
+    const m2 = await photoStore.migrateToMulti();      // OPFS single → OPFS multi (photo-{id}.jpg → photo-{id}-0.jpg)
+    if (m1 + m2 > 0) console.log(`Photo migrations: ${m1} from localStorage, ${m2} to multi-photo format`);
+  }
   // Load all photos into URL cache (OPFS + localStorage fallback)
   await photoStore.loadAll();
-  // One-time migration: move localStorage photos to OPFS
-  if (_opfsReady) {
-    const migrated = await photoStore.migrate();
-    if (migrated > 0) console.log(`Migrated ${migrated} photos to OPFS`);
-  }
   // Load cached figs
   const cached = store.get(CACHE_KEY);
   if (cached?.rows?.length) {
@@ -1769,6 +2146,7 @@ let _lpFired = false;
 
 function initLongPress(el, figId) {
   el.addEventListener('touchstart', e => {
+    if (S.selectMode) return;
     _lpMoved = false;
     _lpFired = false;
     _lpFigId = figId;
@@ -2062,15 +2440,19 @@ function exportCSV(filter) {
 
 async function exportJSON() {
   const backup = {
-    version: 'motu-vault-backup-v1',
+    version: 'motu-vault-backup-v2',
     exported: new Date().toISOString(),
     collection: S.coll,
     photos: {}
   };
-  // Include custom photos as base64 data URLs
+  // Include custom photos as arrays of {label, dataUrl}
+  let totalPhotos = 0;
   for (const id of Object.keys(S.customPhotos)) {
-    const data = await photoStore.exportAsDataURL(id);
-    if (data) backup.photos[id] = data;
+    const photos = await photoStore.exportAllAsDataURLs(id);
+    if (photos.length) {
+      backup.photos[id] = photos;
+      totalPhotos += photos.length;
+    }
   }
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2078,8 +2460,7 @@ async function exportJSON() {
   a.href = url; a.download = 'motu-vault-backup.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  const photoCount = Object.keys(backup.photos).length;
-  toast(`✓ Backup saved · ${photoCount} photos`);
+  toast(`✓ Backup saved · ${totalPhotos} photos`);
 }
 
 function importJSON(file) {
@@ -2087,7 +2468,7 @@ function importJSON(file) {
   reader.onload = async ev => {
     try {
       const backup = JSON.parse(ev.target.result);
-      if (backup.version !== 'motu-vault-backup-v1') throw new Error('Unknown format');
+      if (backup.version !== 'motu-vault-backup-v1' && backup.version !== 'motu-vault-backup-v2') throw new Error('Unknown format');
       if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
       const overwrite = document.querySelector('.checkbox.checked') !== null;
       let imported = 0, skipped = 0, photos = 0;
@@ -2097,11 +2478,16 @@ function importJSON(file) {
         imported++;
       });
       saveColl();
-      // Restore photos
+      // Restore photos (handle both v1 single-photo and v2 multi-photo formats)
       if (backup.photos) {
-        for (const [id, data] of Object.entries(backup.photos)) {
-          const ok = await photoStore.importFromDataURL(id, data);
-          if (ok) { S.customPhotos[id] = true; photos++; }
+        for (const [id, val] of Object.entries(backup.photos)) {
+          // v1 format: photos[id] is a single dataUrl string
+          // v2 format: photos[id] is an array of {label, dataUrl}
+          const photoArr = typeof val === 'string'
+            ? [{label: '', dataUrl: val}]
+            : (Array.isArray(val) ? val : []);
+          const count = await photoStore.importPhotos(id, photoArr);
+          photos += count;
         }
       }
       const body = document.querySelector('.sheet-body');
@@ -2134,7 +2520,7 @@ function renderExportSheet() {
   const ord = S.figs.filter(f => S.coll[f.id]?.status === 'ordered').length;
   const sale = S.figs.filter(f => S.coll[f.id]?.status === 'for-sale').length;
   const unowned = S.figs.filter(f => !S.coll[f.id]?.status).length;
-  const photoCount = Object.keys(S.customPhotos).length;
+  const photoCount = Object.values(S.customPhotos).reduce((sum, arr) => sum + (arr?.length || 0), 0);
   const opts = [
     {filter:'', label:'Full Catalog', count:S.figs.length},
     {filter:'any-status', label:'All w/ Status', count:anyStatus},
@@ -2342,7 +2728,9 @@ function renderMain() {
   const stats = getStats();
   const sortLabel = S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
   const hf = hasFilters();
-  const syncCls = S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '';
+  const syncCls = S.isOffline ? 'offline' : (S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '');
+  const syncClick = S.isOffline ? `toast('✗ No connection')` : `fetchFigs(true)`;
+  const syncTitle = S.isOffline ? 'Offline' : 'Sync';
 
   const themeTitles = getThemeTitles();
   const themeIcon = getThemeIcon();
@@ -2350,17 +2738,21 @@ function renderMain() {
   const titleClick = hasTitleCycle ? `S.titleIdx=(S.titleIdx+1)%${themeTitles.length};playTitleSound(S.titleIdx);render()` : 'goHome()';
 
   let html = `
+  <div class="offline-banner${S.isOffline ? ' visible' : ''}" id="offlineBanner">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.58 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+    Offline — showing cached data
+  </div>
   <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.0</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.2</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
-        <button class="icon-btn ${syncCls}" title="Sync" onclick="fetchFigs(true)">${icon(ICO.sync,16)}</button>
+        <button class="icon-btn ${syncCls}" title="${syncTitle}" onclick="${syncClick}">${icon(ICO.sync,16)}</button>
         <button class="icon-btn" title="Menu" onclick="openSheet('menu')">${icon(ICO.menu,20)}</button>
       </div>
     </div>
@@ -2388,12 +2780,13 @@ function renderMain() {
     ${renderContent()}
   </div>
 
-  <div class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav${S.selectMode ? ' hidden' : ''}" id="bottomNav">
     ${renderNavBtn('lines', ICO.lines, 'Lines')}
     ${renderNavBtn('all', ICO.list, 'All', `<span class="badge">${stats.total}</span>`)}
     ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned}</span>`)}
   </div>`;
 
+  if (S.selectMode) html += renderSelectActionbar();
   if (S.sheet) html += renderSheet();
   app().innerHTML = html;
 
@@ -2485,6 +2878,34 @@ function renderMain() {
       });
     });
   }
+}
+
+function renderSelectActionbar() {
+  const n = S.selected.size;
+  const totalVisible = getSortedFigs().length;
+  const allSelected = n > 0 && n === totalVisible;
+  return `<div class="select-actionbar visible">
+    <span class="count">${n} selected</span>
+    <button onclick="selectAllVisible()" title="${allSelected ? 'Deselect all' : 'Select all'}">
+      ${allSelected ? 'Clear' : 'All'}
+    </button>
+    <div class="spacer"></div>
+    ${n > 0 ? `
+      <button class="primary" onclick="batchSetStatus('owned')" title="Mark owned" style="background:${STATUS_HEX.owned};border-color:${STATUS_HEX.owned}">
+        ${icon(ICO.check,13)} Own
+      </button>
+      <button onclick="batchSetStatus('wishlist')" title="Mark wishlist" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">
+        Wish
+      </button>
+      <button onclick="batchSetStatus('ordered')" title="Mark ordered" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">
+        Ord
+      </button>
+      <button onclick="batchSetStatus('for-sale')" title="Mark for sale" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">
+        Sale
+      </button>
+      <button class="danger" onclick="batchSetStatus('')" title="Clear status">Clear</button>
+    ` : '<span style="color:var(--t3);font-size:12px;padding-right:8px">Tap items to select</span>'}
+  </div>`;
 }
 
 function renderNavBtn(key, ico, label, extra='') {
@@ -2668,8 +3089,12 @@ function renderFigRow(f) {
   const imgErr = S.imgErrors[f.id];
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
+  const isSelected = S.selectMode && S.selected.has(f.id);
+  const rowClick = S.selectMode ? `toggleSelect(event,'${f.id}')` : `openFig('${f.id}')`;
+  const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
-  return `<div class="fig-row" data-fig-id="${f.id}" onclick="openFig('${f.id}')">
+  return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${f.id}" onclick="${rowClick}">
+    ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
@@ -2683,12 +3108,12 @@ function renderFigRow(f) {
         ${f.year ? `<span>· ${f.year}</span>` : ''}
       </div>
     </div>
-    <div class="fig-actions">
+    ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
       ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${f.id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" onclick="event.stopPropagation();setStatus('${f.id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
-    </div>
+    </div>`}
   </div>`;
 }
 
@@ -2707,12 +3132,17 @@ function renderFigCard(f) {
     ? `cycleStatus(event,'${f.id}')`
     : `event.stopPropagation();setStatus('${f.id}','owned')`;
 
-  return `<div class="fig-card ${statusCls}" data-fig-id="${f.id}" onclick="openFig('${f.id}')">
+  const isSelected = S.selectMode && S.selected.has(f.id);
+  const cardClick = S.selectMode ? `toggleSelect(event,'${f.id}')` : `openFig('${f.id}')`;
+  const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
+
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}" data-fig-id="${f.id}" onclick="${cardClick}">
     ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
       `<div class="card-initial">${esc(f.name[0])}</div>`}
     <div class="card-overlay"></div>
-    ${isNew ? '<div class="new-badge">NEW</div>' : ''}
-    <button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>
+    ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+    ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
+    ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
     <div class="card-info">
       <div class="card-fig-name">${esc(f.name)}</div>
       <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
@@ -2760,8 +3190,11 @@ function renderFigList() {
   // View toggle + count row
   const listActive = !isGrid ? 'active' : '';
   const gridActive = isGrid ? 'active' : '';
-  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px">
-    <div class="fig-count" style="margin-bottom:0">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
+  html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px;gap:8px">
+    <div class="fig-count" style="margin-bottom:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
+    <button class="select-btn${S.selectMode ? ' active' : ''}" onclick="${S.selectMode ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
+      ${S.selectMode ? 'Done' : 'Select'}
+    </button>
     <div class="view-toggle">
       <button class="${listActive}" onclick="setViewMode('list')" title="List view">${icon(ICO.list,14)}</button>
       <button class="${gridActive}" onclick="setViewMode('grid')" title="Grid view">${icon(ICO.lines,14)}</button>
@@ -2814,10 +3247,28 @@ function renderFigList() {
 function renderDetail() {
   const f = S.activeFig;
   const c = S.coll[f.id] || {};
-  const hasCustom = S.customPhotos[f.id];
-  const customPhoto = hasCustom ? photoStore.get(f.id) : null;
-  const imgUrl = customPhoto || (f.image && !S.imgErrors[f.id] ? f.image : null);
+  const userPhotos = photoStore.getAll(f.id);    // [{n, url, label}, ...]
+  const hasCustom = userPhotos.length > 0;
+  const stockImg = (f.image && !S.imgErrors[f.id]) ? f.image : null;
   const pills = [ln(f.line), f.group, f.wave?'Wave '+f.wave:'', f.year, f.faction].filter(Boolean);
+  const canAddMore = userPhotos.length < MAX_PHOTOS;
+
+  // Build carousel: user photos first, then stock image as last "view-only" slide if no user photos
+  const slides = userPhotos.length > 0
+    ? userPhotos
+    : (stockImg ? [{n: -1, url: stockImg, label: '', stock: true}] : []);
+
+  const carouselHtml = slides.length === 0
+    ? `<div class="photo-container"><span class="initial-large">${esc(f.name[0])}</span></div>`
+    : `<div class="photo-carousel" id="photoCarousel">
+        ${slides.map(s => `
+          <div class="photo-slide" onclick="${s.stock ? '' : `openPhotoViewer('${f.id}',${s.n})`}">
+            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${f.id}')"` : ''}>
+            ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
+            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${f.id}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
+          </div>`).join('')}
+      </div>
+      ${slides.length > 1 ? `<div class="photo-dots">${slides.map((_,i) => `<div class="photo-dot" data-idx="${i}"></div>`).join('')}</div>` : ''}`;
 
   let html = `
   <div class="detail-header">
@@ -2826,18 +3277,23 @@ function renderDetail() {
   </div>
   <div class="detail-scroll">
     <div class="photo-section">
-      <div class="photo-container">
-        ${imgUrl ? `<img src="${esc(imgUrl)}" alt="${esc(f.name)}" onerror="imgErr('${f.id}')">` :
-          `<span class="initial-large">${esc(f.name[0])}</span>`}
-      </div>
+      ${carouselHtml}
       <div class="photo-controls">
-        <button class="photo-btn" onclick="document.getElementById('photoInput').click()">
-          ${icon(ICO.img,14)} ${hasCustom ? 'Replace photo' : 'Add photo'}
-        </button>
-        ${hasCustom ? `<button class="photo-btn remove" onclick="clearPhoto('${f.id}')">Remove</button>` : ''}
+        ${canAddMore ? `<button class="photo-btn" onclick="document.getElementById('photoInput').click()">
+          ${icon(ICO.plus,14)} Add photo${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
+        </button>` : `<div class="photo-btn" style="opacity:0.5;cursor:default">Max ${MAX_PHOTOS} photos</div>`}
       </div>
       <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,'${f.id}')">
     </div>
+    ${userPhotos.length > 0 ? `<div class="photo-labels">
+      ${userPhotos.map(p => `
+        <div class="photo-label-row">
+          <span class="photo-label-num">#${userPhotos.indexOf(p)+1}</span>
+          <input type="text" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
+                 onblur="setPhotoLabel('${f.id}',${p.n},this.value)" maxlength="20">
+        </div>
+      `).join('')}
+    </div>` : ''}
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
@@ -2885,7 +3341,39 @@ function renderDetail() {
     </div>` : ''}
     <div class="detail-spacer"></div>
   </div>`;
+  if (S.photoViewer) html += renderPhotoViewer();
   app().innerHTML = html;
+
+  // Wire up carousel dot indicator
+  const carousel = document.getElementById('photoCarousel');
+  if (carousel) {
+    const dots = document.querySelectorAll('.photo-dot');
+    if (dots.length) {
+      const updateDots = () => {
+        const idx = Math.round(carousel.scrollLeft / carousel.clientWidth);
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      };
+      updateDots();
+      carousel.addEventListener('scroll', updateDots, {passive: true});
+    }
+  }
+}
+
+function renderPhotoViewer() {
+  const v = S.photoViewer;
+  if (!v || !v.photos.length) return '';
+  const p = v.photos[v.idx];
+  const multi = v.photos.length > 1;
+  return `<div class="photo-viewer" onclick="if(event.target===this)closePhotoViewer()">
+    <button class="photo-viewer-close" onclick="closePhotoViewer()">${icon(ICO.x,28)}</button>
+    ${multi ? `<button class="photo-viewer-nav prev" onclick="event.stopPropagation();photoViewerNav(-1)">${icon(ICO.back,28)}</button>` : ''}
+    <div class="photo-viewer-img-wrap" onclick="event.stopPropagation()">
+      <img src="${esc(p.url)}" alt="${esc(p.label || '')}">
+      ${p.label ? `<div class="photo-viewer-label">${esc(p.label)}</div>` : ''}
+      ${multi ? `<div class="photo-viewer-counter">${v.idx + 1} / ${v.photos.length}</div>` : ''}
+    </div>
+    ${multi ? `<button class="photo-viewer-nav next" onclick="event.stopPropagation();photoViewerNav(1)">${icon(ICO.chevR,28)}</button>` : ''}
+  </div>`;
 }
 
 // ─── Sheets ───────────────────────────────────────────────────────
@@ -3033,6 +3521,23 @@ window.addEventListener('popstate', e => {
   // Always restore bars on back navigation
   S.barsHidden = false;
   S.searchBarHidden = false;
+
+  // If select mode is active, exit it first
+  if (S.selectMode) {
+    S.selectMode = false;
+    S.selected = new Set();
+    render();
+    _skipPush = false;
+    return;
+  }
+
+  // If photo viewer is open, close it first
+  if (S.photoViewer) {
+    S.photoViewer = null;
+    render();
+    _skipPush = false;
+    return;
+  }
 
   // If a sheet is open, just close it (don't go further back)
   if (S.sheet) {
@@ -3186,6 +3691,59 @@ window.closeSheet = () => { history.back(); };
 window.setTheme = t => { S.theme = t; S.titleIdx = 0; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
 window.imgErr = id => { S.imgErrors[id] = true; };
 
+// ─── Batch Selection ────────────────────────────────────────────
+window.enterSelectMode = () => {
+  S.selectMode = true;
+  S.selected = new Set();
+  pushNav();
+  haptic && haptic();
+  render();
+};
+window.exitSelectMode = () => {
+  if (S.selectMode) history.back();
+  else { S.selectMode = false; S.selected = new Set(); render(); }
+};
+window.toggleSelect = (e, id) => {
+  if (e) e.stopPropagation();
+  if (S.selected.has(id)) S.selected.delete(id);
+  else S.selected.add(id);
+  haptic && haptic(8);
+  render();
+};
+window.selectAllVisible = () => {
+  const figs = getSortedFigs();
+  if (S.selected.size === figs.length) {
+    S.selected = new Set();
+  } else {
+    S.selected = new Set(figs.map(f => f.id));
+  }
+  haptic && haptic();
+  render();
+};
+window.batchSetStatus = status => {
+  const ids = Array.from(S.selected);
+  if (!ids.length) return;
+  let changed = 0;
+  ids.forEach(id => {
+    if (!S.coll[id]) S.coll[id] = {};
+    if (status === '') {
+      delete S.coll[id].status;
+      if (!Object.keys(S.coll[id]).length) delete S.coll[id];
+    } else {
+      S.coll[id] = {...S.coll[id], status};
+    }
+    changed++;
+    S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
+  });
+  saveColl();
+  store.set('motu-recent', S._recentChanges);
+  haptic && haptic(25);
+  const label = status ? STATUS_LABEL[status] : 'Cleared';
+  toast(`✓ ${changed} figures → ${label}`);
+  if (S.selectMode) history.back();
+  else render();
+};
+
 // Long-press status cycle: owned → wishlist → ordered → for-sale → clear
 const STATUS_CYCLE = ['owned','wishlist','ordered','for-sale', ''];
 window.cycleStatus = (e, id) => {
@@ -3217,29 +3775,70 @@ window.cycleStatus = (e, id) => {
 window.handlePhoto = (input, figId) => {
   const file = input.files?.[0]; if (!file) return;
   if (file.size > 20000000) { alert('Image too large (max 20MB).'); return; }
+  // Check photo limit
+  const existing = S.customPhotos[figId] || [];
+  if (existing.length >= MAX_PHOTOS) {
+    alert(`Maximum ${MAX_PHOTOS} photos per figure. Remove one first.`);
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = ev => {
     const img = new Image();
     img.onload = async () => {
-      const MAX = 600;
+      const MAX = 800;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.65));
-      const ok = await photoStore.save(figId, blob);
-      if (!ok) { alert('Storage full.'); return; }
-      S.customPhotos[figId] = true;
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.75));
+      const n = await photoStore.add(figId, blob, '');
+      if (n < 0) { alert('Storage full or photo limit reached.'); return; }
       S.imgErrors[figId] = false;
+      input.value = '';
+      haptic && haptic();
       renderDetail();
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
 };
+
+window.removePhoto = async (id, n) => {
+  if (!confirm('Remove this photo?')) return;
+  await photoStore.remove(id, n);
+  haptic && haptic();
+  renderDetail();
+};
+
 window.clearPhoto = async id => {
-  await photoStore.del(id); delete S.customPhotos[id]; renderDetail();
+  if (!confirm('Remove all photos for this figure?')) return;
+  await photoStore.delAll(id);
+  renderDetail();
+};
+
+window.setPhotoLabel = async (id, n, label) => {
+  await photoStore.setLabel(id, n, label.trim());
+  renderDetail();
+};
+
+// Full-screen photo viewer
+window.openPhotoViewer = (id, startN) => {
+  const photos = photoStore.getAll(id);
+  if (!photos.length) return;
+  const startIdx = Math.max(0, photos.findIndex(p => p.n === startN));
+  S.photoViewer = { figId: id, photos, idx: startIdx };
+  pushNav();
+  haptic && haptic();
+  render();
+};
+window.closePhotoViewer = () => { history.back(); };
+window.photoViewerNav = dir => {
+  if (!S.photoViewer) return;
+  const len = S.photoViewer.photos.length;
+  S.photoViewer.idx = (S.photoViewer.idx + dir + len) % len;
+  render();
 };
 
 window.handleCSV = input => {
@@ -3319,6 +3918,20 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+// Online/offline detection
+window.addEventListener('online', () => {
+  S.isOffline = false;
+  toast('✓ Back online');
+  haptic && haptic();
+  render();
+});
+window.addEventListener('offline', () => {
+  S.isOffline = true;
+  toast('✗ Connection lost');
+  haptic && haptic();
+  render();
+});
+
 init();
 </script>
 </body>
