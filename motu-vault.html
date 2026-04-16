@@ -1012,6 +1012,164 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 /* ── Spacers ─────────────────────────────────────────────────────── */
 .bottom-spacer { height: calc(48px + var(--safe-bottom)); }
 .detail-spacer { height: calc(32px + var(--safe-bottom)); }
+
+/* ── Status Pulse Animation ──────────────────────────────────────── */
+@keyframes statusPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 var(--pulse-color, rgba(255,255,255,.4)); }
+  40% { transform: scale(1.25); box-shadow: 0 0 0 8px transparent; }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+.status-badge.pulsing, .quick-own.pulsing {
+  animation: statusPulse 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* ── Long-Press Context Menu ─────────────────────────────────────── */
+.ctx-menu-overlay {
+  position: fixed; inset: 0; z-index: 250;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  animation: ctxFadeIn 0.15s ease-out forwards;
+}
+@keyframes ctxFadeIn { to { opacity: 1; } }
+.ctx-menu {
+  position: fixed; z-index: 251;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  min-width: 200px;
+  max-width: 260px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  overflow: hidden;
+  transform-origin: top center;
+  animation: ctxSlideIn 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes ctxSlideIn {
+  from { opacity: 0; transform: scale(0.9) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.ctx-menu-header {
+  padding: 12px 16px 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  border-bottom: 1px solid var(--bd);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-menu-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  font-size: 14px;
+  color: var(--t1);
+  border: none; background: none;
+  width: 100%;
+  text-align: left;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ctx-menu-item:active { background: color-mix(in srgb, var(--acc) 12%, transparent); }
+.ctx-menu-item.active { color: var(--acc); font-weight: 600; }
+.ctx-menu-item .ctx-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.ctx-menu-sep {
+  height: 1px; background: var(--bd); margin: 0;
+}
+
+/* ── Completion Celebration ──────────────────────────────────────── */
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
+}
+.confetti-container {
+  position: fixed; inset: 0; z-index: 999;
+  pointer-events: none; overflow: hidden;
+}
+.confetti-piece {
+  position: absolute;
+  width: 8px; height: 8px;
+  top: -10px;
+  animation: confettiFall linear forwards;
+}
+@keyframes goldGlow {
+  0% { box-shadow: 0 0 0 0 rgba(212,168,67,.6); }
+  50% { box-shadow: 0 0 20px 4px rgba(212,168,67,.3); }
+  100% { box-shadow: 0 0 0 0 rgba(212,168,67,0); }
+}
+.line-card.celebrating, .subline-card.celebrating {
+  animation: goldGlow 1.2s ease-out;
+}
+
+/* ── Skeleton Loading ────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-grid {
+  padding: 14px 16px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.skeleton-card {
+  border-radius: 18px;
+  aspect-ratio: 3/4;
+  background: linear-gradient(90deg, var(--bg3) 25%, color-mix(in srgb, var(--bd) 40%, var(--bg3)) 50%, var(--bg3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border: 1px solid var(--bd);
+}
+.skeleton-bar {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--bg3) 25%, color-mix(in srgb, var(--bd) 40%, var(--bg3)) 50%, var(--bg3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  margin: 8px 16px;
+}
+.skeleton-header {
+  padding: 16px 16px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.skeleton-circle {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--bg3) 25%, color-mix(in srgb, var(--bd) 40%, var(--bg3)) 50%, var(--bg3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  flex-shrink: 0;
+}
+.skeleton-text {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.skeleton-text-line {
+  height: 10px; border-radius: 5px;
+  background: linear-gradient(90deg, var(--bg3) 25%, color-mix(in srgb, var(--bd) 40%, var(--bg3)) 50%, var(--bg3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* ── Undo Toast ──────────────────────────────────────────────────── */
+.toast-undo {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: var(--acc);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: 'Outfit', sans-serif;
+  vertical-align: middle;
+}
 </style>
 </head>
 <body>
@@ -1445,6 +1603,9 @@ async function init() {
       return [id, entry];
     }));
   }
+  // Load persisted recent changes
+  const rc = store.get('motu-recent');
+  if (rc && Array.isArray(rc)) S._recentChanges = rc;
   // Initialize OPFS for photo storage
   await initOPFS();
   // Load all photos into URL cache (OPFS + localStorage fallback)
@@ -1491,6 +1652,221 @@ function haptic(ms = 15) {
   if (navigator.vibrate) navigator.vibrate(ms);
 }
 
+// ─── Status Pulse Animation ──────────────────────────────────────
+function triggerPulse(id, status) {
+  requestAnimationFrame(() => {
+    const badge = document.querySelector(`.fig-card[data-fig-id="${id}"] .status-badge`) ||
+                  document.querySelector(`.fig-row[data-fig-id="${id}"] .quick-own`);
+    if (!badge) return;
+    const color = status ? STATUS_HEX[status] : 'rgba(255,255,255,.3)';
+    badge.style.setProperty('--pulse-color', color + '66');
+    badge.classList.remove('pulsing');
+    void badge.offsetWidth; // force reflow
+    badge.classList.add('pulsing');
+    badge.addEventListener('animationend', () => badge.classList.remove('pulsing'), {once: true});
+  });
+}
+
+// ─── Undo Toast ──────────────────────────────────────────────────
+function toastUndo(msg, figId, prevColl) {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = msg + ` <button class="toast-undo" onclick="undoStatus('${figId}')">Undo</button>`;
+  // Store the previous state on the element
+  el._undoPrev = prevColl;
+  el.dataset.figId = figId;
+  container.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 3500);
+}
+
+window.undoStatus = id => {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toastEl = container.querySelector(`[data-fig-id="${id}"]`);
+  if (!toastEl || !toastEl._undoPrev) return;
+  const prev = toastEl._undoPrev;
+  if (prev.status) S.coll[id] = prev;
+  else { delete S.coll[id]; }
+  saveColl();
+  toastEl.remove();
+  toast('↩ Undone');
+  if (!patchFigRow(id)) render();
+};
+
+// ─── Completion Celebrations ─────────────────────────────────────
+const _celebrated = store.get('motu-celebrated') || {};
+
+function checkCompletion(fig) {
+  // Check line completion
+  const lineId = fig.line;
+  const lineFigs = S.figs.filter(f => f.line === lineId && !figIsHidden(f));
+  const lineOwned = lineFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
+  if (lineOwned === lineFigs.length && lineFigs.length > 1 && !_celebrated['line:' + lineId]) {
+    _celebrated['line:' + lineId] = true;
+    store.set('motu-celebrated', _celebrated);
+    celebrateCompletion(ln(lineId) + ' complete!');
+    return;
+  }
+  // Check subline completion
+  const subs = SUBLINES[lineId];
+  if (subs) {
+    for (const sl of subs) {
+      if (!sl.groups.includes(fig.group)) continue;
+      const key = lineId + ':' + sl.key;
+      if (_celebrated['sub:' + key]) continue;
+      const slFigs = S.figs.filter(f => f.line === lineId && sl.groups.includes(f.group) && !figIsHidden(f));
+      const slOwned = slFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
+      if (slOwned === slFigs.length && slFigs.length > 1) {
+        _celebrated['sub:' + key] = true;
+        store.set('motu-celebrated', _celebrated);
+        celebrateCompletion(sl.label + ' complete!');
+        return;
+      }
+    }
+  }
+}
+
+function celebrateCompletion(label) {
+  haptic(50);
+  toast('🏆 ' + label);
+  spawnConfetti();
+}
+
+function spawnConfetti() {
+  const container = document.createElement('div');
+  container.className = 'confetti-container';
+  document.body.appendChild(container);
+  const colors = ['#d4a843','#34d399','#8b5cf6','#f87171','#60a5fa','#fb923c','#fbbf24'];
+  for (let i = 0; i < 40; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const size = 6 + Math.random() * 6;
+    piece.style.cssText = `
+      left: ${Math.random() * 100}%;
+      width: ${size}px; height: ${size}px;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+      animation-duration: ${1.5 + Math.random() * 2}s;
+      animation-delay: ${Math.random() * 0.6}s;
+    `;
+    container.appendChild(piece);
+  }
+  setTimeout(() => container.remove(), 4500);
+}
+
+// ─── Long-Press Context Menu ─────────────────────────────────────
+let _lpTimer = null;
+let _lpFigId = null;
+let _lpMoved = false;
+let _lpFired = false;
+
+function initLongPress(el, figId) {
+  el.addEventListener('touchstart', e => {
+    _lpMoved = false;
+    _lpFired = false;
+    _lpFigId = figId;
+    _lpTimer = setTimeout(() => {
+      if (!_lpMoved) {
+        _lpFired = true;
+        haptic(25);
+        showContextMenu(figId, e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, 500);
+  }, {passive: true});
+  el.addEventListener('touchmove', () => {
+    _lpMoved = true;
+    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+  }, {passive: true});
+  el.addEventListener('touchend', () => {
+    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+  }, {passive: true});
+  el.addEventListener('touchcancel', () => {
+    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+  }, {passive: true});
+  // Prevent tap from firing after long-press
+  el.addEventListener('click', e => {
+    if (_lpFired) { e.stopPropagation(); e.preventDefault(); _lpFired = false; }
+  }, {capture: true});
+}
+
+function showContextMenu(figId, x, y) {
+  // Prevent the regular tap from firing
+  const fig = S.figs.find(f => f.id === figId);
+  if (!fig) return;
+  const c = S.coll[figId] || {};
+  dismissContextMenu();
+  const overlay = document.createElement('div');
+  overlay.className = 'ctx-menu-overlay';
+  overlay.id = 'ctxOverlay';
+  overlay.onclick = e => { if (e.target === overlay) dismissContextMenu(); };
+
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  // Position: ensure it stays on screen
+  const menuW = 230, menuH = 280;
+  let left = Math.min(x - 20, window.innerWidth - menuW - 12);
+  let top = Math.min(y - 20, window.innerHeight - menuH - 12);
+  left = Math.max(12, left);
+  top = Math.max(12, top);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+
+  let items = `<div class="ctx-menu-header">${esc(fig.name)}</div>`;
+  STATUSES.forEach(s => {
+    const active = c.status === s;
+    const dotColor = STATUS_HEX[s];
+    items += `<button class="ctx-menu-item ${active ? 'active' : ''}" onclick="ctxSetStatus('${figId}','${s}')">
+      <span class="ctx-dot" style="background:${dotColor}"></span>
+      ${active ? '✓ ' : ''}${STATUS_LABEL[s]}
+    </button>`;
+  });
+  if (c.status) {
+    items += `<button class="ctx-menu-item" onclick="ctxSetStatus('${figId}','clear')" style="color:var(--t3)">
+      <span class="ctx-dot" style="background:var(--bd)"></span>Clear status
+    </button>`;
+  }
+  items += '<div class="ctx-menu-sep"></div>';
+  if (fig.source === 'af411') {
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();window.open('https://www.actionfigure411.com/masters-of-the-universe/search.php?search=${encodeURIComponent(fig.name)}','_blank')">
+      ${icon(ICO.export, 16)} View on AF411
+    </button>`;
+  }
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig('${figId}')">
+    ${icon(ICO.edit, 16)} Open details
+  </button>`;
+  menu.innerHTML = items;
+  overlay.appendChild(menu);
+  document.body.appendChild(overlay);
+}
+
+function dismissContextMenu() {
+  const el = document.getElementById('ctxOverlay');
+  if (el) el.remove();
+}
+
+window.ctxSetStatus = (id, status) => {
+  dismissContextMenu();
+  if (status === 'clear') {
+    const prevColl = JSON.parse(JSON.stringify(S.coll[id] || {}));
+    if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
+    saveColl(); haptic();
+    S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
+    store.set('motu-recent', S._recentChanges);
+    const fig = S.figs.find(f => f.id === id);
+    toastUndo(`✗ ${fig ? fig.name : id} cleared`, id, prevColl);
+    if (!patchFigRow(id)) render();
+  } else {
+    setStatus(id, status);
+  }
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────
 function saveColl() { store.set('motu-c2', S.coll); }
 function toggleHidden(key) {
@@ -1520,16 +1896,22 @@ function figIsHidden(f) {
 function setStatus(id, status) {
   if (!S.coll[id]) S.coll[id] = {};
   const wasStatus = S.coll[id].status;
+  const prevColl = JSON.parse(JSON.stringify(S.coll[id] || {}));
   if (S.coll[id].status === status) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   else S.coll[id] = {...S.coll[id], status};
   saveColl(); haptic();
   S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
+  store.set('motu-recent', S._recentChanges);
   const fig = S.figs.find(f => f.id === id);
   const name = fig ? fig.name : id;
   const newStatus = S.coll[id]?.status;
-  if (newStatus) toast(`✓ ${name} → ${STATUS_LABEL[newStatus]}`);
-  else toast(`✗ ${name} cleared`);
+  if (newStatus) toastUndo(`✓ ${name} → ${STATUS_LABEL[newStatus]}`, id, prevColl);
+  else toastUndo(`✗ ${name} cleared`, id, prevColl);
+  // Trigger pulse animation on the badge
+  triggerPulse(id, newStatus);
   if (!patchFigRow(id)) render();
+  // Check completion celebrations
+  if (newStatus === 'owned' && fig) checkCompletion(fig);
 }
 
 function patchFigRow(id) {
@@ -1905,23 +2287,48 @@ const $ = id => document.getElementById(id);
 const app = () => document.getElementById('app');
 
 function render() {
-  if (!S.loaded) { renderLoading(); return; }
-  if (S.screen === 'figure' && S.activeFig) { renderDetail(); return; }
-  renderMain();
+  try {
+    if (!S.loaded) { renderLoading(); return; }
+    if (S.screen === 'figure' && S.activeFig) { renderDetail(); return; }
+    renderMain();
+  } catch(e) {
+    console.error('Render error:', e);
+    app().innerHTML = `<div style="padding:40px 20px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+      <div style="color:var(--rd);font-size:16px;font-weight:600;margin-bottom:8px">Something went wrong</div>
+      <div class="text-dim text-sm" style="margin-bottom:16px;line-height:1.6">${esc(e.message)}</div>
+      <button class="retry-btn" onclick="S.screen='main';S.sheet=null;render()">Recover</button>
+    </div>`;
+  }
 }
 
 function renderLoading() {
+  const skeletonCards = Array(6).fill('').map((_, i) =>
+    `<div class="skeleton-card" style="animation-delay:${i * 0.1}s"></div>`
+  ).join('');
   app().innerHTML = `
-    <div class="loading-screen">
-      <img src="${IMG}/masters_logo.png" alt="" style="width:180px;margin-bottom:12px;opacity:0.85">
-      <div class="loading-name font-display text-upper">MOTU COLLECTOR</div>
+    <div style="height:100%;display:flex;flex-direction:column;background:var(--bg)">
+      <div class="skeleton-header">
+        <div class="skeleton-circle"></div>
+        <div class="skeleton-text">
+          <div class="skeleton-text-line" style="width:55%"></div>
+          <div class="skeleton-text-line" style="width:80%"></div>
+        </div>
+      </div>
+      <div class="skeleton-bar" style="width:70%;margin-bottom:4px"></div>
+      <div class="skeleton-bar" style="width:40%;margin-bottom:12px;height:8px"></div>
       ${S.fetchError ? `
-        <div style="color:var(--rd);font-size:14px;font-weight:600;margin-bottom:8px">Could not load figures</div>
-        <div class="text-dim text-sm" style="margin-bottom:24px;text-align:center;line-height:1.6">Check your connection and try again.</div>
-        <button class="retry-btn" onclick="fetchFigs(true,true)">Retry</button>
+        <div style="text-align:center;padding:40px 20px">
+          <div style="font-size:48px;margin-bottom:12px">⚡</div>
+          <div style="color:var(--rd);font-size:14px;font-weight:600;margin-bottom:8px">Could not load figures</div>
+          <div class="text-dim text-sm" style="margin-bottom:24px;line-height:1.6">Check your connection and try again.</div>
+          <button class="retry-btn" onclick="fetchFigs(true,true)">Retry</button>
+        </div>
       ` : `
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Loading figures…</div>
+        <div class="skeleton-grid">${skeletonCards}</div>
+        <div style="text-align:center;padding:8px 0">
+          <div class="loading-text" style="font-size:11px;color:var(--t3);letter-spacing:1px">Loading catalog…</div>
+        </div>
       `}
     </div>`;
 }
@@ -1949,7 +2356,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.33</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.0</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2068,6 +2475,15 @@ function renderMain() {
     };
     ca.addEventListener('touchstart', ca._ptrTouchStart, {passive: true});
     ca.addEventListener('touchend', ca._ptrTouchEnd, {passive: true});
+
+    // Long-press context menu on figure rows and cards
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.fig-row[data-fig-id], .fig-card[data-fig-id]').forEach(el => {
+        if (el._lpBound) return;
+        el._lpBound = true;
+        initLongPress(el, el.dataset.figId);
+      });
+    });
   }
 }
 
@@ -2383,6 +2799,10 @@ function renderFigList() {
         } else {
           container.innerHTML = renderFigsWithHeaders(rest, renderFigRow);
         }
+        // Bind long-press to newly rendered items
+        container.querySelectorAll('[data-fig-id]').forEach(el => {
+          if (!el._lpBound) { el._lpBound = true; initLongPress(el, el.dataset.figId); }
+        });
       });
     }
   }
@@ -2672,15 +3092,19 @@ window.onSearch = val => {
   if (val) S.tab = 'all';
   // Clearing search — do full render to restore UI (clear button, breadcrumbs, tab state)
   if (!val) { pushNav(); render(); return; }
-  // Typing — surgical content update only, preserves input focus
-  if (_searchTimer) cancelAnimationFrame(_searchTimer);
-  _searchTimer = requestAnimationFrame(() => {
+  // Debounced content update — 120ms debounce preserves input focus
+  if (_searchTimer) clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => {
     const ca = document.getElementById('contentArea');
     if (ca) {
       ca.innerHTML = '<div id="topSpacer"></div>' + renderContent();
       const tb = document.getElementById('topBar');
       const ts = document.getElementById('topSpacer');
       if (ts && tb) ts.style.height = tb.offsetHeight + 'px';
+      // Bind long-press to search results
+      ca.querySelectorAll('[data-fig-id]').forEach(el => {
+        if (!el._lpBound) { el._lpBound = true; initLongPress(el, el.dataset.figId); }
+      });
     }
     // Show clear button if it's not already there
     const wrap = document.querySelector('.search-wrap');
@@ -2693,7 +3117,7 @@ window.onSearch = val => {
       wrap.appendChild(btn);
     }
     _searchTimer = null;
-  });
+  }, 120);
 };
 window.navTo = key => { S.tab = key; S.searchBarHidden = false; S.barsHidden = false; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
@@ -2766,6 +3190,7 @@ window.imgErr = id => { S.imgErrors[id] = true; };
 const STATUS_CYCLE = ['owned','wishlist','ordered','for-sale', ''];
 window.cycleStatus = (e, id) => {
   e.stopPropagation();
+  const prevColl = JSON.parse(JSON.stringify(S.coll[id] || {}));
   const cur = S.coll[id]?.status || '';
   const idx = STATUS_CYCLE.indexOf(cur);
   const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
@@ -2777,12 +3202,16 @@ window.cycleStatus = (e, id) => {
   }
   saveColl(); haptic();
   S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
+  store.set('motu-recent', S._recentChanges);
   const fig = S.figs.find(f => f.id === id);
   const name = fig ? fig.name : id;
   const newStatus = S.coll[id]?.status;
-  if (newStatus) toast(`✓ ${name} → ${STATUS_LABEL[newStatus]}`);
-  else toast(`✗ ${name} cleared`);
+  if (newStatus) toastUndo(`✓ ${name} → ${STATUS_LABEL[newStatus]}`, id, prevColl);
+  else toastUndo(`✗ ${name} cleared`, id, prevColl);
+  triggerPulse(id, newStatus);
   if (!patchFigRow(id)) render();
+  // Check completion when marking as owned
+  if (newStatus === 'owned' && fig) checkCompletion(fig);
 };
 
 window.handlePhoto = (input, figId) => {
