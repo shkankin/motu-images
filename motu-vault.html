@@ -973,6 +973,25 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-size: 14px; font-weight: 600;
 }
 
+/* ── Toast Notifications ─────────────────────────────────────────── */
+.toast-container {
+  position: fixed; bottom: 70px; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; z-index: 300; pointer-events: none;
+  padding-bottom: var(--safe-bottom);
+}
+.toast {
+  background: var(--bg2); border: 1px solid var(--bd);
+  border-radius: 12px; padding: 10px 18px;
+  font-size: 13px; color: var(--t1); font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  backdrop-filter: blur(8px);
+  animation: toastIn 0.25s ease-out, toastOut 0.3s ease-in 1.7s forwards;
+  pointer-events: auto;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
+
 /* ── Animations ──────────────────────────────────────────────────── */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -1385,12 +1404,14 @@ async function fetchFigs(manual = false, firstLoad = false) {
     store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
     S.syncStatus = 'ok';
     if (firstLoad) { S.loaded = true; }
+    const newCount = S.newFigIds.size;
+    if (manual || newCount) toast(`✓ Synced ${S.figs.length} figures${newCount ? ` · ${newCount} new` : ''}`);
     render();
     setTimeout(() => { S.syncStatus = 'idle'; render(); }, 3000);
   } catch(e) {
     console.error('Fetch failed:', e);
     S.syncStatus = manual ? 'err' : 'idle';
-    if (manual) setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000);
+    if (manual) { toast('✗ Sync failed'); setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000); }
     if (firstLoad) { S.fetchError = true; render(); }
     else render();
   }
@@ -1435,6 +1456,26 @@ async function init() {
   render();
 }
 
+// ─── Toast & Haptic Feedback ─────────────────────────────────────
+function toast(msg) {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 2200);
+}
+
+function haptic(ms = 10) {
+  try { navigator.vibrate?.(ms); } catch {}
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────
 function saveColl() { store.set('motu-c2', S.coll); }
 function toggleHidden(key) {
@@ -1463,9 +1504,15 @@ function figIsHidden(f) {
 }
 function setStatus(id, status) {
   if (!S.coll[id]) S.coll[id] = {};
+  const wasStatus = S.coll[id].status;
   if (S.coll[id].status === status) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   else S.coll[id] = {...S.coll[id], status};
-  saveColl();
+  saveColl(); haptic();
+  const fig = S.figs.find(f => f.id === id);
+  const name = fig ? fig.name : id;
+  const newStatus = S.coll[id]?.status;
+  if (newStatus) toast(`✓ ${name} → ${STATUS_LABEL[newStatus]}`);
+  else toast(`✗ ${name} cleared`);
   if (!patchFigRow(id)) render();
 }
 
@@ -1558,7 +1605,17 @@ function getSortedFigs() {
   if (S.filterStatus === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
   else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
   if (S.filterVariants) list = list.filter(f => /\w/.test(S.coll[f.id]?.variants||''));
-  if (S.search) { const s = S.search.toLowerCase(); list = list.filter(f => f.name.toLowerCase().includes(s)); }
+  if (S.search) {
+    const s = S.search.toLowerCase().replace(/[-'']/g, '');
+    list = list.filter(f => {
+      const name = f.name.toLowerCase().replace(/[-'']/g, '');
+      if (name.includes(s)) return true;
+      // Also match against line name and group
+      const lineName = ln(f.line).toLowerCase().replace(/[-'']/g, '');
+      const group = (f.group||'').toLowerCase().replace(/[-'']/g, '');
+      return lineName.includes(s) || group.includes(s);
+    });
+  }
   const sb = S.sortBy;
   if (sb === 'name') list.sort((a,b) => a.name.localeCompare(b.name));
   else if (sb === 'name-desc') list.sort((a,b) => b.name.localeCompare(a.name));
@@ -1602,6 +1659,7 @@ function exportCSV(filter) {
   a.href = url; a.download = 'motu' + suffix + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  toast(`✓ Exported ${list.length} figures`);
 }
 
 async function exportJSON() {
@@ -1622,6 +1680,8 @@ async function exportJSON() {
   a.href = url; a.download = 'motu-vault-backup.json';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  const photoCount = Object.keys(backup.photos).length;
+  toast(`✓ Backup saved · ${photoCount} photos`);
 }
 
 function importJSON(file) {
@@ -1873,7 +1933,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.30</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v3.32</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1907,7 +1967,7 @@ function renderMain() {
 
   <div class="bottom-nav" id="bottomNav">
     ${renderNavBtn('lines', ICO.lines, 'Lines')}
-    ${renderNavBtn('all', ICO.list, 'All')}
+    ${renderNavBtn('all', ICO.list, 'All', `<span class="badge">${stats.total}</span>`)}
     ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned}</span>`)}
   </div>`;
 
@@ -2297,6 +2357,14 @@ function renderDetail() {
     </div>
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
+    <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
+      ${f.source === 'af411' && f.slug ? `<a href="https://actionfigure411.com/masters-of-the-universe/figure/${f.slug}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
+        ${icon(ICO.export,14)} View on AF411
+      </a>` : ''}
+      <button onclick="searchCharacter('${esc(f.name.replace(/'/g,"\\\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
+        ${icon(ICO.search,14)} All versions
+      </button>
+    </div>
     <div class="status-grid">
       <div class="label text-upper text-dim text-xs">Status</div>
       <div class="grid">
@@ -2568,6 +2636,22 @@ window.navTo = key => { S.tab = key; S.searchBarHidden = false; S.barsHidden = f
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
 window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; pushNav(); render(); };
+window.searchCharacter = name => {
+  // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
+  let base = name.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*-\s*(Battle|Deluxe|Mega|Mini|Giant|Lord|King|Prince).*$/i, '').trim();
+  // Use first two words if name is long (e.g. "Battle Armor He-Man" → "He-Man")
+  const parts = base.split(/\s+/);
+  if (parts.length > 2) {
+    // Try to find the core name — usually the last hyphenated word or proper noun
+    const hyphenated = parts.find(p => p.includes('-'));
+    if (hyphenated) base = hyphenated;
+    else base = parts.slice(-2).join(' ');
+  }
+  S.screen = 'main'; S.search = base; S.tab = 'all';
+  S.activeLine = null; S.activeSubline = null;
+  S.savedScroll = 0; S.barsHidden = false; S.searchBarHidden = false;
+  pushNav(); render();
+};
 window.clearSubline = () => { history.back(); };
 window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
@@ -2628,7 +2712,12 @@ window.cycleStatus = (e, id) => {
   } else {
     if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   }
-  saveColl();
+  saveColl(); haptic();
+  const fig = S.figs.find(f => f.id === id);
+  const name = fig ? fig.name : id;
+  const newStatus = S.coll[id]?.status;
+  if (newStatus) toast(`✓ ${name} → ${STATUS_LABEL[newStatus]}`);
+  else toast(`✗ ${name} cleared`);
   if (!patchFigRow(id)) render();
 };
 
