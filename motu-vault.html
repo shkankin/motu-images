@@ -1181,6 +1181,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: flex; align-items: center; gap: 5px;
 }
 .select-actionbar button:active { opacity: 0.7; transform: scale(0.95); }
+.select-actionbar button:disabled { opacity: 0.3; pointer-events: none; }
 .select-actionbar button.primary {
   background: var(--acc); border-color: var(--acc); color: #fff;
 }
@@ -2748,7 +2749,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.2</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.21</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2887,24 +2888,22 @@ function renderSelectActionbar() {
   return `<div class="select-actionbar visible">
     <span class="count">${n} selected</span>
     <button onclick="selectAllVisible()" title="${allSelected ? 'Deselect all' : 'Select all'}">
-      ${allSelected ? 'Clear' : 'All'}
+      ${allSelected ? 'None' : 'All'}
     </button>
     <div class="spacer"></div>
-    ${n > 0 ? `
-      <button class="primary" onclick="batchSetStatus('owned')" title="Mark owned" style="background:${STATUS_HEX.owned};border-color:${STATUS_HEX.owned}">
-        ${icon(ICO.check,13)} Own
-      </button>
-      <button onclick="batchSetStatus('wishlist')" title="Mark wishlist" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">
-        Wish
-      </button>
-      <button onclick="batchSetStatus('ordered')" title="Mark ordered" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">
-        Ord
-      </button>
-      <button onclick="batchSetStatus('for-sale')" title="Mark for sale" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">
-        Sale
-      </button>
-      <button class="danger" onclick="batchSetStatus('')" title="Clear status">Clear</button>
-    ` : '<span style="color:var(--t3);font-size:12px;padding-right:8px">Tap items to select</span>'}
+    <button class="primary${n ? '' : ' disabled'}" onclick="batchSetStatus('owned')" ${n ? '' : 'disabled'} title="Mark owned" style="background:${STATUS_HEX.owned};border-color:${STATUS_HEX.owned}">
+      ${icon(ICO.check,13)} Own
+    </button>
+    <button ${n ? '' : 'disabled'} onclick="batchSetStatus('wishlist')" title="Mark wishlist" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">
+      Wish
+    </button>
+    <button ${n ? '' : 'disabled'} onclick="batchSetStatus('ordered')" title="Mark ordered" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">
+      Ord
+    </button>
+    <button ${n ? '' : 'disabled'} onclick="batchSetStatus('for-sale')" title="Mark for sale" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">
+      Sale
+    </button>
+    <button class="danger" ${n ? '' : 'disabled'} onclick="batchSetStatus('')" title="Clear status">✗ Clr</button>
   </div>`;
 }
 
@@ -3708,7 +3707,17 @@ window.toggleSelect = (e, id) => {
   if (S.selected.has(id)) S.selected.delete(id);
   else S.selected.add(id);
   haptic && haptic(8);
-  render();
+  // Surgical DOM patch for row/card
+  const isSelected = S.selected.has(id);
+  const el = document.querySelector(`.fig-row[data-fig-id="${id}"], .fig-card[data-fig-id="${id}"]`);
+  if (el) {
+    el.classList.toggle('selected', isSelected);
+    const cb = el.querySelector('.select-checkbox');
+    if (cb) cb.classList.toggle('checked', isSelected);
+  }
+  // Re-render actionbar (buttons enable/disable based on count)
+  const bar = document.querySelector('.select-actionbar');
+  if (bar) bar.outerHTML = renderSelectActionbar();
 };
 window.selectAllVisible = () => {
   const figs = getSortedFigs();
