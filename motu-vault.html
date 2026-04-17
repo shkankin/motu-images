@@ -2264,14 +2264,6 @@ function showContextMenu(figId, x, y) {
 
   const menu = document.createElement('div');
   menu.className = 'ctx-menu';
-  // Position: ensure it stays on screen
-  const menuW = 230, menuH = 280;
-  let left = Math.min(x - 20, window.innerWidth - menuW - 12);
-  let top = Math.min(y - 20, window.innerHeight - menuH - 12);
-  left = Math.max(12, left);
-  top = Math.max(12, top);
-  menu.style.left = left + 'px';
-  menu.style.top = top + 'px';
 
   let items = `<div class="ctx-menu-header">${esc(fig.name)}</div>`;
   STATUSES.forEach(s => {
@@ -2301,8 +2293,48 @@ function showContextMenu(figId, x, y) {
     ${icon(ICO.check, 16)} Select
   </button>`;
   menu.innerHTML = items;
+  // Provisional position — will be corrected after measurement below.
+  menu.style.left = '0';
+  menu.style.top = '0';
   overlay.appendChild(menu);
   document.body.appendChild(overlay);
+
+  // Measure the menu's actual rendered size. The previous hard-coded 280px
+  // height estimate was smaller than reality for figures with AF411 +
+  // cleared-status rows, causing the bottom of the menu to get cut off.
+  // offsetWidth/Height ignore the slide-in transform, which is what we want.
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
+  const margin = 12;
+  const bn = document.getElementById('bottomNav');
+  const bnHidden = !bn || bn.classList.contains('hidden') || bn.classList.contains('immersive-hide');
+  const bottomReserve = bnHidden ? 0 : bn.offsetHeight + 8;
+  const vpW = window.innerWidth;
+  const vpH = window.innerHeight;
+  const availBottom = vpH - margin - bottomReserve;
+
+  // Default anchor: slightly up-and-left of the touch point so the finger
+  // doesn't cover the top of the menu.
+  let left = x - 20;
+  let top = y - 20;
+
+  // If the menu doesn't fit below the touch, flip it above.
+  if (top + mh > availBottom) top = y - mh + 20;
+
+  // Final clamp to viewport, reserving space for the bottom nav.
+  left = Math.max(margin, Math.min(left, vpW - mw - margin));
+  top = Math.max(margin, Math.min(top, availBottom - mh));
+
+  // Pathological case: menu taller than the entire viewport (shouldn't
+  // happen with current items, but future-proof it). Cap with scroll.
+  if (mh > availBottom - margin) {
+    menu.style.maxHeight = (availBottom - margin) + 'px';
+    menu.style.overflowY = 'auto';
+    top = margin;
+  }
+
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
 }
 
 function dismissContextMenu() {
@@ -2891,7 +2923,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.35</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.36</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
