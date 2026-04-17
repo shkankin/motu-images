@@ -967,6 +967,108 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-size: 10px; color: var(--t3); margin-top: 4px;
 }
 
+/* ── Multi-Copy Detail UI (v4.43) ────────────────────────────────── */
+.copies-section {
+  padding: 0 16px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.copies-header {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 2px;
+}
+.copies-count {
+  font-size: 10px;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 1px;
+}
+.copy-card {
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.copy-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+  border-bottom: 1px solid var(--bd);
+}
+.copy-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t1);
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+.copy-del-btn {
+  background: none; border: none;
+  color: var(--t3);
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px;
+  transition: background .15s, color .15s;
+}
+.copy-del-btn:active {
+  background: color-mix(in srgb, var(--rd) 15%, transparent);
+  color: var(--rd);
+}
+.copy-fields {
+  padding: 12px 14px;
+  gap: 10px;
+}
+.add-copy-btn {
+  background: color-mix(in srgb, var(--acc) 8%, transparent);
+  border: 1px dashed var(--bd);
+  border-radius: 12px;
+  padding: 14px;
+  color: var(--acc);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .15s, border-color .15s;
+}
+.add-copy-btn:active {
+  background: color-mix(in srgb, var(--acc) 18%, transparent);
+  border-color: var(--acc);
+}
+.add-copy-plus {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Small "×N" copy count badge for list/grid views */
+.copy-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  background: color-mix(in srgb, var(--gold) 22%, var(--bg3));
+  color: var(--gold);
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+.copy-count-badge-card {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 2;
+  background: color-mix(in srgb, #000 60%, var(--gold) 40%);
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+}
+
 /* ── Bottom Sheet ────────────────────────────────────────────────── */
 .sheet-overlay {
   position: absolute; inset: 0;
@@ -2084,13 +2186,17 @@ async function init() {
   // Load collection
   const c = store.get('motu-c2');
   if (c) {
-    S.coll = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
+    let loaded = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
       if (entry?.variants !== undefined && !/\w/.test(entry.variants)) {
         const { variants, ...rest } = entry;
         return [id, rest];
       }
       return [id, entry];
     }));
+    // v4.42 schema migration: flat fields → copies array. Idempotent.
+    loaded = migrateColl(loaded);
+    S.coll = loaded;
+    saveColl();  // Persist migrated form so future loads skip the work
   }
   // Load persisted recent changes
   const rc = store.get('motu-recent');
@@ -2445,6 +2551,87 @@ function rebuildFigIndex() {
   for (const f of S.figs) _figById.set(f.id, f);
 }
 function figById(id) { return _figById.get(id); }
+
+// ─── Multi-Copy Schema (v4.42+) ─────────────────────────────────
+// Each collection entry can hold multiple physical copies. Schema:
+//   c = {
+//     status: 'owned' | 'wishlist' | 'ordered' | 'for-sale',
+//     copies: [{ id, condition?, paid?, notes?, variant? }, ...]
+//   }
+// Legacy entries (status + flat condition/paid/notes/variants) are
+// migrated on load via migrateColl(). Reads go through getPrimaryCopy()
+// which gracefully handles both shapes.
+
+function isMigrated(c) { return c && Array.isArray(c.copies); }
+
+function migrateEntry(c) {
+  if (!c) return c;
+  if (isMigrated(c)) return c;
+  const out = {};
+  if (c.status) out.status = c.status;
+  out.copies = [];
+  const hasPerCopyData = !!(c.condition || c.paid || c.notes || c.variants);
+  const ownsPhysical = c.status === 'owned' || c.status === 'for-sale';
+  if (hasPerCopyData || ownsPhysical) {
+    const copy = { id: 1 };
+    if (c.condition) copy.condition = c.condition;
+    if (c.paid) copy.paid = c.paid;
+    if (c.notes) copy.notes = c.notes;
+    if (c.variants) copy.variant = c.variants;  // singular in new schema
+    out.copies.push(copy);
+  }
+  return out;
+}
+
+function migrateColl(coll) {
+  const out = {};
+  for (const [id, entry] of Object.entries(coll || {})) {
+    out[id] = migrateEntry(entry);
+  }
+  return out;
+}
+
+// Returns the primary (first) copy with all its fields, or null if there
+// are no copies. Falls back to flat-shape read for safety on un-migrated
+// entries (defensive — should never happen post-init).
+function getPrimaryCopy(c) {
+  if (!c) return null;
+  if (isMigrated(c)) return c.copies[0] || null;
+  if (!c.condition && !c.paid && !c.notes && !c.variants) return null;
+  return { id: 1, condition: c.condition, paid: c.paid, notes: c.notes, variant: c.variants };
+}
+
+// Convenience getters that read either schema. Safe to use anywhere a
+// "what is the user's primary copy data?" question is being asked.
+function copyCondition(c) { const p = getPrimaryCopy(c); return p ? p.condition : undefined; }
+function copyPaid(c)      { const p = getPrimaryCopy(c); return p ? p.paid : undefined; }
+function copyNotes(c)     { const p = getPrimaryCopy(c); return p ? p.notes : undefined; }
+function copyVariant(c)   {
+  const p = getPrimaryCopy(c);
+  if (p && p.variant) return p.variant;
+  // legacy plural fallback
+  return c && c.variants;
+}
+
+// Total physical copies across the collection (for stats).
+function totalCopyCount() {
+  let n = 0;
+  for (const id in S.coll) {
+    const c = S.coll[id];
+    if (isMigrated(c)) n += c.copies.length;
+    else if (c?.status === 'owned' || c?.status === 'for-sale') n += 1;
+  }
+  return n;
+}
+
+// Number of copies for a single entry (0 for wishlist, 1+ for owned/for-sale).
+function entryCopyCount(c) {
+  if (!c) return 0;
+  if (isMigrated(c)) return c.copies.length;
+  if (c.status === 'owned' || c.status === 'for-sale') return 1;
+  return 0;
+}
+
 function toggleHidden(key) {
   const i = S.hiddenItems.indexOf(key);
   if (i >= 0) S.hiddenItems.splice(i, 1);
@@ -2483,10 +2670,22 @@ function figIsHidden(f) {
 }
 function setStatus(id, status) {
   if (!S.coll[id]) S.coll[id] = {};
+  // Ensure migrated shape
+  if (!isMigrated(S.coll[id])) S.coll[id] = migrateEntry(S.coll[id]);
+  if (!S.coll[id].copies) S.coll[id].copies = [];
+
   const wasStatus = S.coll[id].status;
   const prevColl = JSON.parse(JSON.stringify(S.coll[id] || {}));
-  if (S.coll[id].status === status) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
-  else S.coll[id] = {...S.coll[id], status};
+  if (S.coll[id].status === status) {
+    // Toggle off: clear status. If there's no remaining ownership signal
+    // (no status and no copies), drop the entry entirely.
+    delete S.coll[id].status;
+    if (!S.coll[id].status && (!S.coll[id].copies || S.coll[id].copies.length === 0)) {
+      delete S.coll[id];
+    }
+  } else {
+    S.coll[id] = {...S.coll[id], status};
+  }
   saveColl(); haptic();
   S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   store.set('motu-recent', S._recentChanges);
@@ -2518,10 +2717,12 @@ function patchFigRow(id) {
     if (thumb) { thumb.className = 'fig-thumb ' + statusCls; }
     const actions = row.querySelector('.fig-actions');
     if (actions) {
-      const hasVar = /\w/.test(c.variants || '');
+      const hasVar = /\w/.test(copyVariant(c) || '');
+      const copyN = entryCopyCount(c);
       const isNew = S.newFigIds.has(id);
       actions.innerHTML =
         (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
+        (copyN > 1 ? `<div class="copy-count-badge" title="${copyN} copies">×${copyN}</div>` : '') +
         (hasVar ? '<div class="fig-var-badge">VAR</div>' : '') +
         (c.status
           ? `<button class="quick-own" onclick="cycleStatus(event,'${id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
@@ -2560,8 +2761,31 @@ function updateNavBadge() {
     badge.textContent = owned;
   }
 }
+// Per-copy field names (write into copies[0]). The UI may submit 'variants'
+// (legacy plural) which is normalized to 'variant' (singular) in the schema.
+const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'variants']);
+
 function updateColl(id, key, val) {
-  S.coll[id] = {...(S.coll[id]||{}), [key]: val};
+  const cur = S.coll[id] || {};
+  // Ensure migrated shape so future reads are consistent.
+  let next = isMigrated(cur) ? {...cur, copies: cur.copies.map(c => ({...c}))} : migrateEntry(cur);
+  if (!next.copies) next.copies = [];
+
+  if (PER_COPY_FIELDS.has(key)) {
+    const writeKey = (key === 'variants') ? 'variant' : key;
+    // Ensure a primary copy exists to write into. If none, create one.
+    if (!next.copies.length) next.copies.push({ id: 1 });
+    const copy = {...next.copies[0]};
+    if (val === '' || val == null) delete copy[writeKey];
+    else copy[writeKey] = val;
+    next.copies[0] = copy;
+  } else {
+    // Top-level field (status, etc.)
+    if (val === '' || val == null) delete next[key];
+    else next[key] = val;
+  }
+
+  S.coll[id] = next;
   saveColl();
 }
 
@@ -2574,6 +2798,83 @@ window.updateCollDebounced = (id, key, val) => {
   _updDebounces[dk] = setTimeout(() => {
     updateColl(id, key, val);
     delete _updDebounces[dk];
+  }, 400);
+};
+
+// ─── Multi-Copy Operations (v4.43) ───────────────────────────────
+// addCopy / removeCopy / updateCopy work directly on the copies array
+// by stable copy id (cp.id), not array index — so DOM and array stay
+// in sync even after reorders/deletions.
+
+function nextCopyId(c) {
+  if (!isMigrated(c) || !c.copies.length) return 1;
+  return c.copies.reduce((m, cp) => Math.max(m, cp.id || 0), 0) + 1;
+}
+
+window.addCopy = id => {
+  let c = S.coll[id];
+  if (!c) {
+    // Tapping "add copy" on an entry with no status yet — assume owned.
+    c = { status: 'owned', copies: [] };
+  } else if (!isMigrated(c)) {
+    c = migrateEntry(c);
+  } else {
+    c = {...c, copies: [...c.copies]};
+  }
+  c.copies.push({ id: nextCopyId(c) });
+  S.coll[id] = c;
+  saveColl();
+  haptic();
+  // Re-render just the status block so the new copy card appears
+  // without scrolling the detail screen back to top.
+  patchDetailStatus();
+};
+
+window.removeCopy = (id, copyId) => {
+  const c = S.coll[id];
+  if (!c || !isMigrated(c)) return;
+  const cp = c.copies.find(x => x.id === copyId);
+  if (!cp) return;
+  // Confirm only if copy has data — empty copies delete silently.
+  const hasData = cp.condition || cp.paid || cp.notes || cp.variant;
+  if (hasData && !confirm('Remove this copy and its data?')) return;
+  const newCopies = c.copies.filter(x => x.id !== copyId);
+  // If this was the last copy and the figure is owned, leave a single
+  // empty copy so the form is still editable. The user can change status
+  // to wishlist if they no longer own one.
+  if (newCopies.length === 0 && (c.status === 'owned' || c.status === 'for-sale')) {
+    newCopies.push({ id: 1 });
+  }
+  S.coll[id] = {...c, copies: newCopies};
+  saveColl();
+  haptic();
+  patchDetailStatus();
+};
+
+window.updateCopy = (id, copyId, key, val) => {
+  const c = S.coll[id];
+  if (!c) return;
+  // Auto-migrate (defensive — shouldn't happen post-v4.42 init).
+  let next = isMigrated(c) ? {...c, copies: c.copies.map(cp => ({...cp}))} : migrateEntry(c);
+  if (!next.copies) next.copies = [];
+  let cp = next.copies.find(x => x.id === copyId);
+  if (!cp) {
+    // Copy id no longer exists (race with removeCopy?). Bail.
+    return;
+  }
+  if (val === '' || val == null) delete cp[key];
+  else cp[key] = val;
+  S.coll[id] = next;
+  saveColl();
+};
+
+const _copyDebounces = {};
+window.updateCopyDebounced = (id, copyId, key, val) => {
+  const dk = id + ':' + copyId + ':' + key;
+  clearTimeout(_copyDebounces[dk]);
+  _copyDebounces[dk] = setTimeout(() => {
+    window.updateCopy(id, copyId, key, val);
+    delete _copyDebounces[dk];
   }, 400);
 };
 
@@ -2618,7 +2919,7 @@ function getSortedFigs() {
   if (S.filterFaction) list = list.filter(f => f.faction === S.filterFaction);
   if (S.filterStatus === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
   else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
-  if (S.filterVariants) list = list.filter(f => /\w/.test(S.coll[f.id]?.variants||''));
+  if (S.filterVariants) list = list.filter(f => /\w/.test(copyVariant(S.coll[f.id]) || ''));
   if (S.search) {
     const s = S.search.toLowerCase().replace(/[-'']/g, '');
     list = list.filter(f => {
@@ -2664,7 +2965,7 @@ function exportCSV(filter) {
   else if (filter === 'any-status') list = list.filter(f => S.coll[f.id]?.status);
   const rows = list.map(f => {
     const c = S.coll[f.id] || {};
-    return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',c.condition||'',c.paid||'',c.notes||''];
+    return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',copyCondition(c)||'',copyPaid(c)||'',copyNotes(c)||''];
   });
   const csv = [h,...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
@@ -2678,7 +2979,7 @@ function exportCSV(filter) {
 
 async function exportJSON() {
   const backup = {
-    version: 'motu-vault-backup-v2',
+    version: 'motu-vault-backup-v3',  // v3: collection entries use copies[] schema
     exported: new Date().toISOString(),
     collection: S.coll,
     photos: {}
@@ -2706,21 +3007,48 @@ function importJSON(file) {
   reader.onload = async ev => {
     try {
       const backup = JSON.parse(ev.target.result);
-      if (backup.version !== 'motu-vault-backup-v1' && backup.version !== 'motu-vault-backup-v2') throw new Error('Unknown format');
+      const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3'];
+      if (!knownVersions.includes(backup.version)) throw new Error('Unknown format');
       if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
       const overwrite = document.querySelector('.checkbox.checked') !== null;
       let imported = 0, skipped = 0, photos = 0;
+      // v1/v2 backups have flat-shape entries; v3 has copies[]. migrateEntry
+      // is idempotent so it's safe to run on either.
       Object.entries(backup.collection).forEach(([id, entry]) => {
         if (!overwrite && S.coll[id]?.status) { skipped++; return; }
-        S.coll[id] = {...(overwrite ? {} : (S.coll[id]||{})), ...entry};
+        const incoming = migrateEntry(entry);
+        if (overwrite) {
+          S.coll[id] = incoming;
+        } else {
+          // Merge: keep existing copies, append incoming copies as additional
+          // ones (avoiding obvious dupes by paid+condition+notes signature).
+          const existing = S.coll[id];
+          if (!existing) {
+            S.coll[id] = incoming;
+          } else {
+            const merged = isMigrated(existing) ? {...existing, copies: [...existing.copies]} : migrateEntry(existing);
+            if (incoming.status && !merged.status) merged.status = incoming.status;
+            if (incoming.copies) {
+              const sig = c => [c.condition||'', c.paid||'', c.variant||'', (c.notes||'').slice(0,40)].join('|');
+              const have = new Set((merged.copies||[]).map(sig));
+              let nextId = (merged.copies||[]).reduce((m,c) => Math.max(m, c.id||0), 0) + 1;
+              for (const cp of incoming.copies) {
+                if (!have.has(sig(cp))) {
+                  merged.copies.push({...cp, id: nextId++});
+                }
+              }
+            }
+            S.coll[id] = merged;
+          }
+        }
         imported++;
       });
       saveColl();
-      // Restore photos (handle both v1 single-photo and v2 multi-photo formats)
+      // Restore photos (handle both v1 single-photo and v2/v3 multi-photo formats)
       if (backup.photos) {
         for (const [id, val] of Object.entries(backup.photos)) {
           // v1 format: photos[id] is a single dataUrl string
-          // v2 format: photos[id] is an array of {label, dataUrl}
+          // v2/v3 format: photos[id] is an array of {label, dataUrl}
           const photoArr = typeof val === 'string'
             ? [{label: '', dataUrl: val}]
             : (Array.isArray(val) ? val : []);
@@ -2894,17 +3222,29 @@ function doImportAF411(csvText, overwrite) {
     if (!fig) { unmatched.push(ln(lineId)+': '+row.name+(row.group?' ['+row.group+']':'')); return; }
     if (matchedIds.has(fig.id)) {
       if (row.variation) {
-        const ex = S.coll[fig.id]?.variants || '';
-        if (!ex.split(',').map(v=>v.trim()).includes(row.variation))
-          S.coll[fig.id] = {...S.coll[fig.id], variants: [ex, row.variation].filter(Boolean).join(', ')};
+        // Append variation to existing primary copy's variant field
+        const cur = S.coll[fig.id];
+        if (cur && isMigrated(cur) && cur.copies.length) {
+          const ex = cur.copies[0].variant || '';
+          if (!ex.split(',').map(v=>v.trim()).includes(row.variation)) {
+            const merged = [ex, row.variation].filter(Boolean).join(', ');
+            const newCopies = [...cur.copies];
+            newCopies[0] = {...newCopies[0], variant: merged};
+            S.coll[fig.id] = {...cur, copies: newCopies};
+          }
+        }
       }
       skipped++; return;
     }
     if (!overwrite && S.coll[fig.id]?.status === 'owned') { skipped++; return; }
     const importNote = [row.note, row.where ? 'From: '+row.where : ''].filter(Boolean).join(' | ');
-    S.coll[fig.id] = {...S.coll[fig.id], status:'owned',
-      ...(row.cond && {condition:row.cond}), ...(row.paid && {paid:row.paid}),
-      ...(row.variation && {variants:row.variation}), ...(importNote && {notes:importNote})};
+    // Build the new entry directly in v4.42 schema.
+    const copy = { id: 1 };
+    if (row.cond) copy.condition = row.cond;
+    if (row.paid) copy.paid = row.paid;
+    if (importNote) copy.notes = importNote;
+    if (row.variation) copy.variant = row.variation;
+    S.coll[fig.id] = { status: 'owned', copies: [copy] };
     matchedIds.add(fig.id);
   });
   saveColl();
@@ -2991,7 +3331,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.41</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.43</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3172,11 +3512,19 @@ function renderStatsSheet() {
   const stats = getStats();
   const unowned = stats.total - stats.owned - stats.wish - stats.ord - stats.sale;
   const pct = n => stats.total ? (n / stats.total * 100).toFixed(1) : 0;
-  // Spent totals
+  // Spent totals — sum paid across all copies of each owned figure.
   let totalSpent = 0, paidCount = 0;
-  S.figs.filter(f => !figIsHidden(f) && S.coll[f.id]?.status === 'owned' && S.coll[f.id]?.paid).forEach(f => {
-    const v = parseFloat(S.coll[f.id].paid) || 0;
-    if (v > 0) { totalSpent += v; paidCount++; }
+  S.figs.filter(f => !figIsHidden(f) && S.coll[f.id]?.status === 'owned').forEach(f => {
+    const c = S.coll[f.id];
+    if (isMigrated(c)) {
+      for (const cp of c.copies) {
+        const v = parseFloat(cp.paid) || 0;
+        if (v > 0) { totalSpent += v; paidCount++; }
+      }
+    } else {
+      const v = parseFloat(c.paid) || 0;
+      if (v > 0) { totalSpent += v; paidCount++; }
+    }
   });
   const avgStr = paidCount > 0 ? `$${(totalSpent / paidCount).toFixed(2)} avg` : '';
 
@@ -3317,7 +3665,8 @@ const BATCH_SIZE = 80;
 function renderFigRow(f) {
   const c = S.coll[f.id] || {};
   const statusCls = c.status || '';
-  const hasVar = /\w/.test(c.variants || '');
+  const hasVar = /\w/.test(copyVariant(c) || '');
+  const copyN = entryCopyCount(c);
   const isNew = S.newFigIds.has(f.id);
   const hasCustom = S.customPhotos[f.id];
   const imgErr = S.imgErrors[f.id];
@@ -3344,6 +3693,7 @@ function renderFigRow(f) {
     </div>
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
+      ${copyN > 1 ? `<div class="copy-count-badge" title="${copyN} copies">×${copyN}</div>` : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
       ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${f.id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" onclick="event.stopPropagation();setStatus('${f.id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
@@ -3354,6 +3704,7 @@ function renderFigRow(f) {
 function renderFigCard(f) {
   const c = S.coll[f.id] || {};
   const statusCls = c.status || '';
+  const copyN = entryCopyCount(c);
   const isNew = S.newFigIds.has(f.id);
   const hasCustom = S.customPhotos[f.id];
   const imgErr = S.imgErrors[f.id];
@@ -3376,6 +3727,7 @@ function renderFigCard(f) {
     <div class="card-overlay"></div>
     ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
+    ${!S.selectMode && copyN > 1 ? `<div class="copy-count-badge copy-count-badge-card" title="${copyN} copies">×${copyN}</div>` : ''}
     ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
     <div class="card-info">
       <div class="card-fig-name">${esc(f.name)}</div>
@@ -3415,7 +3767,19 @@ function renderFigList() {
   let spentInfo = '';
   if (S.tab === 'collection') {
     let spent = 0, paidCount = 0;
-    figs.forEach(f => { const p = parseFloat(S.coll[f.id]?.paid); if (p > 0) { spent += p; paidCount++; } });
+    figs.forEach(f => {
+      const c = S.coll[f.id];
+      if (!c) return;
+      if (isMigrated(c)) {
+        for (const cp of c.copies) {
+          const p = parseFloat(cp.paid);
+          if (p > 0) { spent += p; paidCount++; }
+        }
+      } else {
+        const p = parseFloat(c.paid);
+        if (p > 0) { spent += p; paidCount++; }
+      }
+    });
     if (spent > 0) {
       const avg = (spent / paidCount).toFixed(2);
       spentInfo = ` · <span style="color:var(--gold)">$${spent.toFixed(2)} spent</span> · <span style="color:var(--t2)">$${avg} avg</span>`;
@@ -3492,30 +3856,67 @@ function renderDetailStatusBlock(f, c) {
   });
   h += `</div></div>`;
   if (c.status) {
-    h += `<div class="detail-fields">
-      <div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Collection Details</div>
-      <div>
-        <div class="field-label text-dim text-sm">Condition</div>
-        <select onchange="updateColl('${f.id}','condition',this.value)">
-          <option value="">Select...</option>
-          ${CONDITIONS.map(x => `<option value="${esc(x)}" ${c.condition===x?'selected':''}>${esc(x)}</option>`).join('')}
-        </select>
-      </div>
-      <div>
-        <div class="field-label text-dim text-sm">Price Paid</div>
-        <input type="number" step="0.01" value="${esc(c.paid||'')}" placeholder="$0.00" onchange="updateColl('${f.id}','paid',this.value)">
-      </div>
-      <div>
-        <div class="field-label text-dim text-sm">Variants Owned</div>
-        <input type="text" value="${esc(c.variants||'')}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateColl('${f.id}','variants',this.value)">
-        <div class="field-hint">Comma-separate multiple variants</div>
-      </div>
-      <div>
-        <div class="field-label text-dim text-sm">Notes</div>
-        <textarea rows="3" placeholder="Notes…" oninput="updateCollDebounced('${f.id}','notes',this.value)" onblur="updateColl('${f.id}','notes',this.value)">${esc(c.notes||'')}</textarea>
-      </div>
+    // Owned / for-sale / wishlist / ordered all reach this branch.
+    // Copies UI only renders for owned/for-sale (where you actually have
+    // physical items). Wishlist/ordered just show the status and that's it.
+    const showsCopies = c.status === 'owned' || c.status === 'for-sale';
+    if (showsCopies) {
+      // Ensure we always have at least one copy slot to edit.
+      const copies = (isMigrated(c) && c.copies.length) ? c.copies : [{ id: 1 }];
+      const isMulti = copies.length > 1;
+      h += `<div class="copies-section">
+        <div class="copies-header">
+          <div class="label text-upper text-dim text-xs">Collection Details${isMulti ? ` <span class="copies-count">${copies.length} copies</span>` : ''}</div>
+        </div>`;
+      copies.forEach((cp, i) => {
+        h += renderCopyCard(f, cp, i, isMulti);
+      });
+      h += `<button class="add-copy-btn" onclick="addCopy('${f.id}')">
+        <span class="add-copy-plus">+</span> Add another copy
+      </button>
+      </div>`;
+    }
+  }
+  return h;
+}
+
+// Renders a single copy's edit card. `i` is the visual index (0-based),
+// `isMulti` tells us whether to show the copy number header + delete button.
+function renderCopyCard(f, cp, i, isMulti) {
+  const cond = cp.condition || '';
+  const paid = cp.paid || '';
+  const variant = cp.variant || '';
+  const notes = cp.notes || '';
+  // copyId is the stable internal id used by addCopy/removeCopy/updateCopy
+  const cid = cp.id;
+  let h = `<div class="copy-card" data-copy-id="${cid}">`;
+  if (isMulti) {
+    h += `<div class="copy-card-head">
+      <div class="copy-num">Copy ${i + 1}</div>
+      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy('${f.id}',${cid})">${icon(ICO.trash, 14)}</button>
     </div>`;
   }
+  h += `<div class="detail-fields copy-fields">
+    <div>
+      <div class="field-label text-dim text-sm">Condition</div>
+      <select onchange="updateCopy('${f.id}',${cid},'condition',this.value)">
+        <option value="">Select...</option>
+        ${CONDITIONS.map(x => `<option value="${esc(x)}" ${cond===x?'selected':''}>${esc(x)}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <div class="field-label text-dim text-sm">Price Paid</div>
+      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy('${f.id}',${cid},'paid',this.value)">
+    </div>
+    <div>
+      <div class="field-label text-dim text-sm">Variant</div>
+      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${f.id}',${cid},'variant',this.value)">
+    </div>
+    <div>
+      <div class="field-label text-dim text-sm">Notes</div>
+      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced('${f.id}',${cid},'notes',this.value)" onblur="updateCopy('${f.id}',${cid},'notes',this.value)">${esc(notes)}</textarea>
+    </div>
+  </div></div>`;
   return h;
 }
 
