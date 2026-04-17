@@ -1044,6 +1044,57 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   line-height: 1;
 }
 
+/* Per-copy photos (v4.46) — strip of thumbs + add button inside the copy card */
+.copy-photos-row {
+  margin-top: 4px;
+}
+.copy-photos-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.copy-photo-thumb {
+  position: relative;
+  width: 64px; height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg3);
+  cursor: pointer;
+}
+.copy-photo-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.copy-photo-unlink {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.65);
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.copy-photo-add {
+  width: 64px; height: 64px;
+  border-radius: 8px;
+  border: 1px dashed var(--bd);
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+  color: var(--acc);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.copy-photo-add:active {
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+  border-color: var(--acc);
+}
+
 /* Small "×N" copy count badge for list/grid views */
 .copy-count-badge {
   display: inline-flex;
@@ -1446,6 +1497,18 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.ctx-copy-count {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--gold) 22%, transparent);
+  color: var(--gold);
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: middle;
+  letter-spacing: .3px;
+}
 .ctx-menu-item {
   display: flex; align-items: center; gap: 12px;
   padding: 13px 16px;
@@ -1741,12 +1804,16 @@ const store = {
 // Per figure: up to MAX_PHOTOS photos, each with optional label.
 // OPFS filename: photo-{figId}-{n}.jpg  (n = 0..MAX_PHOTOS-1)
 // Labels stored separately in localStorage: { [figId]: { [n]: label } }
+// Per-copy photo assignment (v4.46+): { [figId]: { [n]: copyId } }
+// A photo with no entry here is "shared" — visible from any copy view.
 const MAX_PHOTOS = 8;
 const PHOTO_LABELS_KEY = 'motu-photo-labels';
+const PHOTO_COPY_KEY = 'motu-photo-copy';
 const photoURLs = {};   // { "figId-n": objectURL }
 let _opfsDir = null;
 let _opfsReady = false;
 let _photoLabels = {};  // { [figId]: { [n]: label } }
+let _photoCopy = {};    // { [figId]: { [n]: copyId } } — n's copy assignment
 
 async function initOPFS() {
   try {
@@ -1762,6 +1829,29 @@ function loadPhotoLabels() {
 }
 function savePhotoLabels() {
   try { localStorage.setItem(PHOTO_LABELS_KEY, JSON.stringify(_photoLabels)); } catch {}
+}
+function loadPhotoCopyMap() {
+  try { _photoCopy = JSON.parse(localStorage.getItem(PHOTO_COPY_KEY) || '{}'); } catch { _photoCopy = {}; }
+}
+function savePhotoCopyMap() {
+  try { localStorage.setItem(PHOTO_COPY_KEY, JSON.stringify(_photoCopy)); } catch {}
+}
+// Returns the copyId a photo is assigned to (null/undefined if shared).
+function photoCopyOf(figId, n) {
+  return _photoCopy[figId]?.[n];
+}
+// Set or clear a photo's copy assignment.
+function setPhotoCopy(figId, n, copyId) {
+  if (copyId == null) {
+    if (_photoCopy[figId]) {
+      delete _photoCopy[figId][n];
+      if (!Object.keys(_photoCopy[figId]).length) delete _photoCopy[figId];
+    }
+  } else {
+    if (!_photoCopy[figId]) _photoCopy[figId] = {};
+    _photoCopy[figId][n] = copyId;
+  }
+  savePhotoCopyMap();
 }
 
 const photoStore = {
@@ -1786,8 +1876,27 @@ const photoStore = {
     })).filter(p => p.url);
   },
 
+  // Sync: get photos belonging to a specific copy. Includes shared (unassigned)
+  // photos when includeShared is true, so a single-copy figure sees everything.
+  getForCopy: (id, copyId, includeShared = true) => {
+    const arr = S.customPhotos[id] || [];
+    return arr
+      .filter(({n}) => {
+        const owner = photoCopyOf(id, n);
+        if (owner == null) return includeShared;
+        return owner === copyId;
+      })
+      .map(({n, label}) => ({
+        n, label: label || '',
+        url: photoURLs[id + '-' + n] || null,
+        copyId: photoCopyOf(id, n) ?? null,
+      }))
+      .filter(p => p.url);
+  },
+
   // Async: add a new photo to a figure. Returns index (n) on success, -1 on failure.
-  add: async (id, blob, label = '') => {
+  // Optional copyId associates the photo with a specific copy; null/undefined = shared.
+  add: async (id, blob, label = '', copyId = null) => {
     try {
       const existing = S.customPhotos[id] || [];
       if (existing.length >= MAX_PHOTOS) return -1;
@@ -1823,6 +1932,7 @@ const photoStore = {
         _photoLabels[id][n] = label;
         savePhotoLabels();
       }
+      if (copyId != null) setPhotoCopy(id, n, copyId);
       return n;
     } catch { return -1; }
   },
@@ -1845,6 +1955,8 @@ const photoStore = {
       if (!Object.keys(_photoLabels[id]).length) delete _photoLabels[id];
       savePhotoLabels();
     }
+    // Clean copy assignment
+    setPhotoCopy(id, n, null);
   },
 
   // Async: update label for photo n of figure id
@@ -1868,6 +1980,7 @@ const photoStore = {
   // Load all photos into URL cache (called during init)
   loadAll: async () => {
     loadPhotoLabels();
+    loadPhotoCopyMap();
     // Parse filename: photo-{figId}-{n}.jpg
     // Note: figId itself may contain hyphens, so we must match -{digit}.jpg at the end
     const parsePhotoName = name => {
@@ -1998,6 +2111,24 @@ const photoStore = {
           });
         }
         result.push({label: label || '', dataUrl});
+      } catch {}
+    }
+    return result;
+  },
+
+  // Get all photos for a figure as raw blobs (for ZIP packaging).
+  // Returns [{n, label, blob}, ...]
+  getAllAsBlobs: async id => {
+    const arr = S.customPhotos[id] || [];
+    const result = [];
+    for (const {n, label} of arr) {
+      const key = id + '-' + n;
+      const url = photoURLs[key];
+      if (!url) continue;
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        result.push({n, label: label || '', blob});
       } catch {}
     }
     return result;
@@ -2203,6 +2334,8 @@ async function init() {
   if (rc && Array.isArray(rc)) S._recentChanges = rc;
   const dp = store.get('motu-default-photo');
   if (dp && typeof dp === 'object') S.defaultPhoto = dp;
+  // Load any field overrides — applied automatically inside rebuildFigIndex
+  loadOverrides();
   // Initialize OPFS for photo storage
   await initOPFS();
   // One-time migrations (must run BEFORE loadAll so URL cache is correct)
@@ -2434,7 +2567,14 @@ function showContextMenu(figId, x, y) {
   const menu = document.createElement('div');
   menu.className = 'ctx-menu';
 
-  let items = `<div class="ctx-menu-header">${esc(fig.name)}</div>`;
+  let items = `<div class="ctx-menu-header">${esc(fig.name)}`;
+  // Show copy count alongside the name when there are multiple copies, so the
+  // user gets quick visibility into multi-copy state without opening details.
+  const copyN = entryCopyCount(c);
+  if (copyN > 1) {
+    items += ` <span class="ctx-copy-count">×${copyN}</span>`;
+  }
+  items += `</div>`;
   STATUSES.forEach(s => {
     const active = c.status === s;
     const dotColor = STATUS_HEX[s];
@@ -2449,6 +2589,13 @@ function showContextMenu(figId, x, y) {
     </button>`;
   }
   items += '<div class="ctx-menu-sep"></div>';
+  // Quick "Add copy" shortcut for figures that already have at least one copy.
+  // Skips opening the detail screen for power users adding multiples in bulk.
+  if (c.status === 'owned' || c.status === 'for-sale') {
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addCopy('${figId}');toast('✓ Copy added to ${esc(fig.name).replace(/'/g,"\\\\'")}')">
+      ${icon(ICO.import, 16)} Add another copy
+    </button>`;
+  }
   if (fig.source === 'af411') {
     const qs = encodeURIComponent(fig.name).replace(/'/g, '%27');
     items += `<button class="ctx-menu-item" onclick="dismissContextMenu();window.open('https://www.actionfigure411.com/masters-of-the-universe/search.php?search=${qs}','_blank')">
@@ -2456,7 +2603,11 @@ function showContextMenu(figId, x, y) {
     </button>`;
   }
   items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig('${figId}')">
-    ${icon(ICO.edit, 16)} Open details
+    ${icon(ICO.edit, 16)} ${copyN > 1 ? 'Manage copies' : 'Open details'}
+  </button>`;
+  // Local edit (override) — for fixing missing/wrong AF411 metadata
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFigureEditor('${figId}')">
+    ${icon(ICO.menu, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
   </button>`;
   items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith('${figId}')">
     ${icon(ICO.check, 16)} Select
@@ -2547,10 +2698,66 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // O(1) figure lookup by id — rebuilt whenever S.figs changes.
 let _figById = new Map();
 function rebuildFigIndex() {
+  // Apply any local field overrides before indexing so figById reflects them.
+  applyOverrides();
   _figById = new Map();
   for (const f of S.figs) _figById.set(f.id, f);
 }
 function figById(id) { return _figById.get(id); }
+
+// ─── Figure Overrides (v4.47) ────────────────────────────────────
+// Local patches on top of figures.json — fixes incomplete entries (e.g. a
+// figure that's only tagged with a line and missing faction/group/year).
+// Storage: localStorage 'motu-overrides' = {figId: {fields: {...}}}
+// Survives AF411 sync, restored on every load.
+const OVERRIDES_KEY = 'motu-overrides';
+let _overrides = {};
+function loadOverrides() {
+  try { _overrides = JSON.parse(localStorage.getItem(OVERRIDES_KEY) || '{}'); } catch { _overrides = {}; }
+}
+function saveOverrides() {
+  try { localStorage.setItem(OVERRIDES_KEY, JSON.stringify(_overrides)); } catch {}
+}
+// Walk S.figs once and merge any override fields. Idempotent — pure assignment.
+function applyOverrides() {
+  if (!_overrides || !Object.keys(_overrides).length) return;
+  for (let i = 0; i < S.figs.length; i++) {
+    const ov = _overrides[S.figs[i].id];
+    if (!ov || !ov.fields) continue;
+    // Mark with _overridden so future audits/UI can show "this entry has local edits"
+    S.figs[i] = { ...S.figs[i], ...ov.fields, _overridden: true };
+  }
+}
+// Get a single field's override value (or undefined).
+function getOverrideField(figId, key) {
+  return _overrides[figId]?.fields?.[key];
+}
+// Set/clear a single field. Empty string = clear that field's override.
+function setOverrideField(figId, key, val) {
+  if (!_overrides[figId]) _overrides[figId] = { fields: {} };
+  if (val === '' || val == null) {
+    delete _overrides[figId].fields[key];
+    if (!Object.keys(_overrides[figId].fields).length) delete _overrides[figId];
+  } else {
+    _overrides[figId].fields[key] = val;
+  }
+  saveOverrides();
+  // Re-apply so figById reflects the change immediately
+  rebuildFigIndex();
+}
+// Clear all overrides for a figure (revert to AF411 source data).
+function clearOverrides(figId) {
+  delete _overrides[figId];
+  saveOverrides();
+  // Reload figs from cache to wipe the in-memory overridden values
+  const cached = store.get(CACHE_KEY);
+  if (cached?.rows?.length) {
+    S.figs = cached.rows.map(f => ({...f, image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')}));
+  }
+  rebuildFigIndex();
+}
+window.setOverrideField = setOverrideField;
+window.clearOverrides = clearOverrides;
 
 // ─── Multi-Copy Schema (v4.42+) ─────────────────────────────────
 // Each collection entry can hold multiple physical copies. Schema:
@@ -2955,7 +3162,7 @@ function progressRing(pct, size=48, color='var(--acc)') {
 }
 
 function exportCSV(filter) {
-  const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Condition','Paid','Notes'];
+  const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Copy #','Condition','Paid','Variant','Notes'];
   let list = S.figs;
   if (filter === 'owned') list = list.filter(f => S.coll[f.id]?.status === 'owned');
   else if (filter === 'wishlist') list = list.filter(f => S.coll[f.id]?.status === 'wishlist');
@@ -2963,26 +3170,155 @@ function exportCSV(filter) {
   else if (filter === 'for-sale') list = list.filter(f => S.coll[f.id]?.status === 'for-sale');
   else if (filter === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
   else if (filter === 'any-status') list = list.filter(f => S.coll[f.id]?.status);
-  const rows = list.map(f => {
+  const rows = [];
+  let totalRowCount = 0;
+  for (const f of list) {
     const c = S.coll[f.id] || {};
-    return [f.name,ln(f.line),f.group,f.wave,f.year,f.retail,f.faction,c.status||'',copyCondition(c)||'',copyPaid(c)||'',copyNotes(c)||''];
-  });
-  const csv = [h,...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const base = [f.name, ln(f.line), f.group, f.wave, f.year, f.retail, f.faction, c.status || ''];
+    if (isMigrated(c) && c.copies.length > 0) {
+      // One row per copy. Copy # is 1-indexed.
+      c.copies.forEach((cp, i) => {
+        rows.push([...base, i + 1, cp.condition || '', cp.paid || '', cp.variant || '', cp.notes || '']);
+        totalRowCount++;
+      });
+    } else if (!isMigrated(c) && (c.condition || c.paid || c.notes || c.variants)) {
+      // Defensive: legacy entry that somehow escaped migration
+      rows.push([...base, 1, c.condition || '', c.paid || '', c.variants || '', c.notes || '']);
+      totalRowCount++;
+    } else {
+      // No copies (wishlist / ordered / unowned with status only)
+      rows.push([...base, '', '', '', '', '']);
+      totalRowCount++;
+    }
+  }
+  const csv = [h, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   const a = document.createElement('a');
   const suffix = filter ? '-' + filter : '';
   a.href = url; a.download = 'motu' + suffix + '.csv';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  toast(`✓ Exported ${list.length} figures`);
+  const summary = totalRowCount === list.length
+    ? `✓ Exported ${list.length} figures`
+    : `✓ Exported ${list.length} figures · ${totalRowCount} rows`;
+  toast(summary);
 }
+
+// ─── Minimal ZIP encoder (STORE method, no compression) ──────────
+// Produces a valid uncompressed .zip file. Photos are already JPEG, so
+// compression wouldn't help much anyway. Pure-JS, no dependencies.
+// Spec: PKWARE APPNOTE.TXT (only the bits we actually need).
+const _crc32Table = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = _crc32Table[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function _u16le(n) { return [n & 0xFF, (n >>> 8) & 0xFF]; }
+function _u32le(n) { return [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF]; }
+async function buildZip(entries) {
+  // entries: [{name: string, blob: Blob}, ...]
+  const enc = new TextEncoder();
+  const localChunks = [];
+  const centralDirChunks = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const nameBytes = enc.encode(entry.name);
+    const data = new Uint8Array(await entry.blob.arrayBuffer());
+    const crc = crc32(data);
+    // Local file header
+    const lfh = [
+      ..._u32le(0x04034b50), ..._u16le(20), ..._u16le(0),
+      ..._u16le(0), ..._u16le(0), ..._u16le(0),
+      ..._u32le(crc), ..._u32le(data.length), ..._u32le(data.length),
+      ..._u16le(nameBytes.length), ..._u16le(0),
+    ];
+    localChunks.push(new Uint8Array(lfh), nameBytes, data);
+    // Central directory header
+    const cdh = [
+      ..._u32le(0x02014b50), ..._u16le(20), ..._u16le(20), ..._u16le(0),
+      ..._u16le(0), ..._u16le(0), ..._u16le(0),
+      ..._u32le(crc), ..._u32le(data.length), ..._u32le(data.length),
+      ..._u16le(nameBytes.length), ..._u16le(0), ..._u16le(0),
+      ..._u16le(0), ..._u16le(0), ..._u32le(0), ..._u32le(offset),
+    ];
+    centralDirChunks.push(new Uint8Array(cdh), nameBytes);
+    offset += lfh.length + nameBytes.length + data.length;
+  }
+  const cdSize = centralDirChunks.reduce((s, c) => s + c.length, 0);
+  const eocd = new Uint8Array([
+    ..._u32le(0x06054b50), ..._u16le(0), ..._u16le(0),
+    ..._u16le(entries.length), ..._u16le(entries.length),
+    ..._u32le(cdSize), ..._u32le(offset), ..._u16le(0),
+  ]);
+  return new Blob([...localChunks, ...centralDirChunks, eocd], { type: 'application/zip' });
+}
+
+// Sanitize a string for use in a ZIP filename (replaces problematic chars).
+function _zipSafeName(s) {
+  return String(s || '').replace(/[\/\\?%*:|"<>\x00-\x1f]/g, '_').slice(0, 80);
+}
+
+window.exportPhotosZip = async () => {
+  const ids = Object.keys(S.customPhotos).filter(id => (S.customPhotos[id] || []).length > 0);
+  if (ids.length === 0) { toast('✗ No custom photos to export'); return; }
+  toast('Packaging photos…');
+  const entries = [];
+  let total = 0;
+  for (const figId of ids) {
+    const fig = figById(figId);
+    const figName = fig ? _zipSafeName(fig.name) : figId;
+    const blobs = await photoStore.getAllAsBlobs(figId);
+    blobs.forEach(({n, label, blob}) => {
+      // Folder structure: <figure-name>__<figId>/<n>-<label>.jpg
+      // The figId is included so duplicates of the same name don't collide.
+      const labelPart = label ? '-' + _zipSafeName(label) : '';
+      const fileName = `${figName}__${figId}/${String(n).padStart(2,'0')}${labelPart}.jpg`;
+      entries.push({ name: fileName, blob });
+      total++;
+    });
+  }
+  if (entries.length === 0) { toast('✗ No photos found'); return; }
+  // Manifest file inside the zip mapping figId → figure name + photo list
+  const manifest = ids.map(figId => {
+    const fig = figById(figId);
+    return {
+      figId,
+      name: fig ? fig.name : figId,
+      line: fig ? fig.line : null,
+      photos: (S.customPhotos[figId] || []).map(p => ({ n: p.n, label: p.label || '' })),
+    };
+  });
+  entries.push({
+    name: 'manifest.json',
+    blob: new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' }),
+  });
+  const zip = await buildZip(entries);
+  const url = URL.createObjectURL(zip);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0, 10);
+  a.href = url; a.download = `motu-vault-photos-${ts}.zip`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`✓ Exported ${total} photos`);
+};
 
 async function exportJSON() {
   const backup = {
-    version: 'motu-vault-backup-v3',  // v3: collection entries use copies[] schema
+    version: 'motu-vault-backup-v4',  // v4: includes per-copy photo assignments + figure overrides
     exported: new Date().toISOString(),
     collection: S.coll,
-    photos: {}
+    photos: {},
+    photoCopy: _photoCopy,  // {figId: {n: copyId}} — which copy each photo belongs to
+    overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
   };
   // Include custom photos as arrays of {label, dataUrl}
   let totalPhotos = 0;
@@ -3007,7 +3343,7 @@ function importJSON(file) {
   reader.onload = async ev => {
     try {
       const backup = JSON.parse(ev.target.result);
-      const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3'];
+      const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4'];
       if (!knownVersions.includes(backup.version)) throw new Error('Unknown format');
       if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
       const overwrite = document.querySelector('.checkbox.checked') !== null;
@@ -3044,17 +3380,44 @@ function importJSON(file) {
         imported++;
       });
       saveColl();
-      // Restore photos (handle both v1 single-photo and v2/v3 multi-photo formats)
+      // Restore photos (handle both v1 single-photo and v2/v3/v4 multi-photo formats)
       if (backup.photos) {
         for (const [id, val] of Object.entries(backup.photos)) {
           // v1 format: photos[id] is a single dataUrl string
-          // v2/v3 format: photos[id] is an array of {label, dataUrl}
+          // v2+ format: photos[id] is an array of {label, dataUrl}
           const photoArr = typeof val === 'string'
             ? [{label: '', dataUrl: val}]
             : (Array.isArray(val) ? val : []);
           const count = await photoStore.importPhotos(id, photoArr);
           photos += count;
         }
+      }
+      // v4: restore per-copy photo assignments
+      if (backup.photoCopy && typeof backup.photoCopy === 'object') {
+        if (overwrite) {
+          _photoCopy = {...backup.photoCopy};
+        } else {
+          // Merge — incoming wins on conflict
+          for (const [figId, m] of Object.entries(backup.photoCopy)) {
+            _photoCopy[figId] = {...(_photoCopy[figId] || {}), ...m};
+          }
+        }
+        savePhotoCopyMap();
+      }
+      // v4 (added later): restore figure field overrides
+      if (backup.overrides && typeof backup.overrides === 'object') {
+        if (overwrite) {
+          _overrides = {...backup.overrides};
+        } else {
+          for (const [figId, m] of Object.entries(backup.overrides)) {
+            const incoming = m?.fields || {};
+            const existing = _overrides[figId]?.fields || {};
+            _overrides[figId] = { fields: { ...existing, ...incoming } };
+          }
+        }
+        saveOverrides();
+        // Re-apply against current S.figs so the view updates without a reload
+        rebuildFigIndex();
       }
       const body = document.querySelector('.sheet-body');
       if (body) {
@@ -3114,6 +3477,15 @@ function renderExportSheet() {
     <span style="color:var(--t3);font-size:12px">${anyStatus} entries · ${photoCount} photos</span>
   </button>`;
   html += '<div class="text-sm text-dim" style="line-height:1.5">Includes all statuses, conditions, notes, variants, and custom photos. Use to restore your full collection.</div>';
+  if (photoCount > 0) {
+    html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+    html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Photos Only (ZIP)</div>';
+    html += `<button onclick="exportPhotosZip();closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+      <span>Download Photos as ZIP</span>
+      <span style="color:var(--t3);font-size:12px">${photoCount} photos</span>
+    </button>`;
+    html += '<div class="text-sm text-dim" style="line-height:1.5">Downloads all custom photos as a ZIP archive, organized by figure folder. Useful for backing up to cloud storage (Drive, Dropbox, etc.) or transferring to another device.</div>';
+  }
   return html;
 }
 
@@ -3331,7 +3703,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.43</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.47</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3915,8 +4287,26 @@ function renderCopyCard(f, cp, i, isMulti) {
     <div>
       <div class="field-label text-dim text-sm">Notes</div>
       <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced('${f.id}',${cid},'notes',this.value)" onblur="updateCopy('${f.id}',${cid},'notes',this.value)">${esc(notes)}</textarea>
-    </div>
-  </div></div>`;
+    </div>`;
+  // Per-copy photos (multi-copy only — single-copy uses the main carousel)
+  if (isMulti) {
+    const copyPhotos = photoStore.getForCopy(f.id, cid, false);  // exclude shared
+    h += `<div class="copy-photos-row">
+      <div class="field-label text-dim text-sm">Photos for this copy</div>
+      <div class="copy-photos-strip">`;
+    copyPhotos.forEach(p => {
+      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto('${f.id}',${p.n})">
+        <img src="${esc(p.url)}" alt="${esc(p.label || '')}" loading="lazy">
+        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto('${f.id}',${p.n})">⌫</button>
+      </div>`;
+    });
+    h += `<label class="copy-photo-add" title="Add photo to this copy">
+      ${icon(ICO.img, 18)}
+      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,'${f.id}',${cid})">
+    </label>
+    </div></div>`;
+  }
+  h += `</div></div>`;
   return h;
 }
 
@@ -4035,7 +4425,7 @@ function renderPhotoViewer() {
 
 // ─── Sheets ───────────────────────────────────────────────────────
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -4044,6 +4434,7 @@ function renderSheet() {
   else if (S.sheet === 'theme') body = renderThemeSheet();
   else if (S.sheet === 'menu') body = renderMenuSheet();
   else if (S.sheet === 'stats') body = renderStatsSheet();
+  else if (S.sheet === 'edit') body = renderEditFigureSheet();
 
   return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
     <div class="sheet-backdrop"></div>
@@ -4124,6 +4515,107 @@ function renderImportSheet() {
     <input type="file" id="csvInput" accept=".csv,.json" style="display:none" onchange="handleImportFile(this)">
   </div>`;
 }
+
+// ─── Edit Figure Sheet (v4.47) ────────────────────────────────────
+// Local field overrides on top of figures.json. Useful for fixing entries
+// that lack faction/group/year/etc. — the AF411 sync cannot stomp these.
+function renderEditFigureSheet() {
+  const figId = S.editingFigId;
+  if (!figId) return '<div class="text-sm text-dim">No figure selected.</div>';
+  const f = figById(figId);
+  if (!f) return '<div class="text-sm text-dim">Figure not found.</div>';
+  const ov = _overrides[figId]?.fields || {};
+  const has = Object.keys(ov).length > 0;
+  // For each editable field, show current effective value with an "overridden" hint.
+  const row = (key, label, inputHtml, hint = '') => `
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm" style="display:flex;align-items:center;gap:6px">
+        <span>${label}</span>
+        ${ov[key] != null ? '<span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 6px;border-radius:6px;letter-spacing:.3px">EDITED</span>' : ''}
+      </div>
+      ${inputHtml}
+      ${hint ? `<div class="field-hint text-dim text-sm" style="margin-top:4px">${hint}</div>` : ''}
+    </div>`;
+
+  let h = `<div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
+    Editing local info for <strong style="color:var(--gold)">${esc(f.name)}</strong>. Changes survive AF411 syncs and stay on this device. Leave a field blank to keep the source value.
+  </div>`;
+
+  // Faction
+  h += row('faction', 'Faction',
+    `<select onchange="setOverrideField('${figId}','faction',this.value);refreshEditSheet()">
+      <option value="">— Use source —</option>
+      ${FACTIONS.map(opt => `<option value="${esc(opt)}" ${(ov.faction||f.faction)===opt?'selected':''}>${esc(opt)}</option>`).join('')}
+    </select>`,
+    f.faction && !ov.faction ? `Source: ${esc(f.faction)}` : ''
+  );
+
+  // Group (free text)
+  h += row('group', 'Group',
+    `<input type="text" value="${esc(ov.group || f.group || '')}" placeholder="e.g. Action Figures, Deluxe…" onchange="setOverrideField('${figId}','group',this.value);refreshEditSheet()">`,
+    f.group && !ov.group ? `Source: ${esc(f.group)}` : ''
+  );
+
+  // Wave
+  h += row('wave', 'Wave',
+    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" onchange="setOverrideField('${figId}','wave',this.value);refreshEditSheet()">`,
+    f.wave && !ov.wave ? `Source: ${esc(f.wave)}` : ''
+  );
+
+  // Year (number-ish, but stored as string for consistency with source)
+  h += row('year', 'Year',
+    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" onchange="setOverrideField('${figId}','year',this.value?Number(this.value):'');refreshEditSheet()">`,
+    f.year && !ov.year ? `Source: ${esc(f.year)}` : ''
+  );
+
+  // Retail price
+  h += row('retail', 'Retail Price',
+    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" onchange="setOverrideField('${figId}','retail',this.value?Number(this.value):'');refreshEditSheet()">`,
+    f.retail && !ov.retail ? `Source: $${Number(f.retail).toFixed(2)}` : ''
+  );
+
+  // Name (rare to need but useful for typos in source data)
+  h += row('name', 'Name',
+    `<input type="text" value="${esc(ov.name || f.name || '')}" onchange="setOverrideField('${figId}','name',this.value);refreshEditSheet()">`,
+    ov.name ? `Source: ${esc(figById(figId) && _overrides[figId]?.fields ? '' : f.name)}` : ''
+  );
+
+  // Reset button — only meaningful when there's something to reset
+  if (has) {
+    h += `<div style="height:1px;background:var(--bd);margin:18px 0"></div>
+    <button onclick="resetFigureOverrides('${figId}')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
+      Reset all edits to source
+    </button>`;
+  }
+
+  return h;
+}
+
+// Re-render the edit sheet body in place after a field change so the
+// "EDITED" badge and Reset button update without closing/reopening.
+window.refreshEditSheet = () => {
+  const body = document.querySelector('.sheet-body');
+  if (body && S.sheet === 'edit') body.innerHTML = renderEditFigureSheet();
+  // Also refresh the detail screen behind the sheet so the change is visible
+  // when the sheet closes (year/group/etc. may show in the figure header).
+  if (S.screen === 'figure') {
+    // Don't full re-render — that scrolls to top. Will reflect on next nav.
+  }
+};
+
+window.resetFigureOverrides = figId => {
+  if (!confirm('Reset all local edits for this figure?')) return;
+  clearOverrides(figId);
+  refreshEditSheet();
+};
+
+// Open the editor for a specific figure id.
+window.openFigureEditor = figId => {
+  S.editingFigId = figId;
+  S.sheet = 'edit';
+  pushNav();
+  render();
+};
 
 function renderThemeSheet() {
   return Object.entries(THEMES).map(([key, th]) =>
@@ -4510,6 +5002,67 @@ window.removePhoto = async (id, n) => {
   if (!confirm('Remove this photo?')) return;
   await photoStore.remove(id, n);
   haptic && haptic();
+  renderDetail();
+};
+
+// Per-copy photo upload — same as handlePhoto but tags the new photo with copyId.
+// Re-renders only the status block so the detail screen doesn't scroll to top.
+window.handleCopyPhoto = (input, figId, copyId) => {
+  const file = input.files?.[0]; if (!file) return;
+  if (file.size > 20000000) { alert('Image too large (max 20MB).'); return; }
+  const existing = S.customPhotos[figId] || [];
+  if (existing.length >= MAX_PHOTOS) {
+    alert(`Maximum ${MAX_PHOTOS} photos per figure. Remove one first.`);
+    input.value = '';
+    return;
+  }
+  const objUrl = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = async () => {
+    try {
+      const MAX = 800;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.75));
+      if (!blob) { alert('Could not process image.'); return; }
+      const n = await photoStore.add(figId, blob, '', copyId);
+      if (n < 0) { alert('Storage full or photo limit reached.'); return; }
+      S.imgErrors[figId] = false;
+      input.value = '';
+      haptic && haptic();
+      patchDetailStatus();
+      // Also need to refresh the main carousel since we added a photo to the figure
+      renderDetail();
+    } finally {
+      URL.revokeObjectURL(objUrl);
+    }
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(objUrl);
+    alert('Could not read image file.');
+    input.value = '';
+  };
+  img.src = objUrl;
+};
+
+// Unlink a photo from its copy (makes it shared / visible from any copy view).
+window.unlinkCopyPhoto = (figId, n) => {
+  setPhotoCopy(figId, n, null);
+  haptic && haptic();
+  patchDetailStatus();
+};
+
+// Open a copy photo in the full-screen viewer (reuses existing photoViewer state).
+window.openCopyPhoto = (figId, n) => {
+  // Find the index in the full carousel for the viewer
+  const all = photoStore.getAll(figId);
+  const idx = all.findIndex(p => p.n === n);
+  if (idx < 0) return;
+  S.photoViewer = { figId, idx };
+  pushNav();
   renderDetail();
 };
 
