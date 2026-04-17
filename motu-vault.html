@@ -754,6 +754,20 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: flex; align-items: center; justify-content: center;
   backdrop-filter: blur(4px); cursor: pointer;
 }
+.photo-slide-default {
+  position: absolute; top: 10px; left: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,.6); color: rgba(255,255,255,.4);
+  border: 1px solid rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px); cursor: pointer;
+  font-size: 16px; line-height: 1;
+}
+.photo-slide-default.active {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
+  text-shadow: 0 0 8px var(--gold);
+}
 .photo-dots {
   display: flex; justify-content: center; gap: 6px;
   padding: 10px 0 4px;
@@ -1067,6 +1081,33 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 
 /* ── Loading Screen ──────────────────────────────────────────────── */
+/* ── Splash Screen ───────────────────────────────────────────────── */
+.splash {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  perspective: 800px;
+}
+.splash-logo {
+  width: 280px; max-width: 70vw;
+  animation: splashZoom 1.8s cubic-bezier(0.22,1,0.36,1) forwards;
+  filter: drop-shadow(0 0 40px rgba(255,204,51,.5));
+}
+.splash.fade-out {
+  animation: splashFade 0.5s ease-out forwards;
+}
+@keyframes splashZoom {
+  0%   { transform: scale(0) rotateY(-30deg); opacity: 0; }
+  30%  { transform: scale(1.15) rotateY(5deg); opacity: 1; }
+  50%  { transform: scale(1) rotateY(0deg); opacity: 1; }
+  70%  { transform: scale(1) rotateY(0deg); opacity: 1; }
+  100% { transform: scale(8) rotateY(0deg) translateZ(200px); opacity: 0; }
+}
+@keyframes splashFade {
+  to { opacity: 0; pointer-events: none; }
+}
+
 .loading-screen {
   height: 100%;
   display: flex; flex-direction: column;
@@ -1401,6 +1442,9 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 </style>
 </head>
 <body>
+<div class="splash" id="splash">
+  <img class="splash-logo" src="https://raw.githubusercontent.com/shkankin/motu-images/main/masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
+</div>
 <div id="app"></div>
 
 <script>
@@ -1591,10 +1635,15 @@ function savePhotoLabels() {
 
 const photoStore = {
   // Sync: get primary (first) photo URL for a figure — used in list/grid thumbnails
+  // Sync: get primary photo URL for list/grid thumbnails
+  // Returns null if default is stock image (n=-1) so renderer falls through to f.image
   get: id => {
+    const defN = S.defaultPhoto?.[id];
+    if (defN === -1) return null;  // user chose stock as default
     const arr = S.customPhotos[id];
     if (!arr || !arr.length) return null;
-    return photoURLs[id + '-' + arr[0].n] || null;
+    const targetN = defN != null ? defN : arr[0].n;
+    return photoURLs[id + '-' + targetN] || photoURLs[id + '-' + arr[0].n] || null;
   },
 
   // Sync: get all photos for a figure — { url, label, n }[]
@@ -1875,6 +1924,7 @@ const S = {
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   selectMode: false,        // batch selection active
   selected: new Set(),      // selected figure IDs
+  defaultPhoto: {},         // { figId: n } — which photo is the list/grid thumbnail (-1 = stock)
 };
 
 const DEFAULT_TITLE = 'MOTU Collector';
@@ -1985,6 +2035,8 @@ async function init() {
   // Load persisted recent changes
   const rc = store.get('motu-recent');
   if (rc && Array.isArray(rc)) S._recentChanges = rc;
+  const dp = store.get('motu-default-photo');
+  if (dp && typeof dp === 'object') S.defaultPhoto = dp;
   // Initialize OPFS for photo storage
   await initOPFS();
   // One-time migrations (must run BEFORE loadAll so URL cache is correct)
@@ -2010,6 +2062,14 @@ async function init() {
   const hasCache = !!(cached?.rows?.length);
   if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs(false, !hasCache);
   render();
+  // Dismiss splash after animation completes
+  const splash = document.getElementById('splash');
+  if (splash) {
+    setTimeout(() => {
+      splash.classList.add('fade-out');
+      setTimeout(() => splash.remove(), 500);
+    }, 1800);
+  }
 }
 
 // ─── Toast & Haptic Feedback ─────────────────────────────────────
@@ -2754,7 +2814,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.23</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.25</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3085,7 +3145,7 @@ function renderFigRow(f) {
   const hasCustom = S.customPhotos[f.id];
   const imgErr = S.imgErrors[f.id];
   const showImg = (hasCustom || f.image) && !imgErr;
-  const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
+  const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
   const isSelected = S.selectMode && S.selected.has(f.id);
   const rowClick = S.selectMode ? `toggleSelect(event,'${f.id}')` : `openFig('${f.id}')`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
@@ -3121,7 +3181,7 @@ function renderFigCard(f) {
   const hasCustom = S.customPhotos[f.id];
   const imgErr = S.imgErrors[f.id];
   const showImg = (hasCustom || f.image) && !imgErr;
-  const imgSrc = hasCustom ? photoStore.get(f.id) : f.image;
+  const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
   const statusIcon = c.status
     ? `<div class="fig-status-dot ${statusCls}"></div>`
     : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
@@ -3249,21 +3309,27 @@ function renderDetail() {
   const stockImg = (f.image && !S.imgErrors[f.id]) ? f.image : null;
   const pills = [ln(f.line), f.group, f.wave?'Wave '+f.wave:'', f.year, f.faction].filter(Boolean);
   const canAddMore = userPhotos.length < MAX_PHOTOS;
+  const defaultN = S.defaultPhoto?.[f.id] ?? (hasCustom ? userPhotos[0].n : -1);
 
-  // Build carousel: user photos first, then stock image as last "view-only" slide if no user photos
-  const slides = userPhotos.length > 0
-    ? userPhotos
-    : (stockImg ? [{n: -1, url: stockImg, label: '', stock: true}] : []);
+  // Build slides: user photos + stock image at end (if exists)
+  const slides = [];
+  userPhotos.forEach(p => slides.push({...p, stock: false}));
+  if (stockImg) slides.push({n: -1, url: stockImg, label: 'Default', stock: true});
 
   const carouselHtml = slides.length === 0
     ? `<div class="photo-container"><span class="initial-large">${esc(f.name[0])}</span></div>`
     : `<div class="photo-carousel" id="photoCarousel">
-        ${slides.map(s => `
-          <div class="photo-slide" onclick="${s.stock ? '' : `openPhotoViewer('${f.id}',${s.n})`}">
+        ${slides.map(s => {
+          const isDef = s.n === defaultN;
+          const viewerClick = s.stock ? '' : `openPhotoViewer('${f.id}',${s.n})`;
+          return `
+          <div class="photo-slide" onclick="${viewerClick}">
             <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${f.id}')"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
             ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${f.id}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
-          </div>`).join('')}
+            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto('${f.id}',${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
+          </div>`;
+        }).join('')}
       </div>
       ${slides.length > 1 ? `<div class="photo-dots">${slides.map((_,i) => `<div class="photo-dot" data-idx="${i}"></div>`).join('')}</div>` : ''}`;
 
@@ -3833,6 +3899,18 @@ window.clearPhoto = async id => {
 
 window.setPhotoLabel = async (id, n, label) => {
   await photoStore.setLabel(id, n, label.trim());
+  renderDetail();
+};
+
+window.setDefaultPhoto = (id, n) => {
+  // If already the default, remove override (revert to first custom photo)
+  if (S.defaultPhoto[id] === n) {
+    delete S.defaultPhoto[id];
+  } else {
+    S.defaultPhoto[id] = n;
+  }
+  store.set('motu-default-photo', S.defaultPhoto);
+  haptic && haptic();
   renderDetail();
 };
 
