@@ -2897,7 +2897,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.31</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.32</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3770,7 +3770,19 @@ window.onSearch = val => {
     _searchTimer = null;
   }, 120);
 };
-window.navTo = key => { S.tab = key; S.searchBarHidden = false; S.barsHidden = false; if (key !== 'all' || !S.activeLine) { S.activeLine = null; S.activeSubline = null; } pushNav(); render(); };
+window.navTo = key => {
+  S.tab = key;
+  S.searchBarHidden = false;
+  S.barsHidden = false;
+  // Always reset to the tab's global view, regardless of current line/subline.
+  // Previously 'all' preserved activeLine, making the tap appear to do nothing
+  // when already viewing a line.
+  S.activeLine = null;
+  S.activeSubline = null;
+  S.savedScroll = 0;
+  pushNav();
+  render();
+};
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
 window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; pushNav(); render(); };
