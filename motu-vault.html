@@ -1169,22 +1169,24 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .select-actionbar.visible { transform: translateY(0); }
 .select-actionbar .count {
-  font-size: 13px; font-weight: 600; color: var(--gold);
-  flex-shrink: 0; padding: 0 4px;
+  font-size: 14px; font-weight: 700; color: var(--gold);
+  flex-shrink: 0; min-width: 20px; text-align: center;
 }
-.select-actionbar .spacer { flex: 1; }
+.select-actionbar-scroll {
+  display: flex; gap: 6px; flex: 1;
+  overflow-x: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.select-actionbar-scroll::-webkit-scrollbar { display: none; }
 .select-actionbar button {
   padding: 8px 12px; border-radius: 10px;
   border: 1px solid var(--bd); background: var(--bg3);
   color: var(--t1); font-size: 12px; font-weight: 600;
-  cursor: pointer;
-  display: flex; align-items: center; gap: 5px;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  display: flex; align-items: center; gap: 4px;
 }
 .select-actionbar button:active { opacity: 0.7; transform: scale(0.95); }
 .select-actionbar button:disabled { opacity: 0.3; pointer-events: none; }
-.select-actionbar button.primary {
-  background: var(--acc); border-color: var(--acc); color: #fff;
-}
 .select-actionbar button.danger {
   color: var(--rd); border-color: color-mix(in srgb, var(--rd) 30%, var(--bd));
 }
@@ -2749,7 +2751,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.21</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.22</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2886,24 +2888,17 @@ function renderSelectActionbar() {
   const totalVisible = getSortedFigs().length;
   const allSelected = n > 0 && n === totalVisible;
   return `<div class="select-actionbar visible">
-    <span class="count">${n} selected</span>
+    <span class="count">${n}</span>
     <button onclick="selectAllVisible()" title="${allSelected ? 'Deselect all' : 'Select all'}">
       ${allSelected ? 'None' : 'All'}
     </button>
-    <div class="spacer"></div>
-    <button class="primary${n ? '' : ' disabled'}" onclick="batchSetStatus('owned')" ${n ? '' : 'disabled'} title="Mark owned" style="background:${STATUS_HEX.owned};border-color:${STATUS_HEX.owned}">
-      ${icon(ICO.check,13)} Own
-    </button>
-    <button ${n ? '' : 'disabled'} onclick="batchSetStatus('wishlist')" title="Mark wishlist" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">
-      Wish
-    </button>
-    <button ${n ? '' : 'disabled'} onclick="batchSetStatus('ordered')" title="Mark ordered" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">
-      Ord
-    </button>
-    <button ${n ? '' : 'disabled'} onclick="batchSetStatus('for-sale')" title="Mark for sale" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">
-      Sale
-    </button>
-    <button class="danger" ${n ? '' : 'disabled'} onclick="batchSetStatus('')" title="Clear status">✗ Clr</button>
+    <div class="select-actionbar-scroll">
+      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('owned')" style="color:${STATUS_HEX.owned};border-color:color-mix(in srgb, ${STATUS_HEX.owned} 40%, var(--bd))">Own</button>
+      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('wishlist')" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">Wish</button>
+      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('ordered')" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">Ord</button>
+      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('for-sale')" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">Sale</button>
+      <button class="danger" ${n ? '' : 'disabled'} onclick="batchSetStatus('')">${icon(ICO.x,12)} Clr</button>
+    </div>
   </div>`;
 }
 
