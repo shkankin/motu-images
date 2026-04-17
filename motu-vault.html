@@ -16,13 +16,37 @@
 <style>
 html,body{background:#000;margin:0}
 .splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;contain:strict}
-.splash-logo{width:280px;max-width:70vw;opacity:0;transform:translate3d(0,0,0) scale(.3);will-change:transform,opacity;animation:splash 1.8s cubic-bezier(.22,1,.36,1) forwards;filter:drop-shadow(0 0 40px rgba(255,204,51,.5))}
-@keyframes splash{
-  0%  {transform:translate3d(0,0,0) scale(.3);opacity:0}
-  17% {transform:translate3d(0,0,0) scale(1.08);opacity:1}
-  25% {transform:translate3d(0,0,0) scale(1);opacity:1}
-  75% {transform:translate3d(0,0,0) scale(1);opacity:1}
-  100%{transform:translate3d(0,0,0) scale(5);opacity:0}
+/* Logo: rise from below starting huge (close to camera), settle at 1/3 from
+   top at scale(1), hold through a mid-flash, then recede up and away tiny.
+   Transform + opacity only, on a GPU composite layer. 3.0s total. */
+.splash-logo{
+  width:280px;max-width:70vw;
+  transform:translate3d(0,120vh,0) scale(2.4);
+  opacity:0;
+  will-change:transform,opacity;
+  backface-visibility:hidden;
+  filter:drop-shadow(0 0 40px rgba(255,204,51,.5));
+  animation:splashLogo 3s cubic-bezier(.33,.1,.33,1) forwards;
+}
+@keyframes splashLogo{
+  0%     {transform:translate3d(0,120vh,0) scale(2.4); opacity:0}
+  13%    {opacity:1}
+  /* Arrive at 30% (~0.9s), hold through flash until ~76.67% (~2.3s) */
+  30%    {transform:translate3d(0,-17vh,0) scale(1);   opacity:1}
+  76.67% {transform:translate3d(0,-17vh,0) scale(1);   opacity:1}
+  /* Recede: 0.7s */
+  100%   {transform:translate3d(0,-140vh,0) scale(.08); opacity:0}
+}
+/* Single white flash, peaks mid-hold (~1.6s into the 3s timeline). */
+.splash-flash{
+  position:absolute;inset:0;background:#fff;opacity:0;
+  pointer-events:none;will-change:opacity;mix-blend-mode:screen;
+  animation:splashFlash .4s ease-out 1.4s forwards;
+}
+@keyframes splashFlash{
+  0%  {opacity:0}
+  40% {opacity:.9}
+  100%{opacity:0}
 }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1436,6 +1460,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 <body>
 <div class="splash" id="splash">
   <img class="splash-logo" src="masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
+  <div class="splash-flash"></div>
 </div>
 <div id="app"></div>
 
@@ -1936,6 +1961,29 @@ const DEFAULT_TITLE = 'MOTU Collector';
 function getThemeTitles() {
   return THEMES[S.theme]?.titles || [DEFAULT_TITLE];
 }
+// ─── Audio ────────────────────────────────────────────────────────
+// Shared sound URLs (resolved relative to the motu-images repo).
+const SND = {
+  powerGrayskull: IMG + '/power_grayskull.mp3',
+  iHaveThePower:  IMG + '/i_have_the_power.mp3',
+};
+// Memoized Audio objects — first play incurs the network fetch, subsequent
+// plays are instant. Using new Audio per call (instead of reusing one) means
+// rapid re-triggers don't cut each other off.
+const _audioPool = {};
+function playSound(url, volume = 0.9) {
+  if (!url) return;
+  try {
+    // Warm the pool so the first playback on a given URL is as fast as
+    // possible. Each call still creates a fresh instance (HTMLAudioElement
+    // playback after ended is cheap; multiple overlapping plays work).
+    if (!_audioPool[url]) { _audioPool[url] = new Audio(url); _audioPool[url].preload = 'auto'; }
+    const a = new Audio(url);
+    a.volume = volume;
+    a.play().catch(() => {});
+  } catch {}
+}
+
 function getThemeSounds() {
   return (THEMES[S.theme]?.sounds || [null]).map(s => s ? IMG + s : null);
 }
@@ -2026,6 +2074,13 @@ async function fetchFigs(manual = false, firstLoad = false) {
 
 // ─── Init ─────────────────────────────────────────────────────────
 async function init() {
+  // Splash-first: let the browser commit the splash animation's first frames
+  // before we kick off heavy work (OPFS init, localStorage parsing, render,
+  // figures.json fetch). Two rAFs ≈ 16-33ms — invisible to the user but
+  // enough time for the CSS animation to be running on the compositor
+  // thread before we start competing for the main thread.
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
   // Load collection
   const c = store.get('motu-c2');
   if (c) {
@@ -2064,19 +2119,26 @@ async function init() {
   document.documentElement.setAttribute('data-theme', S.theme);
   // One-time migration: wave default → year default (v3.9)
   if (S.sortBy === 'wave') { S.sortBy = 'year'; store.set('motu-sort', 'year'); }
-  // Fetch if stale
-  const hasCache = !!(cached?.rows?.length);
-  if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs(false, !hasCache);
+  // Render the UI behind the splash so it's ready by the time splash fades.
   render();
+  // Defer the figures.json network request until the splash is well past its
+  // entry phase (~1s in). Cached data already populated the view above, so
+  // the user isn't waiting on this. Purely a politeness delay to keep the
+  // network off the critical path during splash.
+  const hasCache = !!(cached?.rows?.length);
+  const needsFetch = !cached?.ts || Date.now() - cached.ts > CACHE_TTL;
+  if (needsFetch) {
+    setTimeout(() => fetchFigs(false, !hasCache), 1000);
+  }
   // Remove splash when the CSS animation finishes. animationend keeps it
-  // tight — no hard timer, no drift. Safety timeout in case the image
-  // failed silently (animation never ran).
+  // tight — no hard timer, no drift. Safety timeout covers the 3s animation
+  // in case the image failed silently.
   const splash = document.getElementById('splash');
   if (splash) {
     const kill = () => { splash.remove(); };
     const img = splash.querySelector('.splash-logo');
     if (img) img.addEventListener('animationend', kill, {once: true});
-    setTimeout(kill, 2200);
+    setTimeout(kill, 3400);
   }
 }
 
@@ -2191,6 +2253,7 @@ function celebrateCompletion(label) {
   haptic(50);
   toast('🏆 ' + label);
   spawnConfetti();
+  playSound(SND.iHaveThePower);
 }
 
 function spawnConfetti() {
@@ -2430,12 +2493,17 @@ function setStatus(id, status) {
   const fig = figById(id);
   const name = fig ? fig.name : id;
   const newStatus = S.coll[id]?.status;
-  if (newStatus) toastUndo(`✓ ${name} → ${STATUS_LABEL[newStatus]}`, id, prevColl);
-  else toastUndo(`✗ ${name} cleared`, id, prevColl);
-  // Trigger pulse animation on the badge
-  triggerPulse(id, newStatus);
-  if (!patchFigRow(id)) render();
-  // Check completion celebrations
+  // On the detail screen, the user sees the status change immediately in-place —
+  // no toast needed, and we don't want a full main-screen render (which causes
+  // the detail screen to scroll back to top when renderDetail re-fires).
+  const onDetail = S.screen === 'figure' && S.activeFig && S.activeFig.id === id;
+  if (!onDetail) {
+    if (newStatus) toastUndo(`✓ ${name} → ${STATUS_LABEL[newStatus]}`, id, prevColl);
+    else toastUndo(`✗ ${name} cleared`, id, prevColl);
+    triggerPulse(id, newStatus);
+    if (!patchFigRow(id)) render();
+  }
+  // Check completion celebrations (kept on detail too — confetti is the reward)
   if (newStatus === 'owned' && fig) checkCompletion(fig);
 }
 
@@ -2920,10 +2988,10 @@ function renderMain() {
   <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
-        <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
+        <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.36</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.41</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3410,6 +3478,56 @@ function renderFigList() {
 }
 
 // ─── Detail Screen ────────────────────────────────────────────────
+
+// The status buttons + collection-details block. Factored out so we can swap
+// just this chunk on status change without re-rendering the whole detail
+// screen (which would otherwise reset scroll to the top).
+function renderDetailStatusBlock(f, c) {
+  let h = `<div class="status-grid">
+    <div class="label text-upper text-dim text-xs">Status</div>
+    <div class="grid">`;
+  STATUSES.forEach(s => {
+    const active = c.status === s;
+    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${f.id}','${s}');patchDetailStatus()">${active?'✓ ':''}${STATUS_LABEL[s]}</button>`;
+  });
+  h += `</div></div>`;
+  if (c.status) {
+    h += `<div class="detail-fields">
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Collection Details</div>
+      <div>
+        <div class="field-label text-dim text-sm">Condition</div>
+        <select onchange="updateColl('${f.id}','condition',this.value)">
+          <option value="">Select...</option>
+          ${CONDITIONS.map(x => `<option value="${esc(x)}" ${c.condition===x?'selected':''}>${esc(x)}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <div class="field-label text-dim text-sm">Price Paid</div>
+        <input type="number" step="0.01" value="${esc(c.paid||'')}" placeholder="$0.00" onchange="updateColl('${f.id}','paid',this.value)">
+      </div>
+      <div>
+        <div class="field-label text-dim text-sm">Variants Owned</div>
+        <input type="text" value="${esc(c.variants||'')}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateColl('${f.id}','variants',this.value)">
+        <div class="field-hint">Comma-separate multiple variants</div>
+      </div>
+      <div>
+        <div class="field-label text-dim text-sm">Notes</div>
+        <textarea rows="3" placeholder="Notes…" oninput="updateCollDebounced('${f.id}','notes',this.value)" onblur="updateColl('${f.id}','notes',this.value)">${esc(c.notes||'')}</textarea>
+      </div>
+    </div>`;
+  }
+  return h;
+}
+
+function patchDetailStatus() {
+  if (S.screen !== 'figure' || !S.activeFig) return;
+  const el = document.getElementById('detailStatusBlock');
+  if (!el) return;
+  const c = S.coll[S.activeFig.id] || {};
+  el.innerHTML = renderDetailStatusBlock(S.activeFig, c);
+}
+window.patchDetailStatus = patchDetailStatus;
+
 function renderDetail() {
   const f = S.activeFig;
   const c = S.coll[f.id] || {};
@@ -3476,41 +3594,7 @@ function renderDetail() {
         ${icon(ICO.search,14)} All versions
       </button>
     </div>
-    <div class="status-grid">
-      <div class="label text-upper text-dim text-xs">Status</div>
-      <div class="grid">
-        ${STATUSES.map(s => {
-          const active = c.status === s;
-          return `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${f.id}','${s}');renderDetail()">
-            ${active?'✓ ':''}${STATUS_LABEL[s]}
-          </button>`;
-        }).join('')}
-      </div>
-    </div>
-    ${c.status ? `
-    <div class="detail-fields">
-      <div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Collection Details</div>
-      <div>
-        <div class="field-label text-dim text-sm">Condition</div>
-        <select onchange="updateColl('${f.id}','condition',this.value)">
-          <option value="">Select...</option>
-          ${CONDITIONS.map(x => `<option value="${esc(x)}" ${c.condition===x?'selected':''}>${esc(x)}</option>`).join('')}
-        </select>
-      </div>
-      <div>
-        <div class="field-label text-dim text-sm">Price Paid</div>
-        <input type="number" step="0.01" value="${esc(c.paid||'')}" placeholder="$0.00" onchange="updateColl('${f.id}','paid',this.value)">
-      </div>
-      <div>
-        <div class="field-label text-dim text-sm">Variants Owned</div>
-        <input type="text" value="${esc(c.variants||'')}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateColl('${f.id}','variants',this.value)">
-        <div class="field-hint">Comma-separate multiple variants</div>
-      </div>
-      <div>
-        <div class="field-label text-dim text-sm">Notes</div>
-        <textarea rows="3" placeholder="Notes…" oninput="updateCollDebounced('${f.id}','notes',this.value)" onblur="updateColl('${f.id}','notes',this.value)">${esc(c.notes||'')}</textarea>
-      </div>
-    </div>` : ''}
+    <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <div class="detail-spacer"></div>
   </div>`;
   if (S.photoViewer) html += renderPhotoViewer();
@@ -3812,6 +3896,12 @@ window.navTo = key => {
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
 window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; pushNav(); render(); };
+// Home/theme icon tap — plays the Grayskull sound when the Grayskull theme
+// is active, otherwise just navigates home.
+window.homeIconClick = () => {
+  if (S.theme === 'grayskull') playSound(SND.powerGrayskull);
+  goHome();
+};
 window.searchCharacter = name => {
   // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
   let base = name.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*-\s*(Battle|Deluxe|Mega|Mini|Giant|Lord|King|Prince).*$/i, '').trim();
