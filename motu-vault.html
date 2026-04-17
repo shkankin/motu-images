@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>MOTU Collector</title>
 <!-- Paint the background black immediately, before the external fonts
-     stylesheet finishes loading. Prevents a gray flash before the splash. -->
+     stylesheet finishes loading. Prevents a white/gray flash on launch. -->
 <style>html,body{background:#000;margin:0}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1085,32 +1085,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 /* ── Loading Screen ──────────────────────────────────────────────── */
 /* ── Splash Screen ───────────────────────────────────────────────── */
-.splash {
-  position: fixed; inset: 0; z-index: 9999;
-  background: #000;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  perspective: 800px;
-}
-.splash-logo {
-  width: 280px; max-width: 70vw;
-  animation: splashZoom 1.8s cubic-bezier(0.22,1,0.36,1) forwards;
-  filter: drop-shadow(0 0 40px rgba(255,204,51,.5));
-}
-.splash.fade-out {
-  animation: splashFade 0.4s ease-out forwards;
-}
-@keyframes splashZoom {
-  0%   { transform: scale(0) rotateY(-30deg); opacity: 0; }
-  30%  { transform: scale(1.15) rotateY(5deg); opacity: 1; }
-  50%  { transform: scale(1) rotateY(0deg); opacity: 1; }
-  70%  { transform: scale(1) rotateY(0deg); opacity: 1; }
-  100% { transform: scale(8) rotateY(0deg) translateZ(200px); opacity: 0; }
-}
-@keyframes splashFade {
-  to { opacity: 0; pointer-events: none; }
-}
-
 .loading-screen {
   height: 100%;
   display: flex; flex-direction: column;
@@ -1445,9 +1419,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 </style>
 </head>
 <body>
-<div class="splash" id="splash">
-  <img class="splash-logo" src="https://raw.githubusercontent.com/shkankin/motu-images/main/masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
-</div>
 <div id="app"></div>
 
 <script>
@@ -2079,14 +2050,6 @@ async function init() {
   const hasCache = !!(cached?.rows?.length);
   if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs(false, !hasCache);
   render();
-  // Dismiss splash after animation completes
-  const splash = document.getElementById('splash');
-  if (splash) {
-    setTimeout(() => {
-      splash.classList.add('fade-out');
-      setTimeout(() => splash.remove(), 500);
-    }, 1800);
-  }
 }
 
 // ─── Toast & Haptic Feedback ─────────────────────────────────────
@@ -2900,7 +2863,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.33</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.34</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
