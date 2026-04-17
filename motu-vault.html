@@ -1098,11 +1098,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   animation: splashFade 0.4s ease-out forwards;
 }
 @keyframes splashZoom {
-  0%   { transform: scale(0.5) translateY(-100vh); opacity: 0; }
-  35%  { transform: scale(1.12) translateY(0) rotateX(3deg); opacity: 1; }
-  45%  { transform: scale(0.95) translateY(0) rotateX(-2deg); opacity: 1; }
-  55%  { transform: scale(1) translateY(0) rotateX(0deg); opacity: 1; }
-  100% { transform: scale(12) translateZ(400px); opacity: 0; }
+  0%   { transform: scale(0.4) translateY(-90vh) rotateX(-20deg); opacity: 0; }
+  15%  { transform: scale(0.6) translateY(-50vh) rotateX(-12deg); opacity: 0.7; }
+  40%  { transform: scale(1.1) translateY(15vh) rotateX(8deg); opacity: 1; }
+  55%  { transform: scale(0.95) translateY(-5vh) rotateX(-3deg); opacity: 1; }
+  65%  { transform: scale(1) translateY(0) rotateX(0deg); opacity: 1; }
+  100% { transform: scale(14) translateY(-20vh) translateZ(500px) rotateX(-5deg); opacity: 0; }
 }
 @keyframes splashFade {
   to { opacity: 0; pointer-events: none; }
@@ -2814,7 +2815,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.27</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.28</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
