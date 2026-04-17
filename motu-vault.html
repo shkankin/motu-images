@@ -1601,9 +1601,21 @@ const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 // ─── Storage ──────────────────────────────────────────────────────
+let _quotaWarned = false;
 const store = {
   get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  set: (k, v) => {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    catch(e) {
+      const quota = e && (e.name === 'QuotaExceededError' || e.code === 22 || /quota/i.test(e.message||''));
+      if (quota && !_quotaWarned) {
+        _quotaWarned = true;
+        // toast is defined later; guarded in case of early failure
+        try { toast('✗ Storage full — changes may not persist'); } catch {}
+      }
+      return false;
+    }
+  },
 };
 
 // ─── Photo Storage (OPFS, multi-photo with labels) ──────────────
@@ -1992,6 +2004,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
       hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
     }
     S.figs = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
+    rebuildFigIndex();
     S.syncTs = Date.now();
     store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
     S.syncStatus = 'ok';
@@ -2051,6 +2064,7 @@ async function init() {
   const cached = store.get(CACHE_KEY);
   if (cached?.rows?.length) {
     S.figs = cached.rows.map(f => ({...f, image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')}));
+    rebuildFigIndex();
     S.syncTs = cached.ts;
     S.loaded = true;
   }
@@ -2118,7 +2132,13 @@ function toastUndo(msg, figId, prevColl) {
   }
   const el = document.createElement('div');
   el.className = 'toast';
-  el.innerHTML = msg + ` <button class="toast-undo" onclick="undoStatus('${figId}')">Undo</button>`;
+  el.textContent = msg;
+  const btn = document.createElement('button');
+  btn.className = 'toast-undo';
+  btn.textContent = 'Undo';
+  btn.onclick = () => undoStatus(figId);
+  el.appendChild(document.createTextNode(' '));
+  el.appendChild(btn);
   // Store the previous state on the element
   el._undoPrev = prevColl;
   el.dataset.figId = figId;
@@ -2239,7 +2259,7 @@ function initLongPress(el, figId) {
 
 function showContextMenu(figId, x, y) {
   // Prevent the regular tap from firing
-  const fig = S.figs.find(f => f.id === figId);
+  const fig = figById(figId);
   if (!fig) return;
   const c = S.coll[figId] || {};
   dismissContextMenu();
@@ -2275,7 +2295,8 @@ function showContextMenu(figId, x, y) {
   }
   items += '<div class="ctx-menu-sep"></div>';
   if (fig.source === 'af411') {
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();window.open('https://www.actionfigure411.com/masters-of-the-universe/search.php?search=${encodeURIComponent(fig.name)}','_blank')">
+    const qs = encodeURIComponent(fig.name).replace(/'/g, '%27');
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();window.open('https://www.actionfigure411.com/masters-of-the-universe/search.php?search=${qs}','_blank')">
       ${icon(ICO.export, 16)} View on AF411
     </button>`;
   }
@@ -2303,7 +2324,7 @@ window.ctxSetStatus = (id, status) => {
     saveColl(); haptic();
     S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
     store.set('motu-recent', S._recentChanges);
-    const fig = S.figs.find(f => f.id === id);
+    const fig = figById(id);
     toastUndo(`✗ ${fig ? fig.name : id} cleared`, id, prevColl);
     if (!patchFigRow(id)) render();
   } else {
@@ -2312,7 +2333,29 @@ window.ctxSetStatus = (id, status) => {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────
-function saveColl() { store.set('motu-c2', S.coll); }
+let _saveCollTimer = null;
+function saveColl() {
+  // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
+  // fast status cycling, notes typing). In-memory S.coll is always current.
+  if (_saveCollTimer) clearTimeout(_saveCollTimer);
+  _saveCollTimer = setTimeout(() => { store.set('motu-c2', S.coll); _saveCollTimer = null; }, 80);
+}
+function flushSaveColl() {
+  if (_saveCollTimer) { clearTimeout(_saveCollTimer); _saveCollTimer = null; }
+  store.set('motu-c2', S.coll);
+}
+// Ensure pending writes flush if the app is about to be unloaded or hidden.
+window.addEventListener('pagehide', flushSaveColl);
+window.addEventListener('beforeunload', flushSaveColl);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSaveColl(); });
+
+// O(1) figure lookup by id — rebuilt whenever S.figs changes.
+let _figById = new Map();
+function rebuildFigIndex() {
+  _figById = new Map();
+  for (const f of S.figs) _figById.set(f.id, f);
+}
+function figById(id) { return _figById.get(id); }
 function toggleHidden(key) {
   const i = S.hiddenItems.indexOf(key);
   if (i >= 0) S.hiddenItems.splice(i, 1);
@@ -2327,15 +2370,27 @@ function isLineFullyHidden(lineId) {
 function isSublineHidden(lineId, subKey) {
   return S.hiddenItems.includes(lineId + ':' + subKey);
 }
+// Memoized: cache keyed on current hiddenItems signature. Reset whenever
+// hiddenItems changes (via toggleHidden) or S.figs size changes.
+let _hidCache = null;
+let _hidCacheKey = '';
 function figIsHidden(f) {
-  if (isLineFullyHidden(f.line)) return true;
-  const subs = SUBLINES[f.line];
-  if (!subs) return false;
-  // Find which subline this figure belongs to
-  for (const sl of subs) {
-    if (sl.groups.includes(f.group) && isSublineHidden(f.line, sl.key)) return true;
+  const key = S.hiddenItems.length ? S.hiddenItems.join('|') : '';
+  if (_hidCacheKey !== key) { _hidCache = new Map(); _hidCacheKey = key; }
+  const cached = _hidCache.get(f.id);
+  if (cached !== undefined) return cached;
+  let hidden = false;
+  if (isLineFullyHidden(f.line)) hidden = true;
+  else {
+    const subs = SUBLINES[f.line];
+    if (subs) {
+      for (const sl of subs) {
+        if (sl.groups.includes(f.group) && isSublineHidden(f.line, sl.key)) { hidden = true; break; }
+      }
+    }
   }
-  return false;
+  _hidCache.set(f.id, hidden);
+  return hidden;
 }
 function setStatus(id, status) {
   if (!S.coll[id]) S.coll[id] = {};
@@ -2346,7 +2401,7 @@ function setStatus(id, status) {
   saveColl(); haptic();
   S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   store.set('motu-recent', S._recentChanges);
-  const fig = S.figs.find(f => f.id === id);
+  const fig = figById(id);
   const name = fig ? fig.name : id;
   const newStatus = S.coll[id]?.status;
   if (newStatus) toastUndo(`✓ ${name} → ${STATUS_LABEL[newStatus]}`, id, prevColl);
@@ -2416,20 +2471,43 @@ function updateColl(id, key, val) {
   saveColl();
 }
 
+// Debounced version for oninput on long-text fields (e.g. notes) so
+// a pending edit doesn't get lost if the app is force-closed mid-typing.
+const _updDebounces = {};
+window.updateCollDebounced = (id, key, val) => {
+  const dk = id + ':' + key;
+  clearTimeout(_updDebounces[dk]);
+  _updDebounces[dk] = setTimeout(() => {
+    updateColl(id, key, val);
+    delete _updDebounces[dk];
+  }, 400);
+};
+
 function getStats() {
-  const real = S.figs.filter(f => !figIsHidden(f));
-  const owned = real.filter(f => S.coll[f.id]?.status === 'owned').length;
-  const wish  = real.filter(f => S.coll[f.id]?.status === 'wishlist').length;
-  const ord   = real.filter(f => S.coll[f.id]?.status === 'ordered').length;
-  const sale  = real.filter(f => S.coll[f.id]?.status === 'for-sale').length;
-  return { total: real.length, owned, wish, ord, sale };
+  let total = 0, owned = 0, wish = 0, ord = 0, sale = 0;
+  for (const f of S.figs) {
+    if (figIsHidden(f)) continue;
+    total++;
+    const s = S.coll[f.id]?.status;
+    if (s === 'owned') owned++;
+    else if (s === 'wishlist') wish++;
+    else if (s === 'ordered') ord++;
+    else if (s === 'for-sale') sale++;
+  }
+  return { total, owned, wish, ord, sale };
 }
 
 function getLineStats() {
+  const agg = {}; // lineId -> {total, owned}
+  for (const f of S.figs) {
+    if (figIsHidden(f)) continue;
+    const a = agg[f.line] || (agg[f.line] = {total: 0, owned: 0});
+    a.total++;
+    if (S.coll[f.id]?.status === 'owned') a.owned++;
+  }
   return LINES.map(l => {
-    const t = S.figs.filter(f => f.line === l.id && !figIsHidden(f)).length;
-    const o = S.figs.filter(f => f.line === l.id && !figIsHidden(f) && S.coll[f.id]?.status === 'owned').length;
-    return {...l, total: t, owned: o, pct: t ? Math.round(o/t*100) : 0};
+    const a = agg[l.id] || {total: 0, owned: 0};
+    return {...l, total: a.total, owned: a.owned, pct: a.total ? Math.round(a.owned/a.total*100) : 0};
   });
 }
 
@@ -2565,6 +2643,11 @@ function importJSON(file) {
           ${photos>0 ? `<div class="text-sm text-dim">${photos} photos restored</div>` : ''}
         </div>`;
       }
+      // Ensure the collection write hits localStorage before the user can
+      // close the app. The view re-renders automatically via popstate when
+      // the sheet is dismissed, so no render() here (it would clobber the
+      // success summary above).
+      flushSaveColl();
     } catch(e) {
       alert('Invalid backup file: ' + e.message);
     }
@@ -2814,7 +2897,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.29</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.31</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3262,7 +3345,7 @@ function renderFigList() {
   } else {
     // Recently changed section for collection tab
     if (S.tab === 'collection' && !S.search && !hf && S._recentChanges?.length) {
-      const recent = S._recentChanges.slice(0, 5).map(id => S.figs.find(f => f.id === id)).filter(Boolean);
+      const recent = S._recentChanges.slice(0, 5).map(id => figById(id)).filter(Boolean);
       if (recent.length) {
         html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px">Recently changed</div>`;
         recent.forEach(f => { html += isGrid ? renderFigCard(f) : renderFigRow(f); });
@@ -3383,23 +3466,23 @@ function renderDetail() {
       <div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Collection Details</div>
       <div>
         <div class="field-label text-dim text-sm">Condition</div>
-        <select onchange="updateColl('${f.id}','condition',this.value);saveColl()">
+        <select onchange="updateColl('${f.id}','condition',this.value)">
           <option value="">Select...</option>
           ${CONDITIONS.map(x => `<option value="${esc(x)}" ${c.condition===x?'selected':''}>${esc(x)}</option>`).join('')}
         </select>
       </div>
       <div>
         <div class="field-label text-dim text-sm">Price Paid</div>
-        <input type="number" step="0.01" value="${esc(c.paid||'')}" placeholder="$0.00" onchange="updateColl('${f.id}','paid',this.value);saveColl()">
+        <input type="number" step="0.01" value="${esc(c.paid||'')}" placeholder="$0.00" onchange="updateColl('${f.id}','paid',this.value)">
       </div>
       <div>
         <div class="field-label text-dim text-sm">Variants Owned</div>
-        <input type="text" value="${esc(c.variants||'')}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateColl('${f.id}','variants',this.value);saveColl()">
+        <input type="text" value="${esc(c.variants||'')}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateColl('${f.id}','variants',this.value)">
         <div class="field-hint">Comma-separate multiple variants</div>
       </div>
       <div>
         <div class="field-label text-dim text-sm">Notes</div>
-        <textarea rows="3" placeholder="Notes…" onchange="updateColl('${f.id}','notes',this.value);saveColl()">${esc(c.notes||'')}</textarea>
+        <textarea rows="3" placeholder="Notes…" oninput="updateCollDebounced('${f.id}','notes',this.value)" onblur="updateColl('${f.id}','notes',this.value)">${esc(c.notes||'')}</textarea>
       </div>
     </div>` : ''}
     <div class="detail-spacer"></div>
@@ -3573,7 +3656,7 @@ function restoreNav(state) {
   S.tab = state.tab || 'lines';
   S.activeLine = state.activeLine || null;
   S.activeSubline = state.activeSubline || null;
-  S.activeFig = state.activeFigId ? S.figs.find(f => f.id === state.activeFigId) || null : null;
+  S.activeFig = state.activeFigId ? figById(state.activeFigId) || null : null;
   S.sheet = state.sheet || null;
   S.search = state.search || '';
 }
@@ -3736,13 +3819,14 @@ window.moveLine = (id, dir) => {
 window.openFig = id => {
   const ca = document.getElementById('contentArea');
   if (ca) S.savedScroll = ca.scrollTop;
-  S.activeFig = S.figs.find(f => f.id === id);
+  S.activeFig = figById(id);
   S.screen = 'figure'; pushNav(); render();
 };
 window.closeDetail = () => { history.back(); };
 window.deleteFig = id => {
   if (!confirm('Delete this figure?')) return;
   S.figs = S.figs.filter(f => f.id !== id);
+  rebuildFigIndex();
   delete S.coll[id]; saveColl();
   S.screen = 'main'; render();
 };
@@ -3840,7 +3924,7 @@ window.cycleStatus = (e, id) => {
   saveColl(); haptic();
   S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   store.set('motu-recent', S._recentChanges);
-  const fig = S.figs.find(f => f.id === id);
+  const fig = figById(id);
   const name = fig ? fig.name : id;
   const newStatus = S.coll[id]?.status;
   if (newStatus) toastUndo(`✓ ${name} → ${STATUS_LABEL[newStatus]}`, id, prevColl);
@@ -3861,10 +3945,12 @@ window.handlePhoto = (input, figId) => {
     input.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = new Image();
-    img.onload = async () => {
+  // Load via object URL instead of base64 data URL — avoids doubling memory
+  // for large images and speeds up decode on mid-range Androids.
+  const objUrl = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = async () => {
+    try {
       const MAX = 800;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement('canvas');
@@ -3872,16 +3958,23 @@ window.handlePhoto = (input, figId) => {
       canvas.height = Math.round(img.height * scale);
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.75));
+      if (!blob) { alert('Could not process image.'); return; }
       const n = await photoStore.add(figId, blob, '');
       if (n < 0) { alert('Storage full or photo limit reached.'); return; }
       S.imgErrors[figId] = false;
       input.value = '';
       haptic && haptic();
       renderDetail();
-    };
-    img.src = ev.target.result;
+    } finally {
+      URL.revokeObjectURL(objUrl);
+    }
   };
-  reader.readAsDataURL(file);
+  img.onerror = () => {
+    URL.revokeObjectURL(objUrl);
+    alert('Could not read image file.');
+    input.value = '';
+  };
+  img.src = objUrl;
 };
 
 window.removePhoto = async (id, n) => {
@@ -3962,39 +4055,38 @@ window.handleCSV = input => {
 
 // Drop zone support
 document.addEventListener('dragover', e => {
-  e.preventDefault();
   const dz = document.getElementById('dropZone');
-  if (dz) dz.classList.add('dragover');
+  if (!dz) return;  // Don't interfere with unrelated drag operations
+  e.preventDefault();
+  dz.classList.add('dragover');
 });
 document.addEventListener('dragleave', () => {
   const dz = document.getElementById('dropZone');
   if (dz) dz.classList.remove('dragover');
 });
 document.addEventListener('drop', e => {
-  e.preventDefault();
   const dz = document.getElementById('dropZone');
-  if (dz) {
-    dz.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      if (file.name.endsWith('.json')) {
-        importJSON(file);
-      } else {
-        const r = new FileReader();
-        r.onload = ev => {
-          const overwrite = document.querySelector('.checkbox.checked') !== null;
-          const result = doImport(ev.target.result, overwrite);
-          const body = document.querySelector('.sheet-body');
-          if (body) {
-            body.innerHTML = `<div style="text-align:center;padding:20px 0">
-              <div style="font-size:48px;margin-bottom:12px">${result.matched>0?'✅':'🤷'}</div>
-              <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${result.matched} imported</div>
-            </div>`;
-          }
-        };
-        r.readAsText(file);
+  if (!dz) return;
+  e.preventDefault();
+  dz.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  if (file.name.endsWith('.json')) {
+    importJSON(file);
+  } else {
+    const r = new FileReader();
+    r.onload = ev => {
+      const overwrite = document.querySelector('.checkbox.checked') !== null;
+      const result = doImport(ev.target.result, overwrite);
+      const body = document.querySelector('.sheet-body');
+      if (body) {
+        body.innerHTML = `<div style="text-align:center;padding:20px 0">
+          <div style="font-size:48px;margin-bottom:12px">${result.matched>0?'✅':'🤷'}</div>
+          <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${result.matched} imported</div>
+        </div>`;
       }
-    }
+    };
+    r.readAsText(file);
   }
 });
 
