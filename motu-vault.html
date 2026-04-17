@@ -2222,6 +2222,9 @@ function showContextMenu(figId, x, y) {
   items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig('${figId}')">
     ${icon(ICO.edit, 16)} Open details
   </button>`;
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith('${figId}')">
+    ${icon(ICO.check, 16)} Select
+  </button>`;
   menu.innerHTML = items;
   overlay.appendChild(menu);
   document.body.appendChild(overlay);
@@ -2751,7 +2754,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.22</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.23</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -2897,7 +2900,7 @@ function renderSelectActionbar() {
       <button ${n ? '' : 'disabled'} onclick="batchSetStatus('wishlist')" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">Wish</button>
       <button ${n ? '' : 'disabled'} onclick="batchSetStatus('ordered')" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">Ord</button>
       <button ${n ? '' : 'disabled'} onclick="batchSetStatus('for-sale')" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">Sale</button>
-      <button class="danger" ${n ? '' : 'disabled'} onclick="batchSetStatus('')">${icon(ICO.x,12)} Clr</button>
+      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('')" style="color:var(--t2);border-color:var(--bd)">${icon(ICO.x,12)} Clr</button>
     </div>
   </div>`;
 }
@@ -3693,6 +3696,13 @@ window.enterSelectMode = () => {
   haptic && haptic();
   render();
 };
+window.enterSelectModeWith = id => {
+  S.selectMode = true;
+  S.selected = new Set([id]);
+  pushNav();
+  haptic && haptic();
+  render();
+};
 window.exitSelectMode = () => {
   if (S.selectMode) history.back();
   else { S.selectMode = false; S.selected = new Set(); render(); }
@@ -3744,8 +3754,7 @@ window.batchSetStatus = status => {
   haptic && haptic(25);
   const label = status ? STATUS_LABEL[status] : 'Cleared';
   toast(`✓ ${changed} figures → ${label}`);
-  if (S.selectMode) history.back();
-  else render();
+  render();
 };
 
 // Long-press status cycle: owned → wishlist → ordered → for-sale → clear
