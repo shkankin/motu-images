@@ -9,11 +9,26 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>MOTU Collector</title>
-<!-- Paint the background black immediately, before the external fonts
-     stylesheet finishes loading. Prevents a white/gray flash on launch. -->
-<style>html,body{background:#000;margin:0}</style>
+<!-- Preload the splash logo in parallel with HTML parse -->
+<link rel="preload" as="image" href="masters_logo.png">
+<!-- Paint black immediately + define splash styles inline so they apply at
+     first paint (independent of external stylesheet loading). -->
+<style>
+html,body{background:#000;margin:0}
+.splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;contain:strict}
+.splash-logo{width:280px;max-width:70vw;opacity:0;transform:translate3d(0,0,0) scale(.3);will-change:transform,opacity;animation:splash 1.8s cubic-bezier(.22,1,.36,1) forwards;filter:drop-shadow(0 0 40px rgba(255,204,51,.5))}
+@keyframes splash{
+  0%  {transform:translate3d(0,0,0) scale(.3);opacity:0}
+  17% {transform:translate3d(0,0,0) scale(1.08);opacity:1}
+  25% {transform:translate3d(0,0,0) scale(1);opacity:1}
+  75% {transform:translate3d(0,0,0) scale(1);opacity:1}
+  100%{transform:translate3d(0,0,0) scale(5);opacity:0}
+}
+</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Load fonts CSS without blocking first paint; applies when ready. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap"></noscript>
 <style>
 /* ═══════════════════════════════════════════════════════════════════
    MOTU VAULT — Pure CSS, Zero Dependencies
@@ -1419,6 +1434,9 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 </style>
 </head>
 <body>
+<div class="splash" id="splash">
+  <img class="splash-logo" src="masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
+</div>
 <div id="app"></div>
 
 <script>
@@ -2050,6 +2068,16 @@ async function init() {
   const hasCache = !!(cached?.rows?.length);
   if (!cached?.ts || Date.now() - cached.ts > CACHE_TTL) fetchFigs(false, !hasCache);
   render();
+  // Remove splash when the CSS animation finishes. animationend keeps it
+  // tight — no hard timer, no drift. Safety timeout in case the image
+  // failed silently (animation never ran).
+  const splash = document.getElementById('splash');
+  if (splash) {
+    const kill = () => { splash.remove(); };
+    const img = splash.querySelector('.splash-logo');
+    if (img) img.addEventListener('animationend', kill, {once: true});
+    setTimeout(kill, 2200);
+  }
 }
 
 // ─── Toast & Haptic Feedback ─────────────────────────────────────
@@ -2863,7 +2891,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.34</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.35</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
