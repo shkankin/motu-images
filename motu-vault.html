@@ -1091,17 +1091,18 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .splash-logo {
   width: 280px; max-width: 70vw;
-  animation: splashZoom 2.4s cubic-bezier(0.22,1,0.36,1) forwards;
+  animation: splashZoom 1.9s cubic-bezier(0.22,1,0.36,1) forwards;
   filter: drop-shadow(0 0 40px rgba(255,204,51,.5));
 }
 .splash.fade-out {
-  animation: splashFade 0.5s ease-out forwards;
+  animation: splashFade 0.4s ease-out forwards;
 }
 @keyframes splashZoom {
-  0%   { transform: scale(0.6) translateY(-120vh) rotateX(15deg); opacity: 0; }
-  25%  { transform: scale(1) translateY(0) rotateX(0deg); opacity: 1; }
+  0%   { transform: scale(0.5) translateY(-100vh); opacity: 0; }
+  35%  { transform: scale(1.12) translateY(0) rotateX(3deg); opacity: 1; }
+  45%  { transform: scale(0.95) translateY(0) rotateX(-2deg); opacity: 1; }
   55%  { transform: scale(1) translateY(0) rotateX(0deg); opacity: 1; }
-  100% { transform: scale(12) translateY(0) translateZ(400px); opacity: 0; }
+  100% { transform: scale(12) translateZ(400px); opacity: 0; }
 }
 @keyframes splashFade {
   to { opacity: 0; pointer-events: none; }
@@ -2067,7 +2068,7 @@ async function init() {
     setTimeout(() => {
       splash.classList.add('fade-out');
       setTimeout(() => splash.remove(), 500);
-    }, 2400);
+    }, 1900);
   }
 }
 
@@ -2813,7 +2814,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="goHome()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.26</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.27</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
