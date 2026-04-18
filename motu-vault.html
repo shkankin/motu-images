@@ -1706,13 +1706,78 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   72%  { transform: translateY(0%);   opacity: 1; }
   100% { transform: translateY(100%); opacity: 0; }
 }
-.egg-castle-img {
+.egg-grayskull-img {
   width: min(320px, 88vw);
   height: auto;
-  filter: brightness(0) invert(0) sepia(1) saturate(0) hue-rotate(0deg)
-          drop-shadow(0 -10px 32px rgba(42,217,176,0.3));
-  /* Pure dark silhouette */
-  opacity: 0.85;
+  /* Full color — no silhouette filter. Green glow behind. */
+  filter: drop-shadow(0 0 20px rgba(42,217,176,0.6))
+          drop-shadow(0 0 60px rgba(42,217,176,0.3));
+}
+
+/* ── Eternia egg (Orko) ── */
+/* Screen flash burst — radial expanding ring */
+.egg-orko-flash {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  animation: orkoBurst1 0.5s ease-out forwards;
+}
+@keyframes orkoBurst1 {
+  0%   { background: radial-gradient(circle at 50% 50%, #fff 0%,   transparent 0%);   opacity: 1; }
+  60%  { background: radial-gradient(circle at 50% 50%, #fff 40%,  transparent 41%);  opacity: 0.9; }
+  100% { background: radial-gradient(circle at 50% 50%, #fff 100%, transparent 101%); opacity: 0; }
+}
+.egg-orko-flash2 {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  animation: orkoBurst2 0.4s ease-out 3.0s forwards;
+}
+@keyframes orkoBurst2 {
+  0%   { background: radial-gradient(circle at 50% 50%, #fff 0%,   transparent 0%);   opacity: 0.9; }
+  100% { background: radial-gradient(circle at 50% 50%, #fff 100%, transparent 101%); opacity: 0; }
+}
+/* Orko image — fades in after burst, looks side to side, then fades out before 2nd flash */
+.egg-orko-icon {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44vw; max-width: 200px;
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 24px rgba(100,180,255,0.8)) drop-shadow(0 0 60px rgba(100,180,255,0.4));
+  animation: orkoAppear 3.4s ease forwards;
+  z-index: 2;
+}
+@keyframes orkoAppear {
+  /* Fade in */
+  0%    { opacity: 0;   transform: translate(-50%, -50%) scaleX(1); }
+  15%   { opacity: 1;   transform: translate(-50%, -50%) scaleX(1); }
+  /* Look right (mirror) */
+  28%   { opacity: 1;   transform: translate(-50%, -50%) scaleX(-1); }
+  /* Look left */
+  44%   { opacity: 1;   transform: translate(-50%, -50%) scaleX(1); }
+  /* Look right again — confusion building */
+  56%   { opacity: 1;   transform: translate(-50%, -50%) scaleX(-1); }
+  /* Look left */
+  68%   { opacity: 1;   transform: translate(-50%, -50%) scaleX(1); }
+  /* Look right faster */
+  76%   { opacity: 1;   transform: translate(-50%, -50%) scaleX(-1); }
+  82%   { opacity: 1;   transform: translate(-50%, -50%) scaleX(1); }
+  /* Fade out just before second flash */
+  88%   { opacity: 1; }
+  100%  { opacity: 0;   transform: translate(-50%, -50%) scaleX(1); }
+}
+/* Dark bg that fades in behind Orko */
+.egg-orko-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, #0a0e2a 0%, #000510 100%);
+  animation: orkoBgFade 3.8s ease forwards;
+}
+@keyframes orkoBgFade {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* ── Skeleton Loading ────────────────────────────────────────────── */
@@ -2348,6 +2413,7 @@ const S = {
   _justNavigated: false,
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   confirmClear: false,      // pending clear confirmation in select actionbar
+  iconOverride: null,       // session override for theme icon (e.g. Orko after Eternia egg)
   selected: new Set(),      // selected figure IDs
   defaultPhoto: {},         // { figId: n } — which photo is the list/grid thumbnail (-1 = stock)
 };
@@ -2418,6 +2484,7 @@ function getThemeSounds() {
   return (THEMES[S.theme]?.sounds || [null]).map(s => s ? IMG + s : null);
 }
 function getThemeIcon() {
+  if (S.iconOverride) return IMG + '/' + S.iconOverride;
   const icons = THEMES[S.theme]?.icons || ['eternia1-icon.png'];
   return IMG + '/' + icons[0];
 }
@@ -3903,7 +3970,9 @@ function renderMain() {
   const hasTitleCycle = themeTitles.length > 1;
   const titleClick = hasTitleCycle
     ? `S.titleIdx=(S.titleIdx+1)%${themeTitles.length};playTitleSound(S.titleIdx);render()`
-    : (S.theme === 'eternia' ? 'triggerEterniaEgg()' : S.theme === 'heman' ? 'triggerHeManEgg()' : 'goHome()');
+    : (S.theme === 'eternia'   ? 'triggerEterniaEgg()'   :
+       S.theme === 'heman'     ? 'triggerHeManEgg()'     :
+       S.theme === 'grayskull' ? 'triggerGrayskullEgg()' : 'goHome()');
 
   let html = `
   <div class="offline-banner${S.isOffline ? ' visible' : ''}" id="offlineBanner">
@@ -3916,7 +3985,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.64</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.65</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5427,20 +5496,17 @@ window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'al
 window.goBack = () => { history.back(); };
 window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; pushNav(); render(); };
 // Home/theme icon tap — always navigates home. Easter eggs are title-tap only.
-window.homeIconClick = () => {
-  if (S.theme === 'grayskull') playSound(SND.powerGrayskull);
-  goHome();
-};
+window.homeIconClick = () => { goHome(); };
 
 // ─── He-Man Easter Egg ────────────────────────────────────────────
 // Trigger: title tap (heman theme). Full-screen rotating rainbow +
-// He-Man icon Flash-era cheese animation. ~5s total (matches audio clip).
+// Prince Adam icon Flash-era cheese animation. ~5s total.
 window.triggerHeManEgg = () => {
   if (document.querySelector('.egg-overlay')) return;
   playSound(SND.iHaveThePower);
   haptic && haptic(40);
 
-  const iconSrc = IMG + '/he-man-icon.png';
+  const iconSrc = IMG + '/adam-icon.png';
   const overlay = document.createElement('div');
   overlay.className = 'egg-overlay';
   overlay.innerHTML = `
@@ -5451,14 +5517,14 @@ window.triggerHeManEgg = () => {
   setTimeout(() => { overlay.remove(); }, 5200);
 };
 
-// ─── Eternia Easter Egg ───────────────────────────────────────────
-// Trigger: title tap (eternia theme). Grayskull icon rises from below
-// against a starfield night sky, holds, sinks. ~4.2s total.
-window.triggerEterniaEgg = () => {
+// ─── Grayskull Easter Egg ─────────────────────────────────────────
+// Trigger: title tap (grayskull theme). grayskull-icon.png rises from
+// below in full color with green glow. Plays power_grayskull.mp3. ~4.2s.
+window.triggerGrayskullEgg = () => {
   if (document.querySelector('.egg-overlay')) return;
+  playSound(SND.powerGrayskull);
   haptic && haptic(30);
 
-  // Stars — fade keyframe keeps them in sync with castle descent
   const stars = Array.from({length: 55}, () => {
     const size = 1 + Math.random() * 2.5;
     const twinkleDur = 1.2 + Math.random() * 2.5;
@@ -5473,12 +5539,40 @@ window.triggerEterniaEgg = () => {
     <div class="egg-eternia-bg"></div>
     ${stars}
     <div class="egg-castle-wrap">
-      <img class="egg-castle-img" src="${IMG}/grayskull-icon.png" alt="">
+      <img class="egg-grayskull-img" src="${IMG}/grayskull-icon.png" alt="">
     </div>
   `;
   document.body.appendChild(overlay);
-  // Remove exactly when all animations finish — bg fades to 0 at 4.2s
   setTimeout(() => { overlay.remove(); }, 4250);
+};
+
+// ─── Eternia Easter Egg (Orko) ────────────────────────────────────
+// Trigger: title tap (eternia theme). Orbital burst from center reveals
+// Orko (eternia2-icon.png) looking side to side in confusion. Second
+// burst flash. After egg, swaps session icon to eternia2. ~4s total.
+window.triggerEterniaEgg = () => {
+  if (document.querySelector('.egg-overlay')) return;
+  haptic && haptic(25);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'egg-overlay';
+  overlay.innerHTML = `
+    <div class="egg-orko-bg"></div>
+    <img class="egg-orko-icon" src="${IMG}/eternia2-icon.png" alt="">
+    <div class="egg-orko-flash"></div>
+    <div class="egg-orko-flash2"></div>
+  `;
+  document.body.appendChild(overlay);
+
+  // After second flash fires (~3.0s), swap session icon to Orko
+  setTimeout(() => {
+    S.iconOverride = 'eternia2-icon.png';
+    // Surgical DOM update — just swap the logo icon src
+    const logoIcon = document.querySelector('.logo-icon');
+    if (logoIcon) logoIcon.src = IMG + '/eternia2-icon.png';
+  }, 3200);
+
+  setTimeout(() => { overlay.remove(); }, 4000);
 };
 window.searchCharacter = name => {
   // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
@@ -5541,7 +5635,7 @@ window.openSheet = name => { S.sheet = name; pushNav(); render();
   requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
 };
 window.closeSheet = () => { history.back(); };
-window.setTheme = t => { S.theme = t; S.titleIdx = 0; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
+window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconOverride = null; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
 window.imgErr = id => { S.imgErrors[id] = true; };
 
 // ─── Batch Selection ────────────────────────────────────────────
