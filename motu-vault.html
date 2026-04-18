@@ -1382,21 +1382,19 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-size: 14px; font-weight: 700; color: var(--gold);
   flex-shrink: 0; min-width: 20px; text-align: center;
 }
-.select-actionbar-scroll {
-  display: flex; gap: 6px; flex: 1;
-  overflow-x: auto; scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.select-actionbar-scroll::-webkit-scrollbar { display: none; }
 .select-actionbar button {
-  padding: 8px 12px; border-radius: 10px;
+  padding: 10px 14px; border-radius: 10px;
   border: 1px solid var(--bd); background: var(--bg3);
-  color: var(--t1); font-size: 12px; font-weight: 600;
+  color: var(--t1); font-size: 13px; font-weight: 600;
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
-  display: flex; align-items: center; gap: 4px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
 }
-.select-actionbar button:active { opacity: 0.7; transform: scale(0.95); }
+.select-actionbar button:active { opacity: 0.7; transform: scale(0.97); }
 .select-actionbar button:disabled { opacity: 0.3; pointer-events: none; }
+.select-actionbar button.primary {
+  background: var(--acc); color: #fff;
+  border-color: var(--acc);
+}
 .select-actionbar button.danger {
   color: var(--rd); border-color: color-mix(in srgb, var(--rd) 30%, var(--bd));
 }
@@ -3703,7 +3701,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.48</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.49</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3844,15 +3842,12 @@ function renderSelectActionbar() {
     <button onclick="selectAllVisible()" title="${allSelected ? 'Deselect all' : 'Select all'}">
       ${allSelected ? 'None' : 'All'}
     </button>
-    <div class="select-actionbar-scroll">
-      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('owned')" style="color:${STATUS_HEX.owned};border-color:color-mix(in srgb, ${STATUS_HEX.owned} 40%, var(--bd))">Own</button>
-      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('wishlist')" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">Wish</button>
-      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('ordered')" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">Ord</button>
-      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('for-sale')" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">Sale</button>
-      <button ${n ? '' : 'disabled'} onclick="batchAddCopy('')" style="color:var(--gold);border-color:color-mix(in srgb, var(--gold) 40%, var(--bd))" title="Add blank copy to each selected">+1</button>
-      <button ${n ? '' : 'disabled'} onclick="batchAddCopy('Loose Complete')" style="color:var(--gold);border-color:color-mix(in srgb, var(--gold) 40%, var(--bd))" title="Add 'Loose Complete' copy to each selected">+1 Loose</button>
-      <button ${n ? '' : 'disabled'} onclick="batchSetStatus('')" style="color:var(--t2);border-color:var(--bd)">${icon(ICO.x,12)} Clr</button>
-    </div>
+    <button class="primary" ${n ? '' : 'disabled'} onclick="openBatchEditor()" style="flex:1">
+      ${icon(ICO.edit, 14)} Edit ${n} Selected
+    </button>
+    <button class="danger" ${n ? '' : 'disabled'} onclick="batchSetStatus('')" title="Clear status from selected">
+      ${icon(ICO.x, 12)}
+    </button>
   </div>`;
 }
 
@@ -4427,7 +4422,7 @@ function renderPhotoViewer() {
 
 // ─── Sheets ───────────────────────────────────────────────────────
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -4437,6 +4432,7 @@ function renderSheet() {
   else if (S.sheet === 'menu') body = renderMenuSheet();
   else if (S.sheet === 'stats') body = renderStatsSheet();
   else if (S.sheet === 'edit') body = renderEditFigureSheet();
+  else if (S.sheet === 'batch') body = renderBatchEditSheet();
 
   return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
     <div class="sheet-backdrop"></div>
@@ -4517,6 +4513,94 @@ function renderImportSheet() {
     <input type="file" id="csvInput" accept=".csv,.json" style="display:none" onchange="handleImportFile(this)">
   </div>`;
 }
+
+// ─── Batch Edit Sheet (v4.49) ─────────────────────────────────────
+// Radarr-style batch editor — opened from the select actionbar. Choose an
+// action (set status, add copy, etc.), fill in the optional fields,
+// hit Apply. State held in S.batchEdit so re-renders don't lose form input.
+function renderBatchEditSheet() {
+  const n = S.selected.size;
+  if (!n) return '<div class="text-sm text-dim">No figures selected.</div>';
+  const be = S.batchEdit || (S.batchEdit = { action: 'addCopy', condition: '', variant: '', paid: '', notes: '', status: 'owned' });
+
+  // Action selector
+  let h = `<div style="margin-bottom:14px">
+    <div class="field-label text-dim text-sm">Action</div>
+    <select onchange="S.batchEdit.action=this.value;refreshBatchSheet()">
+      <option value="addCopy" ${be.action==='addCopy'?'selected':''}>Add a copy to each</option>
+      <option value="setStatus" ${be.action==='setStatus'?'selected':''}>Set status</option>
+    </select>
+  </div>`;
+
+  if (be.action === 'addCopy') {
+    h += `<div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Condition (optional)</div>
+      <select onchange="S.batchEdit.condition=this.value">
+        <option value="">— No condition —</option>
+        ${CONDITIONS.map(c => `<option value="${esc(c)}" ${be.condition===c?'selected':''}>${esc(c)}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Variant (optional)</div>
+      <input type="text" value="${esc(be.variant)}" placeholder="e.g. Dark Face" oninput="S.batchEdit.variant=this.value">
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Price Paid (optional)</div>
+      <input type="number" step="0.01" value="${esc(be.paid)}" placeholder="$0.00" oninput="S.batchEdit.paid=this.value">
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Notes (optional)</div>
+      <textarea rows="3" placeholder="Notes…" oninput="S.batchEdit.notes=this.value">${esc(be.notes)}</textarea>
+    </div>
+    <div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
+      Adds one new copy to each of the ${n} selected figure${n===1?'':'s'}. Fields above will populate the new copies. Figures not yet owned will be marked owned.
+    </div>`;
+  } else if (be.action === 'setStatus') {
+    h += `<div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Status</div>
+      <select onchange="S.batchEdit.status=this.value">
+        ${STATUSES.map(s => `<option value="${s}" ${be.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
+      </select>
+    </div>
+    <div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
+      Sets the status of all ${n} selected figure${n===1?'':'s'}. Existing copies are preserved.
+    </div>`;
+  }
+
+  // Footer
+  h += `<div style="height:1px;background:var(--bd);margin:8px 0 16px"></div>
+  <div style="display:flex;gap:10px">
+    <button onclick="closeSheet()" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
+    <button onclick="applyBatchEdit()" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:#fff;font-size:14px;font-weight:700">Apply to ${n}</button>
+  </div>`;
+  return h;
+}
+
+window.refreshBatchSheet = () => {
+  const body = document.querySelector('.sheet-body');
+  if (body && S.sheet === 'batch') body.innerHTML = renderBatchEditSheet();
+};
+
+window.openBatchEditor = () => {
+  if (!S.selected.size) return;
+  // Reset form state each time so it doesn't carry stale values from a
+  // previous batch session.
+  S.batchEdit = { action: 'addCopy', condition: '', variant: '', paid: '', notes: '', status: 'owned' };
+  S.sheet = 'batch';
+  pushNav();
+  render();
+};
+
+window.applyBatchEdit = () => {
+  const be = S.batchEdit; if (!be) return;
+  if (be.action === 'addCopy') {
+    batchAddCopy(be.condition, { variant: be.variant, paid: be.paid, notes: be.notes });
+  } else if (be.action === 'setStatus') {
+    batchSetStatus(be.status);
+  }
+  closeSheet();
+};
+
 
 // ─── Edit Figure Sheet (v4.47) ────────────────────────────────────
 // Local field overrides on top of figures.json. Useful for fixing entries
@@ -4941,11 +5025,9 @@ window.batchSetStatus = status => {
   render();
 };
 
-// Batch add a copy to each selected figure. If presetCondition is given,
-// the new copy is created with that condition pre-filled. Skips figures
-// already at MAX_PHOTOS-equivalent copy ceilings would be unusual; we
-// don't enforce a hard limit on copies (only photos have that cap).
-window.batchAddCopy = (presetCondition = '') => {
+// Batch add a copy to each selected figure. Optional `extras` object lets
+// the batch editor pass variant/paid/notes alongside the condition preset.
+window.batchAddCopy = (presetCondition = '', extras = {}) => {
   const ids = Array.from(S.selected);
   if (!ids.length) return;
   let added = 0, promoted = 0;
@@ -4964,6 +5046,9 @@ window.batchAddCopy = (presetCondition = '') => {
     const newId = cur.copies.reduce((m, cp) => Math.max(m, cp.id || 0), 0) + 1;
     const copy = { id: newId };
     if (presetCondition) copy.condition = presetCondition;
+    if (extras.variant) copy.variant = extras.variant;
+    if (extras.paid) copy.paid = extras.paid;
+    if (extras.notes) copy.notes = extras.notes;
     cur.copies.push(copy);
     S.coll[id] = cur;
     added++;
