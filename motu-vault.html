@@ -31,17 +31,18 @@ html,body{background:#000;margin:0}
 @keyframes splashLogo{
   0%   {transform:translate3d(0,120vh,0) scale(2.4); opacity:0}
   10%  {opacity:1}
-  /* Faster ascension — arrive at 25% (~0.7s) vs old 30% (~0.9s) */
+  /* Faster ascension — arrive at 25% (~0.7s) */
   25%  {transform:translate3d(0,-17vh,0) scale(1);   opacity:1}
   75%  {transform:translate3d(0,-17vh,0) scale(1);   opacity:1}
   /* Recede: 0.7s */
   100% {transform:translate3d(0,-140vh,0) scale(.08); opacity:0}
 }
-/* Two lightning flashes. First: sharp crack at ~1.0s (35.7%). Second: echo at ~1.35s (48.2%). */
+/* Flash 1: fires immediately as logo starts ascending (delay 0s). Sharp crack. */
+/* Flash 2: fires at hold phase (~1.35s). Softer echo. */
 .splash-flash{
   position:absolute;inset:0;background:#fff;opacity:0;
   pointer-events:none;will-change:opacity;mix-blend-mode:screen;
-  animation:splashFlash1 .22s ease-out 1.0s forwards, splashFlash2 .28s ease-out 1.35s forwards;
+  animation:splashFlash1 .22s ease-out 0s forwards, splashFlash2 .28s ease-out 1.35s forwards;
 }
 @keyframes splashFlash1{
   0%  {opacity:0}
@@ -53,16 +54,16 @@ html,body{background:#000;margin:0}
   25% {opacity:.7}
   100%{opacity:0}
 }
-/* Stars: small white dots that drift upward across the splash */
+/* Stars: drift upward across the full 2.8s splash sequence */
 .splash-star{
   position:absolute;border-radius:50%;background:#fff;
   will-change:transform,opacity;
   animation:splashStarRise linear forwards;
 }
 @keyframes splashStarRise{
-  0%  {transform:translateY(0)   scale(1);   opacity:0}
-  8%  {opacity:1}
-  85% {opacity:.7}
+  0%  {transform:translateY(0)      scale(1);   opacity:0}
+  6%  {opacity:1}
+  90% {opacity:.6}
   100%{transform:translateY(-110vh) scale(.5); opacity:0}
 }
 </style>
@@ -1770,22 +1771,22 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 <div class="splash" id="splash">
   <img class="splash-logo" src="masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
   <div class="splash-flash"></div>
-  <!-- Stars: varied positions, sizes, speeds — pure CSS animation -->
-  <div class="splash-star" style="left:8%;  bottom:5%; width:2px;height:2px; animation-duration:2.4s;animation-delay:.1s"></div>
-  <div class="splash-star" style="left:18%; bottom:12%;width:3px;height:3px; animation-duration:2.7s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:29%; bottom:8%; width:2px;height:2px; animation-duration:2.2s;animation-delay:.2s"></div>
-  <div class="splash-star" style="left:41%; bottom:18%;width:2px;height:2px; animation-duration:2.9s;animation-delay:.05s"></div>
-  <div class="splash-star" style="left:55%; bottom:6%; width:3px;height:3px; animation-duration:2.5s;animation-delay:.15s"></div>
-  <div class="splash-star" style="left:66%; bottom:14%;width:2px;height:2px; animation-duration:2.3s;animation-delay:.0s"></div>
+  <!-- Stars: varied positions, sizes, speeds — all persist through full 2.8s -->
+  <div class="splash-star" style="left:8%;  bottom:5%; width:2px;height:2px; animation-duration:2.7s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:18%; bottom:12%;width:3px;height:3px; animation-duration:2.8s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:29%; bottom:8%; width:2px;height:2px; animation-duration:2.6s;animation-delay:.1s"></div>
+  <div class="splash-star" style="left:41%; bottom:18%;width:2px;height:2px; animation-duration:2.9s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:55%; bottom:6%; width:3px;height:3px; animation-duration:2.7s;animation-delay:.05s"></div>
+  <div class="splash-star" style="left:66%; bottom:14%;width:2px;height:2px; animation-duration:2.8s;animation-delay:.0s"></div>
   <div class="splash-star" style="left:77%; bottom:9%; width:2px;height:2px; animation-duration:2.6s;animation-delay:.1s"></div>
-  <div class="splash-star" style="left:88%; bottom:20%;width:3px;height:3px; animation-duration:2.8s;animation-delay:.05s"></div>
-  <div class="splash-star" style="left:13%; bottom:30%;width:2px;height:2px; animation-duration:3.1s;animation-delay:.2s"></div>
-  <div class="splash-star" style="left:35%; bottom:40%;width:2px;height:2px; animation-duration:2.0s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:60%; bottom:35%;width:2px;height:2px; animation-duration:2.4s;animation-delay:.3s"></div>
-  <div class="splash-star" style="left:82%; bottom:45%;width:3px;height:3px; animation-duration:2.7s;animation-delay:.1s"></div>
-  <div class="splash-star" style="left:5%;  bottom:55%;width:2px;height:2px; animation-duration:2.2s;animation-delay:.15s"></div>
-  <div class="splash-star" style="left:92%; bottom:28%;width:2px;height:2px; animation-duration:2.5s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:48%; bottom:60%;width:2px;height:2px; animation-duration:3.0s;animation-delay:.25s"></div>
+  <div class="splash-star" style="left:88%; bottom:20%;width:3px;height:3px; animation-duration:2.9s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:13%; bottom:30%;width:2px;height:2px; animation-duration:3.1s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:35%; bottom:40%;width:2px;height:2px; animation-duration:2.7s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:60%; bottom:35%;width:2px;height:2px; animation-duration:2.8s;animation-delay:.05s"></div>
+  <div class="splash-star" style="left:82%; bottom:45%;width:3px;height:3px; animation-duration:2.7s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:5%;  bottom:55%;width:2px;height:2px; animation-duration:2.6s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:92%; bottom:28%;width:2px;height:2px; animation-duration:2.8s;animation-delay:.0s"></div>
+  <div class="splash-star" style="left:48%; bottom:60%;width:2px;height:2px; animation-duration:3.0s;animation-delay:.0s"></div>
 </div>
 <div id="app"></div>
 
@@ -2685,8 +2686,11 @@ let _lpMoved = false;
 let _lpFired = false;
 
 function initLongPress(el, figId) {
+  // Non-passive touchstart so we can preventDefault to block text selection
   el.addEventListener('touchstart', e => {
     if (S.selectMode) return;
+    // Prevent browser text-selection / copy-paste callout on long hold
+    e.preventDefault();
     _lpMoved = false;
     _lpFired = false;
     _lpFigId = figId;
@@ -2697,7 +2701,7 @@ function initLongPress(el, figId) {
         showContextMenu(figId, e.touches[0].clientX, e.touches[0].clientY);
       }
     }, 500);
-  }, {passive: true});
+  }, {passive: false});
   el.addEventListener('touchmove', () => {
     _lpMoved = true;
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
@@ -2708,6 +2712,8 @@ function initLongPress(el, figId) {
   el.addEventListener('touchcancel', () => {
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   }, {passive: true});
+  // Block the system context menu (Android copy/paste/select callout)
+  el.addEventListener('contextmenu', e => { e.preventDefault(); });
   // Prevent tap from firing after long-press
   el.addEventListener('click', e => {
     if (_lpFired) { e.stopPropagation(); e.preventDefault(); _lpFired = false; }
@@ -3866,7 +3872,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.53</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.54</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4906,15 +4912,6 @@ window.addEventListener('popstate', e => {
   S.barsHidden = false;
   S.searchBarHidden = false;
 
-  // If select mode is active, exit it first
-  if (S.selectMode) {
-    S.selectMode = false;
-    S.selected = new Set();
-    render();
-    _skipPush = false;
-    return;
-  }
-
   // If photo viewer is open, close it first
   if (S.photoViewer) {
     S.photoViewer = null;
@@ -4923,9 +4920,18 @@ window.addEventListener('popstate', e => {
     return;
   }
 
-  // If a sheet is open, just close it (don't go further back)
+  // If a sheet is open, close it — preserve select mode and selection
   if (S.sheet) {
     S.sheet = null;
+    render();
+    _skipPush = false;
+    return;
+  }
+
+  // Sheet is gone — now exit select mode if active
+  if (S.selectMode) {
+    S.selectMode = false;
+    S.selected = new Set();
     render();
     _skipPush = false;
     return;
