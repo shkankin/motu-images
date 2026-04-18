@@ -1113,7 +1113,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .copy-count-badge-card {
   position: absolute;
   bottom: 8px;
-  left: 8px;
+  right: 8px;
   z-index: 2;
   background: color-mix(in srgb, #000 60%, var(--gold) 40%);
   color: var(--gold);
@@ -3703,7 +3703,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.47</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.48</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3849,6 +3849,8 @@ function renderSelectActionbar() {
       <button ${n ? '' : 'disabled'} onclick="batchSetStatus('wishlist')" style="color:${STATUS_HEX.wishlist};border-color:color-mix(in srgb, ${STATUS_HEX.wishlist} 40%, var(--bd))">Wish</button>
       <button ${n ? '' : 'disabled'} onclick="batchSetStatus('ordered')" style="color:${STATUS_HEX.ordered};border-color:color-mix(in srgb, ${STATUS_HEX.ordered} 40%, var(--bd))">Ord</button>
       <button ${n ? '' : 'disabled'} onclick="batchSetStatus('for-sale')" style="color:${STATUS_HEX['for-sale']};border-color:color-mix(in srgb, ${STATUS_HEX['for-sale']} 40%, var(--bd))">Sale</button>
+      <button ${n ? '' : 'disabled'} onclick="batchAddCopy('')" style="color:var(--gold);border-color:color-mix(in srgb, var(--gold) 40%, var(--bd))" title="Add blank copy to each selected">+1</button>
+      <button ${n ? '' : 'disabled'} onclick="batchAddCopy('Loose Complete')" style="color:var(--gold);border-color:color-mix(in srgb, var(--gold) 40%, var(--bd))" title="Add 'Loose Complete' copy to each selected">+1 Loose</button>
       <button ${n ? '' : 'disabled'} onclick="batchSetStatus('')" style="color:var(--t2);border-color:var(--bd)">${icon(ICO.x,12)} Clr</button>
     </div>
   </div>`;
@@ -4910,12 +4912,23 @@ window.batchSetStatus = status => {
   if (!ids.length) return;
   let changed = 0;
   ids.forEach(id => {
-    if (!S.coll[id]) S.coll[id] = {};
+    const cur = S.coll[id];
+    let next = cur ? (isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur)) : { copies: [] };
     if (status === '') {
-      delete S.coll[id].status;
-      if (!Object.keys(S.coll[id]).length) delete S.coll[id];
+      delete next.status;
+      // Drop the entry entirely only if no remaining ownership signal
+      if (!next.status && (!next.copies || next.copies.length === 0)) {
+        delete S.coll[id];
+      } else {
+        S.coll[id] = next;
+      }
     } else {
-      S.coll[id] = {...S.coll[id], status};
+      next.status = status;
+      // Owned/for-sale always need at least one copy slot
+      if ((status === 'owned' || status === 'for-sale') && (!next.copies || next.copies.length === 0)) {
+        next.copies = [{ id: 1 }];
+      }
+      S.coll[id] = next;
     }
     changed++;
     S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
@@ -4925,6 +4938,43 @@ window.batchSetStatus = status => {
   haptic && haptic(25);
   const label = status ? STATUS_LABEL[status] : 'Cleared';
   toast(`✓ ${changed} figures → ${label}`);
+  render();
+};
+
+// Batch add a copy to each selected figure. If presetCondition is given,
+// the new copy is created with that condition pre-filled. Skips figures
+// already at MAX_PHOTOS-equivalent copy ceilings would be unusual; we
+// don't enforce a hard limit on copies (only photos have that cap).
+window.batchAddCopy = (presetCondition = '') => {
+  const ids = Array.from(S.selected);
+  if (!ids.length) return;
+  let added = 0, promoted = 0;
+  ids.forEach(id => {
+    let cur = S.coll[id];
+    // If the figure has no entry or isn't owned, treat this as
+    // "mark owned + add a copy" so the action is always meaningful.
+    if (!cur || (cur.status !== 'owned' && cur.status !== 'for-sale')) {
+      cur = cur ? (isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur)) : { copies: [] };
+      cur.status = 'owned';
+      promoted++;
+    } else {
+      cur = isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur);
+    }
+    if (!cur.copies) cur.copies = [];
+    const newId = cur.copies.reduce((m, cp) => Math.max(m, cp.id || 0), 0) + 1;
+    const copy = { id: newId };
+    if (presetCondition) copy.condition = presetCondition;
+    cur.copies.push(copy);
+    S.coll[id] = cur;
+    added++;
+    S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
+  });
+  saveColl();
+  store.set('motu-recent', S._recentChanges);
+  haptic && haptic(25);
+  const condNote = presetCondition ? ` (${presetCondition})` : '';
+  const promotedNote = promoted ? ` · ${promoted} marked owned` : '';
+  toast(`✓ ${added} copies added${condNote}${promotedNote}`);
   render();
 };
 
