@@ -60,17 +60,17 @@ html,body{background:#000;margin:0}
 
 /* ── Theme Variables ─────────────────────────────────────────────── */
 :root {
-  --bg:  #06060c;
-  --bg2: #0d0d18;
-  --bg3: #151525;
-  --bd:  #252545;
-  --acc: #8b5cf6;
-  --gold:#d4a843;
+  --bg:  #090e1c;
+  --bg2: #12192b;
+  --bg3: #1a253d;
+  --bd:  #2a3b5c;
+  --acc: #38bdf8;
+  --gold:#e8c577;
   --t1:  #eae6f2;
   --t2:  #9a92b0;
   --t3:  #5e5678;
-  --gn:  #34d399;
-  --rd:  #f87171;
+  --gn:  #5dd47b;
+  --rd:  #e84855;
   --bl:  #60a5fa;
   --or:  #fb923c;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -80,16 +80,24 @@ html,body{background:#000;margin:0}
 }
 
 [data-theme="skeletor"] {
-  --bg: #0a0514; --bg2: #110a24; --bg3: #1a1035; --bd: #3d2a6e;
-  --acc: #a78bfa; --gold: #c084fc; --t1: #ede9f8; --t2: #9c87cc; --t3: #5e4a8a;
+  --bg: #090212; --bg2: #16062b; --bg3: #220b40; --bd: #361850;
+  --acc: #b14eff; --gold: #f2e162; --rd: #d63a76;
+  --t1: #ede9f8; --t2: #9c87cc; --t3: #5e4a8a;
 }
 [data-theme="heman"] {
-  --bg: #0f0a03; --bg2: #1a1205; --bg3: #241908; --bd: #5a3a10;
-  --acc: #f59e0b; --gold: #fbbf24; --t1: #fef3c7; --t2: #b45309; --t3: #78450f;
+  --bg: #140803; --bg2: #241107; --bg3: #351c0e; --bd: #4a2916;
+  --acc: #cbd5e1; --gold: #ff8a1f; --rd: #c43d2a;
+  --t1: #fef3c7; --t2: #b45309; --t3: #78450f;
 }
 [data-theme="grayskull"] {
-  --bg: #080a08; --bg2: #0f1410; --bg3: #171f18; --bd: #2a3d2c;
-  --acc: #22c55e; --gold: #86efac; --t1: #e8f5e9; --t2: #6b9e70; --t3: #3d5e40;
+  --bg: #030d06; --bg2: #091a0f; --bg3: #102919; --bd: #1f3829;
+  --acc: #a3e635; --gold: #b8e070; --gn: #4ade80;
+  --t1: #e8f5e9; --t2: #6b9e70; --t3: #3d5e40;
+}
+[data-theme="snake"] {
+  --bg: #120303; --bg2: #200608; --bg3: #300c10; --bd: #4a141a;
+  --acc: #fde047; --gold: #d8c089; --rd: #d6293a; --gn: #4fb83a;
+  --t1: #f5e8e8; --t2: #a07070; --t3: #6a3a3a;
 }
 
 /* ── Reset & Base ────────────────────────────────────────────────── */
@@ -1370,20 +1378,23 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   z-index: 20;
   background: var(--bg2);
   border-top: 1px solid var(--acc);
-  padding: 10px 12px;
+  padding: 8px 12px;
   padding-bottom: max(10px, var(--safe-bottom));
-  display: flex; align-items: center; gap: 8px;
+  display: flex; flex-direction: column; gap: 8px;
   box-shadow: 0 -6px 20px rgba(0,0,0,.4);
   transform: translateY(100%);
   transition: transform 0.22s cubic-bezier(0.2,0,0,1);
 }
 .select-actionbar.visible { transform: translateY(0); }
+.select-actionbar .sa-row {
+  display: flex; align-items: center; gap: 8px;
+}
 .select-actionbar .count {
   font-size: 14px; font-weight: 700; color: var(--gold);
   flex-shrink: 0; min-width: 20px; text-align: center;
 }
 .select-actionbar button {
-  padding: 10px 14px; border-radius: 10px;
+  padding: 9px 14px; border-radius: 10px;
   border: 1px solid var(--bd); background: var(--bg3);
   color: var(--t1); font-size: 13px; font-weight: 600;
   cursor: pointer; white-space: nowrap; flex-shrink: 0;
@@ -1398,6 +1409,23 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .select-actionbar button.danger {
   color: var(--rd); border-color: color-mix(in srgb, var(--rd) 30%, var(--bd));
 }
+/* Status row — 4 equal pills */
+.select-actionbar .sa-status-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.select-actionbar .sa-status-btn {
+  padding: 8px 4px; border-radius: 9px;
+  border: 1.5px solid var(--st-c);
+  background: color-mix(in srgb, var(--st-c) 12%, var(--bg3));
+  color: var(--st-c);
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.select-actionbar .sa-status-btn:active { opacity: 0.7; transform: scale(0.97); }
+.select-actionbar .sa-status-btn:disabled { opacity: 0.3; pointer-events: none; }
 
 /* ── Offline Banner ──────────────────────────────────────────────── */
 .offline-banner {
@@ -1553,6 +1581,107 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   animation: goldGlow 1.2s ease-out;
 }
 
+/* ── Easter Egg Overlays ─────────────────────────────────────────── */
+
+/* Shared overlay base */
+.egg-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ── He-Man egg ── */
+.egg-heman-bg {
+  position: absolute; inset: -20%;
+  background: conic-gradient(
+    hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%),
+    hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)
+  );
+  animation: hemanSpin 1.2s linear infinite, hemanHue 3s linear forwards;
+  transform-origin: center;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+@keyframes hemanSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes hemanHue {
+  0%   { opacity: 0; filter: saturate(3) brightness(0.7); }
+  8%   { opacity: 0.85; }
+  85%  { opacity: 0.85; filter: saturate(3) brightness(0.7); }
+  100% { opacity: 0; filter: saturate(3) brightness(0.7); }
+}
+
+/* He-Man icon animation — 5 phases via single keyframe */
+.egg-heman-icon {
+  position: absolute;
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  image-rendering: -webkit-optimize-contrast;
+  /* Start: top-left corner, small */
+  transform-origin: top left;
+  animation: hemanIcon 3.1s cubic-bezier(0.4,0,0.2,1) forwards;
+  filter: drop-shadow(0 0 24px rgba(255,200,0,0.9));
+  z-index: 2;
+}
+@keyframes hemanIcon {
+  /* Phase 1 (0–0.6s): scales from corner to center */
+  0%   { transform: translate(0px, 0px) scale(1);    opacity: 1; }
+  19%  { transform: translate(-12vw, 30vh) scale(7); opacity: 1; }
+  /* Phase 2 (0.6–1.2s): holds center large */
+  38%  { transform: translate(-12vw, 30vh) scale(7); opacity: 1; }
+  /* Phase 3 (1.2–1.8s): slight scale-down */
+  57%  { transform: translate(-12vw, 30vh) scale(5.5); opacity: 1; }
+  /* Phase 4 (1.8–2.6s): 360° spin, scale stays */
+  83%  { transform: translate(-12vw, 30vh) scale(5.5) rotate(360deg); opacity: 1; }
+  /* Phase 5 (2.6–3.1s): blast up + scale to 4× + fade */
+  100% { transform: translate(-12vw, -10vh) scale(14) rotate(360deg); opacity: 0; }
+}
+
+/* ── Eternia egg ── */
+.egg-eternia-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, #0a1628 0%, #020810 70%);
+  animation: eterniaBgFade 4.2s ease forwards;
+}
+@keyframes eterniaBgFade {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Twinkling stars */
+.egg-star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: starTwinkle linear infinite;
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.4); }
+}
+/* Castle silhouette container — slides up, holds, sinks */
+.egg-castle-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: center;
+  animation: castleRise 4.2s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+@keyframes castleRise {
+  0%   { transform: translateY(100%); opacity: 0; }
+  18%  { transform: translateY(0%);   opacity: 1; }
+  72%  { transform: translateY(0%);   opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+.egg-castle-svg {
+  width: min(340px, 92vw);
+  height: auto;
+  fill: #0d2a14;
+  filter: drop-shadow(0 -8px 30px rgba(42,217,176,0.25));
+}
+
 /* ── Skeleton Loading ────────────────────────────────────────────── */
 @keyframes shimmer {
   0% { background-position: -400px 0; }
@@ -1686,10 +1815,11 @@ const STATUS_COLOR = {owned:'var(--gn)',wishlist:'var(--bl)',ordered:'var(--or)'
 const STATUS_HEX = {owned:'#34d399',wishlist:'#60a5fa',ordered:'#fb923c','for-sale':'#f87171'};
 
 const THEMES = {
-  eternia:  {name:'Eternia',  bg:'#08080f', acc:'#8b5cf6', gold:'#d4a843', icons:['eternia1-icon.png']},
-  skeletor: {name:'Skeletor', bg:'#0a0514', acc:'#a78bfa', gold:'#c084fc', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
-  heman:    {name:'He-Man',   bg:'#0f0a03', acc:'#f59e0b', gold:'#fbbf24', icons:['he-man-icon.png']},
-  grayskull:{name:'Grayskull',bg:'#080a08', acc:'#22c55e', gold:'#86efac', icons:['grayskull-icon.png']},
+  eternia:  {name:'Eternia',       bg:'#090e1c', acc:'#38bdf8', gold:'#e8c577', icons:['eternia1-icon.png']},
+  skeletor: {name:'Skeletor',      bg:'#090212', acc:'#b14eff', gold:'#f2e162', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
+  heman:    {name:'He-Man',        bg:'#140803', acc:'#cbd5e1', gold:'#ff8a1f', icons:['he-man-icon.png']},
+  grayskull:{name:'Grayskull',     bg:'#030d06', acc:'#a3e635', gold:'#b8e070', icons:['grayskull-icon.png']},
+  snake:    {name:'Snake Mountain',bg:'#120303', acc:'#fde047', gold:'#d8c089', icons:['skeletor-icon.png']},
 };
 
 const SUBLINES = {
@@ -3688,7 +3818,9 @@ function renderMain() {
   const themeTitles = getThemeTitles();
   const themeIcon = getThemeIcon();
   const hasTitleCycle = themeTitles.length > 1;
-  const titleClick = hasTitleCycle ? `S.titleIdx=(S.titleIdx+1)%${themeTitles.length};playTitleSound(S.titleIdx);render()` : 'goHome()';
+  const titleClick = hasTitleCycle
+    ? `S.titleIdx=(S.titleIdx+1)%${themeTitles.length};playTitleSound(S.titleIdx);render()`
+    : (S.theme === 'eternia' ? 'triggerEterniaEgg()' : S.theme === 'heman' ? 'triggerHeManEgg()' : 'goHome()');
 
   let html = `
   <div class="offline-banner${S.isOffline ? ' visible' : ''}" id="offlineBanner">
@@ -3701,7 +3833,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.49</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.52</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -3837,17 +3969,27 @@ function renderSelectActionbar() {
   const n = S.selected.size;
   const totalVisible = getSortedFigs().length;
   const allSelected = n > 0 && n === totalVisible;
+  const dis = n ? '' : 'disabled';
+  // Status pills — each gets its own color via --st-c inline var
+  const statusColors = { owned: '#34d399', wishlist: '#60a5fa', ordered: '#fb923c', 'for-sale': '#f87171' };
+  const statusRow = STATUSES.map(s =>
+    `<button class="sa-status-btn" ${dis} style="--st-c:${statusColors[s]}"
+      onclick="batchSetStatus('${s}')">${STATUS_LABEL[s]}</button>`
+  ).join('');
   return `<div class="select-actionbar visible">
-    <span class="count">${n}</span>
-    <button onclick="selectAllVisible()" title="${allSelected ? 'Deselect all' : 'Select all'}">
-      ${allSelected ? 'None' : 'All'}
-    </button>
-    <button class="primary" ${n ? '' : 'disabled'} onclick="openBatchEditor()" style="flex:1">
-      ${icon(ICO.edit, 14)} Edit ${n} Selected
-    </button>
-    <button class="danger" ${n ? '' : 'disabled'} onclick="batchSetStatus('')" title="Clear status from selected">
-      ${icon(ICO.x, 12)}
-    </button>
+    <div class="sa-row">
+      <span class="count">${n}</span>
+      <button onclick="selectAllVisible()" title="${allSelected ? 'Deselect all' : 'Select all'}">
+        ${allSelected ? 'None' : 'All'}
+      </button>
+      <button class="primary" ${dis} onclick="openBatchEditor()" style="flex:1">
+        ${icon(ICO.edit, 14)} Add Copy…
+      </button>
+      <button class="danger" ${dis} onclick="batchSetStatus('')" title="Clear status from selected">
+        ${icon(ICO.x, 12)}
+      </button>
+    </div>
+    <div class="sa-status-row">${statusRow}</div>
   </div>`;
 }
 
@@ -4514,26 +4656,22 @@ function renderImportSheet() {
   </div>`;
 }
 
-// ─── Batch Edit Sheet (v4.49) ─────────────────────────────────────
-// Radarr-style batch editor — opened from the select actionbar. Choose an
-// action (set status, add copy, etc.), fill in the optional fields,
-// hit Apply. State held in S.batchEdit so re-renders don't lose form input.
+// ─── Batch Edit Sheet (v4.50) ─────────────────────────────────────
+// "Add Copy" sheet — opened from the select actionbar "Add Copy…" button.
+// Status buttons in the actionbar handle quick status-only changes.
+// This sheet adds a copy to each selected figure with full field control.
 function renderBatchEditSheet() {
   const n = S.selected.size;
   if (!n) return '<div class="text-sm text-dim">No figures selected.</div>';
-  const be = S.batchEdit || (S.batchEdit = { action: 'addCopy', condition: '', variant: '', paid: '', notes: '', status: 'owned' });
+  const be = S.batchEdit || (S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned' });
 
-  // Action selector
-  let h = `<div style="margin-bottom:14px">
-    <div class="field-label text-dim text-sm">Action</div>
-    <select onchange="S.batchEdit.action=this.value;refreshBatchSheet()">
-      <option value="addCopy" ${be.action==='addCopy'?'selected':''}>Add a copy to each</option>
-      <option value="setStatus" ${be.action==='setStatus'?'selected':''}>Set status</option>
-    </select>
-  </div>`;
-
-  if (be.action === 'addCopy') {
-    h += `<div style="margin-bottom:12px">
+  const h = `<div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Status</div>
+      <select onchange="S.batchEdit.status=this.value">
+        ${STATUSES.map(s => `<option value="${s}" ${be.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Condition (optional)</div>
       <select onchange="S.batchEdit.condition=this.value">
         <option value="">— No condition —</option>
@@ -4553,39 +4691,21 @@ function renderBatchEditSheet() {
       <textarea rows="3" placeholder="Notes…" oninput="S.batchEdit.notes=this.value">${esc(be.notes)}</textarea>
     </div>
     <div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
-      Adds one new copy to each of the ${n} selected figure${n===1?'':'s'}. Fields above will populate the new copies. Figures not yet owned will be marked owned.
-    </div>`;
-  } else if (be.action === 'setStatus') {
-    h += `<div style="margin-bottom:12px">
-      <div class="field-label text-dim text-sm">Status</div>
-      <select onchange="S.batchEdit.status=this.value">
-        ${STATUSES.map(s => `<option value="${s}" ${be.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
-      </select>
+      Adds one copy to each of the ${n} selected figure${n===1?'':'s'} with the fields above.
     </div>
-    <div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
-      Sets the status of all ${n} selected figure${n===1?'':'s'}. Existing copies are preserved.
+    <div style="height:1px;background:var(--bd);margin:8px 0 16px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeSheet()" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
+      <button onclick="applyBatchEdit()" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:#fff;font-size:14px;font-weight:700">Add to ${n}</button>
     </div>`;
-  }
-
-  // Footer
-  h += `<div style="height:1px;background:var(--bd);margin:8px 0 16px"></div>
-  <div style="display:flex;gap:10px">
-    <button onclick="closeSheet()" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
-    <button onclick="applyBatchEdit()" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:#fff;font-size:14px;font-weight:700">Apply to ${n}</button>
-  </div>`;
   return h;
 }
 
-window.refreshBatchSheet = () => {
-  const body = document.querySelector('.sheet-body');
-  if (body && S.sheet === 'batch') body.innerHTML = renderBatchEditSheet();
-};
+
 
 window.openBatchEditor = () => {
   if (!S.selected.size) return;
-  // Reset form state each time so it doesn't carry stale values from a
-  // previous batch session.
-  S.batchEdit = { action: 'addCopy', condition: '', variant: '', paid: '', notes: '', status: 'owned' };
+  S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned' };
   S.sheet = 'batch';
   pushNav();
   render();
@@ -4593,11 +4713,7 @@ window.openBatchEditor = () => {
 
 window.applyBatchEdit = () => {
   const be = S.batchEdit; if (!be) return;
-  if (be.action === 'addCopy') {
-    batchAddCopy(be.condition, { variant: be.variant, paid: be.paid, notes: be.notes });
-  } else if (be.action === 'setStatus') {
-    batchSetStatus(be.status);
-  }
+  batchAddCopy(be.condition, { variant: be.variant, paid: be.paid, notes: be.notes, status: be.status });
   closeSheet();
 };
 
@@ -4875,11 +4991,92 @@ window.navTo = key => {
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
 window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; pushNav(); render(); };
-// Home/theme icon tap — plays the Grayskull sound when the Grayskull theme
-// is active, otherwise just navigates home.
+// Home/theme icon tap — always navigates home. Easter eggs are title-tap only.
 window.homeIconClick = () => {
   if (S.theme === 'grayskull') playSound(SND.powerGrayskull);
   goHome();
+};
+
+// ─── He-Man Easter Egg ────────────────────────────────────────────
+// Trigger: icon tap (heman theme). Full-screen acid-trip conic rainbow
+// with He-Man icon doing a Flash-era 5-phase animation. ~3.1s total.
+window.triggerHeManEgg = () => {
+  if (document.querySelector('.egg-overlay')) return; // already running
+  playSound(SND.iHaveThePower);
+  haptic && haptic(40);
+
+  const iconSrc = getThemeIcon(); // he-man-icon.png
+  const overlay = document.createElement('div');
+  overlay.className = 'egg-overlay';
+  overlay.innerHTML = `
+    <div class="egg-heman-bg"></div>
+    <img class="egg-heman-icon" src="${iconSrc}" alt="">
+  `;
+  document.body.appendChild(overlay);
+
+  // Auto-remove after animation completes
+  setTimeout(() => { overlay.remove(); }, 3300);
+};
+
+// ─── Eternia Easter Egg ───────────────────────────────────────────
+// Trigger: title tap (eternia theme). Castle Grayskull silhouette
+// rises from below against a starfield night sky. ~4.2s total.
+window.triggerEterniaEgg = () => {
+  if (document.querySelector('.egg-overlay')) return;
+  haptic && haptic(30);
+
+  // Generate random twinkling stars
+  const stars = Array.from({length: 55}, () => {
+    const size = 1 + Math.random() * 2.5;
+    const dur = 1.2 + Math.random() * 2.5;
+    const delay = Math.random() * 3;
+    return `<div class="egg-star" style="
+      left:${Math.random()*100}%; top:${5 + Math.random()*65}%;
+      width:${size}px; height:${size}px;
+      animation-duration:${dur}s; animation-delay:${delay}s;
+    "></div>`;
+  }).join('');
+
+  // Castle Grayskull SVG silhouette — stylised but recognisable
+  const castleSVG = `<svg class="egg-castle-svg" viewBox="0 0 340 200" xmlns="http://www.w3.org/2000/svg">
+    <!-- Main keep -->
+    <rect x="120" y="80" width="100" height="120"/>
+    <!-- Battlements on keep -->
+    <rect x="120" y="68" width="14" height="16"/><rect x="143" y="68" width="14" height="16"/>
+    <rect x="166" y="68" width="14" height="16"/><rect x="189" y="68" width="14" height="16"/>
+    <rect x="206" y="68" width="14" height="16"/>
+    <!-- Left tower -->
+    <rect x="60" y="100" width="65" height="100"/>
+    <rect x="60" y="88" width="12" height="16"/><rect x="79" y="88" width="12" height="16"/>
+    <rect x="98" y="88" width="12" height="16"/>
+    <!-- Right tower -->
+    <rect x="215" y="100" width="65" height="100"/>
+    <rect x="215" y="88" width="12" height="16"/><rect x="234" y="88" width="12" height="16"/>
+    <rect x="253" y="88" width="12" height="16"/>
+    <!-- Outer walls -->
+    <rect x="20" y="130" width="45" height="70"/>
+    <rect x="275" y="130" width="45" height="70"/>
+    <!-- Gate arch (skull mouth) -->
+    <path d="M152 200 L152 148 Q170 128 188 148 L188 200 Z"/>
+    <!-- Skull eye sockets -->
+    <ellipse cx="152" cy="108" rx="12" ry="10" fill="#061a0a"/>
+    <ellipse cx="188" cy="108" rx="12" ry="10" fill="#061a0a"/>
+    <!-- Skull nose -->
+    <path d="M166 122 L170 116 L174 122 Z" fill="#061a0a"/>
+    <!-- Ground baseline -->
+    <rect x="0" y="196" width="340" height="4"/>
+  </svg>`;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'egg-overlay';
+  overlay.innerHTML = `
+    <div class="egg-eternia-bg"></div>
+    ${stars}
+    <div class="egg-castle-wrap">${castleSVG}</div>
+  `;
+  document.body.appendChild(overlay);
+
+  setTimeout(() => { overlay.remove(); }, 4500);
 };
 window.searchCharacter = name => {
   // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
@@ -5026,21 +5223,22 @@ window.batchSetStatus = status => {
 };
 
 // Batch add a copy to each selected figure. Optional `extras` object lets
-// the batch editor pass variant/paid/notes alongside the condition preset.
+// the batch editor pass variant/paid/notes/status alongside the condition preset.
 window.batchAddCopy = (presetCondition = '', extras = {}) => {
   const ids = Array.from(S.selected);
   if (!ids.length) return;
+  const targetStatus = extras.status || 'owned';
   let added = 0, promoted = 0;
   ids.forEach(id => {
     let cur = S.coll[id];
-    // If the figure has no entry or isn't owned, treat this as
-    // "mark owned + add a copy" so the action is always meaningful.
     if (!cur || (cur.status !== 'owned' && cur.status !== 'for-sale')) {
       cur = cur ? (isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur)) : { copies: [] };
-      cur.status = 'owned';
+      cur.status = targetStatus;
       promoted++;
     } else {
       cur = isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur);
+      // Update status to match what was chosen in the sheet
+      cur.status = targetStatus;
     }
     if (!cur.copies) cur.copies = [];
     const newId = cur.copies.reduce((m, cp) => Math.max(m, cp.id || 0), 0) + 1;
@@ -5058,8 +5256,7 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
   store.set('motu-recent', S._recentChanges);
   haptic && haptic(25);
   const condNote = presetCondition ? ` (${presetCondition})` : '';
-  const promotedNote = promoted ? ` · ${promoted} marked owned` : '';
-  toast(`✓ ${added} copies added${condNote}${promotedNote}`);
+  toast(`✓ ${added} copies added${condNote} → ${STATUS_LABEL[targetStatus]}`);
   render();
 };
 
