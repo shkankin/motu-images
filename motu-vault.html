@@ -16,9 +16,7 @@
 <style>
 html,body{background:#000;margin:0}
 .splash{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;contain:strict}
-/* Logo: rise from below starting huge (close to camera), settle at 1/3 from
-   top at scale(1), hold through mid-flashes, then recede up and away tiny.
-   Transform + opacity only, on a GPU composite layer. 2.8s total. */
+/* Logo: rise from below starting huge, settle at 1/3 from top, hold, recede. 2.8s total. */
 .splash-logo{
   width:280px;max-width:70vw;
   transform:translate3d(0,120vh,0) scale(2.4);
@@ -31,40 +29,20 @@ html,body{background:#000;margin:0}
 @keyframes splashLogo{
   0%   {transform:translate3d(0,120vh,0) scale(2.4); opacity:0}
   10%  {opacity:1}
-  /* Faster ascension — arrive at 25% (~0.7s) */
   25%  {transform:translate3d(0,-17vh,0) scale(1);   opacity:1}
   75%  {transform:translate3d(0,-17vh,0) scale(1);   opacity:1}
-  /* Recede: 0.7s */
   100% {transform:translate3d(0,-140vh,0) scale(.08); opacity:0}
 }
-/* Flash 1: fires immediately as logo starts ascending (delay 0s). Sharp crack. */
-/* Flash 2: fires at hold phase (~1.35s). Softer echo. */
+/* Single flash during hold phase */
 .splash-flash{
   position:absolute;inset:0;background:#fff;opacity:0;
   pointer-events:none;will-change:opacity;mix-blend-mode:screen;
-  animation:splashFlash1 .22s ease-out 0s forwards, splashFlash2 .28s ease-out 1.35s forwards;
+  animation:splashFlash .28s ease-out 1.35s forwards;
 }
-@keyframes splashFlash1{
-  0%  {opacity:0}
-  30% {opacity:.95}
-  100%{opacity:0}
-}
-@keyframes splashFlash2{
+@keyframes splashFlash{
   0%  {opacity:0}
   25% {opacity:.7}
   100%{opacity:0}
-}
-/* Stars: drift upward across the full 2.8s splash sequence */
-.splash-star{
-  position:absolute;border-radius:50%;background:#fff;
-  will-change:transform,opacity;
-  animation:splashStarRise linear forwards;
-}
-@keyframes splashStarRise{
-  0%  {transform:translateY(0)      scale(1);   opacity:0}
-  6%  {opacity:1}
-  90% {opacity:.6}
-  100%{transform:translateY(-110vh) scale(.5); opacity:0}
 }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1604,57 +1582,72 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 /* Shared overlay base */
 .egg-overlay {
   position: fixed; inset: 0; z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
   pointer-events: none;
   overflow: hidden;
 }
 
 /* ── He-Man egg ── */
+/* Full-screen conic rainbow that rotates and hue-cycles */
 .egg-heman-bg {
-  position: absolute; inset: -20%;
+  position: absolute; inset: 0;
+  /* Oversized square so rotation never reveals corners */
+  width: 200vmax; height: 200vmax;
+  top: 50%; left: 50%;
+  margin-left: -100vmax; margin-top: -100vmax;
   background: conic-gradient(
-    hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%),
-    hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)
+    hsl(0,100%,55%), hsl(45,100%,55%), hsl(90,100%,55%),
+    hsl(135,100%,55%), hsl(180,100%,55%), hsl(225,100%,55%),
+    hsl(270,100%,55%), hsl(315,100%,55%), hsl(360,100%,55%)
   );
-  animation: hemanSpin 1.2s linear infinite, hemanHue 3s linear forwards;
-  transform-origin: center;
-  opacity: 0;
-  animation-fill-mode: forwards;
+  animation: hemanSpin 0.9s linear infinite, hemanHue 3.2s ease forwards;
+  will-change: transform, opacity, filter;
 }
 @keyframes hemanSpin {
   to { transform: rotate(360deg); }
 }
 @keyframes hemanHue {
-  0%   { opacity: 0; filter: saturate(3) brightness(0.7); }
-  8%   { opacity: 0.85; }
-  85%  { opacity: 0.85; filter: saturate(3) brightness(0.7); }
-  100% { opacity: 0; filter: saturate(3) brightness(0.7); }
+  0%   { opacity: 0;    filter: saturate(4) brightness(0.65) hue-rotate(0deg); }
+  6%   { opacity: 0.92; }
+  15%  {                filter: saturate(4) brightness(0.65) hue-rotate(40deg); }
+  40%  {                filter: saturate(4) brightness(0.65) hue-rotate(160deg); }
+  82%  { opacity: 0.92; filter: saturate(4) brightness(0.65) hue-rotate(320deg); }
+  100% { opacity: 0;    filter: saturate(4) brightness(0.65) hue-rotate(360deg); }
 }
 
-/* He-Man icon animation — 5 phases via single keyframe */
+/* He-Man icon — Flash-era cheese. Centered via top/left/translate trick.
+   Phases: slam → hold → wobble → spin → BLAST off */
 .egg-heman-icon {
   position: absolute;
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  image-rendering: -webkit-optimize-contrast;
-  /* Start: top-left corner, small */
-  transform-origin: top left;
-  animation: hemanIcon 3.1s cubic-bezier(0.4,0,0.2,1) forwards;
-  filter: drop-shadow(0 0 24px rgba(255,200,0,0.9));
+  width: 56px; height: 56px;
+  border-radius: 10px;
+  /* Start small at true center */
+  top: 50%; left: 50%;
+  transform-origin: center center;
+  transform: translate(-50%, -50%) scale(1);
+  will-change: transform, opacity;
+  animation: hemanIcon 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  filter: drop-shadow(0 0 20px rgba(255,220,50,1)) drop-shadow(0 0 40px rgba(255,100,0,0.8));
   z-index: 2;
+  image-rendering: -webkit-optimize-contrast;
 }
 @keyframes hemanIcon {
-  /* Phase 1 (0–0.6s): scales from corner to center */
-  0%   { transform: translate(0px, 0px) scale(1);    opacity: 1; }
-  19%  { transform: translate(-12vw, 30vh) scale(7); opacity: 1; }
-  /* Phase 2 (0.6–1.2s): holds center large */
-  38%  { transform: translate(-12vw, 30vh) scale(7); opacity: 1; }
-  /* Phase 3 (1.2–1.8s): slight scale-down */
-  57%  { transform: translate(-12vw, 30vh) scale(5.5); opacity: 1; }
-  /* Phase 4 (1.8–2.6s): 360° spin, scale stays */
-  83%  { transform: translate(-12vw, 30vh) scale(5.5) rotate(360deg); opacity: 1; }
-  /* Phase 5 (2.6–3.1s): blast up + scale to 4× + fade */
-  100% { transform: translate(-12vw, -10vh) scale(14) rotate(360deg); opacity: 0; }
+  /* Slam in from bottom — Flash-era overshoot */
+  0%   { transform: translate(-50%, 120vh) scale(0.8);  opacity: 0; }
+  5%   { transform: translate(-50%, -50%)  scale(6.5);  opacity: 1; }
+  /* Overshoot bounce */
+  12%  { transform: translate(-50%, -50%)  scale(5.8);  opacity: 1; }
+  /* Hold large center */
+  18%  { transform: translate(-50%, -50%)  scale(6.2);  opacity: 1; }
+  36%  { transform: translate(-50%, -50%)  scale(6.2);  opacity: 1; }
+  /* Wobble — the Flash cheese */
+  42%  { transform: translate(-50%, -50%)  scale(6.8) rotate(-12deg); opacity: 1; }
+  48%  { transform: translate(-50%, -50%)  scale(5.9) rotate(10deg);  opacity: 1; }
+  54%  { transform: translate(-50%, -50%)  scale(6.4) rotate(-6deg);  opacity: 1; }
+  60%  { transform: translate(-50%, -50%)  scale(6.2) rotate(0deg);   opacity: 1; }
+  /* Single clean 360° spin */
+  78%  { transform: translate(-50%, -50%)  scale(6.2) rotate(360deg); opacity: 1; }
+  /* BLAST: scale to massive + fade out upward */
+  100% { transform: translate(-50%, -160%) scale(18)  rotate(360deg); opacity: 0; }
 }
 
 /* ── Eternia egg ── */
@@ -1666,21 +1659,28 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 @keyframes eterniaBgFade {
   0%   { opacity: 0; }
   10%  { opacity: 1; }
-  80%  { opacity: 1; }
+  75%  { opacity: 1; }
   100% { opacity: 0; }
 }
-/* Twinkling stars */
+/* Stars fade out in sync with castle descent — gone before overlay removes */
 .egg-star {
   position: absolute;
   background: #fff;
   border-radius: 50%;
-  animation: starTwinkle linear infinite;
+  animation: starTwinkle linear infinite, starFade 4.2s ease forwards;
 }
 @keyframes starTwinkle {
-  0%, 100% { opacity: 0.2; transform: scale(1); }
-  50%       { opacity: 1;   transform: scale(1.4); }
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%       { opacity: 0.9;  transform: scale(1.5); }
 }
-/* Castle silhouette container — slides up, holds, sinks */
+@keyframes starFade {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  68%  { opacity: 1; }
+  88%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+/* Castle image — rises, holds, sinks */
 .egg-castle-wrap {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -1693,11 +1693,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   72%  { transform: translateY(0%);   opacity: 1; }
   100% { transform: translateY(100%); opacity: 0; }
 }
-.egg-castle-svg {
-  width: min(340px, 92vw);
+.egg-castle-img {
+  width: min(320px, 88vw);
   height: auto;
-  fill: #0d2a14;
-  filter: drop-shadow(0 -8px 30px rgba(42,217,176,0.25));
+  filter: brightness(0) invert(0) sepia(1) saturate(0) hue-rotate(0deg)
+          drop-shadow(0 -10px 32px rgba(42,217,176,0.3));
+  /* Pure dark silhouette */
+  opacity: 0.85;
 }
 
 /* ── Skeleton Loading ────────────────────────────────────────────── */
@@ -1771,22 +1773,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 <div class="splash" id="splash">
   <img class="splash-logo" src="masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
   <div class="splash-flash"></div>
-  <!-- Stars: varied positions, sizes, speeds — all persist through full 2.8s -->
-  <div class="splash-star" style="left:8%;  bottom:5%; width:2px;height:2px; animation-duration:2.7s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:18%; bottom:12%;width:3px;height:3px; animation-duration:2.8s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:29%; bottom:8%; width:2px;height:2px; animation-duration:2.6s;animation-delay:.1s"></div>
-  <div class="splash-star" style="left:41%; bottom:18%;width:2px;height:2px; animation-duration:2.9s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:55%; bottom:6%; width:3px;height:3px; animation-duration:2.7s;animation-delay:.05s"></div>
-  <div class="splash-star" style="left:66%; bottom:14%;width:2px;height:2px; animation-duration:2.8s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:77%; bottom:9%; width:2px;height:2px; animation-duration:2.6s;animation-delay:.1s"></div>
-  <div class="splash-star" style="left:88%; bottom:20%;width:3px;height:3px; animation-duration:2.9s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:13%; bottom:30%;width:2px;height:2px; animation-duration:3.1s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:35%; bottom:40%;width:2px;height:2px; animation-duration:2.7s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:60%; bottom:35%;width:2px;height:2px; animation-duration:2.8s;animation-delay:.05s"></div>
-  <div class="splash-star" style="left:82%; bottom:45%;width:3px;height:3px; animation-duration:2.7s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:5%;  bottom:55%;width:2px;height:2px; animation-duration:2.6s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:92%; bottom:28%;width:2px;height:2px; animation-duration:2.8s;animation-delay:.0s"></div>
-  <div class="splash-star" style="left:48%; bottom:60%;width:2px;height:2px; animation-duration:3.0s;animation-delay:.0s"></div>
 </div>
 <div id="app"></div>
 
@@ -3872,7 +3858,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.54</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.55</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5037,14 +5023,14 @@ window.homeIconClick = () => {
 };
 
 // ─── He-Man Easter Egg ────────────────────────────────────────────
-// Trigger: icon tap (heman theme). Full-screen acid-trip conic rainbow
-// with He-Man icon doing a Flash-era 5-phase animation. ~3.1s total.
+// Trigger: title tap (heman theme). Full-screen rotating rainbow +
+// He-Man icon Flash-era cheese animation. ~3.2s total.
 window.triggerHeManEgg = () => {
-  if (document.querySelector('.egg-overlay')) return; // already running
+  if (document.querySelector('.egg-overlay')) return;
   playSound(SND.iHaveThePower);
   haptic && haptic(40);
 
-  const iconSrc = getThemeIcon(); // he-man-icon.png
+  const iconSrc = IMG + '/he-man-icon.png';
   const overlay = document.createElement('div');
   overlay.className = 'egg-overlay';
   overlay.innerHTML = `
@@ -5052,70 +5038,37 @@ window.triggerHeManEgg = () => {
     <img class="egg-heman-icon" src="${iconSrc}" alt="">
   `;
   document.body.appendChild(overlay);
-
-  // Auto-remove after animation completes
-  setTimeout(() => { overlay.remove(); }, 3300);
+  setTimeout(() => { overlay.remove(); }, 3400);
 };
 
 // ─── Eternia Easter Egg ───────────────────────────────────────────
-// Trigger: title tap (eternia theme). Castle Grayskull silhouette
-// rises from below against a starfield night sky. ~4.2s total.
+// Trigger: title tap (eternia theme). Grayskull icon rises from below
+// against a starfield night sky, holds, sinks. ~4.2s total.
 window.triggerEterniaEgg = () => {
   if (document.querySelector('.egg-overlay')) return;
   haptic && haptic(30);
 
-  // Generate random twinkling stars
+  // Stars — fade keyframe keeps them in sync with castle descent
   const stars = Array.from({length: 55}, () => {
     const size = 1 + Math.random() * 2.5;
-    const dur = 1.2 + Math.random() * 2.5;
-    const delay = Math.random() * 3;
-    return `<div class="egg-star" style="
-      left:${Math.random()*100}%; top:${5 + Math.random()*65}%;
-      width:${size}px; height:${size}px;
-      animation-duration:${dur}s; animation-delay:${delay}s;
-    "></div>`;
+    const twinkleDur = 1.2 + Math.random() * 2.5;
+    const x = Math.random() * 100;
+    const y = 5 + Math.random() * 60;
+    return `<div class="egg-star" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;animation-duration:${twinkleDur}s,4.2s"></div>`;
   }).join('');
-
-  // Castle Grayskull SVG silhouette — stylised but recognisable
-  const castleSVG = `<svg class="egg-castle-svg" viewBox="0 0 340 200" xmlns="http://www.w3.org/2000/svg">
-    <!-- Main keep -->
-    <rect x="120" y="80" width="100" height="120"/>
-    <!-- Battlements on keep -->
-    <rect x="120" y="68" width="14" height="16"/><rect x="143" y="68" width="14" height="16"/>
-    <rect x="166" y="68" width="14" height="16"/><rect x="189" y="68" width="14" height="16"/>
-    <rect x="206" y="68" width="14" height="16"/>
-    <!-- Left tower -->
-    <rect x="60" y="100" width="65" height="100"/>
-    <rect x="60" y="88" width="12" height="16"/><rect x="79" y="88" width="12" height="16"/>
-    <rect x="98" y="88" width="12" height="16"/>
-    <!-- Right tower -->
-    <rect x="215" y="100" width="65" height="100"/>
-    <rect x="215" y="88" width="12" height="16"/><rect x="234" y="88" width="12" height="16"/>
-    <rect x="253" y="88" width="12" height="16"/>
-    <!-- Outer walls -->
-    <rect x="20" y="130" width="45" height="70"/>
-    <rect x="275" y="130" width="45" height="70"/>
-    <!-- Gate arch (skull mouth) -->
-    <path d="M152 200 L152 148 Q170 128 188 148 L188 200 Z"/>
-    <!-- Skull eye sockets -->
-    <ellipse cx="152" cy="108" rx="12" ry="10" fill="#061a0a"/>
-    <ellipse cx="188" cy="108" rx="12" ry="10" fill="#061a0a"/>
-    <!-- Skull nose -->
-    <path d="M166 122 L170 116 L174 122 Z" fill="#061a0a"/>
-    <!-- Ground baseline -->
-    <rect x="0" y="196" width="340" height="4"/>
-  </svg>`;
 
   const overlay = document.createElement('div');
   overlay.className = 'egg-overlay';
   overlay.innerHTML = `
     <div class="egg-eternia-bg"></div>
     ${stars}
-    <div class="egg-castle-wrap">${castleSVG}</div>
+    <div class="egg-castle-wrap">
+      <img class="egg-castle-img" src="${IMG}/grayskull-icon.png" alt="">
+    </div>
   `;
   document.body.appendChild(overlay);
-
-  setTimeout(() => { overlay.remove(); }, 4500);
+  // Remove exactly when all animations finish — bg fades to 0 at 4.2s
+  setTimeout(() => { overlay.remove(); }, 4250);
 };
 window.searchCharacter = name => {
   // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
