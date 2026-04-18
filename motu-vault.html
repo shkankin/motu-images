@@ -2358,21 +2358,55 @@ const SND = {
   powerGrayskull: IMG + '/power_grayskull.mp3',
   iHaveThePower:  IMG + '/i_have_the_power.mp3',
 };
-// Memoized Audio objects — first play incurs the network fetch, subsequent
-// plays are instant. Using new Audio per call (instead of reusing one) means
-// rapid re-triggers don't cut each other off.
-const _audioPool = {};
+
+// Web Audio API playback — avoids the crackle that HTMLAudioElement produces
+// on Android when audio focus transitions or the buffer starts before the
+// download completes. We pre-decode each file into an AudioBuffer on first
+// use, then play from the in-memory buffer (zero network latency on repeat).
+// A 5ms gain ramp at start/end prevents DAC pop on abrupt onset/offset.
+let _actx = null;
+const _audioBuffers = {};   // url → decoded AudioBuffer
+const _audioPending = {};   // url → Promise (dedupes concurrent fetches)
+
+function getAudioContext() {
+  if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+  // Mobile browsers suspend the context until a user gesture — resume here.
+  // We're always called from a tap/click so this is safe.
+  if (_actx.state === 'suspended') _actx.resume().catch(() => {});
+  return _actx;
+}
+
+async function loadAudioBuffer(url) {
+  if (_audioBuffers[url]) return _audioBuffers[url];
+  if (_audioPending[url]) return _audioPending[url];
+  _audioPending[url] = fetch(url)
+    .then(r => r.arrayBuffer())
+    .then(ab => getAudioContext().decodeAudioData(ab))
+    .then(buf => { _audioBuffers[url] = buf; delete _audioPending[url]; return buf; })
+    .catch(() => { delete _audioPending[url]; return null; });
+  return _audioPending[url];
+}
+
+// Preload a buffer without playing it (call during init / theme switch).
+function preloadSound(url) { if (url) loadAudioBuffer(url).catch(() => {}); }
+
 function playSound(url, volume = 0.9) {
   if (!url) return;
-  try {
-    // Warm the pool so the first playback on a given URL is as fast as
-    // possible. Each call still creates a fresh instance (HTMLAudioElement
-    // playback after ended is cheap; multiple overlapping plays work).
-    if (!_audioPool[url]) { _audioPool[url] = new Audio(url); _audioPool[url].preload = 'auto'; }
-    const a = new Audio(url);
-    a.volume = volume;
-    a.play().catch(() => {});
-  } catch {}
+  const ctx = getAudioContext();
+  loadAudioBuffer(url).then(buf => {
+    if (!buf) return;
+    const source = ctx.createBufferSource();
+    source.buffer = buf;
+    // Gain node for smooth ramp — eliminates onset/offset click
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.005); // 5ms attack
+    gain.gain.setValueAtTime(volume, ctx.currentTime + buf.duration - 0.04);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + buf.duration); // 40ms release
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(ctx.currentTime);
+  }).catch(() => {});
 }
 
 function getThemeSounds() {
@@ -2385,7 +2419,7 @@ function getThemeIcon() {
 function playTitleSound(idx) {
   const sounds = getThemeSounds();
   const src = sounds[idx];
-  if (src) { const a = new Audio(src); a.volume = 0.8; a.play().catch(() => {}); }
+  if (src) playSound(src, 0.8);
 }
 
 // ─── CSV Parser ───────────────────────────────────────────────────
@@ -2514,6 +2548,10 @@ async function init() {
   }
   // Apply theme
   document.documentElement.setAttribute('data-theme', S.theme);
+  // Preload sounds so first play is buffer-ready, not mid-download
+  Object.values(SND).forEach(preloadSound);
+  const themeSounds = getThemeSounds().filter(Boolean);
+  themeSounds.forEach(preloadSound);
   // One-time migration: wave default → year default (v3.9)
   if (S.sortBy === 'wave') { S.sortBy = 'year'; store.set('motu-sort', 'year'); }
   // Render the UI behind the splash so it's ready by the time splash fades.
@@ -3868,7 +3906,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.56</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.57</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
