@@ -2726,11 +2726,10 @@ let _lpMoved = false;
 let _lpFired = false;
 
 function initLongPress(el, figId) {
-  // Non-passive touchstart so we can preventDefault to block text selection
+  // Passive touchstart — do NOT preventDefault here or it kills scrolling.
+  // We suppress the Android copy/paste callout via contextmenu instead.
   el.addEventListener('touchstart', e => {
     if (S.selectMode) return;
-    // Prevent browser text-selection / copy-paste callout on long hold
-    e.preventDefault();
     _lpMoved = false;
     _lpFired = false;
     _lpFigId = figId;
@@ -2741,7 +2740,7 @@ function initLongPress(el, figId) {
         showContextMenu(figId, e.touches[0].clientX, e.touches[0].clientY);
       }
     }, 500);
-  }, {passive: false});
+  }, {passive: true});
   el.addEventListener('touchmove', () => {
     _lpMoved = true;
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
@@ -2752,7 +2751,9 @@ function initLongPress(el, figId) {
   el.addEventListener('touchcancel', () => {
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   }, {passive: true});
-  // Block the system context menu (Android copy/paste/select callout)
+  // Block the system context menu (Android copy/paste/select callout).
+  // This is sufficient — contextmenu fires after the long-press delay,
+  // not on every touch, so it doesn't interfere with scrolling.
   el.addEventListener('contextmenu', e => { e.preventDefault(); });
   // Prevent tap from firing after long-press
   el.addEventListener('click', e => {
@@ -3912,7 +3913,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.60</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.61</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
