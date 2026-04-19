@@ -3265,7 +3265,12 @@ function isSublineHidden(lineId, subKey) {
 }
 // Memoized: cache keyed on current hiddenItems signature. Reset whenever
 // hiddenItems changes (via toggleHidden) or S.figs size changes.
-let _hidCache = null;
+// IMPORTANT: _hidCache must be initialized to a real Map, not null. For a
+// user with no hidden items, key === '' matches the initial _hidCacheKey,
+// so the re-init branch below is skipped — which previously left _hidCache
+// as null and threw "Cannot read properties of null (reading 'get')" on
+// the first figure. Starting with an empty Map makes that path safe.
+let _hidCache = new Map();
 let _hidCacheKey = '';
 function figIsHidden(f) {
   const key = S.hiddenItems.length ? S.hiddenItems.join('|') : '';
@@ -6184,18 +6189,25 @@ document.addEventListener('drop', e => {
 
 // ─── Boot ─────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // updateViaCache:'none' prevents the browser's HTTP cache from serving
+  // a stale sw.js (otherwise a long Cache-Control on the SW script can
+  // freeze users on an old service worker for up to 24h).
+  navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
   // Listen for background update notification from SW
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data?.type === 'UPDATE_AVAILABLE') {
-      // Auto-reload on next user interaction to pick up new version
-      const handler = () => {
-        window.removeEventListener('touchstart', handler);
-        window.removeEventListener('click', handler);
-        window.location.reload();
-      };
-      window.addEventListener('touchstart', handler, {once: true});
-      window.addEventListener('click', handler, {once: true});
+      // Reload strategy, in priority order:
+      //   1. When the tab goes to background (user switches apps / locks
+      //      phone) — zero disruption, user returns to fresh code.
+      //   2. On next click as a fallback — but deferred a tick so the
+      //      click's onclick handler (e.g. setStatus, openSheet) runs
+      //      first and the user's action isn't lost to the reload.
+      let reloaded = false;
+      const reload = () => { if (!reloaded) { reloaded = true; window.location.reload(); } };
+      const onVis = () => { if (document.visibilityState === 'hidden') reload(); };
+      const onClick = () => setTimeout(reload, 50);
+      document.addEventListener('visibilitychange', onVis, {once: true});
+      window.addEventListener('click', onClick, {once: true});
     }
   });
 }
