@@ -1773,13 +1773,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   100%  { opacity: 0; }
 }
 
-/* Second flash — fires just before Orko vanishes */
+/* Second flash — fires as Orko vanishes (orkoLook ends at 0.45+3.4=3.85s) */
 .egg-orko-flash2 {
   position: absolute; inset: 0;
   pointer-events: none;
   background: #fff;
   opacity: 0;
-  animation: orkoScreenFlash2 0.5s ease-out 3.1s forwards;
+  animation: orkoScreenFlash2 0.5s ease-out 3.75s forwards;
 }
 @keyframes orkoScreenFlash2 {
   0%   { opacity: 0.9; }
@@ -1792,53 +1792,90 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   z-index: 2;
-  animation: orkoHover 0.9s ease-in-out 0.45s infinite, orkoRumble 0.13s linear 0.45s infinite;
+  animation: orkoHover 1.1s ease-in-out 0.45s infinite, orkoRumble 0.4s ease-in-out 0.45s infinite;
 }
 @keyframes orkoHover {
   0%   { margin-top: 0px; }
-  50%  { margin-top: -8px; }
+  50%  { margin-top: -7px; }
   100% { margin-top: 0px; }
 }
 @keyframes orkoRumble {
   0%   { margin-left: 0px; }
-  25%  { margin-left: 1.5px; }
-  50%  { margin-left: -1px; }
-  75%  { margin-left: 2px; }
+  30%  { margin-left: 0.8px; }
+  65%  { margin-left: -0.6px; }
   100% { margin-left: 0px; }
 }
 
-/* Orko img — handles look (scaleX) + fade in/out */
+/* Orko img — handles look (scaleX) + fade in/out.
+   Total: 3.4s. Beat map (seconds from anim start):
+   0.0–0.3  fade in, facing right
+   0.3–1.1  "One direction" — holds, comfortable
+   1.1      Flip (left)
+   1.1–1.7  ... holds
+   1.7      Flip (right)
+   1.7–2.1  .. holds
+   2.1      flip (left)
+   2.1–2.4  . holds
+   2.4      flip (right)
+   2.4–2.6  . holds
+   2.6      flip (left)
+   2.6–2.75 , hold
+   2.75     flip (right)
+   2.75–2.9 brief pause before flash
+   2.9–3.1  fade out → *Flash* fires at 3.4s delay offset */
 .egg-orko-icon {
   display: block;
   width: 44vw; max-width: 200px;
   transform-origin: center center;
   filter: drop-shadow(0 0 24px rgba(100,180,255,0.8)) drop-shadow(0 0 60px rgba(100,180,255,0.4));
   opacity: 0;
-  animation: orkoLook 2.5s ease 0.45s forwards;
+  animation: orkoLook 3.4s ease 0.45s forwards;
 }
 @keyframes orkoLook {
-  0%    { opacity: 0;   transform: scaleX(1); }
-  8%    { opacity: 1;   transform: scaleX(1); }
-  20%   { opacity: 1;   transform: scaleX(-1); }
-  38%   { opacity: 1;   transform: scaleX(1); }
-  52%   { opacity: 1;   transform: scaleX(-1); }
-  63%   { opacity: 1;   transform: scaleX(1); }
-  74%   { opacity: 1;   transform: scaleX(-1); }
-  82%   { opacity: 1;   transform: scaleX(1); }
-  90%   { opacity: 1; }
-  100%  { opacity: 0;   transform: scaleX(1); }
+  /* Fade in facing right */
+  0%     { opacity: 0;  transform: scaleX(1); }
+  9%     { opacity: 1;  transform: scaleX(1); }
+  /* Hold right — "One direction ..." */
+  32%    { opacity: 1;  transform: scaleX(1); }
+  /* Flip left — " Flip" */
+  33%    { opacity: 1;  transform: scaleX(-1); }
+  /* ... holds */
+  50%    { opacity: 1;  transform: scaleX(-1); }
+  /* Flip right — "Flip" */
+  51%    { opacity: 1;  transform: scaleX(1); }
+  /* .. holds */
+  62%    { opacity: 1;  transform: scaleX(1); }
+  /* flip left */
+  63%    { opacity: 1;  transform: scaleX(-1); }
+  /* . hold */
+  70%    { opacity: 1;  transform: scaleX(-1); }
+  /* flip right */
+  71%    { opacity: 1;  transform: scaleX(1); }
+  /* . hold */
+  77%    { opacity: 1;  transform: scaleX(1); }
+  /* flip left */
+  78%    { opacity: 1;  transform: scaleX(-1); }
+  /* , hold */
+  81%    { opacity: 1;  transform: scaleX(-1); }
+  /* flip right — last one */
+  82%    { opacity: 1;  transform: scaleX(1); }
+  /* ... brief pause */
+  85%    { opacity: 1;  transform: scaleX(1); }
+  /* fade to flash */
+  97%    { opacity: 0;  transform: scaleX(1); }
+  100%   { opacity: 0;  transform: scaleX(1); }
 }
 
 /* Dark bg behind Orko */
 .egg-orko-bg {
   position: absolute; inset: 0;
   background: radial-gradient(ellipse at 50% 50%, #0a0e2a 0%, #000510 100%);
-  animation: orkoBgFade 3.8s ease forwards;
+  animation: orkoBgFade 4.4s ease forwards;
 }
 @keyframes orkoBgFade {
   0%   { opacity: 0; }
   5%   { opacity: 1; }
-  82%  { opacity: 1; }
+  80%  { opacity: 1; }
   100% { opacity: 0; }
 }
 
@@ -4047,7 +4084,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.66</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.67</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5629,14 +5666,14 @@ window.triggerEterniaEgg = () => {
   `;
   document.body.appendChild(overlay);
 
-  // Swap session icon to Orko just after second flash
+  // Swap session icon to Orko just after second flash (~3.85s + 0.1s)
   setTimeout(() => {
     S.iconOverride = 'eternia2-icon.png';
     const logoIcon = document.querySelector('.logo-icon');
     if (logoIcon) logoIcon.src = IMG + '/eternia2-icon.png';
-  }, 3300);
+  }, 3950);
 
-  setTimeout(() => { overlay.remove(); }, 4000);
+  setTimeout(() => { overlay.remove(); }, 4600);
 };
 window.searchCharacter = name => {
   // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
