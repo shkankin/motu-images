@@ -2538,6 +2538,14 @@ const _audioBuffers = {};   // url → decoded AudioBuffer
 const _audioPending = {};   // url → Promise (dedupes concurrent fetches)
 
 function getAudioContext() {
+  // On mobile, an AudioContext can reach 'closed' state after a long period
+  // of inactivity or OS audio-focus transitions. A closed context can't be
+  // resumed or used — recreate it and drop stale decoded buffers (which
+  // were bound to the old context and won't play from the new one).
+  if (_actx && _actx.state === 'closed') {
+    _actx = null;
+    for (const k in _audioBuffers) delete _audioBuffers[k];
+  }
   if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
   // Mobile browsers suspend the context until a user gesture — resume here.
   // We're always called from a tap/click so this is safe.
@@ -2628,50 +2636,60 @@ function parseCSV(text) {
 }
 
 // ─── Data Fetching ────────────────────────────────────────────────
+// Concurrency guard: if a fetch is already in flight, return its promise
+// instead of starting a second one. Prevents the 1s init() timer and a
+// manual sync tap from racing each other on S.figs = [...].
+let _fetchInFlight = null;
 async function fetchFigs(manual = false, firstLoad = false) {
-  S.syncStatus = 'syncing'; render();
-  S.fetchError = false;
-  try {
-    const res = await fetch(FIGS_URL + '?t=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const remote = await res.json();
-    if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
-    // Detect newly added figures
-    const prevIds = new Set(S.figs.map(f => f.id));
-    const custom = S.figs.filter(f => f.line === 'custom');
-    const ids = new Set(remote.map(f => f.id));
-    const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
-    // Only flag as new if we had a previous catalog loaded (not first boot)
-    if (prevIds.size > 100) {
-      hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
-    }
-    S.figs = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
-    rebuildFigIndex();
-    S.syncTs = Date.now();
-    store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
-    S.syncStatus = 'ok';
-    if (firstLoad) { S.loaded = true; }
-    const newCount = S.newFigIds.size;
-    if (manual || newCount) toast(`✓ Synced ${S.figs.length} figures${newCount ? ` · ${newCount} new` : ''}`);
-    render();
-    setTimeout(() => { S.syncStatus = 'idle'; render(); }, 3000);
-  } catch(e) {
-    console.error('Fetch failed:', e);
-    S.syncStatus = manual ? 'err' : 'idle';
-    if (manual) {
-      // Detect offline vs other error
-      const isNetwork = !navigator.onLine || /network|failed to fetch/i.test(e.message);
-      if (isNetwork) {
-        S.isOffline = !navigator.onLine;
-        toast('✗ No connection — using cached data');
-      } else {
-        toast('✗ Sync failed');
+  if (_fetchInFlight) return _fetchInFlight;
+  _fetchInFlight = (async () => {
+    S.syncStatus = 'syncing'; render();
+    S.fetchError = false;
+    try {
+      const res = await fetch(FIGS_URL + '?t=' + Date.now());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const remote = await res.json();
+      if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
+      // Detect newly added figures
+      const prevIds = new Set(S.figs.map(f => f.id));
+      const custom = S.figs.filter(f => f.line === 'custom');
+      const ids = new Set(remote.map(f => f.id));
+      const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
+      // Only flag as new if we had a previous catalog loaded (not first boot)
+      if (prevIds.size > 100) {
+        hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
       }
-      setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000);
+      S.figs = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
+      rebuildFigIndex();
+      S.syncTs = Date.now();
+      store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
+      S.syncStatus = 'ok';
+      if (firstLoad) { S.loaded = true; }
+      const newCount = S.newFigIds.size;
+      if (manual || newCount) toast(`✓ Synced ${S.figs.length} figures${newCount ? ` · ${newCount} new` : ''}`);
+      render();
+      setTimeout(() => { S.syncStatus = 'idle'; render(); }, 3000);
+    } catch(e) {
+      console.error('Fetch failed:', e);
+      S.syncStatus = manual ? 'err' : 'idle';
+      if (manual) {
+        // Detect offline vs other error
+        const isNetwork = !navigator.onLine || /network|failed to fetch/i.test(e.message);
+        if (isNetwork) {
+          S.isOffline = !navigator.onLine;
+          toast('✗ No connection — using cached data');
+        } else {
+          toast('✗ Sync failed');
+        }
+        setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000);
+      }
+      if (firstLoad) { S.fetchError = true; render(); }
+      else render();
+    } finally {
+      _fetchInFlight = null;
     }
-    if (firstLoad) { S.fetchError = true; render(); }
-    else render();
-  }
+  })();
+  return _fetchInFlight;
 }
 
 // ─── Init ─────────────────────────────────────────────────────────
@@ -3076,10 +3094,16 @@ function flushSaveColl() {
   if (_saveCollTimer) { clearTimeout(_saveCollTimer); _saveCollTimer = null; }
   store.set('motu-c2', S.coll);
 }
-// Ensure pending writes flush if the app is about to be unloaded or hidden.
-window.addEventListener('pagehide', flushSaveColl);
-window.addEventListener('beforeunload', flushSaveColl);
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSaveColl(); });
+// Unload: apply pending field debounces first, then persist collection.
+// Order matters — field flushes write into S.coll, saveColl flushes S.coll to localStorage.
+function flushAllPending() {
+  // flushFieldDebounces is defined later in the script; guard in case of early unload.
+  if (typeof flushFieldDebounces === 'function') flushFieldDebounces();
+  flushSaveColl();
+}
+window.addEventListener('pagehide', flushAllPending);
+window.addEventListener('beforeunload', flushAllPending);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAllPending(); });
 
 // O(1) figure lookup by id — rebuilt whenever S.figs changes.
 let _figById = new Map();
@@ -3384,14 +3408,19 @@ function updateColl(id, key, val) {
 
 // Debounced version for oninput on long-text fields (e.g. notes) so
 // a pending edit doesn't get lost if the app is force-closed mid-typing.
-const _updDebounces = {};
+// Stores pending args alongside timer so flushFieldDebounces() can apply
+// them synchronously on pagehide / beforeunload / visibilitychange.
+const _updDebounces = {};  // { dk: {timer, args: [id,key,val]} }
 window.updateCollDebounced = (id, key, val) => {
   const dk = id + ':' + key;
-  clearTimeout(_updDebounces[dk]);
-  _updDebounces[dk] = setTimeout(() => {
-    updateColl(id, key, val);
-    delete _updDebounces[dk];
-  }, 400);
+  if (_updDebounces[dk]) clearTimeout(_updDebounces[dk].timer);
+  _updDebounces[dk] = {
+    args: [id, key, val],
+    timer: setTimeout(() => {
+      updateColl(id, key, val);
+      delete _updDebounces[dk];
+    }, 400),
+  };
 };
 
 // ─── Multi-Copy Operations (v4.43) ───────────────────────────────
@@ -3461,15 +3490,40 @@ window.updateCopy = (id, copyId, key, val) => {
   saveColl();
 };
 
-const _copyDebounces = {};
+// Copy-field debounce — same pattern as _updDebounces. See flushFieldDebounces().
+const _copyDebounces = {};  // { dk: {timer, args: [id,copyId,key,val]} }
 window.updateCopyDebounced = (id, copyId, key, val) => {
   const dk = id + ':' + copyId + ':' + key;
-  clearTimeout(_copyDebounces[dk]);
-  _copyDebounces[dk] = setTimeout(() => {
-    window.updateCopy(id, copyId, key, val);
-    delete _copyDebounces[dk];
-  }, 400);
+  if (_copyDebounces[dk]) clearTimeout(_copyDebounces[dk].timer);
+  _copyDebounces[dk] = {
+    args: [id, copyId, key, val],
+    timer: setTimeout(() => {
+      window.updateCopy(id, copyId, key, val);
+      delete _copyDebounces[dk];
+    }, 400),
+  };
 };
+
+// Synchronously apply any pending field debounces. Called from unload
+// handlers so note edits typed within 400ms of backgrounding aren't lost.
+// Must run BEFORE flushSaveColl so the writes land in S.coll, then get
+// persisted by the collection flush.
+function flushFieldDebounces() {
+  for (const dk in _updDebounces) {
+    const entry = _updDebounces[dk];
+    if (!entry) continue;
+    clearTimeout(entry.timer);
+    try { updateColl(...entry.args); } catch {}
+    delete _updDebounces[dk];
+  }
+  for (const dk in _copyDebounces) {
+    const entry = _copyDebounces[dk];
+    if (!entry) continue;
+    clearTimeout(entry.timer);
+    try { window.updateCopy(...entry.args); } catch {}
+    delete _copyDebounces[dk];
+  }
+}
 
 function getStats() {
   let total = 0, owned = 0, wish = 0, ord = 0, sale = 0;
@@ -4093,7 +4147,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.68</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.69</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5388,10 +5442,18 @@ function renderEditFigureSheet() {
     f.retail && !ov.retail ? `Source: $${Number(f.retail).toFixed(2)}` : ''
   );
 
-  // Name (rare to need but useful for typos in source data)
+  // Name (rare to need but useful for typos in source data).
+  // When an override is set, f.name already contains the overridden value,
+  // so we fetch the pre-override name from the raw figures cache.
+  let sourceName = '';
+  if (ov.name) {
+    const cached = store.get(CACHE_KEY);
+    const src = cached?.rows?.find(r => r.id === figId);
+    if (src && src.name && src.name !== ov.name) sourceName = src.name;
+  }
   h += row('name', 'Name',
     `<input type="text" value="${esc(ov.name || f.name || '')}" onchange="setOverrideField('${figId}','name',this.value);refreshEditSheet()">`,
-    ov.name ? `Source: ${esc(figById(figId) && _overrides[figId]?.fields ? '' : f.name)}` : ''
+    sourceName ? `Source: ${esc(sourceName)}` : ''
   );
 
   // Reset button — only meaningful when there's something to reset
@@ -5733,8 +5795,13 @@ window.openFig = id => {
   S.screen = 'figure'; pushNav(); render();
 };
 window.closeDetail = () => { history.back(); };
-window.deleteFig = id => {
+window.deleteFig = async id => {
   if (!confirm('Delete this figure?')) return;
+  // Clean up all side-data before dropping the figure itself.
+  // Order: photos (OPFS + labels + copy assignments), then overrides,
+  // then collection entry, then figure row.
+  try { await photoStore.delAll(id); } catch {}
+  try { clearOverrides(id); } catch {}
   S.figs = S.figs.filter(f => f.id !== id);
   rebuildFigIndex();
   delete S.coll[id]; saveColl();
@@ -6003,7 +6070,8 @@ window.openCopyPhoto = (figId, n) => {
   const all = photoStore.getAll(figId);
   const idx = all.findIndex(p => p.n === n);
   if (idx < 0) return;
-  S.photoViewer = { figId, idx };
+  // photos[] is required — renderPhotoViewer + photoViewerNav both read from it.
+  S.photoViewer = { figId, idx, photos: all };
   pushNav();
   renderDetail();
 };
