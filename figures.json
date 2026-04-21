@@ -143,6 +143,17 @@
     "source": "af411"
   },
   {
+    "id": "beast-man-deluxe-13523",
+    "name": "Beast Man (Deluxe)",
+    "line": "origins",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 25.99,
+    "slug": "beast-man-deluxe-13523",
+    "faction": "Evil Warriors"
+  },
+  {
     "id": "beast-man-lords-of-power-2458",
     "name": "Beast Man (Lords of Power)",
     "line": "origins",
@@ -3976,6 +3987,17 @@
     "slug": "beast-man-9390",
     "faction": "Evil Warriors",
     "source": "af411"
+  },
+  {
+    "id": "beast-man-1987-movie-8420",
+    "name": "Beast Man (1987 Movie)",
+    "line": "masterverse",
+    "group": "",
+    "wave": "",
+    "year": 2024,
+    "retail": 21.99,
+    "slug": "beast-man-1987-movie-8420",
+    "faction": "Evil Warriors"
   },
   {
     "id": "beast-man-new-eternia-4222",
