@@ -592,7 +592,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-thumb.for-sale { border-color: var(--rd); }
 .fig-thumb img {
   width: 100%; height: 100%;
-  object-fit: cover;
+  object-fit: cover; object-position: top;
 }
 .fig-thumb .initial {
   font-family: 'Cinzel', serif;
@@ -1972,7 +1972,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
    MOTU VAULT — Pure Vanilla JS, Zero Dependencies
    ═══════════════════════════════════════════════════════════════════ */
 
-// ─── SVG Icon paths ───────────────────────────────────────────────
+// § ICONS ── SVG icon paths + icon() helper ────────────────────────
 const ICO = {
   lines:   'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
   list:    'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -2001,7 +2001,7 @@ function icon(d, size = 20, strokeW = 2) {
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 }
 
-// ─── Constants ────────────────────────────────────────────────────
+// § CONSTANTS ── IMG, URLs, LINES, FACTIONS, STATUS_*, THEMES, SUBLINES, maps ──
 const IMG = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
 const FIGS_URL = IMG + '/figures.json';
 const CACHE_KEY = 'motu-figs-cache';
@@ -2010,6 +2010,7 @@ const CACHE_TTL = 24 * 60 * 60 * 1000;
 const LINES = [
   {id:'origins',    name:'Origins',         yr:'2019–2026', mfr:'Mattel',  sc:'5.5"'},
   {id:'masterverse',name:'Masterverse',     yr:'2021–2026', mfr:'Mattel',  sc:'7"'},
+  {id:'kids-core',  name:'Kids Core',        yr:'2024–',     mfr:'Mattel',  sc:'5.5"'},
   {id:'chronicles', name:'Chronicles',      yr:'2026',      mfr:'Mattel',  sc:'7"'},
   {id:'classics',   name:'Mattel Classics', yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
   {id:'200x',       name:'Mattel 200x',     yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
@@ -2107,6 +2108,7 @@ const SERIES_MAP = {
   'Origins':'origins','Masterverse':'masterverse','Mattel Classics':'classics',
   'Mattel 200x':'200x','Eternia Minis':'eternia-minis','Mondo':'mondo',
   'Super7':'super7','The New Adventures of He-Man':'new-adventures','Original':'original',
+  'Kids Core':'kids-core',
 };
 const COND_MAP = {'Boxed':'Mint in Box','Loose':'Loose Complete','Incomplete':'Loose Incomplete','Damaged':'Damaged','':''};
 const GROUP_MAP = {
@@ -2123,7 +2125,7 @@ const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-// ─── Storage ──────────────────────────────────────────────────────
+// § STORAGE ── localStorage wrapper (store.get/set) ───────────────
 let _quotaWarned = false;
 const store = {
   get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
@@ -2141,7 +2143,7 @@ const store = {
   },
 };
 
-// ─── Photo Storage (OPFS, multi-photo with labels) ──────────────
+// § PHOTO-STORAGE ── OPFS + localStorage fallback, photoStore API ──
 // Per figure: up to MAX_PHOTOS photos, each with optional label.
 // OPFS filename: photo-{figId}-{n}.jpg  (n = 0..MAX_PHOTOS-1)
 // Labels stored separately in localStorage: { [figId]: { [n]: label } }
@@ -2490,7 +2492,7 @@ const photoStore = {
   },
 };
 
-// ─── App State ────────────────────────────────────────────────────
+// § STATE ── Global S object, DEFAULT_TITLE ────────────────────────
 const S = {
   figs: [],
   coll: {},
@@ -2538,7 +2540,7 @@ const DEFAULT_TITLE = 'MOTU Collector';
 function getThemeTitles() {
   return THEMES[S.theme]?.titles || [DEFAULT_TITLE];
 }
-// ─── Audio ────────────────────────────────────────────────────────
+// § AUDIO ── SND urls, AudioContext, playSound, preloadSound ─────
 // Shared sound URLs (resolved relative to the motu-images repo).
 const SND = {
   powerGrayskull: IMG + '/power_grayskull.mp3',
@@ -2624,7 +2626,7 @@ function playTitleSound(idx) {
   if (src) playSound(src, 0.8);
 }
 
-// ─── CSV Parser ───────────────────────────────────────────────────
+// § DATA-FETCH ── parseCSV, fetchFigs, newFigIds detection ─────────
 function parseCSV(text) {
   if (text.length > 10000000) throw new Error('File too large');
   const lines = text.split('\n').filter(l => l.trim());
@@ -2709,7 +2711,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
   return _fetchInFlight;
 }
 
-// ─── Init ─────────────────────────────────────────────────────────
+// § INIT ── init(), OPFS setup, cache load, splash removal ─────────
 async function init() {
   // Splash-first: let the browser commit the splash animation's first frames
   // before we kick off heavy work (OPFS init, localStorage parsing, render,
@@ -2796,7 +2798,7 @@ async function init() {
   checkShareLink();
 }
 
-// ─── Toast & Haptic Feedback ─────────────────────────────────────
+// § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
 function getToastContainer() {
   let c = document.getElementById('toastContainer');
   if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
@@ -2808,7 +2810,7 @@ function toast(msg) {
   el.className = 'toast';
   el.textContent = msg;
   container.appendChild(el);
-  setTimeout(() => { if (el.parentNode) el.remove(); }, 2200);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 4000);
 }
 
 function haptic(ms = 15) {
@@ -2846,7 +2848,7 @@ function toastUndo(msg, figId, prevColl) {
   el._undoPrev = prevColl;
   el.dataset.figId = figId;
   container.appendChild(el);
-  setTimeout(() => { if (el.parentNode) el.remove(); }, 3500);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 5500);
 }
 
 window.undoStatus = id => {
@@ -2863,7 +2865,37 @@ window.undoStatus = id => {
   if (!patchFigRow(id)) render();
 };
 
-// ─── Completion Celebrations ─────────────────────────────────────
+// ─── Update Available Banner ─────────────────────────────────────
+// Shown when SW fires UPDATE_AVAILABLE. Persists until tapped or app restarts.
+function showUpdateBanner() {
+  if (document.getElementById('updateBanner')) return; // already showing
+  const el = document.createElement('div');
+  el.id = 'updateBanner';
+  el.style.cssText = `
+    position:fixed;bottom:calc(56px + var(--safe-bottom, 0px));left:12px;right:12px;
+    z-index:290;
+    background:var(--acc);color:var(--btn-t);
+    border-radius:14px;
+    padding:12px 16px;
+    display:flex;align-items:center;gap:10px;
+    box-shadow:0 4px 24px rgba(0,0,0,.45);
+    font-size:14px;font-weight:600;
+    animation:toastIn 0.3s ease-out;
+    cursor:pointer;
+  `;
+  el.innerHTML = `
+    <span style="flex:1">✦ Update available — tap to refresh</span>
+    <button id="updateBannerDismiss" style="background:rgba(0,0,0,.18);border:none;border-radius:8px;color:inherit;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;flex-shrink:0">Later</button>
+  `;
+  el.addEventListener('click', e => {
+    if (e.target.id === 'updateBannerDismiss') { el.remove(); return; }
+    window.location.reload();
+  });
+  document.body.appendChild(el);
+}
+
+
+// § CELEBRATIONS ── checkCompletion, celebrateCompletion, spawnConfetti ──
 const _celebrated = store.get('motu-celebrated') || {};
 
 function checkCompletion(fig) {
@@ -2925,7 +2957,7 @@ function spawnConfetti() {
   setTimeout(() => container.remove(), 4500);
 }
 
-// ─── Long-Press Context Menu ─────────────────────────────────────
+// § CONTEXT-MENU ── initLongPress, showContextMenu, dismissContextMenu, ctxSetStatus ──
 let _lpTimer = null;
 let _lpFigId = null;
 let _lpMoved = false;
@@ -3012,7 +3044,7 @@ function showContextMenu(figId, x, y) {
   }
   if (fig.source === 'af411') {
     const qs = encodeURIComponent(fig.name).replace(/'/g, '%27');
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();window.open('https://www.actionfigure411.com/masters-of-the-universe/search.php?search=${qs}','_blank')">
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openAF411('${figId}')">
       ${icon(ICO.export, 16)} View on AF411
     </button>`;
   }
@@ -3092,7 +3124,7 @@ window.ctxSetStatus = (id, status) => {
   }
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────
+// § COLLECTION-OPS ── saveColl, setStatus, patchFigRow, updateColl, copy ops, overrides, stats, getSortedFigs ──
 let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
@@ -3519,6 +3551,18 @@ window.updateCopyDebounced = (id, copyId, key, val) => {
   };
 };
 
+// Update ordered-status fields (orderedFrom, orderedDate, orderedPaid).
+// These live on the collection entry directly, not on a copy.
+window.updateOrderedField = (id, key, val) => {
+  const c = S.coll[id];
+  if (!c) return;
+  const next = {...c};
+  if (val === '' || val == null) delete next[key];
+  else next[key] = val;
+  S.coll[id] = next;
+  saveColl();
+};
+
 // Synchronously apply any pending field debounces. Called from unload
 // handlers so note edits typed within 400ms of backgrounding aren't lost.
 // Must run BEFORE flushSaveColl so the writes land in S.coll, then get
@@ -3618,6 +3662,7 @@ function progressRing(pct, size=48, color='var(--acc)') {
     `<text x="${size/2}" y="${size/2+4}" text-anchor="middle" fill="${c}" font-size="11" font-weight="700" font-family="'Outfit',sans-serif">${pct}%</text></svg>`;
 }
 
+// § IMPORT-EXPORT ── exportCSV, exportJSON, importJSON, doImport*, ZIP encoder ──
 function exportCSV(filter) {
   const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Copy #','Condition','Paid','Variant','Notes'];
   let list = S.figs;
@@ -4076,7 +4121,7 @@ function doImportAF411(csvText, overwrite) {
   return { matched: matchedIds.size, skipped, unmatched };
 }
 
-// ─── Render Engine ────────────────────────────────────────────────
+// § RENDER-CORE ── render(), renderLoading(), renderMain(), renderContent() ──
 const $ = id => document.getElementById(id);
 const app = () => document.getElementById('app');
 
@@ -4160,7 +4205,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.73</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.76</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4759,6 +4804,7 @@ function renderWantListViewSheet() {
   return h;
 }
 
+// § RENDER-LISTS ── renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigList ──
 function renderLinesGrid() {
   const lineStats = getLineStats();
   const ordered = [...S.lineOrder].map(id => lineStats.find(l => l.id === id)).filter(Boolean)
@@ -4998,6 +5044,23 @@ function renderFigList() {
   if (!figs.length) {
     html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
   } else {
+    // NEW figures section — pinned at top of All tab (not collection, not search, not filtered)
+    if (S.tab === 'all' && !S.search && !hf && S.newFigIds.size > 0) {
+      const newFigs = figs.filter(f => S.newFigIds.has(f.id)).slice(0, 5);
+      if (newFigs.length) {
+        html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--acc);text-transform:uppercase;letter-spacing:1.5px;display:flex;align-items:center;gap:6px">
+          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc);flex-shrink:0"></span>New to Catalog
+        </div>`;
+        if (isGrid) {
+          html += '<div class="fig-grid">';
+          newFigs.forEach(f => { html += renderFigCard(f); });
+          html += '</div>';
+        } else {
+          newFigs.forEach(f => { html += renderFigRow(f); });
+        }
+        html += `<div style="height:1px;background:var(--bd);margin:12px 0"></div>`;
+      }
+    }
     // Recently changed section for collection tab
     if (S.tab === 'collection' && !S.search && !hf && S._recentChanges?.length) {
       const recent = S._recentChanges.slice(0, 5).map(id => figById(id)).filter(Boolean);
@@ -5038,7 +5101,7 @@ function renderFigList() {
   return html;
 }
 
-// ─── Detail Screen ────────────────────────────────────────────────
+// § RENDER-DETAIL ── renderDetail, renderDetailStatusBlock, renderCopyCard, patchDetailStatus, renderPhotoViewer ──
 
 // The status buttons + collection-details block. Factored out so we can swap
 // just this chunk on status change without re-rendering the whole detail
@@ -5055,7 +5118,7 @@ function renderDetailStatusBlock(f, c) {
   if (c.status) {
     // Owned / for-sale / wishlist / ordered all reach this branch.
     // Copies UI only renders for owned/for-sale (where you actually have
-    // physical items). Wishlist/ordered just show the status and that's it.
+    // physical items). Ordered shows order detail fields. Wishlist is status only.
     const showsCopies = c.status === 'owned' || c.status === 'for-sale';
     if (showsCopies) {
       // Ensure we always have at least one copy slot to edit.
@@ -5071,6 +5134,27 @@ function renderDetailStatusBlock(f, c) {
       h += `<button class="add-copy-btn" onclick="addCopy('${f.id}')">
         <span class="add-copy-plus">+</span> Add another copy
       </button>
+      </div>`;
+    }
+    if (c.status === 'ordered') {
+      h += `<div class="copies-section">
+        <div class="copies-header">
+          <div class="label text-upper text-dim text-xs">Order Details</div>
+        </div>
+        <div class="detail-fields copy-fields">
+          <div>
+            <div class="field-label text-dim text-sm">Ordered From</div>
+            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField('${f.id}','orderedFrom',this.value)">
+          </div>
+          <div>
+            <div class="field-label text-dim text-sm">Expected Date</div>
+            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField('${f.id}','orderedDate',this.value)">
+          </div>
+          <div>
+            <div class="field-label text-dim text-sm">Price Paid</div>
+            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField('${f.id}','orderedPaid',this.value)">
+          </div>
+        </div>
       </div>`;
     }
   }
@@ -5145,6 +5229,8 @@ function patchDetailStatus() {
 window.patchDetailStatus = patchDetailStatus;
 
 function renderDetail() {
+  const _ds = document.querySelector('.detail-scroll');
+  const _dsScroll = _ds ? _ds.scrollTop : 0;
   const f = S.activeFig;
   const c = S.coll[f.id] || {};
   const userPhotos = photoStore.getAll(f.id);    // [{n, url, label}, ...]
@@ -5203,11 +5289,14 @@ function renderDetail() {
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
-      ${f.source === 'af411' ? `<a href="https://www.actionfigure411.com/masters-of-the-universe/search.php?search=${encodeURIComponent(f.name)}" target="_blank" rel="noopener" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
+      ${f.source === 'af411' ? `<a href="#" onclick="event.preventDefault();openAF411('${f.id}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
         ${icon(ICO.export,14)} View on AF411
       </a>` : ''}
       <button onclick="searchCharacter('${esc(f.name.replace(/'/g,"\\\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.search,14)} All versions
+      </button>
+      <button onclick="openFigureEditor('${f.id}')" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
+        ${icon(ICO.edit,14)} Edit
       </button>
     </div>
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
@@ -5215,6 +5304,12 @@ function renderDetail() {
   </div>`;
   if (S.photoViewer) html += renderPhotoViewer();
   app().innerHTML = html;
+
+  // Restore detail scroll position (lost when innerHTML rebuilds on edit sheet open/close)
+  if (_dsScroll > 0) {
+    const newDs = document.querySelector('.detail-scroll');
+    if (newDs) newDs.scrollTop = _dsScroll;
+  }
 
   // Wire up carousel dot indicator
   const carousel = document.getElementById('photoCarousel');
@@ -5248,7 +5343,7 @@ function renderPhotoViewer() {
   </div>`;
 }
 
-// ─── Sheets ───────────────────────────────────────────────────────
+// § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
 function renderSheet() {
   const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List'};
   let body = '';
@@ -5450,9 +5545,15 @@ function renderEditFigureSheet() {
     f.faction && !ov.faction ? `Source: ${esc(f.faction)}` : ''
   );
 
-  // Group (free text)
-  h += row('group', 'Group',
-    `<input type="text" value="${esc(ov.group || f.group || '')}" placeholder="e.g. Action Figures, Deluxe…" onchange="setOverrideField('${figId}','group',this.value);refreshEditSheet()">`,
+  // Group (pills from existing groups in this line, plus free text)
+  const lineGroups = [...new Set(S.figs.filter(g => g.line === f.line && g.group).map(g => g.group))].sort();
+  const curGroup = ov.group || f.group || '';
+  const groupInput = `
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+      ${lineGroups.map(g => `<button type="button" onclick="setOverrideField('${figId}','group','${esc(g.replace(/'/g,"\\'"))}');refreshEditSheet()" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
+    </div>
+    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" onchange="setOverrideField('${figId}','group',this.value);refreshEditSheet()">`;
+  h += row('group', 'Group', groupInput,
     f.group && !ov.group ? `Source: ${esc(f.group)}` : ''
   );
 
@@ -5533,7 +5634,7 @@ function renderThemeSheet() {
   ).join('');
 }
 
-// ─── History Management ───────────────────────────────────────────
+// § NAVIGATION ── pushNav, popstate, navTo, goToLine, goHome, openFig, openSheet, closeSheet ──
 // Each navigation action pushes a state so Android/browser back button
 // walks backward through the app instead of closing it.
 let _skipPush = false; // flag to avoid pushing during popstate handling
@@ -5696,7 +5797,7 @@ window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = 
 // Home/theme icon tap — always navigates home. Easter eggs are title-tap only.
 window.homeIconClick = () => { goHome(); };
 
-// ─── He-Man Easter Egg ────────────────────────────────────────────
+// § EASTER-EGGS ── triggerHeManEgg, triggerGrayskullEgg, triggerEterniaEgg ──
 // Trigger: title tap (heman theme). Full-screen rotating rainbow +
 // Prince Adam icon Flash-era cheese animation. ~5s total.
 window.triggerHeManEgg = () => {
@@ -5712,6 +5813,7 @@ window.triggerHeManEgg = () => {
     <img class="egg-heman-icon" src="${iconSrc}" alt="">
   `;
   document.body.appendChild(overlay);
+  overlay.addEventListener('click', () => overlay.remove(), {once: true});
   setTimeout(() => { overlay.remove(); }, 5200);
 };
 
@@ -5741,6 +5843,7 @@ window.triggerGrayskullEgg = () => {
     </div>
   `;
   document.body.appendChild(overlay);
+  overlay.addEventListener('click', () => overlay.remove(), {once: true});
   setTimeout(() => { overlay.remove(); }, 4250);
 };
 
@@ -5764,15 +5867,35 @@ window.triggerEterniaEgg = () => {
   `;
   document.body.appendChild(overlay);
 
-  // Swap session icon to Orko just after second flash (6.2s delay + 0.2s)
-  setTimeout(() => {
+  // Swap session icon to Orko at flash2 start (6.2s) — icon change fires with the flash
+  const iconTimer = setTimeout(() => {
     S.iconOverride = 'eternia2-icon.png';
     const logoIcon = document.querySelector('.logo-icon');
     if (logoIcon) logoIcon.src = IMG + '/eternia2-icon.png';
-  }, 6500);
+  }, 6200);
 
-  setTimeout(() => { overlay.remove(); }, 6900);
+  const removeTimer = setTimeout(() => { overlay.remove(); }, 6900);
+  overlay.addEventListener('click', () => {
+    clearTimeout(iconTimer);
+    clearTimeout(removeTimer);
+    overlay.remove();
+  }, {once: true});
 };
+// Opens AF411 figure page. Slug format is e.g. "he-man-origins-wave2-11290"
+// where the trailing number is the AF411 figure ID.
+// AF411 direct URL: /masters-of-the-universe/{series}/{group}/{slug}.php
+// We don't have the series/group path, so we use their site search with the
+// numeric ID which returns exactly one result.
+window.openAF411 = figId => {
+  const fig = figById(figId);
+  if (!fig) return;
+  const numId = (fig.id || '').match(/(\d+)$/)?.[1];
+  const url = numId
+    ? `https://www.actionfigure411.com/?s=${numId}&post_type=motu_figure`
+    : `https://www.actionfigure411.com/?s=${encodeURIComponent(fig.name)}&post_type=motu_figure`;
+  window.open(url, '_blank', 'noopener');
+};
+
 window.searchCharacter = name => {
   // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
   let base = name.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*-\s*(Battle|Deluxe|Mega|Mini|Giant|Lord|King|Prince).*$/i, '').trim();
@@ -5842,7 +5965,7 @@ window.closeSheet = () => { history.back(); };
 window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconOverride = null; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
 window.imgErr = id => { S.imgErrors[id] = true; };
 
-// ─── Batch Selection ────────────────────────────────────────────
+// § BATCH-SELECT ── enterSelectMode, toggleSelect, batchSetStatus, batchAddCopy, cycleStatus ──
 window.enterSelectMode = () => {
   S.selectMode = true;
   S.selected = new Set();
@@ -5992,7 +6115,7 @@ window.cycleStatus = (e, id) => {
   if (newStatus === 'owned' && fig) checkCompletion(fig);
 };
 
-// Shared image compression pipeline used by handlePhoto and handleCopyPhoto.
+// § PHOTO-HANDLERS ── handlePhoto, removePhoto, openPhotoViewer, setDefaultPhoto, compressPhoto ──
 async function compressPhoto(file) {
   const objUrl = URL.createObjectURL(file);
   try {
@@ -6175,7 +6298,7 @@ document.addEventListener('drop', e => {
   }
 });
 
-// ─── Boot ─────────────────────────────────────────────────────────
+// § BOOT ── SW registration, UPDATE_AVAILABLE handler, online/offline, init() call ──
 if ('serviceWorker' in navigator) {
   // updateViaCache:'none' prevents the browser's HTTP cache from serving
   // a stale sw.js (otherwise a long Cache-Control on the SW script can
@@ -6184,18 +6307,12 @@ if ('serviceWorker' in navigator) {
   // Listen for background update notification from SW
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data?.type === 'UPDATE_AVAILABLE') {
-      // Reload strategy, in priority order:
-      //   1. When the tab goes to background (user switches apps / locks
-      //      phone) — zero disruption, user returns to fresh code.
-      //   2. On next click as a fallback — but deferred a tick so the
-      //      click's onclick handler (e.g. setStatus, openSheet) runs
-      //      first and the user's action isn't lost to the reload.
+      // Show a persistent update banner so the user can choose when to refresh.
+      // Also set up silent reload on next background (tab hidden) as a fallback.
+      showUpdateBanner();
       let reloaded = false;
       const reload = () => { if (!reloaded) { reloaded = true; window.location.reload(); } };
-      const onVis = () => { if (document.visibilityState === 'hidden') reload(); };
-      const onClick = () => setTimeout(reload, 50);
-      document.addEventListener('visibilitychange', onVis, {once: true});
-      window.addEventListener('click', onClick, {once: true});
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') reload(); }, {once: true});
     }
   });
 }
