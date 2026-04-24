@@ -482,6 +482,70 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   color: var(--acc);
 }
 
+/* ── Responsive (v4.89) ──────────────────────────────────────────
+   The app was designed mobile-first with a single-column layout.
+   On wider viewports we:
+     • Cap the effective app width so content doesn't stretch across huge
+       displays (list rows and cards become unreadably wide otherwise).
+     • Widen the figure grid to 3/4/5 columns as viewport grows.
+     • Keep the fixed top-bar and bottom-nav full-width but center their
+       content to the same column.
+   This is deliberately NOT a split-pane layout — the current nav model
+   assumes one screen at a time (main ↔ detail ↔ sheet). A true two-pane
+   layout would require restructuring renderDetail + history + scroll
+   preservation, which is out of scope for this pass.
+   The --app-max custom property is the single knob for the centered
+   max-width at each breakpoint. */
+:root {
+  --app-max: 100vw;
+  --app-pad: 0px;
+}
+@media (min-width: 768px) {
+  :root { --app-max: 960px; --app-pad: max(0px, calc((100vw - 960px) / 2)); }
+  .fig-grid { grid-template-columns: repeat(3, 1fr); }
+  /* Center the inner content of the fixed bars to match the column. */
+  .top-bar, .bottom-nav { padding-left: var(--app-pad); padding-right: var(--app-pad); }
+}
+@media (min-width: 1024px) {
+  :root { --app-max: 1200px; --app-pad: max(0px, calc((100vw - 1200px) / 2)); }
+  .fig-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1440px) {
+  :root { --app-max: 1400px; --app-pad: max(0px, calc((100vw - 1400px) / 2)); }
+  .fig-grid { grid-template-columns: repeat(5, 1fr); }
+}
+/* On wider screens, cap the width of the content inside the main and
+   detail scroll containers so rows/grids/pills don't stretch edge to edge.
+   We apply this selector-by-selector to avoid wrapping arbitrary content. */
+@media (min-width: 768px) {
+  .fig-list,
+  .stats-bar,
+  .breadcrumb,
+  .line-grid,
+  .subline-grid,
+  .fig-grid,
+  .fig-count {
+    max-width: var(--app-max);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* Detail screen: cap narrower than the grid — a 1200px-wide single-column
+     form with two inputs side-by-side feels sparse. 780px is ~ Medium article
+     column width, readable and dense.
+     Cap the header as a whole (so back button stays left of title at 780px)
+     but cap individual scroll-body children so each section centers. */
+  .detail-header {
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .detail-scroll > * {
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 /* ── Reorder List ────────────────────────────────────────────────── */
 .reorder-list {
   padding: 0 16px 16px;
@@ -1127,6 +1191,142 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   color: var(--gold);
   border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
 }
+/* v4.88: inline "×N" pill that sits next to the figure name instead of in
+   the right-side actions area. Smaller + tighter than the standalone badge
+   so it doesn't crowd the name. */
+.copy-count-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 5px;
+  margin-left: 6px;
+  background: color-mix(in srgb, var(--gold) 20%, var(--bg3));
+  color: var(--gold);
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  vertical-align: 1px;
+  flex-shrink: 0;
+}
+.card-fig-name .copy-count-inline {
+  background: color-mix(in srgb, #000 50%, var(--gold) 50%);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+}
+
+/* Accessories + Location (v4.87) ─────────────────────────────────── */
+.acc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.acc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 10px;
+  background: color-mix(in srgb, var(--acc) 14%, var(--bg3));
+  color: var(--t1);
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, transparent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  max-width: 100%;
+}
+.acc-chip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.acc-chip-x {
+  background: none;
+  border: none;
+  color: var(--t3);
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.acc-chip-x:active { color: var(--rd); }
+.acc-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+  border: 1px dashed var(--bd);
+  color: var(--acc);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.acc-add:active {
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+  border-color: var(--acc);
+}
+/* Accessory picker sheet — list of tappable options */
+.acc-picker-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+@media (max-width: 360px) { .acc-picker-list { grid-template-columns: 1fr; } }
+.acc-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  color: var(--t1);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.acc-picker-item.selected {
+  background: color-mix(in srgb, var(--acc) 12%, var(--bg2));
+  border-color: var(--acc);
+  color: var(--acc);
+}
+.acc-picker-item:active { background: color-mix(in srgb, var(--acc) 18%, var(--bg2)); }
+.acc-picker-check {
+  flex-shrink: 0;
+  color: var(--acc);
+  font-size: 14px;
+}
+.acc-picker-custom {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+}
+.acc-picker-custom input {
+  flex: 1;
+  min-width: 0;
+}
+.acc-picker-custom button {
+  flex-shrink: 0;
+  padding: 0 14px;
+  background: var(--acc);
+  color: var(--btn-t);
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
 
 /* ── Bottom Sheet ────────────────────────────────────────────────── */
 .sheet-overlay {
@@ -1491,6 +1691,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   animation: toastIn 0.25s ease-out, toastOut 0.3s ease-in 1.7s forwards;
   pointer-events: auto;
 }
+.toast.has-undo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 18px;
+}
+.toast-msg { flex: 1; min-width: 0; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
 
@@ -1946,18 +2153,17 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 /* ── Undo Toast ──────────────────────────────────────────────────── */
 .toast-undo {
-  display: inline-block;
-  margin-left: 10px;
-  padding: 2px 10px;
-  border-radius: 6px;
+  flex-shrink: 0;
+  padding: 5px 13px;
+  border-radius: 7px;
   background: var(--acc);
   color: var(--bg);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   border: none;
   font-family: 'Outfit', sans-serif;
-  vertical-align: middle;
+  align-self: center;
 }
 </style>
 </head>
@@ -2005,7 +2211,9 @@ function icon(d, size = 20, strokeW = 2) {
 // § CONSTANTS ── IMG, URLs, LINES, FACTIONS, STATUS_*, THEMES, SUBLINES, maps ──
 const IMG = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
 const FIGS_URL = IMG + '/figures.json';
+const KIDS_CORE_URL = IMG + '/kids-core.json';
 const CACHE_KEY = 'motu-figs-cache';
+const KIDS_CORE_KEY = 'motu-kids-core';  // localStorage key for local Kids Core figures
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 const LINES = [
@@ -2024,6 +2232,17 @@ const LINES = [
 
 const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
 const CONDITIONS = ['Mint in Box','Mint on Card','Loose Complete','Loose Incomplete','Damaged','New/Sealed'];
+// v4.87: canonical accessory list. Covers classic MOTU loadouts — the
+// "Custom…" picker option lets users enter anything not listed. The list
+// intentionally stays flat (no categories) to keep the picker simple on mobile.
+const ACCESSORIES = [
+  'Power Sword','Half Sword','Shield','Axe','Mace','Club',
+  'Staff','Spear','Trident','Bow','Crossbow','Gun/Blaster',
+  'Chain','Chain & Lock','Whip','Nunchucks','Hook',
+  'Cape','Harness','Armor','Helmet','Mask','Belt',
+  'Backpack','Comic','Minicomic','Mini-figure',
+  'Stand','Accessory Card','Instructions','Other',
+];
 const STATUSES = ['owned','wishlist','ordered','for-sale'];
 const STATUS_LABEL = {owned:'Owned',wishlist:'Wishlist',ordered:'Ordered','for-sale':'For Sale'};
 const STATUS_COLOR = {owned:'var(--gn)',wishlist:'var(--bl)',ordered:'var(--or)','for-sale':'var(--rd)'};
@@ -2130,7 +2349,7 @@ const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const isSelecting = () => !!S.selectMode;
-// v4.85: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
+// v4.86: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
 // the small undo snapshots we take on every status tap. Fallback retained for
 // older Safari/Android WebView that predate structuredClone.
 const _clone = (typeof structuredClone === 'function')
@@ -2547,7 +2766,7 @@ const S = {
   _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
   _hiddenKey: null,         // cached join of hiddenItems for figIsHidden
-  _collVersion: 0,          // v4.85: bumped on every saveColl, used by _derived._makeKey
+  _collVersion: 0,          // v4.86: bumped on every saveColl, used by _derived._makeKey
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   confirmClear: false,      // pending clear confirmation in select actionbar
   iconOverride: null,       // session override for theme icon (e.g. Orko after Eternia egg)
@@ -2686,20 +2905,51 @@ async function fetchFigs(manual = false, firstLoad = false) {
     S.syncStatus = 'syncing'; render();
     S.fetchError = false;
     try {
-      const res = await fetch(FIGS_URL + '?t=' + Date.now());
+      // Fetch main figures.json and kids-core.json in parallel
+      const [res, kcRes] = await Promise.all([
+        fetch(FIGS_URL + '?t=' + Date.now()),
+        fetch(KIDS_CORE_URL + '?t=' + Date.now()).catch(() => null),
+      ]);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const remote = await res.json();
       if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
+
+      // Kids Core figures from repo (optional — 404 is fine if file doesn't exist yet)
+      let kcRemote = [];
+      if (kcRes && kcRes.ok) {
+        try { kcRemote = await kcRes.json(); } catch {}
+      }
+      // Merge: remote kids-core figures get source:'kids-core' and image from slug
+      const kcHydrated = (Array.isArray(kcRemote) ? kcRemote : []).map(f => ({
+        ...f,
+        line: 'kids-core',
+        source: 'kids-core',
+        image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
+      }));
+
       // Detect newly added figures
       const prevIds = new Set(S.figs.map(f => f.id));
       const custom = S.figs.filter(f => f.line === 'custom');
-      const ids = new Set(remote.map(f => f.id));
+      // Local Kids Core figures (added via admin UI) — kept across syncs
+      const localKC = store.get(KIDS_CORE_KEY) || [];
+      const remoteIds = new Set([...remote, ...kcHydrated].map(f => f.id));
+      const localKCFigs = localKC.map(f => ({
+        ...f, line: 'kids-core', source: 'kids-core-local',
+        image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
+      })).filter(f => !remoteIds.has(f.id)); // dedupe against repo
+
       const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
       // Only flag as new if we had a previous catalog loaded (not first boot)
       if (prevIds.size > 100) {
-        hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
+        [...hydrated, ...kcHydrated].forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
       }
-      S.figs = [...hydrated, ...custom.filter(f => !ids.has(f.id))];
+      const kcIds = new Set([...kcHydrated, ...localKCFigs].map(f => f.id));
+      S.figs = [
+        ...hydrated,
+        ...kcHydrated,
+        ...localKCFigs,
+        ...custom.filter(f => !remoteIds.has(f.id) && !kcIds.has(f.id)),
+      ];
       rebuildFigIndex();
       S.syncTs = Date.now();
       store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
@@ -2886,15 +3136,16 @@ function triggerPulse(id, status) {
 function toastUndo(msg, figId, prevColl) {
   const container = getToastContainer();
   const el = document.createElement('div');
-  el.className = 'toast';
-  el.textContent = msg;
+  el.className = 'toast has-undo';
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'toast-msg';
+  msgSpan.textContent = msg;
   const btn = document.createElement('button');
   btn.className = 'toast-undo';
   btn.textContent = 'Undo';
   btn.onclick = () => undoStatus(figId);
-  el.appendChild(document.createTextNode(' '));
+  el.appendChild(msgSpan);
   el.appendChild(btn);
-  // Store the previous state on the element
   el._undoPrev = prevColl;
   el.dataset.figId = figId;
   container.appendChild(el);
@@ -3059,7 +3310,7 @@ function showContextMenu(figId, x, y) {
   if (!fig) return;
   const c = S.coll[figId] || {};
   dismissContextMenu();
-  // v4.85: escape figId for innerHTML onclick interpolation. AF411 slugs are
+  // v4.86: escape figId for innerHTML onclick interpolation. AF411 slugs are
   // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
   // ID source (import, manual edit) could carry a quote and break out.
   const eFigId = esc(figId);
@@ -3186,7 +3437,7 @@ let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
-  // v4.85: bump version counter so _derived cache key invalidates without
+  // v4.86: bump version counter so _derived cache key invalidates without
   // having to re-hash Object.keys(S.coll) on every render.
   S._collVersion++;
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
@@ -3404,6 +3655,29 @@ function figIsHidden(f) {
   _hidCache.set(f.id, hidden);
   return hidden;
 }
+
+// v4.87: migrate ordered-status fields into the first copy when a figure
+// transitions from 'ordered' → 'owned'. Called from both setStatus() and
+// cycleStatus() — previously only setStatus had this logic, so quick-cycling
+// the status dot in list/grid view silently dropped orderedFrom/orderedPaid.
+// Caller is responsible for having already flipped S.coll[id].status to 'owned'.
+function migrateOrderedToOwned(id) {
+  const entry = S.coll[id];
+  if (!entry) return;
+  if (!isMigrated(entry)) S.coll[id] = migrateEntry(entry);
+  const e = S.coll[id];
+  if (!e.copies || !e.copies.length) e.copies = [{id: 1}];
+  const copy = e.copies[0];
+  if (e.orderedFrom) {
+    const prefix = `Ordered from: ${e.orderedFrom}`;
+    copy.notes = copy.notes ? `${prefix}\n${copy.notes}` : prefix;
+  }
+  if (e.orderedPaid && !copy.paid) copy.paid = String(e.orderedPaid);
+  delete e.orderedFrom;
+  delete e.orderedDate;
+  delete e.orderedPaid;
+}
+
 function setStatus(id, status) {
   if (!S.coll[id]) S.coll[id] = {};
   // Ensure migrated shape
@@ -3421,6 +3695,9 @@ function setStatus(id, status) {
     }
   } else {
     S.coll[id] = {...S.coll[id], status};
+    // When transitioning from ordered → owned, migrate order details into
+    // the copy fields so the data isn't lost.
+    if (wasStatus === 'ordered' && status === 'owned') migrateOrderedToOwned(id);
   }
   saveColl(); haptic();
   S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
@@ -3445,24 +3722,34 @@ function setStatus(id, status) {
 function patchFigRow(id) {
   const c = S.coll[id] || {};
   const statusCls = c.status || '';
+  const copyN = entryCopyCount(c);
+  const eId = esc(id);
+  // Shared bit: rebuild the name's inline ×N pill inside a parent element.
+  // The name HTML is `escapedName` + optional count span. Since patchFigRow
+  // can be called for either view, factor the "update the name" step out.
+  const updateNameInline = (nameEl) => {
+    if (!nameEl) return;
+    const fig = figById(id);
+    const name = fig ? fig.name : id;
+    nameEl.innerHTML = esc(name) + (copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : '');
+  };
 
   // Try list view row
   const row = document.querySelector(`.fig-row[data-fig-id="${id}"]`);
   if (row) {
     const thumb = row.querySelector('.fig-thumb');
     if (thumb) { thumb.className = 'fig-thumb ' + statusCls; }
+    updateNameInline(row.querySelector('.fig-name'));
     const actions = row.querySelector('.fig-actions');
     if (actions) {
       const hasVar = /\w/.test(copyVariant(c) || '');
-      const copyN = entryCopyCount(c);
       const isNew = S.newFigIds.has(id);
       actions.innerHTML =
         (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
-        (copyN > 1 ? `<div class="copy-count-badge" title="${copyN} copies">×${copyN}</div>` : '') +
         (hasVar ? '<div class="fig-var-badge">VAR</div>' : '') +
         (c.status
-          ? `<button class="quick-own" onclick="cycleStatus(event,'${id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
-          : `<button class="quick-own" onclick="event.stopPropagation();setStatus('${id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
+          ? `<button class="quick-own" onclick="cycleStatus(event,'${eId}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
+          : `<button class="quick-own" onclick="event.stopPropagation();setStatus('${eId}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
     }
     updateNavBadge();
     return true;
@@ -3472,12 +3759,13 @@ function patchFigRow(id) {
   const card = document.querySelector(`.fig-card[data-fig-id="${id}"]`);
   if (card) {
     card.className = 'fig-card ' + statusCls;
+    updateNameInline(card.querySelector('.card-fig-name'));
     const badge = card.querySelector('.status-badge');
     if (badge) {
       badge.className = 'status-badge ' + statusCls;
       const badgeAction = c.status
-        ? `cycleStatus(event,'${id}')`
-        : `event.stopPropagation();setStatus('${id}','owned')`;
+        ? `cycleStatus(event,'${eId}')`
+        : `event.stopPropagation();setStatus('${eId}','owned')`;
       badge.setAttribute('onclick', badgeAction);
       badge.innerHTML = c.status
         ? `<div class="fig-status-dot ${statusCls}"></div>`
@@ -3577,7 +3865,7 @@ window.removeCopy = async (id, copyId) => {
   const cp = c.copies.find(x => x.id === copyId);
   if (!cp) return;
   // Confirm only if copy has data — empty copies delete silently.
-  const hasData = cp.condition || cp.paid || cp.notes || cp.variant;
+  const hasData = cp.condition || cp.paid || cp.notes || cp.variant || cp.location || (Array.isArray(cp.accessories) && cp.accessories.length);
   if (hasData && !await appConfirm('Remove this copy and its data?', {danger: true, ok: 'Remove'})) return;
   const newCopies = c.copies.filter(x => x.id !== copyId);
   // If this was the last copy and the figure is owned, leave a single
@@ -3635,6 +3923,148 @@ window.updateOrderedField = (id, key, val) => {
   saveColl();
 };
 
+// ─── Accessories + Location (v4.87) ──────────────────────────────
+// Per-copy accessories array and free-text location field. Stored as
+// cp.accessories = ['Power Sword', 'Cape', ...] and cp.location = 'Shelf A'.
+// updateCopy already supports arbitrary keys, so add/remove just mutate
+// the array and re-save.
+
+// Collect all distinct location strings in use across the entire collection,
+// sorted alphabetically. Used to populate the <datalist> for autocomplete.
+function getAllLocations() {
+  const set = new Set();
+  for (const id in S.coll) {
+    const e = S.coll[id];
+    if (!e || !e.copies) continue;
+    for (const cp of e.copies) {
+      if (cp && cp.location) set.add(cp.location);
+    }
+  }
+  return [...set].sort((a,b) => a.localeCompare(b));
+}
+
+window.addAccessory = (figId, copyId, name) => {
+  if (!name) return;
+  const c = S.coll[figId];
+  if (!c || !isMigrated(c)) return;
+  const next = {...c, copies: c.copies.map(cp => ({...cp}))};
+  const cp = next.copies.find(x => x.id === copyId);
+  if (!cp) return;
+  const list = Array.isArray(cp.accessories) ? [...cp.accessories] : [];
+  if (!list.includes(name)) list.push(name);
+  cp.accessories = list;
+  S.coll[figId] = next;
+  saveColl();
+  // Picker is open — re-render it so the checkmark appears. If we're not
+  // in the picker (e.g. custom-add flow), fall back to detail re-render.
+  if (S.sheet === 'accessoryPicker') renderSheetBody();
+  else patchDetailStatus();
+};
+
+window.removeAccessory = (figId, copyId, idx) => {
+  const c = S.coll[figId];
+  if (!c || !isMigrated(c)) return;
+  const next = {...c, copies: c.copies.map(cp => ({...cp}))};
+  const cp = next.copies.find(x => x.id === copyId);
+  if (!cp || !Array.isArray(cp.accessories)) return;
+  const list = [...cp.accessories];
+  list.splice(idx, 1);
+  if (list.length) cp.accessories = list;
+  else delete cp.accessories;  // keep entries clean — no empty arrays
+  S.coll[figId] = next;
+  saveColl();
+  haptic();
+  patchDetailStatus();
+};
+
+// Called from the picker sheet when the user taps one of the canonical
+// accessories. Toggles membership: adds if missing, removes if present.
+window.toggleAccessoryInPicker = name => {
+  const figId = S._accPickFigId, copyId = S._accPickCopyId;
+  if (!figId || copyId == null) return;
+  const c = S.coll[figId];
+  if (!c || !isMigrated(c)) return;
+  const cp = c.copies.find(x => x.id === copyId);
+  if (!cp) return;
+  const list = Array.isArray(cp.accessories) ? cp.accessories : [];
+  const idx = list.indexOf(name);
+  if (idx >= 0) window.removeAccessory(figId, copyId, idx);
+  else window.addAccessory(figId, copyId, name);
+  haptic();
+};
+
+window.addCustomAccessory = () => {
+  const input = document.getElementById('accPickerCustomInput');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  window.addAccessory(S._accPickFigId, S._accPickCopyId, val);
+  input.value = '';
+  haptic();
+};
+
+window.openAccessoryPicker = (figId, copyId) => {
+  S._accPickFigId = figId;
+  S._accPickCopyId = copyId;
+  openSheet('accessoryPicker');
+};
+
+// Lightweight re-render of just the sheet body — used by the picker so
+// toggling an accessory updates the checkmarks without rebuilding the
+// whole app. Falls back to full render() if the body element is missing.
+function renderSheetBody() {
+  const body = document.querySelector('.sheet-body');
+  if (!body || S.sheet !== 'accessoryPicker') { render(); return; }
+  body.innerHTML = renderAccessoryPickerSheet();
+}
+
+function renderAccessoryPickerSheet() {
+  const figId = S._accPickFigId, copyId = S._accPickCopyId;
+  const c = figId ? S.coll[figId] : null;
+  const cp = (c && isMigrated(c)) ? c.copies.find(x => x.id === copyId) : null;
+  const current = (cp && Array.isArray(cp.accessories)) ? cp.accessories : [];
+  const currentSet = new Set(current);
+  // Surface any custom entries (not in ACCESSORIES) at the top as already-selected
+  const customSelected = current.filter(a => !ACCESSORIES.includes(a));
+  let h = '';
+  if (!cp) {
+    return '<div class="text-dim text-sm" style="padding:20px;text-align:center">Copy no longer exists.</div>';
+  }
+  // Build onclick payloads safely — esc() HTML-encodes for attribute context,
+  // but the resulting string is then parsed back as JS, so ' → &#39; → ' and
+  // unterminates the string literal. JSON.stringify gives us a valid JS
+  // string literal (complete with surrounding quotes and \" escapes for any
+  // embedded double-quotes); esc() on the JSON output then protects the HTML
+  // attribute. This round-trips any Unicode, quotes, or backslashes cleanly.
+  const jsArg = s => esc(JSON.stringify(s));
+  h += `<div class="text-dim text-sm" style="margin-bottom:4px">Tap to toggle. Added items apply to this copy only.</div>`;
+  h += `<div class="acc-picker-list">`;
+  // Show custom accessories first so the user can tap to remove them
+  customSelected.forEach(name => {
+    h += `<button class="acc-picker-item selected" onclick="toggleAccessoryInPicker(${jsArg(name)})">
+      <span>${esc(name)}</span>
+      <span class="acc-picker-check">✓</span>
+    </button>`;
+  });
+  ACCESSORIES.forEach(name => {
+    const on = currentSet.has(name);
+    h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccessoryInPicker(${jsArg(name)})">
+      <span>${esc(name)}</span>
+      ${on ? '<span class="acc-picker-check">✓</span>' : ''}
+    </button>`;
+  });
+  h += `</div>`;
+  h += `<div class="acc-picker-custom">
+    <input type="text" id="accPickerCustomInput" placeholder="Custom accessory…" maxlength="60"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAccessory()}">
+    <button onclick="addCustomAccessory()">Add</button>
+  </div>`;
+  h += `<div style="margin-top:14px;display:flex;justify-content:flex-end">
+    <button onclick="closeSheet()" style="padding:10px 18px;border-radius:10px;background:var(--bg3);border:1px solid var(--bd);color:var(--t1);font-size:13px;font-weight:600">Done</button>
+  </div>`;
+  return h;
+}
+
 // Synchronously apply any pending field debounces. Called from unload
 // handlers so note edits typed within 400ms of backgrounding aren't lost.
 // Must run BEFORE flushSaveColl so the writes land in S.coll, then get
@@ -3662,7 +4092,7 @@ function flushFieldDebounces() {
 const _derived = {
   _statsKey: null, _sortedKey: null, _sorted: null, _stats: null,
   _makeKey() {
-    // v4.85: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
+    // v4.86: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
     // instead of re-joining hiddenItems on every render. Also use S._collVersion
     // (bumped by saveColl) instead of Object.keys(S.coll).length, which allocated
     // an array of ~600 keys on every key check.
@@ -3744,7 +4174,7 @@ function _computeSortedFigs() {
   return list;
 }
 
-// v4.85: restored missing `function getLineStats() {` declaration. The body
+// v4.86: restored missing `function getLineStats() {` declaration. The body
 // existed as orphan code (causing `Unexpected token '}'` at the trailing
 // brace and `Illegal return` at line 3697 in classic-script parsers).
 // getLineStats is called twice in renderLinesGrid / renderLinesGridContent.
@@ -3775,11 +4205,11 @@ function progressRing(pct, size=48, color='var(--acc)') {
 }
 
 // § IMPORT-EXPORT ── exportCSV, exportJSON, importJSON, doImport*, ZIP encoder ──
-// v4.85: restored missing `function exportCSV(filter) {` declaration. The
+// v4.86: restored missing `function exportCSV(filter) {` declaration. The
 // body remained as orphan code in v4.77 (never shipped) — header was lost
 // in a refactor. Matches the v4.73 production signature.
 function exportCSV(filter) {
-  const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Copy #','Condition','Paid','Variant','Notes'];
+  const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Copy #','Condition','Paid','Variant','Accessories','Location','Notes'];
   let list = S.figs;
   if (filter === 'owned') list = list.filter(f => S.coll[f.id]?.status === 'owned');
   else if (filter === 'wishlist') list = list.filter(f => S.coll[f.id]?.status === 'wishlist');
@@ -3795,16 +4225,17 @@ function exportCSV(filter) {
     if (isMigrated(c) && c.copies.length > 0) {
       // One row per copy. Copy # is 1-indexed.
       c.copies.forEach((cp, i) => {
-        rows.push([...base, i + 1, cp.condition || '', cp.paid || '', cp.variant || '', cp.notes || '']);
+        const acc = Array.isArray(cp.accessories) ? cp.accessories.join('; ') : '';
+        rows.push([...base, i + 1, cp.condition || '', cp.paid || '', cp.variant || '', acc, cp.location || '', cp.notes || '']);
         totalRowCount++;
       });
     } else if (!isMigrated(c) && (c.condition || c.paid || c.notes || c.variants)) {
       // Defensive: legacy entry that somehow escaped migration
-      rows.push([...base, 1, c.condition || '', c.paid || '', c.variants || '', c.notes || '']);
+      rows.push([...base, 1, c.condition || '', c.paid || '', c.variants || '', '', '', c.notes || '']);
       totalRowCount++;
     } else {
       // No copies (wishlist / ordered / unowned with status only)
-      rows.push([...base, '', '', '', '', '']);
+      rows.push([...base, '', '', '', '', '', '', '']);
       totalRowCount++;
     }
   }
@@ -4073,7 +4504,7 @@ window.handleImportFile = input => {
 
 function renderExportSheet() {
   const stats = getStats();
-  // v4.85: single linear scan instead of 5 separate S.figs.filter() passes.
+  // v4.86: single linear scan instead of 5 separate S.figs.filter() passes.
   // anyStatus is the count of figures with any status set; the per-status
   // counts (wish/ord/sale) come from getStats() which already has them, but
   // getStats only includes non-hidden figures and we want the unfiltered
@@ -4162,6 +4593,11 @@ function doImportVault(csvText, overwrite) {
   const col = h => headers.indexOf(h);
   const [iName,iLine,iGroup,iWave,iStatus,iCond,iPaid,iNotes] =
     ['Name','Line','Group','Wave','Status','Condition','Paid','Notes'].map(col);
+  // v4.87: Accessories + Location are optional columns — missing columns
+  // stay blank without breaking older CSV exports.
+  const iVariant = col('Variant');
+  const iAcc = col('Accessories');
+  const iLoc = col('Location');
 
   const {idx4, idx3, idx2} = buildFigIndexes();
 
@@ -4180,6 +4616,9 @@ function doImportVault(csvText, overwrite) {
     const cond = c[iCond]?.trim() || '';
     const paid = c[iPaid]?.trim() || '';
     const notes = c[iNotes]?.trim() || '';
+    const variant = iVariant >= 0 ? (c[iVariant]?.trim() || '') : '';
+    const accRaw = iAcc >= 0 ? (c[iAcc]?.trim() || '') : '';
+    const location = iLoc >= 0 ? (c[iLoc]?.trim() || '') : '';
 
     const k4 = normalize(name)+'|'+lineId+'|'+normalize(group)+'|'+normalize(wave);
     const k3 = normalize(name)+'|'+lineId+'|'+normalize(group);
@@ -4195,8 +4634,28 @@ function doImportVault(csvText, overwrite) {
     if (!overwrite && S.coll[fig.id]?.status && status) { skipped++; return; }
 
     if (status) {
-      S.coll[fig.id] = {...(S.coll[fig.id]||{}), status,
-        ...(cond && {condition:cond}), ...(paid && {paid}), ...(notes && {notes})};
+      // Build a migrated entry directly so accessories/location land on the
+      // first copy. migrateEntry() can't see these fields through the legacy
+      // flat shape, so we shape the entry ourselves.
+      const accessories = accRaw ? accRaw.split(/\s*;\s*/).filter(Boolean) : [];
+      const existing = S.coll[fig.id];
+      let base;
+      if (existing && isMigrated(existing)) base = {...existing, copies: [...existing.copies]};
+      else if (existing) base = migrateEntry(existing);
+      else base = { copies: [] };
+      base.status = status;
+      // Ensure at least one copy for owned/for-sale
+      if (!base.copies.length && (status === 'owned' || status === 'for-sale')) base.copies.push({ id: 1 });
+      const copy = base.copies[0];
+      if (copy) {
+        if (cond) copy.condition = cond;
+        if (paid) copy.paid = paid;
+        if (variant) copy.variant = variant;
+        if (notes) copy.notes = notes;
+        if (accessories.length) copy.accessories = accessories;
+        if (location) copy.location = location;
+      }
+      S.coll[fig.id] = base;
     }
     matchedIds.add(fig.id);
   });
@@ -4336,7 +4795,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.85</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.89</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4555,8 +5014,79 @@ function renderBreadcrumb() {
   } else {
     html += `<span class="current">${esc(ln(S.activeLine))}</span>`;
   }
+  // Admin button for Kids Core
+  if (S.activeLine === 'kids-core') {
+    html += `<button onclick="openSheet('kidsCoreAdmin')" style="margin-left:auto;display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc);font-size:12px;font-weight:600">${icon(ICO.plus,12)} Add Figure</button>`;
+  }
   html += '</div>';
   return html;
+}
+
+function renderKidsCoreAdminSheet() {
+  const editing = S._kcEditId || null;
+  const existing = editing ? (store.get(KIDS_CORE_KEY)||[]).find(f => f.id === editing) : null;
+  const v = S._kcForm || {};
+
+  const field = (label, key, type='text', placeholder='', extra='') =>
+    `<div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">${label}</div>
+      <input type="${type}" value="${esc(v[key]||existing?.[key]||'')}" placeholder="${placeholder}"
+        oninput="S._kcForm=S._kcForm||{};S._kcForm['${key}']=this.value" ${extra}>
+    </div>`;
+
+  // Group pills for kids-core
+  const groups = ['Action Figures','Movie (2026)'];
+  const curGroup = v.group || existing?.group || '';
+
+  let h = '';
+  if (editing) {
+    h += `<div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:color-mix(in srgb,var(--acc) 10%,transparent);border:1px solid var(--acc)">
+      <div class="text-sm" style="color:var(--acc);font-weight:600">Editing: ${esc(existing?.name||editing)}</div>
+    </div>`;
+  }
+
+  h += field('Name *', 'name', 'text', 'e.g. He-Man');
+  h += field('Year', 'year', 'number', '2026');
+  h += field('Wave', 'wave', 'text', 'e.g. 1');
+  h += field('Retail Price', 'retail', 'number', '0.00');
+  h += field('Faction', 'faction', 'text', 'e.g. Heroic Warriors');
+
+  // Group pills
+  h += `<div style="margin-bottom:12px">
+    <div class="field-label text-dim text-sm">Group *</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${groups.map(g => `<button type="button" onclick="S._kcForm=S._kcForm||{};S._kcForm.group='${g}';render()" style="padding:6px 14px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:500">${g}</button>`).join('')}
+    </div>
+  </div>`;
+
+  h += `<button onclick="saveKidsCoreAdminFig()" style="width:100%;padding:14px;border-radius:12px;background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;margin-bottom:10px">
+    ${editing ? 'Save Changes' : 'Add Figure'}
+  </button>`;
+
+  if (editing) {
+    h += `<button onclick="deleteKidsCoreAdminFig('${esc(editing)}')" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
+      Delete Figure
+    </button>`;
+  }
+
+  // List of existing local kids-core figures
+  const localFigs = (store.get(KIDS_CORE_KEY)||[]);
+  if (localFigs.length) {
+    h += `<div style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px">
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Local Kids Core Figures (${localFigs.length})</div>`;
+    localFigs.forEach(f => {
+      h += `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd)">
+        <div>
+          <div class="text-sm" style="color:var(--t1);font-weight:600">${esc(f.name)}</div>
+          <div class="text-sm text-dim">${esc(f.group||'')}${f.year?' · '+f.year:''}</div>
+        </div>
+        <button onclick="S._kcEditId='${esc(f.id)}';S._kcForm=null;render()" style="padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px">Edit</button>
+      </div>`;
+    });
+    h += '</div>';
+  }
+
+  return h;
 }
 
 function renderContent() {
@@ -4951,7 +5481,7 @@ function renderWantListViewSheet() {
 }
 
 // § RENDER-LISTS ── renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigList ──
-// v4.85: restored missing `function renderLinesGrid() {` declaration (orphan
+// v4.86: restored missing `function renderLinesGrid() {` declaration (orphan
 // body, same pattern as getLineStats / exportCSV).
 function renderLinesGrid() {
   const lineStats = getLineStats();
@@ -5075,7 +5605,7 @@ function renderFigRow(f) {
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
-      <div class="fig-name">${esc(f.name)}</div>
+      <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}</div>
       <div class="fig-meta">
         ${S.search ? `<span class="line-name">${esc(ln(f.line))}</span>` : ''}
         ${f.group ? `<span>${S.search?'· ':''}${esc(f.group)}</span>` : ''}
@@ -5085,7 +5615,6 @@ function renderFigRow(f) {
     </div>
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
-      ${copyN > 1 ? `<div class="copy-count-badge" title="${copyN} copies">×${copyN}</div>` : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
       ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${eId}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" onclick="event.stopPropagation();setStatus('${eId}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
@@ -5120,10 +5649,9 @@ function renderFigCard(f) {
     <div class="card-overlay"></div>
     ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
-    ${!S.selectMode && copyN > 1 ? `<div class="copy-count-badge copy-count-badge-card" title="${copyN} copies">×${copyN}</div>` : ''}
     ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
     <div class="card-info">
-      <div class="card-fig-name">${esc(f.name)}</div>
+      <div class="card-fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}</div>
       <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
     </div>
   </div>`;
@@ -5194,10 +5722,16 @@ function renderFigList() {
   if (!figs.length) {
     html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
   } else {
+    // v4.87: collect pinned IDs so we can exclude them from the main list.
+    // Previously the "New to Catalog" and "Recently changed" sections pinned
+    // the top 5, but the main list still included them, so each pinned figure
+    // rendered twice.
+    const pinnedIds = new Set();
     // NEW figures section — pinned at top of All tab (not collection, not search, not filtered)
     if (S.tab === 'all' && !S.search && !hf && S.newFigIds.size > 0) {
       const newFigs = figs.filter(f => S.newFigIds.has(f.id)).slice(0, 5);
       if (newFigs.length) {
+        newFigs.forEach(f => pinnedIds.add(f.id));
         html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--acc);text-transform:uppercase;letter-spacing:1.5px;display:flex;align-items:center;gap:6px">
           <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc);flex-shrink:0"></span>New to Catalog
         </div>`;
@@ -5215,13 +5749,16 @@ function renderFigList() {
     if (S.tab === 'collection' && !S.search && !hf && S._recentChanges?.length) {
       const recent = S._recentChanges.slice(0, 5).map(id => figById(id)).filter(Boolean);
       if (recent.length) {
+        recent.forEach(f => pinnedIds.add(f.id));
         html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px">Recently changed</div>`;
         recent.forEach(f => { html += isGrid ? renderFigCard(f) : renderFigRow(f); });
         html += `<div style="height:1px;background:var(--bd);margin:12px 0"></div>`;
       }
     }
-    const first = figs.slice(0, BATCH_SIZE);
-    const rest = figs.slice(BATCH_SIZE);
+    // Main list — skip anything we just pinned above.
+    const mainList = pinnedIds.size ? figs.filter(f => !pinnedIds.has(f.id)) : figs;
+    const first = mainList.slice(0, BATCH_SIZE);
+    const rest = mainList.slice(BATCH_SIZE);
     if (isGrid) {
       html += '<div class="fig-grid">';
       first.forEach(f => { html += renderFigCard(f); });
@@ -5283,7 +5820,7 @@ function renderDetailStatusBlock(f, c) {
         h += renderCopyCard(f, cp, i, isMulti);
       });
       h += `<button class="add-copy-btn" onclick="addCopy('${eId}')">
-        <span class="add-copy-plus">+</span> Add another copy
+        <span class="add-copy-plus">+</span> ${isMulti ? 'Add another copy' : 'Add a second copy'}
       </button>
       </div>`;
     }
@@ -5319,6 +5856,8 @@ function renderCopyCard(f, cp, i, isMulti) {
   const paid = cp.paid || '';
   const variant = cp.variant || '';
   const notes = cp.notes || '';
+  const accessories = Array.isArray(cp.accessories) ? cp.accessories : [];
+  const location = cp.location || '';
   const eId = esc(f.id);
   // copyId is the stable internal id used by addCopy/removeCopy/updateCopy
   const cid = cp.id;
@@ -5344,6 +5883,19 @@ function renderCopyCard(f, cp, i, isMulti) {
     <div>
       <div class="field-label text-dim text-sm">Variant</div>
       <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${eId}',${cid},'variant',this.value)">
+    </div>
+    <div>
+      <div class="field-label text-dim text-sm">Accessories</div>
+      <div class="acc-chips">`;
+  accessories.forEach((a, idx) => {
+    h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" onclick="removeAccessory('${eId}',${cid},${idx})">×</button></span>`;
+  });
+  h += `<button class="acc-add" onclick="openAccessoryPicker('${eId}',${cid})">+ Add</button>
+      </div>
+    </div>
+    <div>
+      <div class="field-label text-dim text-sm">Location</div>
+      <input type="text" value="${esc(location)}" placeholder="e.g. Display shelf, Storage bin A, On loan…" list="locationSuggestions" onchange="updateCopy('${eId}',${cid},'location',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Notes</div>
@@ -5401,11 +5953,10 @@ function renderDetail() {
   const carouselHtml = slides.length === 0
     ? `<div class="photo-container"><span class="initial-large">${esc(f.name[0])}</span></div>`
     : `<div class="photo-carousel" id="photoCarousel">
-        ${slides.map(s => {
+        ${slides.map((s, si) => {
           const isDef = s.n === defaultN;
-          const viewerClick = s.stock ? '' : `openPhotoViewer('${eId}',${s.n})`;
           return `
-          <div class="photo-slide" onclick="${viewerClick}">
+          <div class="photo-slide" onclick="openSlideViewer('${eId}',${si})">
             <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${eId}')"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
             ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${eId}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
@@ -5453,6 +6004,9 @@ function renderDetail() {
       </button>
     </div>
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
+    <datalist id="locationSuggestions">
+      ${getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('')}
+    </datalist>
     <div class="detail-spacer"></div>
   </div>`;
   if (S.photoViewer) html += renderPhotoViewer();
@@ -5508,7 +6062,7 @@ function renderPhotoViewer() {
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -5521,6 +6075,8 @@ function renderSheet() {
   else if (S.sheet === 'batch') body = renderBatchEditSheet();
   else if (S.sheet === 'share') body = renderShareSheet();
   else if (S.sheet === 'wantListView') body = renderWantListViewSheet();
+  else if (S.sheet === 'kidsCoreAdmin') body = renderKidsCoreAdminSheet();
+  else if (S.sheet === 'accessoryPicker') body = renderAccessoryPickerSheet();
 
   return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
     <div class="sheet-backdrop"></div>
@@ -6241,6 +6797,7 @@ window.batchSetStatus = status => {
   let changed = 0;
   ids.forEach(id => {
     const cur = S.coll[id];
+    const wasStatus = cur?.status;
     let next = cur ? (isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur)) : { copies: [] };
     if (status === '') {
       delete next.status;
@@ -6257,6 +6814,8 @@ window.batchSetStatus = status => {
         next.copies = [{ id: 1 }];
       }
       S.coll[id] = next;
+      // v4.87: same ordered→owned migration setStatus/cycleStatus do.
+      if (wasStatus === 'ordered' && status === 'owned') migrateOrderedToOwned(id);
     }
     changed++;
     S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
@@ -6278,6 +6837,7 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
   let added = 0, promoted = 0;
   ids.forEach(id => {
     let cur = S.coll[id];
+    const wasStatus = cur?.status;
     if (!cur || (cur.status !== 'owned' && cur.status !== 'for-sale')) {
       cur = cur ? (isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur)) : { copies: [] };
       cur.status = targetStatus;
@@ -6296,6 +6856,9 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
     if (extras.notes) copy.notes = extras.notes;
     cur.copies.push(copy);
     S.coll[id] = cur;
+    // v4.87: same ordered→owned migration setStatus/cycleStatus/batchSetStatus do.
+    // Must run after S.coll[id] = cur so migrateOrderedToOwned sees the updated entry.
+    if (wasStatus === 'ordered' && targetStatus === 'owned') migrateOrderedToOwned(id);
     added++;
     S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   });
@@ -6318,6 +6881,9 @@ window.cycleStatus = (e, id) => {
   if (next) {
     if (!S.coll[id]) S.coll[id] = {};
     S.coll[id].status = next;
+    // v4.87: same ordered→owned migration setStatus() does. Previously the
+    // quick-tap dot silently dropped orderedFrom/orderedPaid on transition.
+    if (cur === 'ordered' && next === 'owned') migrateOrderedToOwned(id);
   } else {
     if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   }
@@ -6447,6 +7013,23 @@ window.openPhotoViewer = (id, startN) => {
   if (!photos.length) return;
   const startIdx = Math.max(0, photos.findIndex(p => p.n === startN));
   S.photoViewer = { figId: id, photos, idx: startIdx };
+  pushNav();
+  haptic && haptic();
+  render();
+  requestAnimationFrame(initPhotoViewerZoom);
+};
+
+// Opens viewer for any slide by carousel index — works for both user photos and stock image.
+window.openSlideViewer = (figId, slideIdx) => {
+  const fig = figById(figId);
+  if (!fig) return;
+  const userPhotos = photoStore.getAll(figId);
+  const stockImg = (fig.image && !S.imgErrors[figId]) ? fig.image : null;
+  const slides = [...userPhotos.map(p => ({...p, stock: false}))];
+  if (stockImg) slides.push({n: -1, url: stockImg, label: fig.name, stock: true});
+  if (!slides.length) return;
+  const idx = Math.max(0, Math.min(slideIdx, slides.length - 1));
+  S.photoViewer = { figId, photos: slides, idx };
   pushNav();
   haptic && haptic();
   render();
@@ -6588,6 +7171,60 @@ document.addEventListener('drop', e => {
     r.readAsText(file);
   }
 });
+
+// § KIDS-CORE-ADMIN ── saveKidsCoreAdminFig, deleteKidsCoreAdminFig ──────────
+// Local Kids Core figures stored in localStorage under KIDS_CORE_KEY.
+// Merged into S.figs on every load/sync. Survive AF411 syncs.
+
+window.saveKidsCoreAdminFig = () => {
+  const form = S._kcForm || {};
+  const existing = S._kcEditId ? (store.get(KIDS_CORE_KEY)||[]).find(f => f.id === S._kcEditId) : null;
+  const name = (form.name ?? existing?.name ?? '').trim();
+  const group = form.group ?? existing?.group ?? '';
+  if (!name) { toast('✗ Name is required'); return; }
+  if (!group) { toast('✗ Select a group'); return; }
+
+  const local = store.get(KIDS_CORE_KEY) || [];
+  if (S._kcEditId) {
+    const idx = local.findIndex(f => f.id === S._kcEditId);
+    if (idx >= 0) local[idx] = { ...local[idx], ...form, name, group, line: 'kids-core', source: 'kids-core-local' };
+  } else {
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') + '-kc-' + Date.now().toString(36);
+    local.push({
+      id: slug, name, group, line: 'kids-core', source: 'kids-core-local',
+      year:   form.year   ? Number(form.year)   : undefined,
+      wave:   form.wave   || undefined,
+      retail: form.retail ? Number(form.retail) : undefined,
+      faction:form.faction|| undefined,
+    });
+  }
+  store.set(KIDS_CORE_KEY, local);
+  // Re-merge into S.figs immediately without a full network sync
+  const remoteIds = new Set(S.figs.filter(f => f.source !== 'kids-core-local').map(f => f.id));
+  const merged = local.map(f => ({...f, image: ''})).filter(f => !remoteIds.has(f.id));
+  S.figs = [...S.figs.filter(f => f.source !== 'kids-core-local'), ...merged];
+  rebuildFigIndex();
+  _derived.invalidate();
+  const msg = S._kcEditId ? '✓ Figure updated' : '✓ Figure added to Kids Core';
+  S._kcEditId = null; S._kcForm = null;
+  toast(msg);
+  closeSheet();
+  render();
+};
+
+window.deleteKidsCoreAdminFig = async id => {
+  if (!await appConfirm('Delete this figure from Kids Core?', {danger:true, ok:'Delete'})) return;
+  const local = (store.get(KIDS_CORE_KEY)||[]).filter(f => f.id !== id);
+  store.set(KIDS_CORE_KEY, local);
+  S.figs = S.figs.filter(f => f.id !== id);
+  delete S.coll[id];
+  rebuildFigIndex();
+  _derived.invalidate();
+  S._kcEditId = null; S._kcForm = null;
+  saveColl();
+  toast('✓ Deleted');
+  render();
+};
 
 // § BOOT ── SW registration, UPDATE_AVAILABLE handler, online/offline, init() call ──
 if ('serviceWorker' in navigator) {

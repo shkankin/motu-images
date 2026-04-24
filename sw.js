@@ -1,7 +1,26 @@
-// MOTU Vault — Service Worker v4.74
+// MOTU Vault — Service Worker v4.89
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.89 changelog:
+//   • CACHE bumped to v4.89 — activate() wipes old entries. Required for
+//     the responsive tablet/desktop layout: new CSS media queries at 768px,
+//     1024px, and 1440px that widen the figure grid to 3/4/5 columns and
+//     cap content width. Pure CSS change; no JS behavior changes.
+//
+// v4.88 changelog:
+//   • CACHE bumped to v4.88 — activate() wipes old entries so users get a
+//     clean slate. Required because HTML ships the inline copy-count pill
+//     and its accompanying CSS.
+//
+// v4.87 changelog:
+//   • CACHE bumped to v4.87 — activate() wipes the old v4.74 bucket so users
+//     stuck on the previous SW get a clean slate. This also forces re-fetch
+//     of motu-vault.html, which is required since the HTML ships the new
+//     accessories/location UI and bug fixes (ordered→owned migration on
+//     the quick-tap dot, duplicate pinning in the list).
+//   • No behavior changes to the fetch/install/activate logic itself.
 //
 // v4.70 changelog:
 //   • Cache name bumped — activate() wipes old v4.69 entries so users stuck
@@ -18,7 +37,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.74';
+const CACHE = 'motu-vault-v4.89';
 
 const SHELL = [
   'motu-vault.html',
