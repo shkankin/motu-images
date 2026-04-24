@@ -2126,7 +2126,7 @@ const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const isSelecting = () => !!S.selectMode;
-// v4.79: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
+// v4.81: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
 // the small undo snapshots we take on every status tap. Fallback retained for
 // older Safari/Android WebView that predate structuredClone.
 const _clone = (typeof structuredClone === 'function')
@@ -2543,7 +2543,7 @@ const S = {
   _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
   _hiddenKey: null,         // cached join of hiddenItems for figIsHidden
-  _collVersion: 0,          // v4.79: bumped on every saveColl, used by _derived._makeKey
+  _collVersion: 0,          // v4.81: bumped on every saveColl, used by _derived._makeKey
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   confirmClear: false,      // pending clear confirmation in select actionbar
   iconOverride: null,       // session override for theme icon (e.g. Orko after Eternia egg)
@@ -3055,7 +3055,7 @@ function showContextMenu(figId, x, y) {
   if (!fig) return;
   const c = S.coll[figId] || {};
   dismissContextMenu();
-  // v4.79: escape figId for innerHTML onclick interpolation. AF411 slugs are
+  // v4.81: escape figId for innerHTML onclick interpolation. AF411 slugs are
   // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
   // ID source (import, manual edit) could carry a quote and break out.
   const eFigId = esc(figId);
@@ -3182,7 +3182,7 @@ let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
-  // v4.79: bump version counter so _derived cache key invalidates without
+  // v4.81: bump version counter so _derived cache key invalidates without
   // having to re-hash Object.keys(S.coll) on every render.
   S._collVersion++;
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
@@ -3374,9 +3374,10 @@ function isSublineHidden(lineId, subKey) {
 let _hidCache = new Map();
 let _hidCacheKey = '';
 function figIsHidden(f) {
-  // Compute key once per render cycle; S._hiddenKey is nulled by toggleHidden
+  // Cache key includes activeSubline so navigating into/out of a hidden subline busts it
   if (S._hiddenKey == null) S._hiddenKey = S.hiddenItems.length ? S.hiddenItems.join('|') : '';
-  if (_hidCacheKey !== S._hiddenKey) { _hidCache = new Map(); _hidCacheKey = S._hiddenKey; }
+  const cacheKey = S._hiddenKey + '\x00' + (S.activeSubline || '');
+  if (_hidCacheKey !== cacheKey) { _hidCache = new Map(); _hidCacheKey = cacheKey; }
   const cached = _hidCache.get(f.id);
   if (cached !== undefined) return cached;
   let hidden = false;
@@ -3385,7 +3386,11 @@ function figIsHidden(f) {
     const subs = SUBLINES[f.line];
     if (subs) {
       for (const sl of subs) {
-        if (sl.groups.includes(f.group) && isSublineHidden(f.line, sl.key)) { hidden = true; break; }
+        // Don't treat figures as hidden if we're actively browsing inside that subline
+        if (sl.groups.includes(f.group) && isSublineHidden(f.line, sl.key)) {
+          if (S.activeSubline === sl.key) { hidden = false; break; }
+          hidden = true; break;
+        }
       }
     }
   }
@@ -3650,7 +3655,7 @@ function flushFieldDebounces() {
 const _derived = {
   _key: null, _sorted: null, _stats: null,
   _makeKey() {
-    // v4.79: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
+    // v4.81: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
     // instead of re-joining hiddenItems on every render. Also use S._collVersion
     // (bumped by saveColl) instead of Object.keys(S.coll).length, which allocated
     // an array of ~600 keys on every key check.
@@ -3732,7 +3737,7 @@ function _computeSortedFigs() {
   return list;
 }
 
-// v4.79: restored missing `function getLineStats() {` declaration. The body
+// v4.81: restored missing `function getLineStats() {` declaration. The body
 // existed as orphan code (causing `Unexpected token '}'` at the trailing
 // brace and `Illegal return` at line 3697 in classic-script parsers).
 // getLineStats is called twice in renderLinesGrid / renderLinesGridContent.
@@ -3763,7 +3768,7 @@ function progressRing(pct, size=48, color='var(--acc)') {
 }
 
 // § IMPORT-EXPORT ── exportCSV, exportJSON, importJSON, doImport*, ZIP encoder ──
-// v4.79: restored missing `function exportCSV(filter) {` declaration. The
+// v4.81: restored missing `function exportCSV(filter) {` declaration. The
 // body remained as orphan code in v4.77 (never shipped) — header was lost
 // in a refactor. Matches the v4.73 production signature.
 function exportCSV(filter) {
@@ -4061,7 +4066,7 @@ window.handleImportFile = input => {
 
 function renderExportSheet() {
   const stats = getStats();
-  // v4.79: single linear scan instead of 5 separate S.figs.filter() passes.
+  // v4.81: single linear scan instead of 5 separate S.figs.filter() passes.
   // anyStatus is the count of figures with any status set; the per-status
   // counts (wish/ord/sale) come from getStats() which already has them, but
   // getStats only includes non-hidden figures and we want the unfiltered
@@ -4324,7 +4329,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.79</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.81</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4939,7 +4944,7 @@ function renderWantListViewSheet() {
 }
 
 // § RENDER-LISTS ── renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigList ──
-// v4.79: restored missing `function renderLinesGrid() {` declaration (orphan
+// v4.81: restored missing `function renderLinesGrid() {` declaration (orphan
 // body, same pattern as getLineStats / exportCSV).
 function renderLinesGrid() {
   const lineStats = getLineStats();
