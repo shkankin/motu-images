@@ -592,7 +592,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-thumb.for-sale { border-color: var(--rd); }
 .fig-thumb img {
   width: 100%; height: 100%;
-  object-fit: contain; object-position: center top;
+  object-fit: cover; object-position: top;
 }
 .fig-thumb .initial {
   font-family: 'Cinzel', serif;
@@ -669,7 +669,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-card img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
-  object-fit: contain; object-position: center top;
+  object-fit: cover; object-position: top;
 }
 .fig-card .card-overlay {
   position: absolute; inset: 0;
@@ -1581,52 +1581,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   height: 1px; background: var(--bd); margin: 0;
 }
 
-/* ── appConfirm / appAlert modal (v4.79) ────────────────────────── */
-.app-modal-overlay {
-  position: fixed; inset: 0; z-index: 9000;
-  background: rgba(0,0,0,.55);
-  backdrop-filter: blur(6px);
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-  opacity: 0;
-  animation: ctxFadeIn 0.15s ease-out forwards;
-}
-.app-modal {
-  background: var(--bg2);
-  border: 1px solid var(--bd);
-  border-radius: 18px;
-  box-shadow: 0 16px 48px rgba(0,0,0,.65);
-  width: 100%; max-width: 320px;
-  padding: 24px 20px 16px;
-  display: flex; flex-direction: column; gap: 20px;
-  animation: ctxSlideIn 0.18s cubic-bezier(0.32, 0.72, 0, 1);
-}
-.app-modal-msg {
-  font-size: 15px; line-height: 1.5; color: var(--t1); text-align: center;
-}
-.app-modal-msg code {
-  display: block; margin-top: 10px; padding: 8px 10px;
-  background: var(--bg3); border-radius: 8px;
-  font-size: 12px; color: var(--t2); text-align: left;
-  word-break: break-all; white-space: pre-wrap;
-  max-height: 120px; overflow-y: auto;
-  user-select: text; -webkit-user-select: text;
-}
-.app-modal-btns {
-  display: flex; gap: 10px;
-}
-.app-modal-btn {
-  flex: 1; padding: 13px 8px; border-radius: 12px;
-  font-size: 15px; font-weight: 600; font-family: 'Outfit', sans-serif;
-  border: 1px solid var(--bd); cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
-}
-.app-modal-btn:active { opacity: 0.75; transform: scale(0.97); }
-.app-modal-btn.cancel { background: var(--bg3); color: var(--t2); }
-.app-modal-btn.confirm { background: var(--acc); color: var(--btn-t); border-color: var(--acc); }
-.app-modal-btn.danger  { background: var(--rd);  color: #fff;         border-color: var(--rd); }
-.app-modal-btn.ok      { background: var(--bg3); color: var(--t1);    flex: none; width: 100%; }
-
 /* ── Completion Celebration ──────────────────────────────────────── */
 @keyframes confettiFall {
   0% { transform: translateY(0) rotate(0deg); opacity: 1; }
@@ -2140,10 +2094,6 @@ const SUBLINES = {
     {key:'movie',label:'Movie',groups:['Movie']},
     {key:'core',label:'Core (Non-Movie)',groups:['Core (Non-Movie)']},
   ],
-  'kids-core': [
-    {key:'action',  label:'Action Figures', groups:['Action Figures']},
-    {key:'movie',   label:'Movie (2026)',   groups:['Movie (2026)']},
-  ],
   'new-adventures': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'vehicles',label:'Vehicles',groups:['Vehicles']},
@@ -2175,9 +2125,8 @@ const GROUP_MAP = {
 const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-// v4.79: centralised select-mode guard — replaces 21 inline S.selectMode checks
-function isSelecting() { return !!S.selectMode; }
-// v4.78: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
+const isSelecting = () => !!S.selectMode;
+// v4.79: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
 // the small undo snapshots we take on every status tap. Fallback retained for
 // older Safari/Android WebView that predate structuredClone.
 const _clone = (typeof structuredClone === 'function')
@@ -2594,7 +2543,7 @@ const S = {
   _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
   _hiddenKey: null,         // cached join of hiddenItems for figIsHidden
-  _collVersion: 0,          // v4.78: bumped on every saveColl, used by _derived._makeKey
+  _collVersion: 0,          // v4.79: bumped on every saveColl, used by _derived._makeKey
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   confirmClear: false,      // pending clear confirmation in select actionbar
   iconOverride: null,       // session override for theme icon (e.g. Orko after Eternia egg)
@@ -2885,51 +2834,32 @@ function haptic(ms = 15) {
   if (navigator.vibrate) navigator.vibrate(ms);
 }
 
-// v4.79: in-app confirm/alert — replaces blocking confirm() / alert() calls.
-// appConfirm returns Promise<boolean>; options.danger styles the confirm button red.
-// appAlert returns Promise<void>; options.copyable renders msg in a <code> block.
-// Both disable the trigger element while open to prevent double-fire on rapid taps.
-function appConfirm(msg, { danger = false, trigger = null } = {}) {
+// In-app confirmation dialog — replaces blocking confirm()/alert() calls.
+// Returns a Promise<boolean> so callers can await it.
+// danger:true styles the confirm button red for destructive actions.
+function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'} = {}) {
   return new Promise(resolve => {
-    if (trigger) trigger.disabled = true;
     const overlay = document.createElement('div');
-    overlay.className = 'app-modal-overlay';
-    overlay.innerHTML = `<div class="app-modal" role="alertdialog" aria-modal="true">
-      <div class="app-modal-msg">${esc(msg)}</div>
-      <div class="app-modal-btns">
-        <button class="app-modal-btn cancel" id="_amCancel">Cancel</button>
-        <button class="app-modal-btn ${danger ? 'danger' : 'confirm'}" id="_amOk">
-          ${danger ? 'Delete' : 'OK'}
-        </button>
-      </div>
-    </div>`;
-    const cleanup = ok => {
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding-bottom:calc(16px + var(--safe-bottom,0px))';
+    overlay.innerHTML = `
+      <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:20px 20px 16px 16px;padding:22px 20px 12px;box-shadow:0 -4px 32px rgba(0,0,0,.4)">
+        <div style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:18px;text-align:center">${esc(message)}</div>
+        <div style="display:flex;gap:10px">
+          <button id="appConfirmCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
+          <button id="appConfirmOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:${danger?'var(--rd)':'var(--acc)'};color:#fff;font-size:15px;font-weight:700">${esc(ok)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    // Disable buttons after one tap to prevent double-fire on rapid taps
+    const finish = result => {
+      overlay.querySelector('#appConfirmOk').disabled = true;
+      overlay.querySelector('#appConfirmCancel').disabled = true;
       overlay.remove();
-      if (trigger) trigger.disabled = false;
-      resolve(ok);
+      resolve(result);
     };
-    overlay.querySelector('#_amOk').onclick    = () => { haptic(10); cleanup(true);  };
-    overlay.querySelector('#_amCancel').onclick = () => cleanup(false);
-    document.body.appendChild(overlay);
-    overlay.querySelector('#_amOk').focus();
-  });
-}
-function appAlert(msg, { copyable = false } = {}) {
-  return new Promise(resolve => {
-    const overlay = document.createElement('div');
-    overlay.className = 'app-modal-overlay';
-    const inner = copyable
-      ? `<div class="app-modal-msg">Import error<code>${esc(msg)}</code></div>`
-      : `<div class="app-modal-msg">${esc(msg)}</div>`;
-    overlay.innerHTML = `<div class="app-modal" role="alertdialog" aria-modal="true">
-      ${inner}
-      <div class="app-modal-btns">
-        <button class="app-modal-btn ok" id="_amOk">OK</button>
-      </div>
-    </div>`;
-    overlay.querySelector('#_amOk').onclick = () => { overlay.remove(); resolve(); };
-    document.body.appendChild(overlay);
-    overlay.querySelector('#_amOk').focus();
+    overlay.querySelector('#appConfirmOk').addEventListener('click', () => finish(true));
+    overlay.querySelector('#appConfirmCancel').addEventListener('click', () => finish(false));
+    overlay.addEventListener('click', e => { if (e.target === overlay) finish(false); });
   });
 }
 
@@ -3087,7 +3017,7 @@ function initLongPress(el, figId) {
   // Passive touchstart — do NOT preventDefault here or it kills scrolling.
   // We suppress the Android copy/paste callout via contextmenu instead.
   el.addEventListener('touchstart', e => {
-
+    if (isSelecting()) return;
     _lpMoved = false;
     _lpFired = false;
     _lpFigId = figId;
@@ -3125,7 +3055,7 @@ function showContextMenu(figId, x, y) {
   if (!fig) return;
   const c = S.coll[figId] || {};
   dismissContextMenu();
-  // v4.78: escape figId for innerHTML onclick interpolation. AF411 slugs are
+  // v4.79: escape figId for innerHTML onclick interpolation. AF411 slugs are
   // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
   // ID source (import, manual edit) could carry a quote and break out.
   const eFigId = esc(figId);
@@ -3164,6 +3094,11 @@ function showContextMenu(figId, x, y) {
   if (c.status === 'owned' || c.status === 'for-sale') {
     items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addCopy('${eFigId}');toast('✓ Copy added')">
       ${icon(ICO.import, 16)} Add another copy
+    </button>`;
+  }
+  if (fig.source === 'af411') {
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openAF411('${eFigId}')">
+      ${icon(ICO.export, 16)} View on AF411
     </button>`;
   }
   items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig('${eFigId}')">
@@ -3247,7 +3182,7 @@ let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
-  // v4.78: bump version counter so _derived cache key invalidates without
+  // v4.79: bump version counter so _derived cache key invalidates without
   // having to re-hash Object.keys(S.coll) on every render.
   S._collVersion++;
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
@@ -3631,10 +3566,7 @@ window.removeCopy = async (id, copyId) => {
   if (!cp) return;
   // Confirm only if copy has data — empty copies delete silently.
   const hasData = cp.condition || cp.paid || cp.notes || cp.variant;
-  if (hasData) {
-    const trigger = document.querySelector(`.copy-card[data-copy-id="${copyId}"] .copy-del-btn`);
-    if (!await appConfirm('Remove this copy and its data?', { danger: true, trigger })) return;
-  }
+  if (hasData && !await appConfirm('Remove this copy and its data?', {danger: true, ok: 'Remove'})) return;
   const newCopies = c.copies.filter(x => x.id !== copyId);
   // If this was the last copy and the figure is owned, leave a single
   // empty copy so the form is still editable. The user can change status
@@ -3718,7 +3650,7 @@ function flushFieldDebounces() {
 const _derived = {
   _key: null, _sorted: null, _stats: null,
   _makeKey() {
-    // v4.78: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
+    // v4.79: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
     // instead of re-joining hiddenItems on every render. Also use S._collVersion
     // (bumped by saveColl) instead of Object.keys(S.coll).length, which allocated
     // an array of ~600 keys on every key check.
@@ -3800,7 +3732,7 @@ function _computeSortedFigs() {
   return list;
 }
 
-// v4.78: restored missing `function getLineStats() {` declaration. The body
+// v4.79: restored missing `function getLineStats() {` declaration. The body
 // existed as orphan code (causing `Unexpected token '}'` at the trailing
 // brace and `Illegal return` at line 3697 in classic-script parsers).
 // getLineStats is called twice in renderLinesGrid / renderLinesGridContent.
@@ -3831,7 +3763,7 @@ function progressRing(pct, size=48, color='var(--acc)') {
 }
 
 // § IMPORT-EXPORT ── exportCSV, exportJSON, importJSON, doImport*, ZIP encoder ──
-// v4.78: restored missing `function exportCSV(filter) {` declaration. The
+// v4.79: restored missing `function exportCSV(filter) {` declaration. The
 // body remained as orphan code in v4.77 (never shipped) — header was lost
 // in a refactor. Matches the v4.73 production signature.
 function exportCSV(filter) {
@@ -4114,7 +4046,7 @@ function importJSON(file) {
       // success summary above).
       flushSaveColl();
     } catch(e) {
-      appAlert(e.message, { copyable: true });
+      toast('✗ Invalid backup: ' + e.message.slice(0, 80));
     }
   };
   reader.readAsText(file);
@@ -4129,7 +4061,7 @@ window.handleImportFile = input => {
 
 function renderExportSheet() {
   const stats = getStats();
-  // v4.78: single linear scan instead of 5 separate S.figs.filter() passes.
+  // v4.79: single linear scan instead of 5 separate S.figs.filter() passes.
   // anyStatus is the count of figures with any status set; the per-status
   // counts (wish/ord/sale) come from getStats() which already has them, but
   // getStats only includes non-hidden figures and we want the unfiltered
@@ -4392,7 +4324,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.80</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.79</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4424,7 +4356,7 @@ function renderMain() {
     ${renderContent()}
   </div>
 
-  <div class="bottom-nav${isSelecting() ? ' hidden' : ''}" id="bottomNav">
+  <div class="bottom-nav${S.selectMode ? ' hidden' : ''}" id="bottomNav">
     ${renderNavBtn('lines', ICO.lines, 'Lines')}
     ${renderNavBtn('all', ICO.list, 'All', `<span class="badge">${stats.total}</span>`)}
     ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned}</span>`)}
@@ -4455,21 +4387,19 @@ function renderMain() {
   applySpacerHeight();
   requestAnimationFrame(() => { applySpacerHeight(); requestAnimationFrame(applySpacerHeight); });
 
-  // v4.79: ResizeObserver keeps topSpacer in sync whenever topBar height changes
-  // (e.g. search bar appears/disappears, font scaling, orientation change).
-  // The triple-rAF above is retained as the initial-frame fallback for Fennec /
-  // older Android WebViews where RO callback timing can be unreliable during
-  // the first innerHTML rebuild — do NOT remove it.
+  // ResizeObserver keeps the spacer in sync whenever topBar changes height
+  // (e.g. search bar slide-in/out, title wrap on small screens). Fennec and
+  // older Android WebViews are unreliable with RO inside rAF so we keep the
+  // triple-rAF above as the guaranteed initial-frame path and let RO handle
+  // subsequent dynamic changes only.
   if ('ResizeObserver' in window) {
-    if (renderMain._topBarRO) renderMain._topBarRO.disconnect();
-    const ro = new ResizeObserver(() => {
+    if (window._topBarRO) window._topBarRO.disconnect();
+    window._topBarRO = new ResizeObserver(() => {
       const t = document.getElementById('topBar');
       const s = document.getElementById('topSpacer');
       if (t && s) { const h = t.offsetHeight; if (h > 0) s.style.height = h + 'px'; }
     });
-    const tbEl = document.getElementById('topBar');
-    if (tbEl) ro.observe(tbEl);
-    renderMain._topBarRO = ro;
+    if (tb) window._topBarRO.observe(tb);
   }
 
   // Re-apply immersive state after innerHTML rebuild
@@ -4478,17 +4408,12 @@ function renderMain() {
     if (bn) bn.classList.add('immersive-hide');
   }
 
-  // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders.
-  // When opening a sheet, S._sheetOpenScroll holds the position captured before S.sheet was
-  // set (the normal _preservedScroll path is skipped when S.sheet is truthy).
+  // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
   if (ca) {
     const maxScroll = Math.max(0, ca.scrollHeight - ca.clientHeight);
     if (S.savedScroll && S.screen === 'main') {
       ca.scrollTop = Math.min(S.savedScroll, maxScroll);
       S.savedScroll = 0;
-    } else if (S._sheetOpenScroll != null && S.sheet) {
-      ca.scrollTop = Math.min(S._sheetOpenScroll, maxScroll);
-      S._sheetOpenScroll = null;
     } else if (_preservedScroll > 0 && !S.sheet && !S._justNavigated) {
       ca.scrollTop = Math.min(_preservedScroll, maxScroll);
     }
@@ -5014,7 +4939,7 @@ function renderWantListViewSheet() {
 }
 
 // § RENDER-LISTS ── renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigList ──
-// v4.78: restored missing `function renderLinesGrid() {` declaration (orphan
+// v4.79: restored missing `function renderLinesGrid() {` declaration (orphan
 // body, same pattern as getLineStats / exportCSV).
 function renderLinesGrid() {
   const lineStats = getLineStats();
@@ -5126,13 +5051,13 @@ function renderFigRow(f) {
   const imgErr = S.imgErrors[f.id];
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
-  const eId = esc(f.id); // v4.79: escape id for onclick interpolation
-  const isSelected = isSelecting() && S.selected.has(f.id);
-  const rowClick = isSelecting() ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
+  const isSelected = S.selectMode && S.selected.has(f.id);
+  const eId = esc(f.id);
+  const rowClick = S.selectMode ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
-  return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${f.id}" onclick="${rowClick}">
-    ${isSelecting() ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+  return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" onclick="${rowClick}">
+    ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
@@ -5146,7 +5071,7 @@ function renderFigRow(f) {
         ${f.year ? `<span>· ${f.year}</span>` : ''}
       </div>
     </div>
-    ${isSelecting() ? '' : `<div class="fig-actions">
+    ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${copyN > 1 ? `<div class="copy-count-badge" title="${copyN} copies">×${copyN}</div>` : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
@@ -5165,7 +5090,7 @@ function renderFigCard(f) {
   const imgErr = S.imgErrors[f.id];
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
-  const eId = esc(f.id); // v4.79: escape id for onclick interpolation
+  const eId = esc(f.id);
   const statusIcon = c.status
     ? `<div class="fig-status-dot ${statusCls}"></div>`
     : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
@@ -5173,18 +5098,18 @@ function renderFigCard(f) {
     ? `cycleStatus(event,'${eId}')`
     : `event.stopPropagation();setStatus('${eId}','owned')`;
 
-  const isSelected = isSelecting() && S.selected.has(f.id);
-  const cardClick = isSelecting() ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
+  const isSelected = S.selectMode && S.selected.has(f.id);
+  const cardClick = S.selectMode ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
-  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}" data-fig-id="${f.id}" onclick="${cardClick}">
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}" data-fig-id="${eId}" onclick="${cardClick}">
     ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
       `<div class="card-initial">${esc(f.name[0])}</div>`}
     <div class="card-overlay"></div>
-    ${isSelecting() ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
-    ${!isSelecting() && isNew ? '<div class="new-badge">NEW</div>' : ''}
-    ${!isSelecting() && copyN > 1 ? `<div class="copy-count-badge copy-count-badge-card" title="${copyN} copies">×${copyN}</div>` : ''}
-    ${isSelecting() ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
+    ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+    ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
+    ${!S.selectMode && copyN > 1 ? `<div class="copy-count-badge copy-count-badge-card" title="${copyN} copies">×${copyN}</div>` : ''}
+    ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
     <div class="card-info">
       <div class="card-fig-name">${esc(f.name)}</div>
       <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
@@ -5246,8 +5171,8 @@ function renderFigList() {
   const gridActive = isGrid ? 'active' : '';
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px;gap:8px">
     <div class="fig-count" style="margin-bottom:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
-    <button class="select-btn${isSelecting() ? ' active' : ''}" onclick="${isSelecting() ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
-      ${isSelecting() ? 'Done' : 'Select'}
+    <button class="select-btn${S.selectMode ? ' active' : ''}" onclick="${S.selectMode ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
+      ${S.selectMode ? 'Done' : 'Select'}
     </button>
     <div class="view-toggle">
       <button class="${listActive}" onclick="setViewMode('list')" title="List view">${icon(ICO.list,14)}</button>
@@ -5320,18 +5245,22 @@ function renderFigList() {
 // just this chunk on status change without re-rendering the whole detail
 // screen (which would otherwise reset scroll to the top).
 function renderDetailStatusBlock(f, c) {
-  const eFigId = esc(f.id); // v4.79: escape id for onclick interpolation
+  const eId = esc(f.id);
   let h = `<div class="status-grid">
     <div class="label text-upper text-dim text-xs">Status</div>
     <div class="grid">`;
   STATUSES.forEach(s => {
     const active = c.status === s;
-    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${eFigId}','${s}');patchDetailStatus()">${active?'✓ ':''}${STATUS_LABEL[s]}</button>`;
+    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${eId}','${s}');patchDetailStatus()">${active?'✓ ':''}${STATUS_LABEL[s]}</button>`;
   });
   h += `</div></div>`;
   if (c.status) {
+    // Owned / for-sale / wishlist / ordered all reach this branch.
+    // Copies UI only renders for owned/for-sale (where you actually have
+    // physical items). Ordered shows order detail fields. Wishlist is status only.
     const showsCopies = c.status === 'owned' || c.status === 'for-sale';
     if (showsCopies) {
+      // Ensure we always have at least one copy slot to edit.
       const copies = (isMigrated(c) && c.copies.length) ? c.copies : [{ id: 1 }];
       const isMulti = copies.length > 1;
       h += `<div class="copies-section">
@@ -5341,7 +5270,7 @@ function renderDetailStatusBlock(f, c) {
       copies.forEach((cp, i) => {
         h += renderCopyCard(f, cp, i, isMulti);
       });
-      h += `<button class="add-copy-btn" onclick="addCopy('${eFigId}')">
+      h += `<button class="add-copy-btn" onclick="addCopy('${eId}')">
         <span class="add-copy-plus">+</span> Add another copy
       </button>
       </div>`;
@@ -5354,15 +5283,15 @@ function renderDetailStatusBlock(f, c) {
         <div class="detail-fields copy-fields">
           <div>
             <div class="field-label text-dim text-sm">Ordered From</div>
-            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField('${eFigId}','orderedFrom',this.value)">
+            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField('${eId}','orderedFrom',this.value)">
           </div>
           <div>
             <div class="field-label text-dim text-sm">Expected Date</div>
-            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField('${eFigId}','orderedDate',this.value)">
+            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField('${eId}','orderedDate',this.value)">
           </div>
           <div>
             <div class="field-label text-dim text-sm">Price Paid</div>
-            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField('${eFigId}','orderedPaid',this.value)">
+            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField('${eId}','orderedPaid',this.value)">
           </div>
         </div>
       </div>`;
@@ -5378,34 +5307,35 @@ function renderCopyCard(f, cp, i, isMulti) {
   const paid = cp.paid || '';
   const variant = cp.variant || '';
   const notes = cp.notes || '';
+  const eId = esc(f.id);
+  // copyId is the stable internal id used by addCopy/removeCopy/updateCopy
   const cid = cp.id;
-  const eFigId = esc(f.id); // v4.79: escape id for onclick interpolation
   let h = `<div class="copy-card" data-copy-id="${cid}">`;
   if (isMulti) {
     h += `<div class="copy-card-head">
       <div class="copy-num">Copy ${i + 1}</div>
-      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy('${eFigId}',${cid})">${icon(ICO.trash, 14)}</button>
+      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy('${eId}',${cid})">${icon(ICO.trash, 14)}</button>
     </div>`;
   }
   h += `<div class="detail-fields copy-fields">
     <div>
       <div class="field-label text-dim text-sm">Condition</div>
-      <select onchange="updateCopy('${eFigId}',${cid},'condition',this.value)">
+      <select onchange="updateCopy('${eId}',${cid},'condition',this.value)">
         <option value="">Select...</option>
         ${CONDITIONS.map(x => `<option value="${esc(x)}" ${cond===x?'selected':''}>${esc(x)}</option>`).join('')}
       </select>
     </div>
     <div>
       <div class="field-label text-dim text-sm">Price Paid</div>
-      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy('${eFigId}',${cid},'paid',this.value)">
+      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy('${eId}',${cid},'paid',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Variant</div>
-      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${eFigId}',${cid},'variant',this.value)">
+      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${eId}',${cid},'variant',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Notes</div>
-      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced('${eFigId}',${cid},'notes',this.value)" onblur="updateCopy('${eFigId}',${cid},'notes',this.value)">${esc(notes)}</textarea>
+      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced('${eId}',${cid},'notes',this.value)" onblur="updateCopy('${eId}',${cid},'notes',this.value)">${esc(notes)}</textarea>
     </div>`;
   // Per-copy photos (multi-copy only — single-copy uses the main carousel)
   if (isMulti) {
@@ -5414,14 +5344,14 @@ function renderCopyCard(f, cp, i, isMulti) {
       <div class="field-label text-dim text-sm">Photos for this copy</div>
       <div class="copy-photos-strip">`;
     copyPhotos.forEach(p => {
-      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto('${eFigId}',${p.n})">
+      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto('${eId}',${p.n})">
         <img src="${esc(p.url)}" alt="${esc(p.label || '')}" loading="lazy">
-        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto('${eFigId}',${p.n})">⌫</button>
+        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto('${eId}',${p.n})">⌫</button>
       </div>`;
     });
     h += `<label class="copy-photo-add" title="Add photo to this copy">
       ${icon(ICO.img, 18)}
-      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,'${eFigId}',${cid})">
+      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,'${eId}',${cid})">
     </label>
     </div></div>`;
   }
@@ -5442,8 +5372,8 @@ function renderDetail() {
   const _ds = document.querySelector('.detail-scroll');
   const _dsScroll = _ds ? _ds.scrollTop : 0;
   const f = S.activeFig;
+  const eId = esc(f.id);
   const c = S.coll[f.id] || {};
-  const eFigId = esc(f.id); // v4.79: escape id for onclick interpolation
   const userPhotos = photoStore.getAll(f.id);    // [{n, url, label}, ...]
   const hasCustom = userPhotos.length > 0;
   const stockImg = (f.image && !S.imgErrors[f.id]) ? f.image : null;
@@ -5461,13 +5391,13 @@ function renderDetail() {
     : `<div class="photo-carousel" id="photoCarousel">
         ${slides.map(s => {
           const isDef = s.n === defaultN;
-          const viewerClick = s.stock ? '' : `openPhotoViewer('${eFigId}',${s.n})`;
+          const viewerClick = s.stock ? '' : `openPhotoViewer('${eId}',${s.n})`;
           return `
           <div class="photo-slide" onclick="${viewerClick}">
-            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${eFigId}')"` : ''}>
+            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${eId}')"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
-            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${eFigId}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
-            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto('${eFigId}',${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
+            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${eId}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
+            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto('${eId}',${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
           </div>`;
         }).join('')}
       </div>
@@ -5486,24 +5416,27 @@ function renderDetail() {
           ${icon(ICO.plus,14)} Add photo${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
         </button>` : `<div class="photo-btn" style="opacity:0.5;cursor:default">Max ${MAX_PHOTOS} photos</div>`}
       </div>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,'${eFigId}')">
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,'${eId}')">
     </div>
     ${userPhotos.length > 0 ? `<div class="photo-labels">
       ${userPhotos.map(p => `
         <div class="photo-label-row">
           <span class="photo-label-num">#${userPhotos.indexOf(p)+1}</span>
           <input type="text" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
-                 onblur="setPhotoLabel('${eFigId}',${p.n},this.value)" maxlength="20">
+                 onblur="setPhotoLabel('${eId}',${p.n},this.value)" maxlength="20">
         </div>
       `).join('')}
     </div>` : ''}
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
+      ${f.source === 'af411' ? `<a href="#" onclick="event.preventDefault();openAF411('${eId}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
+        ${icon(ICO.export,14)} View on AF411
+      </a>` : ''}
       <button onclick="searchCharacter('${esc(f.name)}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.search,14)} All versions
       </button>
-      <button onclick="openFigureEditor('${eFigId}')" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
+      <button onclick="openFigureEditor('${eId}')" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.edit,14)} Edit
       </button>
     </div>
@@ -5734,6 +5667,7 @@ function renderEditFigureSheet() {
   if (!figId) return '<div class="text-sm text-dim">No figure selected.</div>';
   const f = figById(figId);
   if (!f) return '<div class="text-sm text-dim">Figure not found.</div>';
+  const eFigId = esc(figId);
   const ov = _overrides[figId]?.fields || {};
   const has = Object.keys(ov).length > 0;
   // For each editable field, show current effective value with an "overridden" hint.
@@ -5751,18 +5685,9 @@ function renderEditFigureSheet() {
     Editing local info for <strong style="color:var(--gold)">${esc(f.name)}</strong>. Changes survive AF411 syncs and stay on this device. Leave a field blank to keep the source value.
   </div>`;
 
-  // Line
-  h += row('line', 'Line',
-    `<select onchange="setOverrideField('${figId}','line',this.value);refreshEditSheet()">
-      <option value="">— Use source —</option>
-      ${LINES.map(l => `<option value="${esc(l.id)}" ${(ov.line||f.line)===l.id?'selected':''}>${esc(l.name)}</option>`).join('')}
-    </select>`,
-    f.line && !ov.line ? `Source: ${esc(ln(f.line))}` : ''
-  );
-
   // Faction
   h += row('faction', 'Faction',
-    `<select onchange="setOverrideField('${figId}','faction',this.value);refreshEditSheet()">
+    `<select onchange="setOverrideField('${eFigId}','faction',this.value);refreshEditSheet()">
       <option value="">— Use source —</option>
       ${FACTIONS.map(opt => `<option value="${esc(opt)}" ${(ov.faction||f.faction)===opt?'selected':''}>${esc(opt)}</option>`).join('')}
     </select>`,
@@ -5774,34 +5699,32 @@ function renderEditFigureSheet() {
   const curGroup = ov.group || f.group || '';
   const groupInput = `
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      ${lineGroups.map(g => `<button type="button" onclick="setOverrideField('${figId}','group','${esc(g.replace(/'/g,"\\'"))}');refreshEditSheet()" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
+      ${lineGroups.map(g => `<button type="button" onclick="setOverrideField('${eFigId}','group','${esc(g.replace(/'/g,"\\'"))}');refreshEditSheet()" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
     </div>
-    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" onchange="setOverrideField('${figId}','group',this.value);refreshEditSheet()">`;
+    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" onchange="setOverrideField('${eFigId}','group',this.value);refreshEditSheet()">`;
   h += row('group', 'Group', groupInput,
     f.group && !ov.group ? `Source: ${esc(f.group)}` : ''
   );
 
   // Wave
   h += row('wave', 'Wave',
-    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" onchange="setOverrideField('${figId}','wave',this.value);refreshEditSheet()">`,
+    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" onchange="setOverrideField('${eFigId}','wave',this.value);refreshEditSheet()">`,
     f.wave && !ov.wave ? `Source: ${esc(f.wave)}` : ''
   );
 
-  // Year (number-ish, but stored as string for consistency with source)
+  // Year
   h += row('year', 'Year',
-    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" onchange="setOverrideField('${figId}','year',this.value?Number(this.value):'');refreshEditSheet()">`,
+    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" onchange="setOverrideField('${eFigId}','year',this.value?Number(this.value):'');refreshEditSheet()">`,
     f.year && !ov.year ? `Source: ${esc(f.year)}` : ''
   );
 
   // Retail price
   h += row('retail', 'Retail Price',
-    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" onchange="setOverrideField('${figId}','retail',this.value?Number(this.value):'');refreshEditSheet()">`,
+    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" onchange="setOverrideField('${eFigId}','retail',this.value?Number(this.value):'');refreshEditSheet()">`,
     f.retail && !ov.retail ? `Source: $${Number(f.retail).toFixed(2)}` : ''
   );
 
-  // Name (rare to need but useful for typos in source data).
-  // When an override is set, f.name already contains the overridden value,
-  // so we fetch the pre-override name from the raw figures cache.
+  // Name
   let sourceName = '';
   if (ov.name) {
     const cached = store.get(CACHE_KEY);
@@ -5809,14 +5732,14 @@ function renderEditFigureSheet() {
     if (src && src.name && src.name !== ov.name) sourceName = src.name;
   }
   h += row('name', 'Name',
-    `<input type="text" value="${esc(ov.name || f.name || '')}" onchange="setOverrideField('${figId}','name',this.value);refreshEditSheet()">`,
+    `<input type="text" value="${esc(ov.name || f.name || '')}" onchange="setOverrideField('${eFigId}','name',this.value);refreshEditSheet()">`,
     sourceName ? `Source: ${esc(sourceName)}` : ''
   );
 
   // Reset button — only meaningful when there's something to reset
   if (has) {
     h += `<div style="height:1px;background:var(--bd);margin:18px 0"></div>
-    <button onclick="resetFigureOverrides('${figId}')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
+    <button onclick="resetFigureOverrides('${eFigId}')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
       Reset all edits to source
     </button>`;
   }
@@ -5832,16 +5755,13 @@ window.refreshEditSheet = () => {
 };
 
 window.resetFigureOverrides = async figId => {
-  const trigger = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
-  if (!await appConfirm('Reset all local edits for this figure?', { trigger })) return;
+  if (!await appConfirm('Reset all local edits for this figure?', {danger: true, ok: 'Reset'})) return;
   clearOverrides(figId);
   refreshEditSheet();
 };
 
 // Open the editor for a specific figure id.
 window.openFigureEditor = figId => {
-  const _ca = document.getElementById('contentArea');
-  if (_ca) S._sheetOpenScroll = _ca.scrollTop;
   S.editingFigId = figId;
   S.sheet = 'edit';
   pushNav();
@@ -6173,7 +6093,7 @@ window.openFig = id => {
 };
 window.closeDetail = () => { history.back(); };
 window.deleteFig = async id => {
-  if (!await appConfirm('Delete this figure?', { danger: true })) return;
+  if (!await appConfirm('Delete this figure and all its data?', {danger: true, ok: 'Delete'})) return;
   // Clean up all side-data before dropping the figure itself.
   // Order: photos (OPFS + labels + copy assignments), then overrides,
   // then collection entry, then figure row.
@@ -6185,11 +6105,7 @@ window.deleteFig = async id => {
   S.screen = 'main'; render();
 };
 
-window.openSheet = name => {
-  // Capture scroll BEFORE setting S.sheet — renderMain skips capture when sheet is truthy
-  const _ca = document.getElementById('contentArea');
-  if (_ca) S._sheetOpenScroll = _ca.scrollTop;
-  S.sheet = name; pushNav(); render();
+window.openSheet = name => { S.sheet = name; pushNav(); render();
   requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
 };
 window.closeSheet = () => { history.back(); };
@@ -6368,20 +6284,20 @@ window.handlePhoto = (input, figId) => {
   const file = input.files?.[0]; if (!file) return;
   if (file.size > 20000000) { toast('✗ Image too large (max 20MB)'); return; }
   const existing = S.customPhotos[figId] || [];
-  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos reached — remove one first`); input.value = ''; return; }
+  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos — remove one first`); input.value = ''; return; }
   compressPhoto(file).then(async blob => {
-    if (!blob) { appAlert('Could not process image.'); return; }
+    if (!blob) { toast('✗ Could not process image'); return; }
     const n = await photoStore.add(figId, blob, '');
-    if (n < 0) { appAlert('Storage full or photo limit reached.'); return; }
+    if (n < 0) { toast('✗ Storage full or photo limit reached'); return; }
     S.imgErrors[figId] = false;
     input.value = '';
     haptic && haptic();
     renderDetail();
-  }).catch(() => { appAlert('Could not read image file.'); input.value = ''; });
+  }).catch(() => { toast('✗ Could not read image file'); input.value = ''; });
 };
 
 window.removePhoto = async (id, n) => {
-  if (!await appConfirm('Remove this photo?', { danger: true })) return;
+  if (!await appConfirm('Remove this photo?', {danger: true, ok: 'Remove'})) return;
   await photoStore.remove(id, n);
   haptic && haptic();
   renderDetail();
@@ -6391,17 +6307,17 @@ window.handleCopyPhoto = (input, figId, copyId) => {
   const file = input.files?.[0]; if (!file) return;
   if (file.size > 20000000) { toast('✗ Image too large (max 20MB)'); return; }
   const existing = S.customPhotos[figId] || [];
-  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos reached — remove one first`); input.value = ''; return; }
+  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos — remove one first`); input.value = ''; return; }
   compressPhoto(file).then(async blob => {
-    if (!blob) { appAlert('Could not process image.'); return; }
+    if (!blob) { toast('✗ Could not process image'); return; }
     const n = await photoStore.add(figId, blob, '', copyId);
-    if (n < 0) { appAlert('Storage full or photo limit reached.'); return; }
+    if (n < 0) { toast('✗ Storage full or photo limit reached'); return; }
     S.imgErrors[figId] = false;
     input.value = '';
     haptic && haptic();
     patchDetailStatus();
     renderDetail();
-  }).catch(() => { appAlert('Could not read image file.'); input.value = ''; });
+  }).catch(() => { toast('✗ Could not read image file'); input.value = ''; });
 };
 
 // Unlink a photo from its copy (makes it shared / visible from any copy view).
@@ -6424,7 +6340,7 @@ window.openCopyPhoto = (figId, n) => {
 };
 
 window.clearPhoto = async id => {
-  if (!await appConfirm('Remove all photos for this figure?', { danger: true })) return;
+  if (!await appConfirm('Remove all photos for this figure?', {danger: true, ok: 'Remove all'})) return;
   await photoStore.delAll(id);
   renderDetail();
 };
