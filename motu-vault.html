@@ -669,7 +669,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-card img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
-  object-fit: cover; object-position: top;
+  object-fit: contain; object-position: center;
 }
 .fig-card .card-overlay {
   position: absolute; inset: 0;
@@ -2074,6 +2074,10 @@ const SUBLINES = {
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
     {key:'other',label:'Other',groups:['Other','Battle Sets']},
   ],
+  'kids-core': [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
+  ],
   original: [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles and Playsets','Vehicles & Playsets']},
@@ -2126,7 +2130,7 @@ const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const isSelecting = () => !!S.selectMode;
-// v4.82: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
+// v4.84: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
 // the small undo snapshots we take on every status tap. Fallback retained for
 // older Safari/Android WebView that predate structuredClone.
 const _clone = (typeof structuredClone === 'function')
@@ -2543,7 +2547,7 @@ const S = {
   _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
   _hiddenKey: null,         // cached join of hiddenItems for figIsHidden
-  _collVersion: 0,          // v4.82: bumped on every saveColl, used by _derived._makeKey
+  _collVersion: 0,          // v4.84: bumped on every saveColl, used by _derived._makeKey
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   confirmClear: false,      // pending clear confirmation in select actionbar
   iconOverride: null,       // session override for theme icon (e.g. Orko after Eternia egg)
@@ -3055,7 +3059,7 @@ function showContextMenu(figId, x, y) {
   if (!fig) return;
   const c = S.coll[figId] || {};
   dismissContextMenu();
-  // v4.82: escape figId for innerHTML onclick interpolation. AF411 slugs are
+  // v4.84: escape figId for innerHTML onclick interpolation. AF411 slugs are
   // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
   // ID source (import, manual edit) could carry a quote and break out.
   const eFigId = esc(figId);
@@ -3182,7 +3186,7 @@ let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
-  // v4.82: bump version counter so _derived cache key invalidates without
+  // v4.84: bump version counter so _derived cache key invalidates without
   // having to re-hash Object.keys(S.coll) on every render.
   S._collVersion++;
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
@@ -3252,6 +3256,9 @@ function setOverrideField(figId, key, val) {
     if (!Object.keys(_overrides[figId].fields).length) delete _overrides[figId];
   } else {
     _overrides[figId].fields[key] = val;
+    // When reassigning to a new line, clear any group override so the figure
+    // isn't orphaned in a group that doesn't exist in the new line.
+    if (key === 'line') delete _overrides[figId].fields.group;
   }
   saveOverrides();
   // Re-apply so figById reflects the change immediately
@@ -3655,7 +3662,7 @@ function flushFieldDebounces() {
 const _derived = {
   _statsKey: null, _sortedKey: null, _sorted: null, _stats: null,
   _makeKey() {
-    // v4.82: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
+    // v4.84: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
     // instead of re-joining hiddenItems on every render. Also use S._collVersion
     // (bumped by saveColl) instead of Object.keys(S.coll).length, which allocated
     // an array of ~600 keys on every key check.
@@ -3737,7 +3744,7 @@ function _computeSortedFigs() {
   return list;
 }
 
-// v4.82: restored missing `function getLineStats() {` declaration. The body
+// v4.84: restored missing `function getLineStats() {` declaration. The body
 // existed as orphan code (causing `Unexpected token '}'` at the trailing
 // brace and `Illegal return` at line 3697 in classic-script parsers).
 // getLineStats is called twice in renderLinesGrid / renderLinesGridContent.
@@ -3768,7 +3775,7 @@ function progressRing(pct, size=48, color='var(--acc)') {
 }
 
 // § IMPORT-EXPORT ── exportCSV, exportJSON, importJSON, doImport*, ZIP encoder ──
-// v4.82: restored missing `function exportCSV(filter) {` declaration. The
+// v4.84: restored missing `function exportCSV(filter) {` declaration. The
 // body remained as orphan code in v4.77 (never shipped) — header was lost
 // in a refactor. Matches the v4.73 production signature.
 function exportCSV(filter) {
@@ -4066,7 +4073,7 @@ window.handleImportFile = input => {
 
 function renderExportSheet() {
   const stats = getStats();
-  // v4.82: single linear scan instead of 5 separate S.figs.filter() passes.
+  // v4.84: single linear scan instead of 5 separate S.figs.filter() passes.
   // anyStatus is the count of figures with any status set; the per-status
   // counts (wish/ord/sale) come from getStats() which already has them, but
   // getStats only includes non-hidden figures and we want the unfiltered
@@ -4329,7 +4336,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.82</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.84</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4944,7 +4951,7 @@ function renderWantListViewSheet() {
 }
 
 // § RENDER-LISTS ── renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigList ──
-// v4.82: restored missing `function renderLinesGrid() {` declaration (orphan
+// v4.84: restored missing `function renderLinesGrid() {` declaration (orphan
 // body, same pattern as getLineStats / exportCSV).
 function renderLinesGrid() {
   const lineStats = getLineStats();
@@ -5690,6 +5697,17 @@ function renderEditFigureSheet() {
     Editing local info for <strong style="color:var(--gold)">${esc(f.name)}</strong>. Changes survive AF411 syncs and stay on this device. Leave a field blank to keep the source value.
   </div>`;
 
+  // Line — allows reassigning a figure to a different line (e.g. Kids Core).
+  // This override survives sync since applyOverrides runs after every fetch.
+  const curLine = ov.line || f.line || '';
+  h += row('line', 'Line',
+    `<select onchange="setOverrideField('${eFigId}','line',this.value);refreshEditSheet()">
+      <option value="">— Use source —</option>
+      ${LINES.map(l => `<option value="${esc(l.id)}" ${curLine===l.id?'selected':''}>${esc(l.name)}</option>`).join('')}
+    </select>`,
+    f.line && !ov.line ? `Source: ${esc(ln(f.line))}` : (ov.line ? `Overrides source: ${esc(ln(f.line))}` : '')
+  );
+
   // Faction
   h += row('faction', 'Faction',
     `<select onchange="setOverrideField('${eFigId}','faction',this.value);refreshEditSheet()">
@@ -5767,6 +5785,9 @@ window.resetFigureOverrides = async figId => {
 
 // Open the editor for a specific figure id.
 window.openFigureEditor = figId => {
+  // Save list scroll position before opening sheet so it's restored on close
+  const ca = document.getElementById('contentArea');
+  if (ca && ca.scrollTop > 0) S.savedScroll = ca.scrollTop;
   S.editingFigId = figId;
   S.sheet = 'edit';
   pushNav();
@@ -6033,19 +6054,63 @@ window.triggerEterniaEgg = () => {
     overlay.remove();
   }, {once: true});
 };
-// Opens AF411 figure page. Slug format is e.g. "he-man-origins-wave2-11290"
-// where the trailing number is the AF411 figure ID.
-// AF411 direct URL: /masters-of-the-universe/{series}/{group}/{slug}.php
-// We don't have the series/group path, so we use their site search with the
-// numeric ID which returns exactly one result.
+// AF411 URL: /masters-of-the-universe/{line}/{group-slug}/{figure-slug}.php
+// Group slugs are mostly kebab(group) except a few confirmed exceptions.
+const AF411_GROUP_SLUG = {
+  'origins|Action Figures':          'origins-action-figures',
+  'origins|Deluxe':                  'deluxe',
+  'origins|Exclusives':              'exclusives',
+  'origins|Vehicles & Playsets':     'vehicles-playsets',
+  'origins|Turtles of Grayskull':    'turtles-of-grayskull',
+  'origins|Crossovers':              'stranger-things-crossover',
+  'origins|WWE':                     'wwe',
+  'masterverse|Revelation':          'revelation',
+  'masterverse|Revelation Deluxe':   'revelation',
+  'masterverse|New Eternia':         'new-eternia',
+  'masterverse|New Etheria':         'new-etheria',
+  'masterverse|Princess of Power':   'princess-of-power',
+  'masterverse|Revolution':          'revolution',
+  'masterverse|New Adventures':      'new-adventures',
+  'masterverse|Movie':               'movie',
+  'masterverse|CGI Cartoon':         'cgi-cartoon',
+  'masterverse|40th Anniversary':    '40th-anniversary',
+  'masterverse|Rulers of the Sun':   'rulers-of-the-sun',
+  'masterverse|Vintage Collection':  'vintage-collection',
+  'classics|Heroic Warriors':        'heroic-warriors',
+  'classics|Evil Warriors':          'evil-warriors',
+  'classics|Evil Horde':             'evil-horde',
+  'classics|Snake Men':              'snake-men',
+  'classics|Great Rebellion':        'great-rebellion',
+  'classics|Galactic Protectors':    'galactic-protectors',
+  'classics|Evil Mutants':           'evil-mutants',
+  'classics|Packs':                  'multi-packs',
+  'classics|Creatures':              'creatures',
+  'classics|Vehicles & Playsets':    'vehicles-playsets',
+  '200x|Action Figures':             '200x-action-figures',
+  '200x|Creatures':                  'creatures',
+  '200x|Vehicles & Playsets':        'vehicles-playsets',
+  'original|Action Figures':         'original-action-figures',
+  'original|Vehicles & Playsets':    'vehicles-playsets',
+  'original|She-Ra / Princess of Power': 'she-ra-princess-of-power',
+  'super7|Ultimate':                 'ultimate',
+  'super7|Club Grayskull':           'club-grayskull',
+  'super7|Vintage':                  'vintage',
+  'super7|Classics':                 'classics',
+  'new-adventures|Action Figures':   'new-adventures-action-figures',
+  'new-adventures|Vehicles & Playsets': 'vehicles-playsets',
+  'mondo|Action Figures':            'action-figures',
+};
+
 window.openAF411 = figId => {
   const fig = figById(figId);
-  if (!fig) return;
-  const numId = (fig.id || '').match(/(\d+)$/)?.[1];
-  const url = numId
-    ? `https://www.actionfigure411.com/?s=${numId}&post_type=motu_figure`
-    : `https://www.actionfigure411.com/?s=${encodeURIComponent(fig.name)}&post_type=motu_figure`;
-  window.open(url, '_blank', 'noopener');
+  if (!fig || fig.source !== 'af411') return;
+  const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + fig.group];
+  if (!groupSlug) {
+    // Fallback: search by name
+    window.open(`https://www.actionfigure411.com/?s=${encodeURIComponent(fig.name)}&post_type=motu_figure`, '_blank', 'noopener');
+    return;
+  }
+  window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`, '_blank', 'noopener');
 };
 
 window.searchCharacter = name => {
