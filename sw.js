@@ -1,7 +1,13 @@
-// MOTU Vault — Service Worker v4.79
+// MOTU Vault — Service Worker v4.80
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.80 changelog:
+//   • SHELL_CACHE bumped to motu-vault-shell-v4.80. ASSET_CACHE unchanged.
+//   • No SW logic changes; all v4.80 work is in the app shell:
+//     scroll preserved when opening edit/menu sheets, Kids Core sublines,
+//     Line field in figure editor, full-figure thumbnails (contain).
 //
 // v4.79 changelog:
 //   • SHELL_CACHE bumped to motu-vault-shell-v4.79. ASSET_CACHE unchanged —
@@ -34,7 +40,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const SHELL_CACHE = 'motu-vault-shell-v4.79';
+const SHELL_CACHE = 'motu-vault-shell-v4.80';
 const ASSET_CACHE = 'motu-vault-assets';   // unversioned — survives releases
 
 const SHELL = [

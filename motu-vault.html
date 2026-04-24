@@ -592,7 +592,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-thumb.for-sale { border-color: var(--rd); }
 .fig-thumb img {
   width: 100%; height: 100%;
-  object-fit: cover; object-position: center;
+  object-fit: contain; object-position: center top;
 }
 .fig-thumb .initial {
   font-family: 'Cinzel', serif;
@@ -669,7 +669,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-card img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
-  object-fit: cover; object-position: top;
+  object-fit: contain; object-position: center top;
 }
 .fig-card .card-overlay {
   position: absolute; inset: 0;
@@ -2139,6 +2139,10 @@ const SUBLINES = {
   chronicles: [
     {key:'movie',label:'Movie',groups:['Movie']},
     {key:'core',label:'Core (Non-Movie)',groups:['Core (Non-Movie)']},
+  ],
+  'kids-core': [
+    {key:'action',  label:'Action Figures', groups:['Action Figures']},
+    {key:'movie',   label:'Movie (2026)',   groups:['Movie (2026)']},
   ],
   'new-adventures': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
@@ -4388,7 +4392,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.79</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.80</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4474,12 +4478,17 @@ function renderMain() {
     if (bn) bn.classList.add('immersive-hide');
   }
 
-  // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
+  // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders.
+  // When opening a sheet, S._sheetOpenScroll holds the position captured before S.sheet was
+  // set (the normal _preservedScroll path is skipped when S.sheet is truthy).
   if (ca) {
     const maxScroll = Math.max(0, ca.scrollHeight - ca.clientHeight);
     if (S.savedScroll && S.screen === 'main') {
       ca.scrollTop = Math.min(S.savedScroll, maxScroll);
       S.savedScroll = 0;
+    } else if (S._sheetOpenScroll != null && S.sheet) {
+      ca.scrollTop = Math.min(S._sheetOpenScroll, maxScroll);
+      S._sheetOpenScroll = null;
     } else if (_preservedScroll > 0 && !S.sheet && !S._justNavigated) {
       ca.scrollTop = Math.min(_preservedScroll, maxScroll);
     }
@@ -5742,6 +5751,15 @@ function renderEditFigureSheet() {
     Editing local info for <strong style="color:var(--gold)">${esc(f.name)}</strong>. Changes survive AF411 syncs and stay on this device. Leave a field blank to keep the source value.
   </div>`;
 
+  // Line
+  h += row('line', 'Line',
+    `<select onchange="setOverrideField('${figId}','line',this.value);refreshEditSheet()">
+      <option value="">— Use source —</option>
+      ${LINES.map(l => `<option value="${esc(l.id)}" ${(ov.line||f.line)===l.id?'selected':''}>${esc(l.name)}</option>`).join('')}
+    </select>`,
+    f.line && !ov.line ? `Source: ${esc(ln(f.line))}` : ''
+  );
+
   // Faction
   h += row('faction', 'Faction',
     `<select onchange="setOverrideField('${figId}','faction',this.value);refreshEditSheet()">
@@ -5822,6 +5840,8 @@ window.resetFigureOverrides = async figId => {
 
 // Open the editor for a specific figure id.
 window.openFigureEditor = figId => {
+  const _ca = document.getElementById('contentArea');
+  if (_ca) S._sheetOpenScroll = _ca.scrollTop;
   S.editingFigId = figId;
   S.sheet = 'edit';
   pushNav();
@@ -6165,7 +6185,11 @@ window.deleteFig = async id => {
   S.screen = 'main'; render();
 };
 
-window.openSheet = name => { S.sheet = name; pushNav(); render();
+window.openSheet = name => {
+  // Capture scroll BEFORE setting S.sheet — renderMain skips capture when sheet is truthy
+  const _ca = document.getElementById('contentArea');
+  if (_ca) S._sheetOpenScroll = _ca.scrollTop;
+  S.sheet = name; pushNav(); render();
   requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
 };
 window.closeSheet = () => { history.back(); };
