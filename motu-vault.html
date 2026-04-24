@@ -592,7 +592,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-thumb.for-sale { border-color: var(--rd); }
 .fig-thumb img {
   width: 100%; height: 100%;
-  object-fit: cover; object-position: top;
+  object-fit: cover; object-position: center;
 }
 .fig-thumb .initial {
   font-family: 'Cinzel', serif;
@@ -1581,6 +1581,52 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   height: 1px; background: var(--bd); margin: 0;
 }
 
+/* ── appConfirm / appAlert modal (v4.79) ────────────────────────── */
+.app-modal-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  animation: ctxFadeIn 0.15s ease-out forwards;
+}
+.app-modal {
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.65);
+  width: 100%; max-width: 320px;
+  padding: 24px 20px 16px;
+  display: flex; flex-direction: column; gap: 20px;
+  animation: ctxSlideIn 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.app-modal-msg {
+  font-size: 15px; line-height: 1.5; color: var(--t1); text-align: center;
+}
+.app-modal-msg code {
+  display: block; margin-top: 10px; padding: 8px 10px;
+  background: var(--bg3); border-radius: 8px;
+  font-size: 12px; color: var(--t2); text-align: left;
+  word-break: break-all; white-space: pre-wrap;
+  max-height: 120px; overflow-y: auto;
+  user-select: text; -webkit-user-select: text;
+}
+.app-modal-btns {
+  display: flex; gap: 10px;
+}
+.app-modal-btn {
+  flex: 1; padding: 13px 8px; border-radius: 12px;
+  font-size: 15px; font-weight: 600; font-family: 'Outfit', sans-serif;
+  border: 1px solid var(--bd); cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.app-modal-btn:active { opacity: 0.75; transform: scale(0.97); }
+.app-modal-btn.cancel { background: var(--bg3); color: var(--t2); }
+.app-modal-btn.confirm { background: var(--acc); color: var(--btn-t); border-color: var(--acc); }
+.app-modal-btn.danger  { background: var(--rd);  color: #fff;         border-color: var(--rd); }
+.app-modal-btn.ok      { background: var(--bg3); color: var(--t1);    flex: none; width: 100%; }
+
 /* ── Completion Celebration ──────────────────────────────────────── */
 @keyframes confettiFall {
   0% { transform: translateY(0) rotate(0deg); opacity: 1; }
@@ -1610,8 +1656,9 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 /* Shared overlay base */
 .egg-overlay {
   position: fixed; inset: 0; z-index: 1000;
-  pointer-events: none;
+  pointer-events: auto;
   overflow: hidden;
+  cursor: pointer;
 }
 
 /* ── He-Man egg ── */
@@ -2123,7 +2170,15 @@ const GROUP_MAP = {
 
 const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+// v4.79: centralised select-mode guard — replaces 21 inline S.selectMode checks
+function isSelecting() { return !!S.selectMode; }
+// v4.78: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
+// the small undo snapshots we take on every status tap. Fallback retained for
+// older Safari/Android WebView that predate structuredClone.
+const _clone = (typeof structuredClone === 'function')
+  ? (v => structuredClone(v))
+  : (v => JSON.parse(JSON.stringify(v)));
 
 // § STORAGE ── localStorage wrapper (store.get/set) ───────────────
 let _quotaWarned = false;
@@ -2324,6 +2379,14 @@ const photoStore = {
   loadAll: async () => {
     loadPhotoLabels();
     loadPhotoCopyMap();
+
+    // Revoke any existing blob URLs before rebuilding to prevent leaks on double-call
+    Object.entries(photoURLs).forEach(([, url]) => {
+      if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
+    });
+    for (const k in photoURLs) delete photoURLs[k];
+    S.customPhotos = {};
+
     // Parse filename: photo-{figId}-{n}.jpg
     // Note: figId itself may contain hyphens, so we must match -{digit}.jpg at the end
     const parsePhotoName = name => {
@@ -2334,7 +2397,7 @@ const photoStore = {
       return {id: m[1], n: parseInt(m[2], 10)};
     };
 
-    const buckets = {};  // { figId: [{n, url}, ...] }
+    const buckets = {};  // { figId: [n, ...] }
 
     if (_opfsReady) {
       try {
@@ -2349,7 +2412,7 @@ const photoStore = {
       } catch(e) { console.error('OPFS loadAll error:', e); }
     }
 
-    // Load localStorage fallback photos (new multi-photo format)
+    // Load localStorage fallback photos — guard against overwriting OPFS blob URLs
     try {
       const keys = Object.keys(localStorage).filter(k => /^motu-photo-.+-\d+$/.test(k));
       keys.forEach(k => {
@@ -2358,10 +2421,9 @@ const photoStore = {
         if (!m) return;
         const id = m[1], n = parseInt(m[2], 10);
         const cacheKey = id + '-' + n;
-        if (!photoURLs[cacheKey]) {
-          photoURLs[cacheKey] = localStorage.getItem(k);
-          (buckets[id] = buckets[id] || []).push(n);
-        }
+        if (photoURLs[cacheKey]) return; // OPFS already owns this slot
+        photoURLs[cacheKey] = localStorage.getItem(k);
+        (buckets[id] = buckets[id] || []).push(n);
       });
     } catch {}
 
@@ -2527,6 +2589,8 @@ const S = {
   newFigIds: new Set(),     // IDs added since last sync
   _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
+  _hiddenKey: null,         // cached join of hiddenItems for figIsHidden
+  _collVersion: 0,          // v4.78: bumped on every saveColl, used by _derived._makeKey
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   confirmClear: false,      // pending clear confirmation in select actionbar
   iconOverride: null,       // session override for theme icon (e.g. Orko after Eternia egg)
@@ -2817,6 +2881,54 @@ function haptic(ms = 15) {
   if (navigator.vibrate) navigator.vibrate(ms);
 }
 
+// v4.79: in-app confirm/alert — replaces blocking confirm() / alert() calls.
+// appConfirm returns Promise<boolean>; options.danger styles the confirm button red.
+// appAlert returns Promise<void>; options.copyable renders msg in a <code> block.
+// Both disable the trigger element while open to prevent double-fire on rapid taps.
+function appConfirm(msg, { danger = false, trigger = null } = {}) {
+  return new Promise(resolve => {
+    if (trigger) trigger.disabled = true;
+    const overlay = document.createElement('div');
+    overlay.className = 'app-modal-overlay';
+    overlay.innerHTML = `<div class="app-modal" role="alertdialog" aria-modal="true">
+      <div class="app-modal-msg">${esc(msg)}</div>
+      <div class="app-modal-btns">
+        <button class="app-modal-btn cancel" id="_amCancel">Cancel</button>
+        <button class="app-modal-btn ${danger ? 'danger' : 'confirm'}" id="_amOk">
+          ${danger ? 'Delete' : 'OK'}
+        </button>
+      </div>
+    </div>`;
+    const cleanup = ok => {
+      overlay.remove();
+      if (trigger) trigger.disabled = false;
+      resolve(ok);
+    };
+    overlay.querySelector('#_amOk').onclick    = () => { haptic(10); cleanup(true);  };
+    overlay.querySelector('#_amCancel').onclick = () => cleanup(false);
+    document.body.appendChild(overlay);
+    overlay.querySelector('#_amOk').focus();
+  });
+}
+function appAlert(msg, { copyable = false } = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'app-modal-overlay';
+    const inner = copyable
+      ? `<div class="app-modal-msg">Import error<code>${esc(msg)}</code></div>`
+      : `<div class="app-modal-msg">${esc(msg)}</div>`;
+    overlay.innerHTML = `<div class="app-modal" role="alertdialog" aria-modal="true">
+      ${inner}
+      <div class="app-modal-btns">
+        <button class="app-modal-btn ok" id="_amOk">OK</button>
+      </div>
+    </div>`;
+    overlay.querySelector('#_amOk').onclick = () => { overlay.remove(); resolve(); };
+    document.body.appendChild(overlay);
+    overlay.querySelector('#_amOk').focus();
+  });
+}
+
 // ─── Status Pulse Animation ──────────────────────────────────────
 function triggerPulse(id, status) {
   requestAnimationFrame(() => {
@@ -2854,13 +2966,17 @@ function toastUndo(msg, figId, prevColl) {
 window.undoStatus = id => {
   const container = document.getElementById('toastContainer');
   if (!container) return;
-  const toastEl = container.querySelector(`[data-fig-id="${id}"]`);
+  // Multiple toasts may exist for the same figure (rapid cycling).
+  // We want the most recent one — querySelectorAll + last element.
+  const allToasts = container.querySelectorAll(`[data-fig-id="${id}"]`);
+  const toastEl = allToasts[allToasts.length - 1];
   if (!toastEl || !toastEl._undoPrev) return;
   const prev = toastEl._undoPrev;
   if (prev.status) S.coll[id] = prev;
   else { delete S.coll[id]; }
   saveColl();
-  toastEl.remove();
+  // Remove all toasts for this figure so stale undos can't fire
+  allToasts.forEach(el => el.remove());
   toast('↩ Undone');
   if (!patchFigRow(id)) render();
 };
@@ -2967,7 +3083,7 @@ function initLongPress(el, figId) {
   // Passive touchstart — do NOT preventDefault here or it kills scrolling.
   // We suppress the Android copy/paste callout via contextmenu instead.
   el.addEventListener('touchstart', e => {
-    if (S.selectMode) return;
+
     _lpMoved = false;
     _lpFired = false;
     _lpFigId = figId;
@@ -3005,6 +3121,10 @@ function showContextMenu(figId, x, y) {
   if (!fig) return;
   const c = S.coll[figId] || {};
   dismissContextMenu();
+  // v4.78: escape figId for innerHTML onclick interpolation. AF411 slugs are
+  // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
+  // ID source (import, manual edit) could carry a quote and break out.
+  const eFigId = esc(figId);
   const overlay = document.createElement('div');
   overlay.className = 'ctx-menu-overlay';
   overlay.id = 'ctxOverlay';
@@ -3024,13 +3144,13 @@ function showContextMenu(figId, x, y) {
   STATUSES.forEach(s => {
     const active = c.status === s;
     const dotColor = STATUS_HEX[s];
-    items += `<button class="ctx-menu-item ${active ? 'active' : ''}" onclick="ctxSetStatus('${figId}','${s}')">
+    items += `<button class="ctx-menu-item ${active ? 'active' : ''}" onclick="ctxSetStatus('${eFigId}','${s}')">
       <span class="ctx-dot" style="background:${dotColor}"></span>
       ${active ? '✓ ' : ''}${STATUS_LABEL[s]}
     </button>`;
   });
   if (c.status) {
-    items += `<button class="ctx-menu-item" onclick="ctxSetStatus('${figId}','clear')" style="color:var(--t3)">
+    items += `<button class="ctx-menu-item" onclick="ctxSetStatus('${eFigId}','clear')" style="color:var(--t3)">
       <span class="ctx-dot" style="background:var(--bd)"></span>Clear status
     </button>`;
   }
@@ -3038,24 +3158,18 @@ function showContextMenu(figId, x, y) {
   // Quick "Add copy" shortcut for figures that already have at least one copy.
   // Skips opening the detail screen for power users adding multiples in bulk.
   if (c.status === 'owned' || c.status === 'for-sale') {
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addCopy('${figId}');toast('✓ Copy added to ${esc(fig.name).replace(/'/g,"\\\\'")}')">
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addCopy('${eFigId}');toast('✓ Copy added')">
       ${icon(ICO.import, 16)} Add another copy
     </button>`;
   }
-  if (fig.source === 'af411') {
-    const qs = encodeURIComponent(fig.name).replace(/'/g, '%27');
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openAF411('${figId}')">
-      ${icon(ICO.export, 16)} View on AF411
-    </button>`;
-  }
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig('${figId}')">
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig('${eFigId}')">
     ${icon(ICO.edit, 16)} ${copyN > 1 ? 'Manage copies' : 'Open details'}
   </button>`;
   // Local edit (override) — for fixing missing/wrong AF411 metadata
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFigureEditor('${figId}')">
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFigureEditor('${eFigId}')">
     ${icon(ICO.menu, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
   </button>`;
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith('${figId}')">
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith('${eFigId}')">
     ${icon(ICO.check, 16)} Select
   </button>`;
   menu.innerHTML = items;
@@ -3111,7 +3225,7 @@ function dismissContextMenu() {
 window.ctxSetStatus = (id, status) => {
   dismissContextMenu();
   if (status === 'clear') {
-    const prevColl = JSON.parse(JSON.stringify(S.coll[id] || {}));
+    const prevColl = _clone(S.coll[id] || {});
     if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
     saveColl(); haptic();
     S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
@@ -3129,6 +3243,9 @@ let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
+  // v4.78: bump version counter so _derived cache key invalidates without
+  // having to re-hash Object.keys(S.coll) on every render.
+  S._collVersion++;
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
   _saveCollTimer = setTimeout(() => { store.set('motu-c2', S.coll); _saveCollTimer = null; }, 80);
 }
@@ -3146,6 +3263,10 @@ function flushAllPending() {
 window.addEventListener('pagehide', flushAllPending);
 window.addEventListener('beforeunload', flushAllPending);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAllPending(); });
+// Release OPFS blob URLs on page unload so the browser doesn't flag unreleased blobs
+window.addEventListener('pagehide', () => {
+  Object.values(photoURLs).forEach(url => { if (url && url.startsWith('blob:')) URL.revokeObjectURL(url); });
+});
 
 // O(1) figure lookup by id — rebuilt whenever S.figs changes.
 let _figById = new Map();
@@ -3295,6 +3416,8 @@ function toggleHidden(key) {
   const i = S.hiddenItems.indexOf(key);
   if (i >= 0) S.hiddenItems.splice(i, 1);
   else S.hiddenItems.push(key);
+  S._hiddenKey = null;      // invalidate figIsHidden key cache
+  _derived.invalidate();    // invalidate getStats/getSortedFigs cache
   store.set('motu-hidden', S.hiddenItems);
   render();
 }
@@ -3307,16 +3430,14 @@ function isSublineHidden(lineId, subKey) {
 }
 // Memoized: cache keyed on current hiddenItems signature. Reset whenever
 // hiddenItems changes (via toggleHidden) or S.figs size changes.
-// IMPORTANT: _hidCache must be initialized to a real Map, not null. For a
-// user with no hidden items, key === '' matches the initial _hidCacheKey,
-// so the re-init branch below is skipped — which previously left _hidCache
-// as null and threw "Cannot read properties of null (reading 'get')" on
-// the first figure. Starting with an empty Map makes that path safe.
+// _hiddenKey is pre-computed and nulled on change, so the join only
+// runs once per render cycle rather than once per figure.
 let _hidCache = new Map();
 let _hidCacheKey = '';
 function figIsHidden(f) {
-  const key = S.hiddenItems.length ? S.hiddenItems.join('|') : '';
-  if (_hidCacheKey !== key) { _hidCache = new Map(); _hidCacheKey = key; }
+  // Compute key once per render cycle; S._hiddenKey is nulled by toggleHidden
+  if (S._hiddenKey == null) S._hiddenKey = S.hiddenItems.length ? S.hiddenItems.join('|') : '';
+  if (_hidCacheKey !== S._hiddenKey) { _hidCache = new Map(); _hidCacheKey = S._hiddenKey; }
   const cached = _hidCache.get(f.id);
   if (cached !== undefined) return cached;
   let hidden = false;
@@ -3339,7 +3460,7 @@ function setStatus(id, status) {
   if (!S.coll[id].copies) S.coll[id].copies = [];
 
   const wasStatus = S.coll[id].status;
-  const prevColl = JSON.parse(JSON.stringify(S.coll[id] || {}));
+  const prevColl = _clone(S.coll[id] || {});
   if (S.coll[id].status === status) {
     // Toggle off: clear status. If there's no remaining ownership signal
     // (no status and no copies), drop the entry entirely.
@@ -3499,14 +3620,17 @@ window.addCopy = id => {
   patchDetailStatus();
 };
 
-window.removeCopy = (id, copyId) => {
+window.removeCopy = async (id, copyId) => {
   const c = S.coll[id];
   if (!c || !isMigrated(c)) return;
   const cp = c.copies.find(x => x.id === copyId);
   if (!cp) return;
   // Confirm only if copy has data — empty copies delete silently.
   const hasData = cp.condition || cp.paid || cp.notes || cp.variant;
-  if (hasData && !confirm('Remove this copy and its data?')) return;
+  if (hasData) {
+    const trigger = document.querySelector(`.copy-card[data-copy-id="${copyId}"] .copy-del-btn`);
+    if (!await appConfirm('Remove this copy and its data?', { danger: true, trigger })) return;
+  }
   const newCopies = c.copies.filter(x => x.id !== copyId);
   // If this was the last copy and the figure is owned, leave a single
   // empty copy so the form is still editable. The user can change status
@@ -3584,7 +3708,45 @@ function flushFieldDebounces() {
   }
 }
 
+// § Derived-state cache — invalidates when inputs change, saves re-computing
+// getStats() and getSortedFigs() on every render() call.
+// Key covers all state that affects either result.
+const _derived = {
+  _key: null, _sorted: null, _stats: null,
+  _makeKey() {
+    // v4.78: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
+    // instead of re-joining hiddenItems on every render. Also use S._collVersion
+    // (bumped by saveColl) instead of Object.keys(S.coll).length, which allocated
+    // an array of ~600 keys on every key check.
+    if (S._hiddenKey == null) S._hiddenKey = S.hiddenItems.length ? S.hiddenItems.join('|') : '';
+    return [
+      S.tab, S.activeLine, S.activeSubline, S.search,
+      S.sortBy, S.filterFaction, S.filterStatus,
+      S.filterVariants ? 1 : 0, S.filterLine,
+      S.figs.length, S._hiddenKey,
+      S._collVersion,
+    ].join('\x00');
+  },
+  invalidate() { this._key = null; this._sorted = null; this._stats = null; },
+};
+
 function getStats() {
+  const k = _derived._makeKey();
+  if (_derived._key === k && _derived._stats) return _derived._stats;
+  _derived._key = k;
+  _derived._stats = _computeStats();
+  return _derived._stats;
+}
+
+function getSortedFigs() {
+  const k = _derived._makeKey();
+  if (_derived._key === k && _derived._sorted) return _derived._sorted;
+  _derived._key = k;
+  _derived._sorted = _computeSortedFigs();
+  return _derived._sorted;
+}
+
+function _computeStats() {
   let total = 0, owned = 0, wish = 0, ord = 0, sale = 0;
   for (const f of S.figs) {
     if (figIsHidden(f)) continue;
@@ -3598,24 +3760,9 @@ function getStats() {
   return { total, owned, wish, ord, sale };
 }
 
-function getLineStats() {
-  const agg = {}; // lineId -> {total, owned}
-  for (const f of S.figs) {
-    if (figIsHidden(f)) continue;
-    const a = agg[f.line] || (agg[f.line] = {total: 0, owned: 0});
-    a.total++;
-    if (S.coll[f.id]?.status === 'owned') a.owned++;
-  }
-  return LINES.map(l => {
-    const a = agg[l.id] || {total: 0, owned: 0};
-    return {...l, total: a.total, owned: a.owned, pct: a.total ? Math.round(a.owned/a.total*100) : 0};
-  });
-}
-
-function getSortedFigs() {
+function _computeSortedFigs() {
   let list = S.figs.filter(f => !figIsHidden(f));
   const isSearch = S.search.length > 0;
-  // When inside a line (browsing or searching), scope to it.
   if (S.activeLine) list = list.filter(f => f.line === S.activeLine);
   if (!isSearch && S.activeSubline && S.activeSubline !== '__all__') {
     const subs = SUBLINES[S.activeLine] || [];
@@ -3633,7 +3780,6 @@ function getSortedFigs() {
     list = list.filter(f => {
       const name = f.name.toLowerCase().replace(/[-'']/g, '');
       if (name.includes(s)) return true;
-      // Also match against line name and group
       const lineName = ln(f.line).toLowerCase().replace(/[-'']/g, '');
       const group = (f.group||'').toLowerCase().replace(/[-'']/g, '');
       return lineName.includes(s) || group.includes(s);
@@ -3650,6 +3796,24 @@ function getSortedFigs() {
   return list;
 }
 
+// v4.78: restored missing `function getLineStats() {` declaration. The body
+// existed as orphan code (causing `Unexpected token '}'` at the trailing
+// brace and `Illegal return` at line 3697 in classic-script parsers).
+// getLineStats is called twice in renderLinesGrid / renderLinesGridContent.
+function getLineStats() {
+  const agg = {}; // lineId -> {total, owned}
+  for (const f of S.figs) {
+    if (figIsHidden(f)) continue;
+    const a = agg[f.line] || (agg[f.line] = {total: 0, owned: 0});
+    a.total++;
+    if (S.coll[f.id]?.status === 'owned') a.owned++;
+  }
+  return LINES.map(l => {
+    const a = agg[l.id] || {total: 0, owned: 0};
+    return {...l, total: a.total, owned: a.owned, pct: a.total ? Math.round(a.owned/a.total*100) : 0};
+  });
+}
+
 function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine; }
 
 function progressRing(pct, size=48, color='var(--acc)') {
@@ -3663,6 +3827,9 @@ function progressRing(pct, size=48, color='var(--acc)') {
 }
 
 // § IMPORT-EXPORT ── exportCSV, exportJSON, importJSON, doImport*, ZIP encoder ──
+// v4.78: restored missing `function exportCSV(filter) {` declaration. The
+// body remained as orphan code in v4.77 (never shipped) — header was lost
+// in a refactor. Matches the v4.73 production signature.
 function exportCSV(filter) {
   const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Copy #','Condition','Paid','Variant','Notes'];
   let list = S.figs;
@@ -3728,11 +3895,14 @@ function _u16le(n) { return [n & 0xFF, (n >>> 8) & 0xFF]; }
 function _u32le(n) { return [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF]; }
 async function buildZip(entries) {
   // entries: [{name: string, blob: Blob}, ...]
+  // Yields to the event loop every 5 entries so the "Packaging…" toast
+  // actually renders and the UI doesn't freeze on large photo sets.
   const enc = new TextEncoder();
   const localChunks = [];
   const centralDirChunks = [];
   let offset = 0;
-  for (const entry of entries) {
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
     const nameBytes = enc.encode(entry.name);
     const data = new Uint8Array(await entry.blob.arrayBuffer());
     const crc = crc32(data);
@@ -3754,6 +3924,10 @@ async function buildZip(entries) {
     ];
     centralDirChunks.push(new Uint8Array(cdh), nameBytes);
     offset += lfh.length + nameBytes.length + data.length;
+    // Yield every 5 entries so the UI can breathe
+    if (i % 5 === 4 && i < entries.length - 1) {
+      await new Promise(r => requestAnimationFrame(r));
+    }
   }
   const cdSize = centralDirChunks.reduce((s, c) => s + c.length, 0);
   const eocd = new Uint8Array([
@@ -3936,7 +4110,7 @@ function importJSON(file) {
       // success summary above).
       flushSaveColl();
     } catch(e) {
-      alert('Invalid backup file: ' + e.message);
+      appAlert(e.message, { copyable: true });
     }
   };
   reader.readAsText(file);
@@ -3951,11 +4125,20 @@ window.handleImportFile = input => {
 
 function renderExportSheet() {
   const stats = getStats();
-  const anyStatus = S.figs.filter(f => S.coll[f.id]?.status).length;
-  const wish = S.figs.filter(f => S.coll[f.id]?.status === 'wishlist').length;
-  const ord = S.figs.filter(f => S.coll[f.id]?.status === 'ordered').length;
-  const sale = S.figs.filter(f => S.coll[f.id]?.status === 'for-sale').length;
-  const unowned = S.figs.filter(f => !S.coll[f.id]?.status).length;
+  // v4.78: single linear scan instead of 5 separate S.figs.filter() passes.
+  // anyStatus is the count of figures with any status set; the per-status
+  // counts (wish/ord/sale) come from getStats() which already has them, but
+  // getStats only includes non-hidden figures and we want the unfiltered
+  // export totals here, so we re-tally locally.
+  let anyStatus = 0, wish = 0, ord = 0, sale = 0, unowned = 0;
+  for (const f of S.figs) {
+    const s = S.coll[f.id]?.status;
+    if (!s) { unowned++; continue; }
+    anyStatus++;
+    if (s === 'wishlist') wish++;
+    else if (s === 'ordered') ord++;
+    else if (s === 'for-sale') sale++;
+  }
   const photoCount = Object.values(S.customPhotos).reduce((sum, arr) => sum + (arr?.length || 0), 0);
   const opts = [
     {filter:'', label:'Full Catalog', count:S.figs.length},
@@ -4205,7 +4388,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.76</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.79</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4237,13 +4420,13 @@ function renderMain() {
     ${renderContent()}
   </div>
 
-  <div class="bottom-nav${S.selectMode ? ' hidden' : ''}" id="bottomNav">
+  <div class="bottom-nav${isSelecting() ? ' hidden' : ''}" id="bottomNav">
     ${renderNavBtn('lines', ICO.lines, 'Lines')}
     ${renderNavBtn('all', ICO.list, 'All', `<span class="badge">${stats.total}</span>`)}
     ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned}</span>`)}
   </div>`;
 
-  if (S.selectMode) html += renderSelectActionbar();
+  if (isSelecting()) html += renderSelectActionbar();
   if (S.sheet) html += renderSheet();
   app().innerHTML = html;
 
@@ -4267,6 +4450,23 @@ function renderMain() {
   };
   applySpacerHeight();
   requestAnimationFrame(() => { applySpacerHeight(); requestAnimationFrame(applySpacerHeight); });
+
+  // v4.79: ResizeObserver keeps topSpacer in sync whenever topBar height changes
+  // (e.g. search bar appears/disappears, font scaling, orientation change).
+  // The triple-rAF above is retained as the initial-frame fallback for Fennec /
+  // older Android WebViews where RO callback timing can be unreliable during
+  // the first innerHTML rebuild — do NOT remove it.
+  if ('ResizeObserver' in window) {
+    if (renderMain._topBarRO) renderMain._topBarRO.disconnect();
+    const ro = new ResizeObserver(() => {
+      const t = document.getElementById('topBar');
+      const s = document.getElementById('topSpacer');
+      if (t && s) { const h = t.offsetHeight; if (h > 0) s.style.height = h + 'px'; }
+    });
+    const tbEl = document.getElementById('topBar');
+    if (tbEl) ro.observe(tbEl);
+    renderMain._topBarRO = ro;
+  }
 
   // Re-apply immersive state after innerHTML rebuild
   if (S.barsHidden && !S.sheet) {
@@ -4805,6 +5005,8 @@ function renderWantListViewSheet() {
 }
 
 // § RENDER-LISTS ── renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigList ──
+// v4.78: restored missing `function renderLinesGrid() {` declaration (orphan
+// body, same pattern as getLineStats / exportCSV).
 function renderLinesGrid() {
   const lineStats = getLineStats();
   const ordered = [...S.lineOrder].map(id => lineStats.find(l => l.id === id)).filter(Boolean)
@@ -4915,14 +5117,15 @@ function renderFigRow(f) {
   const imgErr = S.imgErrors[f.id];
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
-  const isSelected = S.selectMode && S.selected.has(f.id);
-  const rowClick = S.selectMode ? `toggleSelect(event,'${f.id}')` : `openFig('${f.id}')`;
+  const eId = esc(f.id); // v4.79: escape id for onclick interpolation
+  const isSelected = isSelecting() && S.selected.has(f.id);
+  const rowClick = isSelecting() ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
   return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${f.id}" onclick="${rowClick}">
-    ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+    ${isSelecting() ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}">
-      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
+      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
@@ -4934,12 +5137,12 @@ function renderFigRow(f) {
         ${f.year ? `<span>· ${f.year}</span>` : ''}
       </div>
     </div>
-    ${S.selectMode ? '' : `<div class="fig-actions">
+    ${isSelecting() ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${copyN > 1 ? `<div class="copy-count-badge" title="${copyN} copies">×${copyN}</div>` : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
-      ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${f.id}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
-        `<button class="quick-own" onclick="event.stopPropagation();setStatus('${f.id}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
+      ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${eId}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
+        `<button class="quick-own" onclick="event.stopPropagation();setStatus('${eId}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
     </div>`}
   </div>`;
 }
@@ -4953,25 +5156,26 @@ function renderFigCard(f) {
   const imgErr = S.imgErrors[f.id];
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
+  const eId = esc(f.id); // v4.79: escape id for onclick interpolation
   const statusIcon = c.status
     ? `<div class="fig-status-dot ${statusCls}"></div>`
     : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
   const badgeAction = c.status
-    ? `cycleStatus(event,'${f.id}')`
-    : `event.stopPropagation();setStatus('${f.id}','owned')`;
+    ? `cycleStatus(event,'${eId}')`
+    : `event.stopPropagation();setStatus('${eId}','owned')`;
 
-  const isSelected = S.selectMode && S.selected.has(f.id);
-  const cardClick = S.selectMode ? `toggleSelect(event,'${f.id}')` : `openFig('${f.id}')`;
+  const isSelected = isSelecting() && S.selected.has(f.id);
+  const cardClick = isSelecting() ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
   return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}" data-fig-id="${f.id}" onclick="${cardClick}">
-    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${f.id}')">` :
+    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
       `<div class="card-initial">${esc(f.name[0])}</div>`}
     <div class="card-overlay"></div>
-    ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
-    ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
-    ${!S.selectMode && copyN > 1 ? `<div class="copy-count-badge copy-count-badge-card" title="${copyN} copies">×${copyN}</div>` : ''}
-    ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
+    ${isSelecting() ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+    ${!isSelecting() && isNew ? '<div class="new-badge">NEW</div>' : ''}
+    ${!isSelecting() && copyN > 1 ? `<div class="copy-count-badge copy-count-badge-card" title="${copyN} copies">×${copyN}</div>` : ''}
+    ${isSelecting() ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
     <div class="card-info">
       <div class="card-fig-name">${esc(f.name)}</div>
       <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
@@ -5033,8 +5237,8 @@ function renderFigList() {
   const gridActive = isGrid ? 'active' : '';
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px;gap:8px">
     <div class="fig-count" style="margin-bottom:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
-    <button class="select-btn${S.selectMode ? ' active' : ''}" onclick="${S.selectMode ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
-      ${S.selectMode ? 'Done' : 'Select'}
+    <button class="select-btn${isSelecting() ? ' active' : ''}" onclick="${isSelecting() ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
+      ${isSelecting() ? 'Done' : 'Select'}
     </button>
     <div class="view-toggle">
       <button class="${listActive}" onclick="setViewMode('list')" title="List view">${icon(ICO.list,14)}</button>
@@ -5107,21 +5311,18 @@ function renderFigList() {
 // just this chunk on status change without re-rendering the whole detail
 // screen (which would otherwise reset scroll to the top).
 function renderDetailStatusBlock(f, c) {
+  const eFigId = esc(f.id); // v4.79: escape id for onclick interpolation
   let h = `<div class="status-grid">
     <div class="label text-upper text-dim text-xs">Status</div>
     <div class="grid">`;
   STATUSES.forEach(s => {
     const active = c.status === s;
-    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${f.id}','${s}');patchDetailStatus()">${active?'✓ ':''}${STATUS_LABEL[s]}</button>`;
+    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${eFigId}','${s}');patchDetailStatus()">${active?'✓ ':''}${STATUS_LABEL[s]}</button>`;
   });
   h += `</div></div>`;
   if (c.status) {
-    // Owned / for-sale / wishlist / ordered all reach this branch.
-    // Copies UI only renders for owned/for-sale (where you actually have
-    // physical items). Ordered shows order detail fields. Wishlist is status only.
     const showsCopies = c.status === 'owned' || c.status === 'for-sale';
     if (showsCopies) {
-      // Ensure we always have at least one copy slot to edit.
       const copies = (isMigrated(c) && c.copies.length) ? c.copies : [{ id: 1 }];
       const isMulti = copies.length > 1;
       h += `<div class="copies-section">
@@ -5131,7 +5332,7 @@ function renderDetailStatusBlock(f, c) {
       copies.forEach((cp, i) => {
         h += renderCopyCard(f, cp, i, isMulti);
       });
-      h += `<button class="add-copy-btn" onclick="addCopy('${f.id}')">
+      h += `<button class="add-copy-btn" onclick="addCopy('${eFigId}')">
         <span class="add-copy-plus">+</span> Add another copy
       </button>
       </div>`;
@@ -5144,15 +5345,15 @@ function renderDetailStatusBlock(f, c) {
         <div class="detail-fields copy-fields">
           <div>
             <div class="field-label text-dim text-sm">Ordered From</div>
-            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField('${f.id}','orderedFrom',this.value)">
+            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField('${eFigId}','orderedFrom',this.value)">
           </div>
           <div>
             <div class="field-label text-dim text-sm">Expected Date</div>
-            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField('${f.id}','orderedDate',this.value)">
+            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField('${eFigId}','orderedDate',this.value)">
           </div>
           <div>
             <div class="field-label text-dim text-sm">Price Paid</div>
-            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField('${f.id}','orderedPaid',this.value)">
+            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField('${eFigId}','orderedPaid',this.value)">
           </div>
         </div>
       </div>`;
@@ -5168,34 +5369,34 @@ function renderCopyCard(f, cp, i, isMulti) {
   const paid = cp.paid || '';
   const variant = cp.variant || '';
   const notes = cp.notes || '';
-  // copyId is the stable internal id used by addCopy/removeCopy/updateCopy
   const cid = cp.id;
+  const eFigId = esc(f.id); // v4.79: escape id for onclick interpolation
   let h = `<div class="copy-card" data-copy-id="${cid}">`;
   if (isMulti) {
     h += `<div class="copy-card-head">
       <div class="copy-num">Copy ${i + 1}</div>
-      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy('${f.id}',${cid})">${icon(ICO.trash, 14)}</button>
+      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy('${eFigId}',${cid})">${icon(ICO.trash, 14)}</button>
     </div>`;
   }
   h += `<div class="detail-fields copy-fields">
     <div>
       <div class="field-label text-dim text-sm">Condition</div>
-      <select onchange="updateCopy('${f.id}',${cid},'condition',this.value)">
+      <select onchange="updateCopy('${eFigId}',${cid},'condition',this.value)">
         <option value="">Select...</option>
         ${CONDITIONS.map(x => `<option value="${esc(x)}" ${cond===x?'selected':''}>${esc(x)}</option>`).join('')}
       </select>
     </div>
     <div>
       <div class="field-label text-dim text-sm">Price Paid</div>
-      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy('${f.id}',${cid},'paid',this.value)">
+      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy('${eFigId}',${cid},'paid',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Variant</div>
-      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${f.id}',${cid},'variant',this.value)">
+      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${eFigId}',${cid},'variant',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Notes</div>
-      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced('${f.id}',${cid},'notes',this.value)" onblur="updateCopy('${f.id}',${cid},'notes',this.value)">${esc(notes)}</textarea>
+      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced('${eFigId}',${cid},'notes',this.value)" onblur="updateCopy('${eFigId}',${cid},'notes',this.value)">${esc(notes)}</textarea>
     </div>`;
   // Per-copy photos (multi-copy only — single-copy uses the main carousel)
   if (isMulti) {
@@ -5204,14 +5405,14 @@ function renderCopyCard(f, cp, i, isMulti) {
       <div class="field-label text-dim text-sm">Photos for this copy</div>
       <div class="copy-photos-strip">`;
     copyPhotos.forEach(p => {
-      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto('${f.id}',${p.n})">
+      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto('${eFigId}',${p.n})">
         <img src="${esc(p.url)}" alt="${esc(p.label || '')}" loading="lazy">
-        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto('${f.id}',${p.n})">⌫</button>
+        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto('${eFigId}',${p.n})">⌫</button>
       </div>`;
     });
     h += `<label class="copy-photo-add" title="Add photo to this copy">
       ${icon(ICO.img, 18)}
-      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,'${f.id}',${cid})">
+      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,'${eFigId}',${cid})">
     </label>
     </div></div>`;
   }
@@ -5233,6 +5434,7 @@ function renderDetail() {
   const _dsScroll = _ds ? _ds.scrollTop : 0;
   const f = S.activeFig;
   const c = S.coll[f.id] || {};
+  const eFigId = esc(f.id); // v4.79: escape id for onclick interpolation
   const userPhotos = photoStore.getAll(f.id);    // [{n, url, label}, ...]
   const hasCustom = userPhotos.length > 0;
   const stockImg = (f.image && !S.imgErrors[f.id]) ? f.image : null;
@@ -5250,13 +5452,13 @@ function renderDetail() {
     : `<div class="photo-carousel" id="photoCarousel">
         ${slides.map(s => {
           const isDef = s.n === defaultN;
-          const viewerClick = s.stock ? '' : `openPhotoViewer('${f.id}',${s.n})`;
+          const viewerClick = s.stock ? '' : `openPhotoViewer('${eFigId}',${s.n})`;
           return `
           <div class="photo-slide" onclick="${viewerClick}">
-            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${f.id}')"` : ''}>
+            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${eFigId}')"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
-            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${f.id}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
-            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto('${f.id}',${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
+            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${eFigId}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
+            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto('${eFigId}',${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
           </div>`;
         }).join('')}
       </div>
@@ -5275,27 +5477,24 @@ function renderDetail() {
           ${icon(ICO.plus,14)} Add photo${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
         </button>` : `<div class="photo-btn" style="opacity:0.5;cursor:default">Max ${MAX_PHOTOS} photos</div>`}
       </div>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,'${f.id}')">
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,'${eFigId}')">
     </div>
     ${userPhotos.length > 0 ? `<div class="photo-labels">
       ${userPhotos.map(p => `
         <div class="photo-label-row">
           <span class="photo-label-num">#${userPhotos.indexOf(p)+1}</span>
           <input type="text" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
-                 onblur="setPhotoLabel('${f.id}',${p.n},this.value)" maxlength="20">
+                 onblur="setPhotoLabel('${eFigId}',${p.n},this.value)" maxlength="20">
         </div>
       `).join('')}
     </div>` : ''}
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
-      ${f.source === 'af411' ? `<a href="#" onclick="event.preventDefault();openAF411('${f.id}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
-        ${icon(ICO.export,14)} View on AF411
-      </a>` : ''}
-      <button onclick="searchCharacter('${esc(f.name.replace(/'/g,"\\\\'"))}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
+      <button onclick="searchCharacter('${esc(f.name)}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.search,14)} All versions
       </button>
-      <button onclick="openFigureEditor('${f.id}')" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
+      <button onclick="openFigureEditor('${eFigId}')" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.edit,14)} Edit
       </button>
     </div>
@@ -5303,7 +5502,14 @@ function renderDetail() {
     <div class="detail-spacer"></div>
   </div>`;
   if (S.photoViewer) html += renderPhotoViewer();
+  if (S.sheet) html += renderSheet();
   app().innerHTML = html;
+
+  // Re-apply visible class to sheet overlay (innerHTML wipes it)
+  if (S.sheet) {
+    const el = document.getElementById('sheetOverlay');
+    if (el) requestAnimationFrame(() => el.classList.add('visible'));
+  }
 
   // Restore detail scroll position (lost when innerHTML rebuilds on edit sheet open/close)
   if (_dsScroll > 0) {
@@ -5607,8 +5813,9 @@ window.refreshEditSheet = () => {
   if (body && S.sheet === 'edit') body.innerHTML = renderEditFigureSheet();
 };
 
-window.resetFigureOverrides = figId => {
-  if (!confirm('Reset all local edits for this figure?')) return;
+window.resetFigureOverrides = async figId => {
+  const trigger = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+  if (!await appConfirm('Reset all local edits for this figure?', { trigger })) return;
   clearOverrides(figId);
   refreshEditSheet();
 };
@@ -5692,7 +5899,7 @@ window.addEventListener('popstate', e => {
   }
 
   // Sheet is gone — now exit select mode if active
-  if (S.selectMode) {
+  if (isSelecting()) {
     S.selectMode = false;
     S.selected = new Set();
     render();
@@ -5946,7 +6153,7 @@ window.openFig = id => {
 };
 window.closeDetail = () => { history.back(); };
 window.deleteFig = async id => {
-  if (!confirm('Delete this figure?')) return;
+  if (!await appConfirm('Delete this figure?', { danger: true })) return;
   // Clean up all side-data before dropping the figure itself.
   // Order: photos (OPFS + labels + copy assignments), then overrides,
   // then collection entry, then figure row.
@@ -5985,7 +6192,7 @@ window.enterSelectModeWith = id => {
 };
 window.exitSelectMode = () => {
   S.confirmClear = false;
-  if (S.selectMode) history.back();
+  if (isSelecting()) history.back();
   else { S.selectMode = false; S.selected = new Set(); render(); }
 };
 window.toggleSelect = (e, id) => {
@@ -6091,7 +6298,7 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
 const STATUS_CYCLE = ['owned','wishlist','ordered','for-sale', ''];
 window.cycleStatus = (e, id) => {
   e.stopPropagation();
-  const prevColl = JSON.parse(JSON.stringify(S.coll[id] || {}));
+  const prevColl = _clone(S.coll[id] || {});
   const cur = S.coll[id]?.status || '';
   const idx = STATUS_CYCLE.indexOf(cur);
   const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
@@ -6135,22 +6342,22 @@ async function compressPhoto(file) {
 }
 window.handlePhoto = (input, figId) => {
   const file = input.files?.[0]; if (!file) return;
-  if (file.size > 20000000) { alert('Image too large (max 20MB).'); return; }
+  if (file.size > 20000000) { toast('✗ Image too large (max 20MB)'); return; }
   const existing = S.customPhotos[figId] || [];
-  if (existing.length >= MAX_PHOTOS) { alert(`Maximum ${MAX_PHOTOS} photos per figure. Remove one first.`); input.value = ''; return; }
+  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos reached — remove one first`); input.value = ''; return; }
   compressPhoto(file).then(async blob => {
-    if (!blob) { alert('Could not process image.'); return; }
+    if (!blob) { appAlert('Could not process image.'); return; }
     const n = await photoStore.add(figId, blob, '');
-    if (n < 0) { alert('Storage full or photo limit reached.'); return; }
+    if (n < 0) { appAlert('Storage full or photo limit reached.'); return; }
     S.imgErrors[figId] = false;
     input.value = '';
     haptic && haptic();
     renderDetail();
-  }).catch(() => { alert('Could not read image file.'); input.value = ''; });
+  }).catch(() => { appAlert('Could not read image file.'); input.value = ''; });
 };
 
 window.removePhoto = async (id, n) => {
-  if (!confirm('Remove this photo?')) return;
+  if (!await appConfirm('Remove this photo?', { danger: true })) return;
   await photoStore.remove(id, n);
   haptic && haptic();
   renderDetail();
@@ -6158,19 +6365,19 @@ window.removePhoto = async (id, n) => {
 
 window.handleCopyPhoto = (input, figId, copyId) => {
   const file = input.files?.[0]; if (!file) return;
-  if (file.size > 20000000) { alert('Image too large (max 20MB).'); return; }
+  if (file.size > 20000000) { toast('✗ Image too large (max 20MB)'); return; }
   const existing = S.customPhotos[figId] || [];
-  if (existing.length >= MAX_PHOTOS) { alert(`Maximum ${MAX_PHOTOS} photos per figure. Remove one first.`); input.value = ''; return; }
+  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos reached — remove one first`); input.value = ''; return; }
   compressPhoto(file).then(async blob => {
-    if (!blob) { alert('Could not process image.'); return; }
+    if (!blob) { appAlert('Could not process image.'); return; }
     const n = await photoStore.add(figId, blob, '', copyId);
-    if (n < 0) { alert('Storage full or photo limit reached.'); return; }
+    if (n < 0) { appAlert('Storage full or photo limit reached.'); return; }
     S.imgErrors[figId] = false;
     input.value = '';
     haptic && haptic();
     patchDetailStatus();
     renderDetail();
-  }).catch(() => { alert('Could not read image file.'); input.value = ''; });
+  }).catch(() => { appAlert('Could not read image file.'); input.value = ''; });
 };
 
 // Unlink a photo from its copy (makes it shared / visible from any copy view).
@@ -6193,7 +6400,7 @@ window.openCopyPhoto = (figId, n) => {
 };
 
 window.clearPhoto = async id => {
-  if (!confirm('Remove all photos for this figure?')) return;
+  if (!await appConfirm('Remove all photos for this figure?', { danger: true })) return;
   await photoStore.delAll(id);
   renderDetail();
 };
