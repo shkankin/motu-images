@@ -3695,6 +3695,17 @@ function setStatus(id, status) {
     }
   } else {
     S.coll[id] = {...S.coll[id], status};
+    // v4.90: ensure owned/for-sale always has at least one copy slot.
+    // Previously setStatus left `copies: []` for newly-owned figures, while
+    // batchSetStatus/batchAddCopy auto-populated copies[0]. The detail-screen
+    // renderer masked this by defensively injecting copy #1 for display, so
+    // users didn't see a blank — but operations that touch cp.copies[0]
+    // directly (addAccessory, addLocation via the picker, etc.) would fail
+    // silently until the user edited a scalar field and triggered updateCopy.
+    if ((status === 'owned' || status === 'for-sale') &&
+        (!S.coll[id].copies || S.coll[id].copies.length === 0)) {
+      S.coll[id] = {...S.coll[id], copies: [{ id: 1 }]};
+    }
     // When transitioning from ordered → owned, migrate order details into
     // the copy fields so the data isn't lost.
     if (wasStatus === 'ordered' && status === 'owned') migrateOrderedToOwned(id);
@@ -4795,7 +4806,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.89</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.90</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">

@@ -1,7 +1,18 @@
-// MOTU Vault — Service Worker v4.89
+// MOTU Vault — Service Worker v4.90
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.90 changelog:
+//   • setStatus now auto-populates copies[0] for owned/for-sale, matching
+//     the behavior of batchSetStatus and batchAddCopy. Previously the
+//     detail-screen renderer was defensively creating copy #1 for display
+//     only — operations that touched cp.copies[0] directly (accessory
+//     picker, location input) would silently no-op on newly-owned figures
+//     until the user had typed into Condition/Paid/Notes/Variant.
+//   • No new CSS or UI — data-layer only. Cache bump is a soft
+//     formality since there's no HTML API change, but keeps clients
+//     on matching versions.
 //
 // v4.89 changelog:
 //   • CACHE bumped to v4.89 — activate() wipes old entries. Required for
@@ -37,7 +48,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.89';
+const CACHE = 'motu-vault-v4.90';
 
 const SHELL = [
   'motu-vault.html',
