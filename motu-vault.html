@@ -2011,7 +2011,7 @@ const CACHE_TTL = 24 * 60 * 60 * 1000;
 const LINES = [
   {id:'origins',    name:'Origins',         yr:'2019–2026', mfr:'Mattel',  sc:'5.5"'},
   {id:'masterverse',name:'Masterverse',     yr:'2021–2026', mfr:'Mattel',  sc:'7"'},
-  {id:'kids-core',  name:'Kids Core',        yr:'2024–',     mfr:'Mattel',  sc:'5.5"'},
+  {id:'kids-core',  name:'Kids Core',        yr:'2026–',     mfr:'Mattel',  sc:'5.5"'},
   {id:'chronicles', name:'Chronicles',      yr:'2026',      mfr:'Mattel',  sc:'7"'},
   {id:'classics',   name:'Mattel Classics', yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
   {id:'200x',       name:'Mattel 200x',     yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
@@ -2130,7 +2130,7 @@ const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const isSelecting = () => !!S.selectMode;
-// v4.84: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
+// v4.85: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
 // the small undo snapshots we take on every status tap. Fallback retained for
 // older Safari/Android WebView that predate structuredClone.
 const _clone = (typeof structuredClone === 'function')
@@ -2547,7 +2547,7 @@ const S = {
   _recentChanges: [],       // Last changed figure IDs (most recent first)
   _justNavigated: false,
   _hiddenKey: null,         // cached join of hiddenItems for figIsHidden
-  _collVersion: 0,          // v4.84: bumped on every saveColl, used by _derived._makeKey
+  _collVersion: 0,          // v4.85: bumped on every saveColl, used by _derived._makeKey
   photoViewer: null,        // {figId, photos[], idx} when full-screen viewer open
   confirmClear: false,      // pending clear confirmation in select actionbar
   iconOverride: null,       // session override for theme icon (e.g. Orko after Eternia egg)
@@ -3059,7 +3059,7 @@ function showContextMenu(figId, x, y) {
   if (!fig) return;
   const c = S.coll[figId] || {};
   dismissContextMenu();
-  // v4.84: escape figId for innerHTML onclick interpolation. AF411 slugs are
+  // v4.85: escape figId for innerHTML onclick interpolation. AF411 slugs are
   // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
   // ID source (import, manual edit) could carry a quote and break out.
   const eFigId = esc(figId);
@@ -3186,7 +3186,7 @@ let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
-  // v4.84: bump version counter so _derived cache key invalidates without
+  // v4.85: bump version counter so _derived cache key invalidates without
   // having to re-hash Object.keys(S.coll) on every render.
   S._collVersion++;
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
@@ -3662,7 +3662,7 @@ function flushFieldDebounces() {
 const _derived = {
   _statsKey: null, _sortedKey: null, _sorted: null, _stats: null,
   _makeKey() {
-    // v4.84: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
+    // v4.85: reuse S._hiddenKey (already maintained by figIsHidden / toggleHidden)
     // instead of re-joining hiddenItems on every render. Also use S._collVersion
     // (bumped by saveColl) instead of Object.keys(S.coll).length, which allocated
     // an array of ~600 keys on every key check.
@@ -3744,7 +3744,7 @@ function _computeSortedFigs() {
   return list;
 }
 
-// v4.84: restored missing `function getLineStats() {` declaration. The body
+// v4.85: restored missing `function getLineStats() {` declaration. The body
 // existed as orphan code (causing `Unexpected token '}'` at the trailing
 // brace and `Illegal return` at line 3697 in classic-script parsers).
 // getLineStats is called twice in renderLinesGrid / renderLinesGridContent.
@@ -3775,7 +3775,7 @@ function progressRing(pct, size=48, color='var(--acc)') {
 }
 
 // § IMPORT-EXPORT ── exportCSV, exportJSON, importJSON, doImport*, ZIP encoder ──
-// v4.84: restored missing `function exportCSV(filter) {` declaration. The
+// v4.85: restored missing `function exportCSV(filter) {` declaration. The
 // body remained as orphan code in v4.77 (never shipped) — header was lost
 // in a refactor. Matches the v4.73 production signature.
 function exportCSV(filter) {
@@ -4073,7 +4073,7 @@ window.handleImportFile = input => {
 
 function renderExportSheet() {
   const stats = getStats();
-  // v4.84: single linear scan instead of 5 separate S.figs.filter() passes.
+  // v4.85: single linear scan instead of 5 separate S.figs.filter() passes.
   // anyStatus is the count of figures with any status set; the per-status
   // counts (wish/ord/sale) come from getStats() which already has them, but
   // getStats only includes non-hidden figures and we want the unfiltered
@@ -4336,7 +4336,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.84</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.85</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -4951,7 +4951,7 @@ function renderWantListViewSheet() {
 }
 
 // § RENDER-LISTS ── renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigList ──
-// v4.84: restored missing `function renderLinesGrid() {` declaration (orphan
+// v4.85: restored missing `function renderLinesGrid() {` declaration (orphan
 // body, same pattern as getLineStats / exportCSV).
 function renderLinesGrid() {
   const lineStats = getLineStats();
@@ -4994,7 +4994,7 @@ function renderLinesGrid() {
     ordered.filter(l => !isLineFullyHidden(l.id)).forEach(l => {
       const completeCls = l.pct === 100 ? 'complete' : '';
       html += `<div class="line-card" onclick="goToLine('${l.id}')">
-        <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.style.display='none'" loading="lazy">
+        <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
         <div class="overlay"></div>
         <div class="card-info">
           <div class="card-name font-display">${esc(l.name)}</div>
@@ -5470,6 +5470,9 @@ function renderDetail() {
     const newDs = document.querySelector('.detail-scroll');
     if (newDs) newDs.scrollTop = _dsScroll;
   }
+
+  // Init pinch-to-zoom on photo viewer if open
+  initPhotoViewerZoom();
 
   // Wire up carousel dot indicator
   const carousel = document.getElementById('photoCarousel');
@@ -6447,6 +6450,7 @@ window.openPhotoViewer = (id, startN) => {
   pushNav();
   haptic && haptic();
   render();
+  requestAnimationFrame(initPhotoViewerZoom);
 };
 window.closePhotoViewer = () => { history.back(); };
 window.photoViewerNav = dir => {
@@ -6454,7 +6458,77 @@ window.photoViewerNav = dir => {
   const len = S.photoViewer.photos.length;
   S.photoViewer.idx = (S.photoViewer.idx + dir + len) % len;
   render();
+  requestAnimationFrame(initPhotoViewerZoom);
 };
+
+// Pinch-to-zoom and pan for photo viewer image.
+// Uses CSS transform on the img-wrap element.
+function initPhotoViewerZoom() {
+  const wrap = document.querySelector('.photo-viewer-img-wrap');
+  const img  = wrap?.querySelector('img');
+  if (!wrap || !img) return;
+
+  let scale = 1, tx = 0, ty = 0;
+  let startDist = 0, startScale = 1;
+  let startTx = 0, startTy = 0;
+  let lastTap = 0;
+  let panStart = null;
+
+  const apply = () => {
+    img.style.transform = `scale(${scale}) translate(${tx/scale}px,${ty/scale}px)`;
+    img.style.transformOrigin = 'center center';
+    img.style.cursor = scale > 1 ? 'grab' : 'default';
+  };
+
+  const clamp = () => {
+    if (scale <= 1) { tx = 0; ty = 0; return; }
+    const maxX = (img.offsetWidth  * (scale - 1)) / 2;
+    const maxY = (img.offsetHeight * (scale - 1)) / 2;
+    tx = Math.max(-maxX, Math.min(maxX, tx));
+    ty = Math.max(-maxY, Math.min(maxY, ty));
+  };
+
+  // Double-tap to zoom/reset
+  img.addEventListener('click', e => {
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      scale = scale > 1 ? 1 : 2.5; tx = 0; ty = 0;
+      img.style.transition = 'transform 0.25s ease';
+      apply();
+      setTimeout(() => img.style.transition = '', 260);
+    }
+    lastTap = now;
+  });
+
+  // Pinch
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      startScale = scale; startTx = tx; startTy = ty;
+    } else if (e.touches.length === 1 && scale > 1) {
+      panStart = {x: e.touches[0].clientX - tx, y: e.touches[0].clientY - ty};
+    }
+  }, {passive: true});
+
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      scale = Math.max(1, Math.min(5, startScale * (dist / startDist)));
+      clamp(); apply();
+      e.preventDefault();
+    } else if (e.touches.length === 1 && panStart && scale > 1) {
+      tx = e.touches[0].clientX - panStart.x;
+      ty = e.touches[0].clientY - panStart.y;
+      clamp(); apply();
+      e.preventDefault();
+    }
+  }, {passive: false});
+
+  wrap.addEventListener('touchend', e => {
+    if (e.touches.length < 2 && scale < 1.05) { scale = 1; tx = 0; ty = 0; apply(); }
+    panStart = null;
+  }, {passive: true});
+}
 
 window.handleCSV = input => {
   const file = input.files?.[0]; if (!file) return;
