@@ -1,7 +1,52 @@
-// MOTU Vault — Service Worker v4.90
+// MOTU Vault — Service Worker v4.92
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.92 changelog:
+//   • Stacked-thumbnail visual on list rows for figures with multiple
+//     copies. Pure CSS via ::before/::after — no extra DOM, no extra
+//     image fetches. ::before peeks at copies≥2; ::after revealed at
+//     copies≥3. patchFigRow preserves the .has-stack/.has-stack-3plus
+//     classes when re-applying status on quick-tap.
+//
+// v4.91 changelog:
+//   • Multiple bug fixes (cycle-dot ordered→owned migration, accessory
+//     picker tap-off, location datalist refresh, breadcrumb crumb nav,
+//     scroll-position carryover between tabs).
+//   • Cycle-from-ordered now jumps directly to owned (matches "received
+//     my order" intent and preserves the orderedFrom→notes migration).
+//   • New "N NEW" badge on Lines and Sublines screens — see at a glance
+//     which sections have recently-added figures.
+//   • CSS-only addition for the new badge; the cache bump is otherwise
+//     a soft formality.
+//
+// v4.92 changelog:
+//   • Stacked-thumbnail visual on list rows for figures with multiple
+//     copies. Pure CSS via ::before/::after — no extra DOM, no extra
+//     image fetches. ::before peeks at copies≥2; ::after revealed at
+//     copies≥3. patchFigRow preserves the .has-stack/.has-stack-3plus
+//     classes when re-applying status on quick-tap.
+//
+// v4.91 changelog:
+//   • CACHE bumped to v4.91 — activate() wipes old entries. Required because
+//     HTML adds .new-count-badge / .has-new CSS rules and crumb-link nav.
+//   • Bug fixes:
+//     - cycle-status dot from 'ordered' now jumps directly to 'owned' so the
+//       ordered→owned migration of orderedFrom/orderedPaid actually fires
+//       (previous cycle path went ordered→for-sale, never owned)
+//     - accessory picker: tap to remove now refreshes the picker sheet
+//       immediately (previously only the underlying detail was refreshed)
+//     - location datalist now refreshes when locations change (so a value
+//       typed in copy #1 appears as a suggestion in copy #2)
+//     - breadcrumb "Lines" and the line-name crumb now use explicit nav
+//       handlers instead of history.back(), and the line crumb is now
+//       clickable even when no subline is active
+//     - tab nav (Lines/Collection/All) no longer carries scroll position
+//       from the previous tab onto the new tab
+//   • Feature: NEW figure count badges on Lines and Sublines screens so
+//     you can see at a glance which sections have figures added since the
+//     last sync.
 //
 // v4.90 changelog:
 //   • setStatus now auto-populates copies[0] for owned/for-sale, matching
@@ -48,7 +93,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.90';
+const CACHE = 'motu-vault-v4.92';
 
 const SHELL = [
   'motu-vault.html',

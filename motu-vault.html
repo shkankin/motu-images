@@ -459,6 +459,69 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .line-card .card-stats { font-size: 10px; color: rgba(255,255,255,.7); font-weight: 600; }
 .line-card .card-stats.complete { color: var(--gn); }
 
+/* v4.91: NEW count badge for line cards (and subline rows). On line cards
+   it floats top-right over the image. On subline rows it sits inline before
+   the hide button. The same base class is reused; the -subline modifier
+   strips the absolute positioning. The subtle accent-pulse underline on
+   the parent (.has-new) draws the eye without being a flashing element. */
+.new-count-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: var(--acc);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.new-count-badge-subline {
+  position: static;
+  margin-right: 4px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* v4.91: NEW figure trail — badges + accent borders on lines/sublines that
+   have figures added since the last sync. Helps the user navigate to new
+   content without scrolling through every line. */
+.line-card.has-new {
+  box-shadow: 0 0 0 2px var(--acc), 0 4px 16px color-mix(in srgb, var(--acc) 35%, transparent);
+}
+.new-count-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  padding: 3px 7px;
+  background: var(--acc);
+  color: var(--btn-t);
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--acc) 50%, transparent);
+}
+/* Subline variant — sits inline with the card content, not absolutely
+   positioned, since subline cards aren't image overlays. */
+.subline-card .new-count-badge-subline {
+  position: static;
+  align-self: center;
+  margin-right: 6px;
+  background: var(--acc);
+  color: var(--btn-t);
+  flex-shrink: 0;
+}
+.subline-card.has-new {
+  border-left: 3px solid var(--acc);
+}
+
 .reorder-toggle {
   display: flex;
   justify-content: flex-end;
@@ -661,6 +724,59 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-thumb .initial {
   font-family: 'Cinzel', serif;
   font-size: 20px; color: var(--t3); font-weight: 700;
+}
+
+/* v4.92: Stacked-thumbnail visual for figures with multiple copies.
+   The real .fig-thumb stays 56×56 — the ::before / ::after pseudo-elements
+   are positioned BEHIND it (z-index trick) and offset down-right so they
+   peek out as if a small stack of cards is fanned underneath the photo.
+   No extra DOM and no extra image fetches. The inline ×N pill next to the
+   name still carries the exact count; the stack is purely a visual cue.
+   `.has-stack` is added to .fig-thumb in renderFigRow when copyN >= 2.
+   `.has-stack-3plus` is added when copyN >= 3 to deepen the second sliver. */
+.fig-thumb {
+  position: relative;
+}
+.fig-thumb.has-stack::before,
+.fig-thumb.has-stack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg3);
+  border: 2px solid var(--bd);
+  z-index: -1;
+}
+.fig-thumb.has-stack.owned::before,
+.fig-thumb.has-stack.owned::after { border-color: color-mix(in srgb, var(--gn) 60%, var(--bd)); }
+.fig-thumb.has-stack.wishlist::before,
+.fig-thumb.has-stack.wishlist::after { border-color: color-mix(in srgb, var(--bl) 60%, var(--bd)); }
+.fig-thumb.has-stack.ordered::before,
+.fig-thumb.has-stack.ordered::after { border-color: color-mix(in srgb, var(--or) 60%, var(--bd)); }
+.fig-thumb.has-stack.for-sale::before,
+.fig-thumb.has-stack.for-sale::after { border-color: color-mix(in srgb, var(--rd) 60%, var(--bd)); }
+.fig-thumb.has-stack::before {
+  transform: translate(3px, 3px);
+}
+.fig-thumb.has-stack::after {
+  transform: translate(6px, 6px);
+  opacity: 0;  /* hidden by default; only revealed when 3+ copies */
+}
+.fig-thumb.has-stack.has-stack-3plus::after {
+  opacity: 1;
+}
+/* Counteract the parent's overflow:hidden which would clip the pseudo-elements.
+   We need the stack slivers visible OUTSIDE the thumb's bottom-right corner. */
+.fig-thumb.has-stack {
+  overflow: visible;
+}
+/* But the IMG still needs clipping inside the thumb bounds. Wrap visual in
+   the existing img/initial elements which already work — those don't escape
+   because they have width/height 100% relative to the parent.
+   To keep the photo from spilling now that overflow is visible, give the
+   image its own clip via border-radius. */
+.fig-thumb.has-stack img {
+  border-radius: calc(var(--radius-sm) - 2px);
 }
 
 .fig-text { flex: 1; min-width: 0; }
@@ -3749,7 +3865,13 @@ function patchFigRow(id) {
   const row = document.querySelector(`.fig-row[data-fig-id="${id}"]`);
   if (row) {
     const thumb = row.querySelector('.fig-thumb');
-    if (thumb) { thumb.className = 'fig-thumb ' + statusCls; }
+    if (thumb) {
+      // v4.92: preserve the stacked-thumbnail classes when re-applying status.
+      let cls = 'fig-thumb ' + statusCls;
+      if (copyN > 1) cls += ' has-stack';
+      if (copyN > 2) cls += ' has-stack-3plus';
+      thumb.className = cls.trim();
+    }
     updateNameInline(row.querySelector('.fig-name'));
     const actions = row.querySelector('.fig-actions');
     if (actions) {
@@ -3906,6 +4028,15 @@ window.updateCopy = (id, copyId, key, val) => {
   else cp[key] = val;
   S.coll[id] = next;
   saveColl();
+  // v4.91: if the key is 'location', refresh the datalist so the value is
+  // immediately available as a suggestion in other copies' location inputs
+  // within the same detail view.
+  if (key === 'location') {
+    const dl = document.getElementById('locationSuggestions');
+    if (dl) {
+      dl.innerHTML = getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('');
+    }
+  }
 };
 
 // Copy-field debounce — same pattern as _updDebounces. See flushFieldDebounces().
@@ -3985,7 +4116,12 @@ window.removeAccessory = (figId, copyId, idx) => {
   S.coll[figId] = next;
   saveColl();
   haptic();
-  patchDetailStatus();
+  // v4.91: if the accessory picker is open, re-render the picker body so the
+  // tapped item's checkmark disappears immediately. Previously only addAccessory
+  // did this, which meant tapping to REMOVE appeared to do nothing until a
+  // subsequent tap on another item triggered the refresh.
+  if (S.sheet === 'accessoryPicker') renderSheetBody();
+  else patchDetailStatus();
 };
 
 // Called from the picker sheet when the user taps one of the canonical
@@ -4806,7 +4942,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.90</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.92</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5017,9 +5153,14 @@ function renderNavBtn(key, ico, label, extra='') {
 
 function renderBreadcrumb() {
   let html = '<div class="breadcrumb">';
-  html += `<button onclick="goBack()">${icon(ICO.back,14)} Lines</button><span class="sep">›</span>`;
+  // v4.91: "Lines" and the line-name crumb now use explicit state-setting
+  // handlers instead of relying on history.back(). When there's no subline
+  // active, the line name is also made tappable (goes to the same place as
+  // "Lines" — the main lines grid — matching user expectation from the
+  // feedback: "clicking lines should take you back to the main lines").
+  html += `<button class="crumb-link" onclick="crumbToLines()">${icon(ICO.back,14)} Lines</button><span class="sep">›</span>`;
   if (S.activeSubline) {
-    html += `<button class="crumb-link" onclick="clearSubline()">${esc(ln(S.activeLine))}</button><span class="sep">›</span>`;
+    html += `<button class="crumb-link" onclick="crumbToLine()">${esc(ln(S.activeLine))}</button><span class="sep">›</span>`;
     const slLabel = S.activeSubline === '__all__' ? 'All Figures' : (SUBLINES[S.activeLine]||[]).find(s=>s.key===S.activeSubline)?.label || '';
     html += `<span class="current">${esc(slLabel)}</span>`;
   } else {
@@ -5534,9 +5675,21 @@ function renderLinesGrid() {
     html += '<div class="lines-grid">';
     ordered.filter(l => !isLineFullyHidden(l.id)).forEach(l => {
       const completeCls = l.pct === 100 ? 'complete' : '';
-      html += `<div class="line-card" onclick="goToLine('${l.id}')">
+      // v4.91: count new figures in this line so the user can see at a glance
+      // which lines have recently added figures.
+      let newCount = 0;
+      if (S.newFigIds.size > 0) {
+        for (const f of S.figs) {
+          if (f.line === l.id && S.newFigIds.has(f.id)) newCount++;
+        }
+      }
+      const newBadge = newCount > 0
+        ? `<div class="new-count-badge" title="${newCount} new figure${newCount===1?'':'s'} in this line">${newCount} NEW</div>`
+        : '';
+      html += `<div class="line-card${newCount > 0 ? ' has-new' : ''}" onclick="goToLine('${l.id}')">
         <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
         <div class="overlay"></div>
+        ${newBadge}
         <div class="card-info">
           <div class="card-name font-display">${esc(l.name)}</div>
           <div class="card-year">${l.yr}</div>
@@ -5557,15 +5710,20 @@ function renderSublines() {
   const allFigs = S.figs.filter(f => f.line === S.activeLine && !figIsHidden(f));
   const allOwned = allFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
   const allPct = allFigs.length ? Math.round(allOwned/allFigs.length*100) : 0;
+  // v4.91: count total new figures in this line for the "All Figures" card
+  const newInLine = S.newFigIds.size
+    ? allFigs.filter(f => S.newFigIds.has(f.id)).length
+    : 0;
 
   let html = '<div class="subline-list">';
-  html += `<button class="subline-card all-card" onclick="selectSubline('__all__')">
+  html += `<button class="subline-card all-card${newInLine > 0 ? ' has-new' : ''}" onclick="selectSubline('__all__')">
     <div class="subline-ring">${progressRing(allPct, 48, 'var(--gold)')}</div>
     <div class="subline-info">
       <div class="subline-name">${esc(ln(S.activeLine))} — All Figures</div>
       <div class="subline-stats">${allOwned} owned of ${allFigs.length}</div>
       <div class="subline-progress"><div class="subline-progress-fill ${allPct===100?'complete':''}" style="width:${allPct}%"></div></div>
     </div>
+    ${newInLine > 0 ? `<div class="new-count-badge new-count-badge-subline">${newInLine} NEW</div>` : ''}
     <div class="subline-arrow">${icon(ICO.chevR,18)}</div>
   </button>`;
   html += '<div style="height:1px;background:var(--bd);margin:0 4px"></div>';
@@ -5576,13 +5734,18 @@ function renderSublines() {
     const visibleFigs = hidden ? [] : slFigs;
     const owned = visibleFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
     const pct = visibleFigs.length ? Math.round(owned/visibleFigs.length*100) : 0;
-    html += `<div class="subline-card" style="${hidden?'opacity:0.4':''}" onclick="if(!event.target.closest('.hide-btn'))selectSubline('${sl.key}')">
+    // v4.91: count new figures in this specific subline
+    const newInSub = (!hidden && S.newFigIds.size)
+      ? slFigs.filter(f => S.newFigIds.has(f.id)).length
+      : 0;
+    html += `<div class="subline-card${newInSub > 0 ? ' has-new' : ''}" style="${hidden?'opacity:0.4':''}" onclick="if(!event.target.closest('.hide-btn'))selectSubline('${sl.key}')">
       <div class="subline-ring">${progressRing(pct)}</div>
       <div class="subline-info">
         <div class="subline-name">${esc(sl.label)}</div>
         <div class="subline-stats">${hidden ? slFigs.length + ' figures (hidden)' : owned + ' owned of ' + slFigs.length}</div>
         ${!hidden ? `<div class="subline-progress"><div class="subline-progress-fill ${pct===100?'complete':''}" style="width:${pct}%"></div></div>` : ''}
       </div>
+      ${newInSub > 0 ? `<div class="new-count-badge new-count-badge-subline">${newInSub} NEW</div>` : ''}
       <button class="hide-btn" onclick="event.stopPropagation();toggleHidden('${S.activeLine}:${sl.key}')" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
         ${hidden?'Show':'Hide'}
       </button>
@@ -5611,7 +5774,7 @@ function renderFigRow(f) {
 
   return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" onclick="${rowClick}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
-    <div class="fig-thumb ${statusCls}">
+    <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
@@ -5940,6 +6103,14 @@ function patchDetailStatus() {
   if (!el) return;
   const c = S.coll[S.activeFig.id] || {};
   el.innerHTML = renderDetailStatusBlock(S.activeFig, c);
+  // v4.91: also refresh the location datalist. Before this fix, the datalist
+  // was built once in renderDetail() and never refreshed — so a location
+  // typed into copy #1 wouldn't show up as a suggestion when typing into
+  // copy #2's location field until a full re-render happened.
+  const dl = document.getElementById('locationSuggestions');
+  if (dl) {
+    dl.innerHTML = getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('');
+  }
 }
 window.patchDetailStatus = patchDetailStatus;
 
@@ -6531,12 +6702,18 @@ window.navTo = key => {
   S.activeLine = null;
   S.activeSubline = null;
   S.savedScroll = 0;
+  // v4.91: mark as just-navigated so the scroll-preservation fallback in
+  // render() doesn't restore the previous tab's scroll position onto this one.
+  // Without this, scrolling halfway down the All tab and tapping Lines would
+  // load Lines already scrolled halfway down (since _preservedScroll was
+  // captured from the old tab's scroll container).
+  S._justNavigated = true;
   pushNav();
   render();
 };
 window.goToLine = id => { S.activeLine = id; S.activeSubline = null; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 window.goBack = () => { history.back(); };
-window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; pushNav(); render(); };
+window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = null; S.search = ''; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
 // Home/theme icon tap — always navigates home. Easter eggs are title-tap only.
 window.homeIconClick = () => { goHome(); };
 
@@ -6697,6 +6874,24 @@ window.searchCharacter = name => {
   S.screen = 'main'; S.search = base; S.tab = 'all';
   S.activeLine = null; S.activeSubline = null;
   S.savedScroll = 0; S.barsHidden = false; S.searchBarHidden = false;
+  pushNav(); render();
+};
+// v4.91: Breadcrumb-specific handlers. Previously "Lines" used goBack() and
+// "Origins" used history.back() via clearSubline — both rely on browser
+// history being in the right state, which isn't guaranteed (e.g. arriving
+// from a deep link or after certain sheet interactions). These set state
+// directly so the breadcrumb nav is always predictable.
+window.crumbToLines = () => {
+  S.activeLine = null; S.activeSubline = null;
+  S.savedScroll = 0; S.barsHidden = false; S.searchBarHidden = false;
+  S._justNavigated = true;  // v4.91: don't restore previous scroll (see navTo)
+  pushNav(); render();
+};
+window.crumbToLine = () => {
+  // From a subline view, go back to the line's sublines screen.
+  S.activeSubline = null;
+  S.savedScroll = 0; S.barsHidden = false; S.searchBarHidden = false;
+  S._justNavigated = true;
   pushNav(); render();
 };
 window.clearSubline = () => { history.back(); };
@@ -6882,19 +7077,34 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
 };
 
 // Long-press status cycle: owned → wishlist → ordered → for-sale → clear
+// SPECIAL CASE: from 'ordered', next is 'owned' (not 'for-sale'). Rationale:
+// the dominant user intent when cycling a dot off 'ordered' is "I received
+// my order" — the full roundabout (ordered→for-sale→clear→owned) loses the
+// orderedFrom/orderedPaid migration data along the way. Jumping directly
+// to 'owned' both matches intent and preserves the data.
 const STATUS_CYCLE = ['owned','wishlist','ordered','for-sale', ''];
 window.cycleStatus = (e, id) => {
   e.stopPropagation();
   const prevColl = _clone(S.coll[id] || {});
   const cur = S.coll[id]?.status || '';
-  const idx = STATUS_CYCLE.indexOf(cur);
-  const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  let next;
+  if (cur === 'ordered') {
+    next = 'owned';  // v4.91: shortcut ordered → owned (see comment above)
+  } else {
+    const idx = STATUS_CYCLE.indexOf(cur);
+    next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  }
   if (next) {
     if (!S.coll[id]) S.coll[id] = {};
     S.coll[id].status = next;
     // v4.87: same ordered→owned migration setStatus() does. Previously the
     // quick-tap dot silently dropped orderedFrom/orderedPaid on transition.
     if (cur === 'ordered' && next === 'owned') migrateOrderedToOwned(id);
+    // v4.90 parity: auto-create copies[0] for owned/for-sale (matches setStatus).
+    if ((next === 'owned' || next === 'for-sale') &&
+        (!S.coll[id].copies || S.coll[id].copies.length === 0)) {
+      S.coll[id].copies = [{ id: 1 }];
+    }
   } else {
     if (S.coll[id]) { delete S.coll[id].status; if (!Object.keys(S.coll[id]).length) delete S.coll[id]; }
   }
