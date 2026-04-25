@@ -273,32 +273,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-/* v5.01: stagger-up entrance for list items. The first 12 items animate
-   up from below; everything past that just shows (avoids long delays).
-   Uses CSS animation, no JS overhead, reduced-motion respected below. */
-@keyframes itemStagger {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.fig-row, .fig-card, .line-card, .line-row, .subline-card {
-  animation: itemStagger 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.fig-row:nth-child(1), .fig-card:nth-child(1), .line-card:nth-child(1), .line-row:nth-child(1), .subline-card:nth-child(1) { animation-delay: 0ms; }
-.fig-row:nth-child(2), .fig-card:nth-child(2), .line-card:nth-child(2), .line-row:nth-child(2), .subline-card:nth-child(2) { animation-delay: 25ms; }
-.fig-row:nth-child(3), .fig-card:nth-child(3), .line-card:nth-child(3), .line-row:nth-child(3), .subline-card:nth-child(3) { animation-delay: 50ms; }
-.fig-row:nth-child(4), .fig-card:nth-child(4), .line-card:nth-child(4), .line-row:nth-child(4), .subline-card:nth-child(4) { animation-delay: 75ms; }
-.fig-row:nth-child(5), .fig-card:nth-child(5), .line-card:nth-child(5), .line-row:nth-child(5), .subline-card:nth-child(5) { animation-delay: 100ms; }
-.fig-row:nth-child(6), .fig-card:nth-child(6), .line-card:nth-child(6), .line-row:nth-child(6), .subline-card:nth-child(6) { animation-delay: 125ms; }
-.fig-row:nth-child(7), .fig-card:nth-child(7), .line-card:nth-child(7), .line-row:nth-child(7), .subline-card:nth-child(7) { animation-delay: 150ms; }
-.fig-row:nth-child(8), .fig-card:nth-child(8), .line-card:nth-child(8), .line-row:nth-child(8), .subline-card:nth-child(8) { animation-delay: 170ms; }
-.fig-row:nth-child(9), .fig-card:nth-child(9), .line-card:nth-child(9), .line-row:nth-child(9), .subline-card:nth-child(9) { animation-delay: 190ms; }
-.fig-row:nth-child(10), .fig-card:nth-child(10), .line-card:nth-child(10), .line-row:nth-child(10), .subline-card:nth-child(10) { animation-delay: 210ms; }
-.fig-row:nth-child(11), .fig-card:nth-child(11), .line-card:nth-child(11), .line-row:nth-child(11), .subline-card:nth-child(11) { animation-delay: 225ms; }
-.fig-row:nth-child(12), .fig-card:nth-child(12), .line-card:nth-child(12), .line-row:nth-child(12), .subline-card:nth-child(12) { animation-delay: 240ms; }
-@media (prefers-reduced-motion: reduce) {
-  .fig-row, .fig-card, .line-card, .line-row, .subline-card { animation: none; }
-}
-
 /* ── Search Bar ──────────────────────────────────────────────────── */
 .search-bar-wrap {
   overflow: hidden;

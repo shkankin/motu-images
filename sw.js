@@ -9,8 +9,6 @@
 //     when user lands on Collection tab with nothing tracked yet.
 //   • Lines screen now has list/grid view toggle (separate setting from
 //     the figures-list view; key: motu-lines-view).
-//   • Stagger entrance animation: list items animate up from below with
-//     a small per-item delay. Honors prefers-reduced-motion.
 //   • Filter chip flicker fixed: chip taps now patch only the sheet body
 //     in place via patchFilter() instead of a full app re-render.
 //   • Splash screen markup commented out (per user request).
@@ -128,8 +126,6 @@
 //     when user lands on Collection tab with nothing tracked yet.
 //   • Lines screen now has list/grid view toggle (separate setting from
 //     the figures-list view; key: motu-lines-view).
-//   • Stagger entrance animation: list items animate up from below with
-//     a small per-item delay. Honors prefers-reduced-motion.
 //   • Filter chip flicker fixed: chip taps now patch only the sheet body
 //     in place via patchFilter() instead of a full app re-render.
 //   • Splash screen markup commented out (per user request).
