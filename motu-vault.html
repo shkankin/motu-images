@@ -4942,7 +4942,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.92</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.93</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5201,7 +5201,17 @@ function renderKidsCoreAdminSheet() {
   h += field('Year', 'year', 'number', '2026');
   h += field('Wave', 'wave', 'text', 'e.g. 1');
   h += field('Retail Price', 'retail', 'number', '0.00');
-  h += field('Faction', 'faction', 'text', 'e.g. Heroic Warriors');
+  // v4.93: faction is a dropdown (FACTIONS list) instead of free text — keeps
+  // values consistent with the rest of the catalog and prevents typos that
+  // would split the Faction filter into separate buckets.
+  const curFaction = v.faction != null ? v.faction : (existing?.faction || '');
+  h += `<div style="margin-bottom:12px">
+    <div class="field-label text-dim text-sm">Faction</div>
+    <select onchange="S._kcForm=S._kcForm||{};S._kcForm.faction=this.value">
+      <option value="">— Select —</option>
+      ${FACTIONS.map(f => `<option value="${esc(f)}" ${curFaction===f?'selected':''}>${esc(f)}</option>`).join('')}
+    </select>
+  </div>`;
 
   // Group pills
   h += `<div style="margin-bottom:12px">
@@ -6882,9 +6892,14 @@ window.searchCharacter = name => {
 // from a deep link or after certain sheet interactions). These set state
 // directly so the breadcrumb nav is always predictable.
 window.crumbToLines = () => {
+  // v4.93: must also reset tab. goToLine sets S.tab='all' when entering a
+  // line, so tab is still 'all' when we click the Lines breadcrumb. Without
+  // setting tab back to 'lines', renderContent falls through to renderFigList()
+  // and shows the entire flat catalog instead of the lines grid.
+  S.tab = 'lines';
   S.activeLine = null; S.activeSubline = null;
   S.savedScroll = 0; S.barsHidden = false; S.searchBarHidden = false;
-  S._justNavigated = true;  // v4.91: don't restore previous scroll (see navTo)
+  S._justNavigated = true;
   pushNav(); render();
 };
 window.crumbToLine = () => {

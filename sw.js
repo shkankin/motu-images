@@ -1,7 +1,19 @@
-// MOTU Vault — Service Worker v4.92
+// MOTU Vault — Service Worker v4.93
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.93 changelog:
+//   • CACHE bumped to v4.93 — activate() wipes old entries.
+//   • Fixes:
+//     - "Lines" breadcrumb now correctly returns to the lines grid. Was
+//       broken since v4.91: crumbToLines reset activeLine but not S.tab,
+//       which goToLine had set to 'all'. So clicking "Lines" dumped users
+//       into the flat catalog list instead of the lines grid (giving the
+//       "disappears, not functional" symptom).
+//     - Kids Core admin: Faction is now a dropdown using the canonical
+//       FACTIONS list, not free text. Prevents typos that would split
+//       the Faction filter into unmergeable buckets.
 //
 // v4.92 changelog:
 //   • Stacked-thumbnail visual on list rows for figures with multiple
@@ -20,6 +32,18 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v4.93 changelog:
+//   • CACHE bumped to v4.93 — activate() wipes old entries.
+//   • Fixes:
+//     - "Lines" breadcrumb now correctly returns to the lines grid. Was
+//       broken since v4.91: crumbToLines reset activeLine but not S.tab,
+//       which goToLine had set to 'all'. So clicking "Lines" dumped users
+//       into the flat catalog list instead of the lines grid (giving the
+//       "disappears, not functional" symptom).
+//     - Kids Core admin: Faction is now a dropdown using the canonical
+//       FACTIONS list, not free text. Prevents typos that would split
+//       the Faction filter into unmergeable buckets.
 //
 // v4.92 changelog:
 //   • Stacked-thumbnail visual on list rows for figures with multiple
@@ -93,7 +117,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.92';
+const CACHE = 'motu-vault-v4.93';
 
 const SHELL = [
   'motu-vault.html',
