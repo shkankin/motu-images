@@ -1,7 +1,16 @@
-// MOTU Vault — Service Worker v4.95
+// MOTU Vault — Service Worker v4.96
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.96 changelog:
+//   • CACHE bumped to v4.96.
+//   • AF411 URL fix: Origins Deluxe slug was 'deluxe', actual path is
+//     'origins-deluxe'. Affected all Origins Deluxe figures (Beast Man
+//     Deluxe, etc.).
+//   • AF411 search fallback now strips "(Deluxe)"/"(Variant)" parens
+//     from the figure name and appends the line name so the search
+//     query is tighter and less likely to land on a homepage.
 //
 // v4.95 changelog:
 //   • CACHE bumped to v4.95.
@@ -58,6 +67,15 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v4.96 changelog:
+//   • CACHE bumped to v4.96.
+//   • AF411 URL fix: Origins Deluxe slug was 'deluxe', actual path is
+//     'origins-deluxe'. Affected all Origins Deluxe figures (Beast Man
+//     Deluxe, etc.).
+//   • AF411 search fallback now strips "(Deluxe)"/"(Variant)" parens
+//     from the figure name and appends the line name so the search
+//     query is tighter and less likely to land on a homepage.
 //
 // v4.95 changelog:
 //   • CACHE bumped to v4.95.
@@ -169,7 +187,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.95';
+const CACHE = 'motu-vault-v4.96';
 
 const SHELL = [
   'motu-vault.html',

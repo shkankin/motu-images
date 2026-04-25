@@ -5055,7 +5055,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.95</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.96</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -6937,7 +6937,7 @@ window.triggerEterniaEgg = () => {
 // Group slugs are mostly kebab(group) except a few confirmed exceptions.
 const AF411_GROUP_SLUG = {
   'origins|Action Figures':          'origins-action-figures',
-  'origins|Deluxe':                  'deluxe',
+  'origins|Deluxe':                  'origins-deluxe',
   'origins|Exclusives':              'exclusives',
   'origins|Vehicles & Playsets':     'vehicles-playsets',
   'origins|Turtles of Grayskull':    'turtles-of-grayskull',
@@ -6989,7 +6989,12 @@ window.openAF411 = figId => {
   if (fig.line === 'kids-core' || fig.line === 'custom') return;
   const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + fig.group];
   if (fig.source !== 'af411' || !groupSlug) {
-    window.open(`https://www.actionfigure411.com/?s=${encodeURIComponent(fig.name)}&post_type=motu_figure`, '_blank', 'noopener');
+    // v4.95.1: smarter search fallback. Strip "(Deluxe)" / "(Variant)" parens
+    // from name since AF411 listings often don't include them, and append
+    // the line name so we don't get cross-line collisions.
+    const cleanName = fig.name.replace(/\s*\([^)]*\)\s*/g, '').trim();
+    const q = `${cleanName} ${ln(fig.line)}`.trim();
+    window.open(`https://www.actionfigure411.com/?s=${encodeURIComponent(q)}&post_type=motu_figure`, '_blank', 'noopener');
     return;
   }
   window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`, '_blank', 'noopener');
