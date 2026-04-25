@@ -1,7 +1,14 @@
-// MOTU Vault — Service Worker v4.97
+// MOTU Vault — Service Worker v4.98
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.98 changelog:
+//   • CACHE bumped to v4.98.
+//   • AF411 button: removed source==='af411' gate (many figures are
+//     AF411-sourced but just missing that field in figures.json).
+//     Tiered fallback: deep link if id matches AF411's <slug>-<NNNNN>
+//     pattern; else group's index page; else all-figures index.
 //
 // v4.97 changelog:
 //   • CACHE bumped to v4.97.
@@ -79,6 +86,13 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v4.98 changelog:
+//   • CACHE bumped to v4.98.
+//   • AF411 button: removed source==='af411' gate (many figures are
+//     AF411-sourced but just missing that field in figures.json).
+//     Tiered fallback: deep link if id matches AF411's <slug>-<NNNNN>
+//     pattern; else group's index page; else all-figures index.
 //
 // v4.97 changelog:
 //   • CACHE bumped to v4.97.
@@ -211,7 +225,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.97';
+const CACHE = 'motu-vault-v4.98';
 
 const SHELL = [
   'motu-vault.html',

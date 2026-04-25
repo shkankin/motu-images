@@ -5055,7 +5055,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.97</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.98</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -6992,15 +6992,24 @@ window.openAF411 = figId => {
   // when we don't have a deep-link slug for the group.
   if (fig.line === 'kids-core' || fig.line === 'custom') return;
   const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + fig.group];
-  if (fig.source !== 'af411' || !groupSlug) {
-    // v4.97: AF411 doesn't have a working WP search endpoint, so the previous
-    // ?s=name fallback landed on the homepage. Better fallback: the
-    // all-action-figures index page where the figure is guaranteed to be
-    // listed (Ctrl+F finds it).
-    window.open('https://www.actionfigure411.com/masters-of-the-universe/all-action-figures.php', '_blank', 'noopener');
+  // v4.98: previously gated on fig.source==='af411'. But many figures are
+  // actually AF411-sourced and just missing that field in figures.json.
+  // Tiered approach:
+  //  1. If we have a group slug AND fig.id matches AF411's <slug>-<NNNNN>
+  //     pattern (numeric suffix is their post ID), build the deep link.
+  //  2. Else if we have a group slug, open the group's index page (the
+  //     user can scroll/Ctrl+F to find their figure).
+  //  3. Else fall back to the all-figures index.
+  const af411IdPattern = /-\d{3,6}$/.test(fig.id);
+  if (groupSlug && af411IdPattern) {
+    window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`, '_blank', 'noopener');
     return;
   }
-  window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`, '_blank', 'noopener');
+  if (groupSlug) {
+    window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/`, '_blank', 'noopener');
+    return;
+  }
+  window.open('https://www.actionfigure411.com/masters-of-the-universe/all-action-figures.php', '_blank', 'noopener');
 };
 
 window.searchCharacter = name => {
