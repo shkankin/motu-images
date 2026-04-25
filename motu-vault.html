@@ -3278,6 +3278,8 @@ async function init() {
   }
   // Check for incoming share link in URL fragment
   checkShareLink();
+  // v5.00: PWA shortcut deep-links via ?action=...
+  checkShortcutAction();
 }
 
 // § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
@@ -4749,7 +4751,7 @@ window.exportJSON = exportJSON;
 const SETTINGS_KEYS = [
   'motu-theme', 'motu-sort', 'motu-view', 'motu-line-order',
   'motu-hidden', 'motu-recent', 'motu-default-photo', 'motu-onboarded',
-  'motu-celebrated',
+  'motu-celebrated', 'motu-ptr-enabled',
 ];
 window.exportSettings = () => {
   const settings = {};
@@ -5134,7 +5136,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.99</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.00</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5247,7 +5249,19 @@ function renderMain() {
       const delta = st - lastScrollTop;
       lastScrollTop = st;
       const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
-      if (nearBottom) return;
+      // v5.00: at the bottom of the list, force bars back so the user can
+      // tap nav/search without scrolling up first. Was previously a hard
+      // return that left bars in whatever state they were on entry.
+      if (nearBottom) {
+        if (S.barsHidden) {
+          tb.classList.remove('immersive-hide');
+          bn.classList.remove('immersive-hide');
+          if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
+          S.barsHidden = false;
+          _lastToggleTs = Date.now();
+        }
+        return;
+      }
       // v4.95: lock out reverse-direction toggles for 200ms after the last
       // toggle, plus require a larger delta (8px instead of 4px) to start
       // hiding. Without this, fast/jittery scrolls would flap the bars on
@@ -5272,20 +5286,28 @@ function renderMain() {
 
     // Pull-to-refresh
     let _ptrStart = 0, _ptrActive = false;
-    ca._ptrTouchStart && ca.removeEventListener('touchstart', ca._ptrTouchStart);
-    ca._ptrTouchEnd && ca.removeEventListener('touchend', ca._ptrTouchEnd);
-    ca._ptrTouchStart = e => { if (ca.scrollTop <= 0) _ptrStart = e.touches[0].clientY; else _ptrStart = 0; };
-    ca._ptrTouchEnd = e => {
-      if (_ptrStart && e.changedTouches[0].clientY - _ptrStart > 80 && ca.scrollTop <= 0 && !_ptrActive) {
-        _ptrActive = true;
-        haptic(20);
-        toast('↻ Syncing…');
-        fetchFigs(true).then(() => { _ptrActive = false; });
-      }
-      _ptrStart = 0;
-    };
-    ca.addEventListener('touchstart', ca._ptrTouchStart, {passive: true});
-    ca.addEventListener('touchend', ca._ptrTouchEnd, {passive: true});
+    // v5.00: pull-to-refresh is now opt-in. On some devices (sensitive
+    // touchscreens) it fires during normal upward scrolling, causing
+    // unwanted constant resyncs. fetchFigs already runs on page load and
+    // every visibilitychange, so PTR is redundant for most users.
+    if (store.get('motu-ptr-enabled')) {
+      ca._ptrTouchStart && ca.removeEventListener('touchstart', ca._ptrTouchStart);
+      ca._ptrTouchEnd && ca.removeEventListener('touchend', ca._ptrTouchEnd);
+      ca._ptrTouchStart = e => { if (ca.scrollTop <= 0) _ptrStart = e.touches[0].clientY; else _ptrStart = 0; };
+      ca._ptrTouchEnd = e => {
+        // v5.00: threshold raised 80→120px to reduce false fires on sensitive
+        // touch hardware where small upward gestures crossed the old threshold.
+        if (_ptrStart && e.changedTouches[0].clientY - _ptrStart > 120 && ca.scrollTop <= 0 && !_ptrActive) {
+          _ptrActive = true;
+          haptic(20);
+          toast('↻ Syncing…');
+          fetchFigs(true).then(() => { _ptrActive = false; });
+        }
+        _ptrStart = 0;
+      };
+      ca.addEventListener('touchstart', ca._ptrTouchStart, {passive: true});
+      ca.addEventListener('touchend', ca._ptrTouchEnd, {passive: true});
+    }
 
     // Long-press context menu on figure rows and cards
     requestAnimationFrame(() => {
@@ -5367,10 +5389,10 @@ function renderBreadcrumb() {
   } else {
     html += `<span class="current">${esc(ln(S.activeLine))}</span>`;
   }
-  // Admin button for Kids Core
-  if (S.activeLine === 'kids-core') {
-    html += `<button onclick="openSheet('kidsCoreAdmin')" style="margin-left:auto;display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent);color:var(--acc);font-size:12px;font-weight:600">${icon(ICO.plus,12)} Add Figure</button>`;
-  }
+  // v5.00: Removed inline Kids Core "Add Figure" button. Adding figures is
+  // now done via the standalone kids-core-editor.html that round-trips
+  // through localStorage / repo JSON. Editing existing figures from the
+  // detail screen still works (Edit button → openSheet kidsCoreAdmin).
   html += '</div>';
   return html;
 }
@@ -5800,6 +5822,40 @@ window.nativeShare = () => {
 
 // ─── Want-List View (incoming share link) ─────────────────────────
 // Reads #wl= fragment on load and shows a read-only list.
+// v5.00: PWA app-icon shortcuts. The manifest.json declares shortcuts that
+// long-pressing the installed PWA icon exposes as quick actions; each links
+// back to the app with ?action=<key>. We dispatch on that key here once
+// figures are loaded. Action runs once then the URL is cleaned so a refresh
+// doesn't re-trigger.
+const SHORTCUT_ACTIONS = {
+  'share-wantlist': () => openSheet('share'),
+  'stats':          () => openSheet('stats'),
+  'sync':           () => fetchFigs(true),
+  'menu':           () => openSheet('menu'),
+};
+function checkShortcutAction() {
+  const params = new URLSearchParams(location.search);
+  const action = params.get('action');
+  if (!action || !SHORTCUT_ACTIONS[action]) return;
+  // Wait for figures to land for actions that need them.
+  let _retries = 0;
+  function run() {
+    if (!S.figs.length && action !== 'sync') {
+      if (++_retries > 100) return;
+      setTimeout(run, 150);
+      return;
+    }
+    try { SHORTCUT_ACTIONS[action](); } catch {}
+    // Clean the URL so reload doesn't re-fire the action.
+    if (history.replaceState) {
+      params.delete('action');
+      const q = params.toString();
+      history.replaceState({}, '', location.pathname + (q ? '?' + q : '') + location.hash);
+    }
+  }
+  run();
+}
+
 function checkShareLink() {
   const nums = decodeShareURL(location.hash);
   if (!nums || !nums.length) return;
@@ -6497,12 +6553,25 @@ function renderMenuSheet() {
     {label:'Import',              icon:ICO.import,  action:"openSheet('import')"},
     {label:'Export / Backup',     icon:ICO.export,  action:"openSheet('export')"},
   ];
-  return menuItems.map(m => `
+  let html = menuItems.map(m => `
     <button onclick="${m.action}" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc)">${icon(m.icon, 20)}</span>
       ${m.label}
       <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
     </button>`).join('');
+  // v5.00: PTR toggle. Default off — sync runs on page load and visibility
+  // change anyway, and PTR can fire spuriously on sensitive touch hardware.
+  const ptrOn = !!store.get('motu-ptr-enabled');
+  html += `<div style="height:1px;background:var(--bd);margin:14px 4px"></div>
+    <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">Sync</div>
+    <button onclick="store.set('motu-ptr-enabled',${ptrOn?'false':'true'});render()" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+      <span style="color:var(--acc)">${icon(ICO.refresh || ICO.sort, 20)}</span>
+      <span style="flex:1">Pull-to-refresh
+        <span style="display:block;font-size:11px;color:var(--t3);font-weight:400;margin-top:2px;line-height:1.4">Pull down at the top of the list to sync. Off by default to avoid accidental refreshes.</span>
+      </span>
+      <span style="padding:5px 11px;border-radius:999px;background:${ptrOn?'var(--gn)':'var(--bg2)'};color:${ptrOn?'var(--bg)':'var(--t3)'};font-size:11px;font-weight:700">${ptrOn?'ON':'OFF'}</span>
+    </button>`;
+  return html;
 }
 
 function renderFilterSheet() {

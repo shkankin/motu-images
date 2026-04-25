@@ -20,5 +20,43 @@
       "sizes": "512x512",
       "type": "image/png"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Share Want List",
+      "short_name": "Want List",
+      "description": "Open the share sheet for your want list",
+      "url": "./motu-vault.html?action=share-wantlist",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Collection Stats",
+      "short_name": "Stats",
+      "description": "View collection stats",
+      "url": "./motu-vault.html?action=stats",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Quick Sync",
+      "short_name": "Sync",
+      "description": "Force-sync the catalog from AF411",
+      "url": "./motu-vault.html?action=sync",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    },
+    {
+      "name": "Settings",
+      "short_name": "Settings",
+      "description": "Open app settings",
+      "url": "./motu-vault.html?action=menu",
+      "icons": [
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+      ]
+    }
   ]
 }

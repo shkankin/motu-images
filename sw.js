@@ -1,7 +1,21 @@
-// MOTU Vault — Service Worker v4.99
+// MOTU Vault — Service Worker v5.00
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v5.00 changelog:
+//   • CACHE bumped to v5.00.
+//   • Bars reappear when scrolled to the bottom of the figures list (was
+//     left in whatever state on entry — sometimes hidden, blocking nav).
+//   • Pull-to-refresh now opt-in (default OFF). Threshold raised 80→120px.
+//     Toggle in Menu → Sync section. Some touchscreens were sensitive
+//     enough to fire PTR during normal upward scrolling.
+//   • Removed the inline "Add Figure" button on the Kids Core line —
+//     adding figures is now via the standalone kids-core-editor.html.
+//     Existing entries can still be edited via the per-figure Edit flow.
+//   • PWA app-icon shortcuts: long-press the installed icon for quick
+//     actions (Share Want List, Stats, Sync, Settings). Requires the
+//     updated manifest.json — see /mnt/user-data/outputs/manifest.json.
 //
 // v4.99 changelog:
 //   • CACHE bumped to v4.99.
@@ -93,6 +107,20 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v5.00 changelog:
+//   • CACHE bumped to v5.00.
+//   • Bars reappear when scrolled to the bottom of the figures list (was
+//     left in whatever state on entry — sometimes hidden, blocking nav).
+//   • Pull-to-refresh now opt-in (default OFF). Threshold raised 80→120px.
+//     Toggle in Menu → Sync section. Some touchscreens were sensitive
+//     enough to fire PTR during normal upward scrolling.
+//   • Removed the inline "Add Figure" button on the Kids Core line —
+//     adding figures is now via the standalone kids-core-editor.html.
+//     Existing entries can still be edited via the per-figure Edit flow.
+//   • PWA app-icon shortcuts: long-press the installed icon for quick
+//     actions (Share Want List, Stats, Sync, Settings). Requires the
+//     updated manifest.json — see /mnt/user-data/outputs/manifest.json.
 //
 // v4.99 changelog:
 //   • CACHE bumped to v4.99.
@@ -239,7 +267,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.99';
+const CACHE = 'motu-vault-v5.00';
 
 const SHELL = [
   'motu-vault.html',
