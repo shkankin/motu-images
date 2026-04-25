@@ -15,12 +15,13 @@
     "id": "2026-movie-4-pack-13440",
     "name": "2026 Movie 4 Pack",
     "line": "origins",
-    "group": "",
+    "group": "Exclusives",
     "wave": "",
     "year": 2026,
     "retail": 37.79,
     "slug": "2026-movie-4-pack-13440",
-    "faction": "Other"
+    "faction": "Other",
+    "source": "af411"
   },
   {
     "id": "andre-the-giant-12027",
@@ -146,12 +147,13 @@
     "id": "beast-man-deluxe-13523",
     "name": "Beast Man (Deluxe)",
     "line": "origins",
-    "group": "",
+    "group": "Deluxe",
     "wave": "",
     "year": 2026,
     "retail": 25.99,
     "slug": "beast-man-deluxe-13523",
-    "faction": "Evil Warriors"
+    "faction": "Evil Warriors",
+    "source": "af411"
   },
   {
     "id": "beast-man-lords-of-power-2458",
@@ -781,12 +783,13 @@
     "id": "fright-fighter-2026-movie-13439",
     "name": "Fright Fighter (2026 Movie)",
     "line": "origins",
-    "group": "",
+    "group": "Vehicles & Playsets",
     "wave": "",
     "year": 2026,
     "retail": 42.99,
     "slug": "fright-fighter-2026-movie-13439",
-    "faction": "Other"
+    "faction": "Other",
+    "source": "af411"
   },
   {
     "id": "fright-zone-playset-11294",
@@ -1008,12 +1011,13 @@
     "id": "he-man-nick-galitzine-13442",
     "name": "He-Man (Nick Galitzine)",
     "line": "origins",
-    "group": "",
+    "group": "Action Figures",
     "wave": "",
     "year": 2026,
     "retail": 21.99,
     "slug": "he-man-nick-galitzine-13442",
-    "faction": "Heroic Warriors"
+    "faction": "Heroic Warriors",
+    "source": "af411"
   },
   {
     "id": "he-man-reissue-13228",
@@ -1079,12 +1083,13 @@
     "id": "he-man-and-sky-sled-2026-movie-13444",
     "name": "He-Man and Sky Sled (2026 Movie)",
     "line": "origins",
-    "group": "",
+    "group": "Vehicles & Playsets",
     "wave": "",
     "year": 2026,
     "retail": 26.99,
     "slug": "he-man-and-sky-sled-2026-movie-13444",
-    "faction": "Heroic Warriors"
+    "faction": "Heroic Warriors",
+    "source": "af411"
   },
   {
     "id": "he-ro-club-grayskull-10370",
@@ -3022,12 +3027,13 @@
     "id": "spikor-2026-movie-13443",
     "name": "Spikor (2026 Movie)",
     "line": "origins",
-    "group": "",
+    "group": "Action Figures",
     "wave": "",
     "year": 2026,
     "retail": 21.99,
     "slug": "spikor-2026-movie-13443",
-    "faction": "Evil Warriors"
+    "faction": "Evil Warriors",
+    "source": "af411"
   },
   {
     "id": "spikor-cartoon-collection-8760",
@@ -3465,12 +3471,13 @@
     "id": "trap-jaw-2026-movie-deluxe-13438",
     "name": "Trap Jaw (2026 Movie Deluxe)",
     "line": "origins",
-    "group": "",
+    "group": "Deluxe",
     "wave": "",
     "year": 2026,
     "retail": 26.97,
     "slug": "trap-jaw-2026-movie-deluxe-13438",
-    "faction": "Evil Warriors"
+    "faction": "Evil Warriors",
+    "source": "af411"
   },
   {
     "id": "trap-jaw-black-armor-fan-favorite-8762",
@@ -3992,12 +3999,13 @@
     "id": "beast-man-1987-movie-8420",
     "name": "Beast Man (1987 Movie)",
     "line": "masterverse",
-    "group": "",
+    "group": "Movie",
     "wave": "",
     "year": 2024,
     "retail": 21.99,
     "slug": "beast-man-1987-movie-8420",
-    "faction": "Evil Warriors"
+    "faction": "Evil Warriors",
+    "source": "af411"
   },
   {
     "id": "beast-man-new-eternia-4222",
@@ -5340,7 +5348,8 @@
     "year": 2026,
     "retail": 30.0,
     "slug": "king-grayskull-13486",
-    "faction": "Other"
+    "faction": "Other",
+    "source": "af411"
   },
   {
     "id": "man-at-arms-13243",
@@ -5363,7 +5372,8 @@
     "year": 2026,
     "retail": 53.99,
     "slug": "ram-man-jon-xue-zhang-fisto-jhannes-haukur-jhannesson-13441",
-    "faction": "Heroic Warriors"
+    "faction": "Heroic Warriors",
+    "source": "af411"
   },
   {
     "id": "scare-glow-13246",
