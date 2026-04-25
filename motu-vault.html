@@ -848,76 +848,94 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-card.ordered { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--or); }
 .fig-card.for-sale { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--rd); }
 
-/* v4.94: Stacked-card visual for grid view. .fig-card has overflow:hidden so
-   pseudo-elements get clipped — we use layered box-shadows instead. The
-   trailing card shows a status-tinted ring + a fill matching the bg behind
-   the card. .has-stack = 2+ copies; .has-stack-3plus adds a second card. */
+/* v4.95: Grid stack — bigger offsets (8/16px instead of 5/10) + a gap between
+   the card's status ring and the stack (using transparent layer at +2px) so
+   the trailing card reads as a separate object, not a thick border. The
+   status-tinted slivers are 2px wide (matching the card's status ring). */
 .fig-card.has-stack {
   box-shadow:
     0 4px 12px rgba(0,0,0,0.25),
-    5px 5px 0 -1px var(--bd),
-    5px 5px 0 0 var(--bg2);
+    8px 8px 0 -1px var(--bd),
+    8px 8px 0 0 var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4);
 }
 .fig-card.has-stack.has-stack-3plus {
   box-shadow:
     0 4px 12px rgba(0,0,0,0.25),
-    5px 5px 0 -1px var(--bd),
-    5px 5px 0 0 var(--bg2),
-    10px 10px 0 -1px var(--bd),
-    10px 10px 0 0 var(--bg3);
+    8px 8px 0 -1px var(--bd),
+    8px 8px 0 0 var(--bg2),
+    16px 16px 0 -1px var(--bd),
+    16px 16px 0 0 var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4);
 }
+/* Status-colored variants — first ring is the card's own status, then the
+   stack offsets carry the same status color so the back card peeks out
+   matching. */
 .fig-card.has-stack.owned {
   box-shadow:
     0 0 0 2px var(--gn),
-    5px 5px 0 1px var(--gn), 5px 5px 0 2px var(--bg2),
+    8px 8px 0 1px var(--gn), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
 .fig-card.has-stack.has-stack-3plus.owned {
   box-shadow:
     0 0 0 2px var(--gn),
-    5px 5px 0 1px var(--gn), 5px 5px 0 2px var(--bg2),
-    10px 10px 0 1px var(--gn), 10px 10px 0 2px var(--bg3),
+    8px 8px 0 1px var(--gn), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--gn), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
 .fig-card.has-stack.wishlist {
   box-shadow:
     0 0 0 2px var(--bl),
-    5px 5px 0 1px var(--bl), 5px 5px 0 2px var(--bg2),
+    8px 8px 0 1px var(--bl), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
 .fig-card.has-stack.has-stack-3plus.wishlist {
   box-shadow:
     0 0 0 2px var(--bl),
-    5px 5px 0 1px var(--bl), 5px 5px 0 2px var(--bg2),
-    10px 10px 0 1px var(--bl), 10px 10px 0 2px var(--bg3),
+    8px 8px 0 1px var(--bl), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--bl), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
 .fig-card.has-stack.ordered {
   box-shadow:
     0 0 0 2px var(--or),
-    5px 5px 0 1px var(--or), 5px 5px 0 2px var(--bg2),
+    8px 8px 0 1px var(--or), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
 .fig-card.has-stack.has-stack-3plus.ordered {
   box-shadow:
     0 0 0 2px var(--or),
-    5px 5px 0 1px var(--or), 5px 5px 0 2px var(--bg2),
-    10px 10px 0 1px var(--or), 10px 10px 0 2px var(--bg3),
+    8px 8px 0 1px var(--or), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--or), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
 .fig-card.has-stack.for-sale {
   box-shadow:
     0 0 0 2px var(--rd),
-    5px 5px 0 1px var(--rd), 5px 5px 0 2px var(--bg2),
+    8px 8px 0 1px var(--rd), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
 .fig-card.has-stack.has-stack-3plus.for-sale {
   box-shadow:
     0 0 0 2px var(--rd),
-    5px 5px 0 1px var(--rd), 5px 5px 0 2px var(--bg2),
-    10px 10px 0 1px var(--rd), 10px 10px 0 2px var(--bg3),
+    8px 8px 0 1px var(--rd), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--rd), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
     0 4px 12px rgba(0,0,0,0.25);
 }
+/* Grid uses gap, but the box-shadows now extend 16px past the card on the
+   right and bottom — guarantee the grid container has enough breathing room
+   so cards in the right column / bottom row don't get clipped by the
+   container's overflow or run into neighbors. */
+.fig-grid { padding-right: 18px; padding-bottom: 18px; }
 
 .fig-card img {
   position: absolute; inset: 0;
@@ -3544,7 +3562,7 @@ function showContextMenu(figId, x, y) {
       ${icon(ICO.import, 16)} Add another copy
     </button>`;
   }
-  if (fig.source === 'af411') {
+  if (fig.line !== 'kids-core' && fig.line !== 'custom') {
     items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openAF411('${eFigId}')">
       ${icon(ICO.export, 16)} View on AF411
     </button>`;
@@ -4825,6 +4843,9 @@ function doImportVault(csvText, overwrite) {
   const iVariant = col('Variant');
   const iAcc = col('Accessories');
   const iLoc = col('Location');
+  // v4.95: read Copy # for multi-copy round-trip. If absent (older exports
+  // or single-copy lines), each row gets a unique copy id.
+  const iCopyNum = col('Copy #');
 
   const {idx4, idx3, idx2} = buildFigIndexes();
 
@@ -4857,30 +4878,42 @@ function doImportVault(csvText, overwrite) {
     })();
 
     if (!fig) { unmatched.push(lineName + ': ' + name + (group ? ' [' + group + ']' : '')); return; }
-    if (matchedIds.has(fig.id)) { skipped++; return; }
-    if (!overwrite && S.coll[fig.id]?.status && status) { skipped++; return; }
+    // v4.95: previously skipped any second row for the same figure, collapsing
+    // multi-copy CSVs back to copy #1. Now append additional rows as new copies.
+    // First-row-per-figure logic still respects overwrite vs merge semantics.
+    const isFirstRow = !matchedIds.has(fig.id);
+    if (isFirstRow && !overwrite && S.coll[fig.id]?.status && status) { skipped++; return; }
 
     if (status) {
-      // Build a migrated entry directly so accessories/location land on the
-      // first copy. migrateEntry() can't see these fields through the legacy
-      // flat shape, so we shape the entry ourselves.
       const accessories = accRaw ? accRaw.split(/\s*;\s*/).filter(Boolean) : [];
       const existing = S.coll[fig.id];
       let base;
-      if (existing && isMigrated(existing)) base = {...existing, copies: [...existing.copies]};
-      else if (existing) base = migrateEntry(existing);
-      else base = { copies: [] };
-      base.status = status;
-      // Ensure at least one copy for owned/for-sale
-      if (!base.copies.length && (status === 'owned' || status === 'for-sale')) base.copies.push({ id: 1 });
-      const copy = base.copies[0];
-      if (copy) {
-        if (cond) copy.condition = cond;
-        if (paid) copy.paid = paid;
-        if (variant) copy.variant = variant;
-        if (notes) copy.notes = notes;
-        if (accessories.length) copy.accessories = accessories;
-        if (location) copy.location = location;
+      if (isFirstRow) {
+        // Reset/create on first row of this figure
+        if (existing && isMigrated(existing) && !overwrite) base = {...existing, copies: [...existing.copies]};
+        else if (existing && !overwrite) base = migrateEntry(existing);
+        else base = { copies: [] };
+        base.status = status;
+        if (overwrite) base.copies = [];  // overwrite mode: drop pre-existing copies
+      } else {
+        base = isMigrated(S.coll[fig.id]) ? {...S.coll[fig.id], copies: [...S.coll[fig.id].copies]} : { copies: [], status };
+      }
+      // Build the copy from this row
+      const copy = { id: 0 };  // id assigned below
+      if (cond) copy.condition = cond;
+      if (paid) copy.paid = paid;
+      if (variant) copy.variant = variant;
+      if (notes) copy.notes = notes;
+      if (accessories.length) copy.accessories = accessories;
+      if (location) copy.location = location;
+      // Decide whether this row defines a copy (any data field set, OR
+      // status is owned/for-sale which always needs at least one copy)
+      const rowDefinesCopy = cond || paid || variant || notes || accessories.length || location ||
+                              (isFirstRow && (status === 'owned' || status === 'for-sale'));
+      if (rowDefinesCopy) {
+        const nextId = base.copies.reduce((m, cp) => Math.max(m, cp.id || 0), 0) + 1;
+        copy.id = nextId;
+        base.copies.push(copy);
       }
       S.coll[fig.id] = base;
     }
@@ -5022,7 +5055,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.94</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.95</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5122,6 +5155,7 @@ function renderMain() {
   if (ca) {
     let lastScrollTop = ca.scrollTop;
     let _suppressed = true; // suppress initial scroll events from restore
+    let _lastToggleTs = 0;  // v4.95: hysteresis timer to prevent header flashing
     requestAnimationFrame(() => { _suppressed = false; lastScrollTop = ca.scrollTop; });
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
@@ -5135,16 +5169,24 @@ function renderMain() {
       lastScrollTop = st;
       const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
       if (nearBottom) return;
-      if (delta > 4 && st > 40 && !S.barsHidden) {
+      // v4.95: lock out reverse-direction toggles for 200ms after the last
+      // toggle, plus require a larger delta (8px instead of 4px) to start
+      // hiding. Without this, fast/jittery scrolls would flap the bars on
+      // and off as small overshoot/correction motions crossed the ±4 line.
+      const now = Date.now();
+      if (now - _lastToggleTs < 200) return;
+      if (delta > 8 && st > 40 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
         if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
         S.barsHidden = true;
-      } else if ((delta < -4 || st < 20) && S.barsHidden) {
+        _lastToggleTs = now;
+      } else if ((delta < -8 || st < 20) && S.barsHidden) {
         tb.classList.remove('immersive-hide');
         bn.classList.remove('immersive-hide');
         if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
         S.barsHidden = false;
+        _lastToggleTs = now;
       }
     };
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
@@ -6265,7 +6307,7 @@ function renderDetail() {
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
-      ${f.source === 'af411' ? `<a href="#" onclick="event.preventDefault();openAF411('${eId}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
+      ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411('${eId}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
         ${icon(ICO.export,14)} View on AF411
       </a>` : ''}
       <button onclick="searchCharacter('${esc(f.name)}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
@@ -6940,10 +6982,13 @@ const AF411_GROUP_SLUG = {
 
 window.openAF411 = figId => {
   const fig = figById(figId);
-  if (!fig || fig.source !== 'af411') return;
+  if (!fig) return;
+  // v4.95: previously gated on fig.source==='af411'. Now any non-Kids-Core,
+  // non-custom figure can use it — falls back to AF411's site search by name
+  // when we don't have a deep-link slug for the group.
+  if (fig.line === 'kids-core' || fig.line === 'custom') return;
   const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + fig.group];
-  if (!groupSlug) {
-    // Fallback: search by name
+  if (fig.source !== 'af411' || !groupSlug) {
     window.open(`https://www.actionfigure411.com/?s=${encodeURIComponent(fig.name)}&post_type=motu_figure`, '_blank', 'noopener');
     return;
   }

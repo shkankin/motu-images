@@ -1,7 +1,21 @@
-// MOTU Vault — Service Worker v4.94
+// MOTU Vault — Service Worker v4.95
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.95 changelog:
+//   • CACHE bumped to v4.95.
+//   • AF411 button now shows on detail screen for any non-Kids-Core,
+//     non-custom figure (was gated on source==='af411'); falls back to
+//     AF411 site search when no group slug. Same in context menu.
+//   • Header flash on scroll: 200ms hysteresis lockout + threshold
+//     bumped 4→8px so small overshoot/correction motions during fast
+//     scrolling no longer flap the bars on/off.
+//   • Multi-copy CSV import: rows after the first are now appended as
+//     additional copies (was: silently skipped). Round-trip tested.
+//   • Grid card stack offsets bumped 5→8px and 10→16px with depth
+//     shadow so the back card reads as a separate object instead of
+//     a thick border.
 //
 // v4.94 changelog:
 //   • CACHE bumped to v4.94.
@@ -44,6 +58,20 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v4.95 changelog:
+//   • CACHE bumped to v4.95.
+//   • AF411 button now shows on detail screen for any non-Kids-Core,
+//     non-custom figure (was gated on source==='af411'); falls back to
+//     AF411 site search when no group slug. Same in context menu.
+//   • Header flash on scroll: 200ms hysteresis lockout + threshold
+//     bumped 4→8px so small overshoot/correction motions during fast
+//     scrolling no longer flap the bars on/off.
+//   • Multi-copy CSV import: rows after the first are now appended as
+//     additional copies (was: silently skipped). Round-trip tested.
+//   • Grid card stack offsets bumped 5→8px and 10→16px with depth
+//     shadow so the back card reads as a separate object instead of
+//     a thick border.
 //
 // v4.94 changelog:
 //   • CACHE bumped to v4.94.
@@ -141,7 +169,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.94';
+const CACHE = 'motu-vault-v4.95';
 
 const SHELL = [
   'motu-vault.html',
