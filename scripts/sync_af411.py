@@ -68,6 +68,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent  # assumes scripts/ is one le
 FIGURES_JSON = REPO_ROOT / "figures.json"
 IMAGES_DIR = REPO_ROOT  # images sit at repo root as {slug}.jpg
 
+# v1.1: fields that the scraper KNOWS about. Anything else on an existing entry
+# (overrides, app-specific flags, manual annotations) is preserved verbatim
+# during merge. Keep this list narrow to be data-loss-safe.
+SCRAPER_FIELDS = {"name", "line", "group", "wave", "year", "retail", "slug"}
+
 # ─── HTML Parser for Checklist Pages ──────────────────────────────
 
 class ChecklistParser(HTMLParser):
@@ -339,6 +344,13 @@ def main():
             changes.append(f"year: {e.get('year')} → {s['year']}")
         if s["retail"] and s["retail"] != e.get("retail"):
             changes.append(f"retail: {e.get('retail')} → {s['retail']}")
+        # v1.1: detect when scraped group differs from existing — used to be
+        # silently overwritten.
+        if s["group"] and s["group"] != e.get("group", ""):
+            changes.append(f"group: '{e.get('group','')}' → '{s['group']}'")
+        # v1.1: flag entries missing source (we'll fix on commit)
+        if not e.get("source"):
+            changes.append("source: missing → 'af411'")
         if changes:
             updated.append((fid, changes))
 
@@ -390,7 +402,9 @@ def main():
     merged = list(existing)
     merged_by_id = {f["id"]: f for f in merged}
 
-    # Update existing figures with new data
+    # Update existing figures with new data.
+    # v1.1: source='af411' is now ALWAYS set on AF411-sourced entries — this
+    # backfills the ~10 figures that were imported before source-tagging existed.
     for fid, _ in updated:
         s = scraped_by_id[fid]
         e = merged_by_id[fid]
@@ -404,6 +418,9 @@ def main():
             e["retail"] = s["retail"]
         if s["group"]:
             e["group"] = s["group"]
+        # Always tag source — these entries DEFINITELY came from AF411 since
+        # we matched them by ID. Backfills missing source on legacy entries.
+        e["source"] = "af411"
 
     # Add new figures
     img_downloaded = 0
@@ -414,12 +431,13 @@ def main():
             "id": s["id"],
             "name": s["name"],
             "line": s["line"],
-            "group": s["group"],
-            "wave": s["wave"],
-            "year": s["year"],
-            "retail": s["retail"],
+            "group": s["group"] or "",          # v1.1: ensure string, never None
+            "wave": s["wave"] or "",
+            "year": s["year"],                  # may be None if not parsed
+            "retail": s["retail"] or 0,         # v1.1: default to 0 instead of None
             "slug": s["slug"],
             "faction": guess_faction(s["name"], s["group"]),
+            "source": "af411",                  # v1.1: tag every new fig as AF411-sourced
         }
         merged.append(new_fig)
 
