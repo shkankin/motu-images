@@ -4741,9 +4741,79 @@ function importJSON(file) {
 }
 
 window.exportJSON = exportJSON;
+
+// v4.99: export/import app settings separately from collection data.
+// Includes theme, sort, view mode, line order, hidden items, recent
+// changes — anything that's a UI/preference toggle, NOT collection data.
+// Useful when setting up a new device without touching what's already there.
+const SETTINGS_KEYS = [
+  'motu-theme', 'motu-sort', 'motu-view', 'motu-line-order',
+  'motu-hidden', 'motu-recent', 'motu-default-photo', 'motu-onboarded',
+  'motu-celebrated',
+];
+window.exportSettings = () => {
+  const settings = {};
+  for (const k of SETTINGS_KEYS) {
+    const v = store.get(k);
+    if (v != null) settings[k] = v;
+  }
+  const payload = { version: 'motu-vault-settings-v1', exportedAt: Date.now(), settings };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `motu-vault-settings-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  toast('✓ Settings exported');
+};
+
+window.importSettings = file => {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const payload = JSON.parse(ev.target.result);
+      if (payload.version !== 'motu-vault-settings-v1' || !payload.settings) {
+        toast('✗ Not a settings file'); return;
+      }
+      let restored = 0;
+      for (const k of SETTINGS_KEYS) {
+        if (payload.settings[k] != null) {
+          store.set(k, payload.settings[k]);
+          restored++;
+        }
+      }
+      toast(`✓ Restored ${restored} settings — reloading…`);
+      setTimeout(() => location.reload(), 800);
+    } catch (e) {
+      toast('✗ Import failed: ' + e.message);
+    }
+  };
+  reader.readAsText(file);
+};
+
 window.handleImportFile = input => {
   const file = input.files?.[0]; if (!file) return;
-  if (file.name.endsWith('.json')) { importJSON(file); return; }
+  if (file.name.endsWith('.json')) {
+    // v4.99: peek at the version field to route between collection backup
+    // and settings backup automatically.
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const peek = JSON.parse(ev.target.result);
+        if (peek.version === 'motu-vault-settings-v1') {
+          window.importSettings(file);
+        } else {
+          importJSON(file);
+        }
+      } catch {
+        importJSON(file);  // fallthrough; importJSON will surface its own error
+      }
+    };
+    reader.readAsText(file);
+    return;
+  }
   handleCSV(input);
 };
 
@@ -4795,6 +4865,15 @@ function renderExportSheet() {
     </button>`;
     html += '<div class="text-sm text-dim" style="line-height:1.5">Downloads all custom photos as a ZIP archive, organized by figure folder. Useful for backing up to cloud storage (Drive, Dropbox, etc.) or transferring to another device.</div>';
   }
+  // v4.99: settings export — separate from collection data, useful for
+  // moving theme/sort/view/line-order preferences to another device.
+  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Settings Only</div>';
+  html += `<button onclick="exportSettings();closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+    <span>Export App Settings</span>
+    <span style="color:var(--t3);font-size:12px">theme · sort · order</span>
+  </button>`;
+  html += '<div class="text-sm text-dim" style="line-height:1.5">Just the preferences — theme, sort order, view mode, line order, hidden items, recent changes. Does NOT include collection data or photos.</div>';
   return html;
 }
 
@@ -5055,7 +5134,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.98</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.99</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -6465,7 +6544,7 @@ function renderSortSheet() {
 
 function renderImportSheet() {
   return `<p class="text-md text-muted" style="margin-bottom:16px;line-height:1.6">
-    Import from ActionFigure411.com CSV, a MOTU Vault CSV export, or restore a JSON backup.
+    Import from ActionFigure411.com CSV, a MOTU Vault CSV export, a JSON collection backup, or an app settings file. The format is auto-detected.
   </p>
   <div class="overwrite-toggle" onclick="this.querySelector('.checkbox').classList.toggle('checked')">
     <div class="checkbox"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
