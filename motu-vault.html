@@ -5055,7 +5055,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.96</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.97</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -6938,11 +6938,15 @@ window.triggerEterniaEgg = () => {
 const AF411_GROUP_SLUG = {
   'origins|Action Figures':          'origins-action-figures',
   'origins|Deluxe':                  'origins-deluxe',
-  'origins|Exclusives':              'exclusives',
-  'origins|Vehicles & Playsets':     'vehicles-playsets',
+  'origins|Exclusives':              'origins-exclusives',
+  'origins|Vehicles & Playsets':     'origins-beasts-vehicles-and-playsets',
   'origins|Turtles of Grayskull':    'turtles-of-grayskull',
   'origins|Crossovers':              'stranger-things-crossover',
-  'origins|WWE':                     'wwe',
+  'origins|Stranger Things':         'stranger-things-crossover',
+  'origins|Thundercats':             'thundercats-crossover',
+  'origins|Transformers':            'transformers-collaboration',
+  'origins|WWE':                     'masters-of-the-wwe-universe-action-figures',
+  'origins|WWE Rings':               'masters-of-the-wwe-universe-rings',
   'masterverse|Revelation':          'revelation',
   'masterverse|Revelation Deluxe':   'revelation',
   'masterverse|New Eternia':         'new-eternia',
@@ -6989,12 +6993,11 @@ window.openAF411 = figId => {
   if (fig.line === 'kids-core' || fig.line === 'custom') return;
   const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + fig.group];
   if (fig.source !== 'af411' || !groupSlug) {
-    // v4.95.1: smarter search fallback. Strip "(Deluxe)" / "(Variant)" parens
-    // from name since AF411 listings often don't include them, and append
-    // the line name so we don't get cross-line collisions.
-    const cleanName = fig.name.replace(/\s*\([^)]*\)\s*/g, '').trim();
-    const q = `${cleanName} ${ln(fig.line)}`.trim();
-    window.open(`https://www.actionfigure411.com/?s=${encodeURIComponent(q)}&post_type=motu_figure`, '_blank', 'noopener');
+    // v4.97: AF411 doesn't have a working WP search endpoint, so the previous
+    // ?s=name fallback landed on the homepage. Better fallback: the
+    // all-action-figures index page where the figure is guaranteed to be
+    // listed (Ctrl+F finds it).
+    window.open('https://www.actionfigure411.com/masters-of-the-universe/all-action-figures.php', '_blank', 'noopener');
     return;
   }
   window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`, '_blank', 'noopener');

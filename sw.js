@@ -1,7 +1,19 @@
-// MOTU Vault — Service Worker v4.96
+// MOTU Vault — Service Worker v4.97
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.97 changelog:
+//   • CACHE bumped to v4.97.
+//   • AF411 group slugs fixed against real URLs from the all-figures
+//     index: 'origins|Exclusives' was 'exclusives' (now 'origins-
+//     exclusives'); 'origins|Vehicles & Playsets' was 'vehicles-playsets'
+//     (now 'origins-beasts-vehicles-and-playsets'); 'origins|WWE' was
+//     'wwe' (now 'masters-of-the-wwe-universe-action-figures'); added
+//     entries for Stranger Things, Thundercats, and Transformers crossovers.
+//   • AF411 fallback no longer points at the broken WP search endpoint;
+//     opens the all-action-figures index instead so Ctrl+F finds the
+//     figure even when its source field is missing.
 //
 // v4.96 changelog:
 //   • CACHE bumped to v4.96.
@@ -67,6 +79,18 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v4.97 changelog:
+//   • CACHE bumped to v4.97.
+//   • AF411 group slugs fixed against real URLs from the all-figures
+//     index: 'origins|Exclusives' was 'exclusives' (now 'origins-
+//     exclusives'); 'origins|Vehicles & Playsets' was 'vehicles-playsets'
+//     (now 'origins-beasts-vehicles-and-playsets'); 'origins|WWE' was
+//     'wwe' (now 'masters-of-the-wwe-universe-action-figures'); added
+//     entries for Stranger Things, Thundercats, and Transformers crossovers.
+//   • AF411 fallback no longer points at the broken WP search endpoint;
+//     opens the all-action-figures index instead so Ctrl+F finds the
+//     figure even when its source field is missing.
 //
 // v4.96 changelog:
 //   • CACHE bumped to v4.96.
@@ -187,7 +211,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.96';
+const CACHE = 'motu-vault-v4.97';
 
 const SHELL = [
   'motu-vault.html',
