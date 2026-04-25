@@ -1,7 +1,12 @@
-// MOTU Vault — Service Worker v5.01
+// MOTU Vault — Service Worker v5.02
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v5.02 changelog:
+//   • CACHE bumped to v5.02. v5.01 was amended in place (same CACHE
+//     constant) so existing SW didn't re-activate, leaving stale assets
+//     cached. Bumping forces a clean install.
 //
 // v5.01 changelog:
 //   • CACHE bumped to v5.01.
@@ -119,6 +124,11 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v5.02 changelog:
+//   • CACHE bumped to v5.02. v5.01 was amended in place (same CACHE
+//     constant) so existing SW didn't re-activate, leaving stale assets
+//     cached. Bumping forces a clean install.
 //
 // v5.01 changelog:
 //   • CACHE bumped to v5.01.
@@ -291,7 +301,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v5.01';
+const CACHE = 'motu-vault-v5.02';
 
 const SHELL = [
   'motu-vault.html',
