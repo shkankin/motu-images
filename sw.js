@@ -1,7 +1,21 @@
-// MOTU Vault — Service Worker v5.00
+// MOTU Vault — Service Worker v5.01
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v5.01 changelog:
+//   • CACHE bumped to v5.01.
+//   • Empty Collection state: clearer prompt with CTAs to Lines / All
+//     when user lands on Collection tab with nothing tracked yet.
+//   • Lines screen now has list/grid view toggle (separate setting from
+//     the figures-list view; key: motu-lines-view).
+//   • Stagger entrance animation: list items animate up from below with
+//     a small per-item delay. Honors prefers-reduced-motion.
+//   • Filter chip flicker fixed: chip taps now patch only the sheet body
+//     in place via patchFilter() instead of a full app re-render.
+//   • Splash screen markup commented out (per user request).
+//   • Bars auto-reappear after 3.5s of scroll idle so you never get
+//     stranded without nav after stopping to read.
 //
 // v5.00 changelog:
 //   • CACHE bumped to v5.00.
@@ -107,6 +121,20 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v5.01 changelog:
+//   • CACHE bumped to v5.01.
+//   • Empty Collection state: clearer prompt with CTAs to Lines / All
+//     when user lands on Collection tab with nothing tracked yet.
+//   • Lines screen now has list/grid view toggle (separate setting from
+//     the figures-list view; key: motu-lines-view).
+//   • Stagger entrance animation: list items animate up from below with
+//     a small per-item delay. Honors prefers-reduced-motion.
+//   • Filter chip flicker fixed: chip taps now patch only the sheet body
+//     in place via patchFilter() instead of a full app re-render.
+//   • Splash screen markup commented out (per user request).
+//   • Bars auto-reappear after 3.5s of scroll idle so you never get
+//     stranded without nav after stopping to read.
 //
 // v5.00 changelog:
 //   • CACHE bumped to v5.00.
@@ -267,7 +295,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v5.00';
+const CACHE = 'motu-vault-v5.01';
 
 const SHELL = [
   'motu-vault.html',

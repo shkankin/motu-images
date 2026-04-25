@@ -273,6 +273,32 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+/* v5.01: stagger-up entrance for list items. The first 12 items animate
+   up from below; everything past that just shows (avoids long delays).
+   Uses CSS animation, no JS overhead, reduced-motion respected below. */
+@keyframes itemStagger {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fig-row, .fig-card, .line-card, .line-row, .subline-card {
+  animation: itemStagger 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.fig-row:nth-child(1), .fig-card:nth-child(1), .line-card:nth-child(1), .line-row:nth-child(1), .subline-card:nth-child(1) { animation-delay: 0ms; }
+.fig-row:nth-child(2), .fig-card:nth-child(2), .line-card:nth-child(2), .line-row:nth-child(2), .subline-card:nth-child(2) { animation-delay: 25ms; }
+.fig-row:nth-child(3), .fig-card:nth-child(3), .line-card:nth-child(3), .line-row:nth-child(3), .subline-card:nth-child(3) { animation-delay: 50ms; }
+.fig-row:nth-child(4), .fig-card:nth-child(4), .line-card:nth-child(4), .line-row:nth-child(4), .subline-card:nth-child(4) { animation-delay: 75ms; }
+.fig-row:nth-child(5), .fig-card:nth-child(5), .line-card:nth-child(5), .line-row:nth-child(5), .subline-card:nth-child(5) { animation-delay: 100ms; }
+.fig-row:nth-child(6), .fig-card:nth-child(6), .line-card:nth-child(6), .line-row:nth-child(6), .subline-card:nth-child(6) { animation-delay: 125ms; }
+.fig-row:nth-child(7), .fig-card:nth-child(7), .line-card:nth-child(7), .line-row:nth-child(7), .subline-card:nth-child(7) { animation-delay: 150ms; }
+.fig-row:nth-child(8), .fig-card:nth-child(8), .line-card:nth-child(8), .line-row:nth-child(8), .subline-card:nth-child(8) { animation-delay: 170ms; }
+.fig-row:nth-child(9), .fig-card:nth-child(9), .line-card:nth-child(9), .line-row:nth-child(9), .subline-card:nth-child(9) { animation-delay: 190ms; }
+.fig-row:nth-child(10), .fig-card:nth-child(10), .line-card:nth-child(10), .line-row:nth-child(10), .subline-card:nth-child(10) { animation-delay: 210ms; }
+.fig-row:nth-child(11), .fig-card:nth-child(11), .line-card:nth-child(11), .line-row:nth-child(11), .subline-card:nth-child(11) { animation-delay: 225ms; }
+.fig-row:nth-child(12), .fig-card:nth-child(12), .line-card:nth-child(12), .line-row:nth-child(12), .subline-card:nth-child(12) { animation-delay: 240ms; }
+@media (prefers-reduced-motion: reduce) {
+  .fig-row, .fig-card, .line-card, .line-row, .subline-card { animation: none; }
+}
+
 /* ── Search Bar ──────────────────────────────────────────────────── */
 .search-bar-wrap {
   overflow: hidden;
@@ -414,6 +440,60 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+/* v5.01: list-view variant of lines screen */
+.lines-list { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+.line-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 10px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.line-row:hover { border-color: var(--acc); }
+.line-row:active { transform: scale(0.98); }
+.line-row.has-new { border-left: 3px solid var(--acc); padding-left: 9px; }
+.line-row-thumb {
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg3);
+  position: relative;
+}
+.line-row-thumb img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top;
+}
+.line-row-info { flex: 1; min-width: 0; }
+.line-row-name {
+  font-size: 14px; color: var(--t1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.line-row-meta { font-size: 11px; color: var(--t3); margin-top: 2px; }
+.line-row-progress {
+  margin-top: 6px;
+  height: 3px; border-radius: 2px;
+  background: var(--bg3);
+  overflow: hidden;
+}
+.line-row-progress-fill {
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.4s;
+}
+.line-row-progress-fill.complete { background: var(--gn); }
+.line-row-arrow { color: var(--t3); flex-shrink: 0; }
+.line-row .new-count-badge-subline {
+  position: static;
+  align-self: center;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .line-card {
@@ -2379,10 +2459,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 </style>
 </head>
 <body>
+<!-- v5.01: splash temporarily disabled per user request. Restore by removing the comment markers.
 <div class="splash" id="splash">
   <img class="splash-logo" src="masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
   <div class="splash-flash"></div>
 </div>
+-->
 <div id="app"></div>
 
 <script>
@@ -4749,7 +4831,7 @@ window.exportJSON = exportJSON;
 // changes — anything that's a UI/preference toggle, NOT collection data.
 // Useful when setting up a new device without touching what's already there.
 const SETTINGS_KEYS = [
-  'motu-theme', 'motu-sort', 'motu-view', 'motu-line-order',
+  'motu-theme', 'motu-sort', 'motu-view', 'motu-lines-view', 'motu-line-order',
   'motu-hidden', 'motu-recent', 'motu-default-photo', 'motu-onboarded',
   'motu-celebrated', 'motu-ptr-enabled',
 ];
@@ -5136,7 +5218,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.00</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.01</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5267,7 +5349,10 @@ function renderMain() {
       // hiding. Without this, fast/jittery scrolls would flap the bars on
       // and off as small overshoot/correction motions crossed the ±4 line.
       const now = Date.now();
-      if (now - _lastToggleTs < 200) return;
+      if (now - _lastToggleTs < 200) {
+        _scheduleIdleShow();
+        return;
+      }
       if (delta > 8 && st > 40 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
@@ -5281,7 +5366,26 @@ function renderMain() {
         S.barsHidden = false;
         _lastToggleTs = now;
       }
+      _scheduleIdleShow();
     };
+    // v5.01: when scrolling pauses for 3.5s, fade the bars back in. Avoids
+    // leaving the user stranded with no nav after they stop reading.
+    let _idleTimer = null;
+    function _scheduleIdleShow() {
+      if (_idleTimer) clearTimeout(_idleTimer);
+      _idleTimer = setTimeout(() => {
+        if (!S.barsHidden) return;
+        const tb2 = document.getElementById('topBar');
+        const bn2 = document.getElementById('bottomNav');
+        const sb2 = document.getElementById('searchBar');
+        if (!tb2 || !bn2) return;
+        tb2.classList.remove('immersive-hide');
+        bn2.classList.remove('immersive-hide');
+        if (sb2) { sb2.classList.remove('hidden'); S.searchBarHidden = false; }
+        S.barsHidden = false;
+        _lastToggleTs = Date.now();
+      }, 3500);
+    }
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
 
     // Pull-to-refresh
@@ -5939,35 +6043,76 @@ function renderLinesGrid() {
     });
     html += '</div>';
   } else {
-    html += '<div class="lines-grid">';
-    ordered.filter(l => !isLineFullyHidden(l.id)).forEach(l => {
-      const completeCls = l.pct === 100 ? 'complete' : '';
-      // v4.91: count new figures in this line so the user can see at a glance
-      // which lines have recently added figures.
-      let newCount = 0;
-      if (S.newFigIds.size > 0) {
-        for (const f of S.figs) {
-          if (f.line === l.id && S.newFigIds.has(f.id)) newCount++;
+    // v5.01: lines screen now supports list view too. State key 'motu-lines-view'
+    // is separate from 'motu-view' (which controls figures-list view) so users
+    // can pick independently for each screen.
+    const linesView = store.get('motu-lines-view') || 'grid';
+    const visibleOrdered = ordered.filter(l => !isLineFullyHidden(l.id));
+    html += `<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 8px;padding:0 4px">
+      <div class="view-toggle">
+        <button class="${linesView==='list'?'active':''}" onclick="store.set('motu-lines-view','list');render()" title="List view">${icon(ICO.list,14)}</button>
+        <button class="${linesView==='grid'?'active':''}" onclick="store.set('motu-lines-view','grid');render()" title="Grid view">${icon(ICO.lines,14)}</button>
+      </div>
+    </div>`;
+    if (linesView === 'list') {
+      // List rows: thumb + name/year on left, progress + count + NEW badge on right
+      html += '<div class="lines-list">';
+      visibleOrdered.forEach(l => {
+        const completeCls = l.pct === 100 ? 'complete' : '';
+        let newCount = 0;
+        if (S.newFigIds.size > 0) {
+          for (const f of S.figs) {
+            if (f.line === l.id && S.newFigIds.has(f.id)) newCount++;
+          }
         }
-      }
-      const newBadge = newCount > 0
-        ? `<div class="new-count-badge" title="${newCount} new figure${newCount===1?'':'s'} in this line">${newCount} NEW</div>`
-        : '';
-      html += `<div class="line-card${newCount > 0 ? ' has-new' : ''}" onclick="goToLine('${l.id}')">
-        <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
-        <div class="overlay"></div>
-        ${newBadge}
-        <div class="card-info">
-          <div class="card-name font-display">${esc(l.name)}</div>
-          <div class="card-year">${l.yr}</div>
-          ${l.total > 0 ? `
-            <div class="progress-bar"><div class="progress-fill ${completeCls}" style="width:${l.pct}%"></div></div>
-            <div class="card-stats ${completeCls}">${l.owned}/${l.total} · ${l.pct}%</div>
-          ` : ''}
-        </div>
-      </div>`;
-    });
-    html += '</div>';
+        const newPill = newCount > 0
+          ? `<span class="new-count-badge new-count-badge-subline" title="${newCount} new">${newCount} NEW</span>`
+          : '';
+        html += `<button class="line-row${newCount>0?' has-new':''}" onclick="goToLine('${l.id}')">
+          <div class="line-row-thumb">
+            <img src="${IMG}/${l.id}.jpg" alt="" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
+          </div>
+          <div class="line-row-info">
+            <div class="line-row-name font-display">${esc(l.name)}</div>
+            <div class="line-row-meta">${l.yr}${l.total > 0 ? ` · ${l.owned}/${l.total} · ${l.pct}%` : ''}</div>
+            ${l.total > 0 ? `<div class="line-row-progress"><div class="line-row-progress-fill ${completeCls}" style="width:${l.pct}%"></div></div>` : ''}
+          </div>
+          ${newPill}
+          <div class="line-row-arrow">${icon(ICO.chevR,16)}</div>
+        </button>`;
+      });
+      html += '</div>';
+    } else {
+      html += '<div class="lines-grid">';
+      visibleOrdered.forEach(l => {
+        const completeCls = l.pct === 100 ? 'complete' : '';
+        // v4.91: count new figures in this line so the user can see at a glance
+        // which lines have recently added figures.
+        let newCount = 0;
+        if (S.newFigIds.size > 0) {
+          for (const f of S.figs) {
+            if (f.line === l.id && S.newFigIds.has(f.id)) newCount++;
+          }
+        }
+        const newBadge = newCount > 0
+          ? `<div class="new-count-badge" title="${newCount} new figure${newCount===1?'':'s'} in this line">${newCount} NEW</div>`
+          : '';
+        html += `<div class="line-card${newCount > 0 ? ' has-new' : ''}" onclick="goToLine('${l.id}')">
+          <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
+          <div class="overlay"></div>
+          ${newBadge}
+          <div class="card-info">
+            <div class="card-name font-display">${esc(l.name)}</div>
+            <div class="card-year">${l.yr}</div>
+            ${l.total > 0 ? `
+              <div class="progress-bar"><div class="progress-fill ${completeCls}" style="width:${l.pct}%"></div></div>
+              <div class="card-stats ${completeCls}">${l.owned}/${l.total} · ${l.pct}%</div>
+            ` : ''}
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    }
   }
   return html;
 }
@@ -6161,7 +6306,22 @@ function renderFigList() {
     </div>
   </div>`;
   if (!figs.length) {
-    html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
+    // v5.01: clearer empty state on Collection tab when nothing has been
+    // collected yet. Distinguish "you have nothing yet" from "your filters
+    // returned nothing".
+    if (S.tab === 'collection' && !S.search && !hf) {
+      html += `<div class="empty-state">
+        <div class="emoji">📦</div>
+        <div class="title">Your collection is empty</div>
+        <div class="text-sm" style="margin-bottom:16px">Start tracking figures by browsing <strong>Lines</strong> or <strong>All</strong> and tapping a status (Owned, Wishlist, Ordered, For Sale).</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button onclick="navTo('lines')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Browse Lines</button>
+          <button onclick="navTo('all')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">View All Figures</button>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
+    }
   } else {
     // v4.87: collect pinned IDs so we can exclude them from the main list.
     // Previously the "New to Catalog" and "Recently changed" sections pinned
@@ -6575,14 +6735,17 @@ function renderMenuSheet() {
 }
 
 function renderFilterSheet() {
+  // v5.01: chip clicks call patchFilter() which rewrites only the sheet body
+  // and invalidates _derived, instead of full render(). Eliminates the
+  // visual flicker that came from regenerating the entire app shell.
   let html = '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Line</div><div class="chip-group">';
   const lineFilter = S.filterLine || '';
   [{id:'',name:'All Lines'}, ...LINES].forEach(l => {
-    html += `<button class="chip ${lineFilter===l.id?'active':''}" onclick="S.filterLine='${l.id}';S.savedScroll=0;render()">${esc(l.name)}</button>`;
+    html += `<button class="chip ${lineFilter===l.id?'active':''}" onclick="patchFilter('line','${l.id}')">${esc(l.name)}</button>`;
   });
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Faction</div><div class="chip-group">';
   ['', ...FACTIONS].forEach(f => {
-    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="S.filterFaction='${esc(f)}';S.savedScroll=0;render()">${f||'All'}</button>`;
+    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="patchFilter('faction','${esc(f)}')">${f||'All'}</button>`;
   });
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Status</div><div class="chip-group">';
   const statusOpts = [
@@ -6590,15 +6753,31 @@ function renderFilterSheet() {
   ];
   statusOpts.forEach(s => {
     const active = S.filterStatus === s.v;
-    html += `<button class="chip ${active?'active':''}" onclick="S.filterStatus='${s.v}';S.savedScroll=0;render()">${s.l}</button>`;
+    html += `<button class="chip ${active?'active':''}" onclick="patchFilter('status','${s.v}')">${s.l}</button>`;
   });
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Variants</div><div class="chip-group">';
-  html += `<button class="chip ${!S.filterVariants?'active':''}" onclick="S.filterVariants=false;S.savedScroll=0;render()">All</button>`;
-  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="S.filterVariants=true;S.savedScroll=0;render()">Has Variants</button>`;
+  html += `<button class="chip ${!S.filterVariants?'active':''}" onclick="patchFilter('variants',false)">All</button>`;
+  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="patchFilter('variants',true)">Has Variants</button>`;
   html += '</div>';
-  if (hasFilters()) html += `<button class="clear-all-btn" onclick="S.filterFaction='';S.filterStatus='';S.filterVariants=false;S.filterLine='';S.search='';S.savedScroll=0;render()">Clear All Filters</button>`;
+  if (hasFilters()) html += `<button class="clear-all-btn" onclick="patchFilter('clear')">Clear All Filters</button>`;
   return html;
 }
+
+// v5.01: in-place filter chip update — no full-app re-render flicker.
+window.patchFilter = (key, val) => {
+  if (key === 'clear') {
+    S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search='';
+  } else if (key === 'line')     S.filterLine = val;
+  else if (key === 'faction')    S.filterFaction = val;
+  else if (key === 'status')     S.filterStatus = val;
+  else if (key === 'variants')   S.filterVariants = val;
+  S.savedScroll = 0;
+  _derived.invalidate();
+  // Re-render only the sheet body — content underneath updates next time
+  // it's surfaced. The sheet body element is wrapped in #sheetBody.
+  const body = document.querySelector('.sheet-body');
+  if (body) body.innerHTML = renderFilterSheet();
+};
 
 function renderSortSheet() {
   const opts = [
