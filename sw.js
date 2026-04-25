@@ -1,7 +1,19 @@
-// MOTU Vault — Service Worker v4.93
+// MOTU Vault — Service Worker v4.94
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v4.94 changelog:
+//   • CACHE bumped to v4.94.
+//   • Audit fixes: orderedPaid===0 now migrates correctly (was falsy);
+//     search input right padding 36→44px (long queries no longer overlap
+//     the X clear button); .acc-chip-x tap target expanded via
+//     padding+negative margin (visually identical, ~28×28 hit area);
+//     deleteKidsCoreAdminFig now also clears overrides + photos.
+//   • Stacked grid card visual: layered box-shadows give a clear depth
+//     cue (was missing entirely; list-view stack offsets bumped 3→5px
+//     and 6→10px with subtle shadows so the slivers read as cards
+//     rather than a thick border).
 //
 // v4.93 changelog:
 //   • CACHE bumped to v4.93 — activate() wipes old entries.
@@ -32,6 +44,18 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v4.94 changelog:
+//   • CACHE bumped to v4.94.
+//   • Audit fixes: orderedPaid===0 now migrates correctly (was falsy);
+//     search input right padding 36→44px (long queries no longer overlap
+//     the X clear button); .acc-chip-x tap target expanded via
+//     padding+negative margin (visually identical, ~28×28 hit area);
+//     deleteKidsCoreAdminFig now also clears overrides + photos.
+//   • Stacked grid card visual: layered box-shadows give a clear depth
+//     cue (was missing entirely; list-view stack offsets bumped 3→5px
+//     and 6→10px with subtle shadows so the slivers read as cards
+//     rather than a thick border).
 //
 // v4.93 changelog:
 //   • CACHE bumped to v4.93 — activate() wipes old entries.
@@ -117,7 +141,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v4.93';
+const CACHE = 'motu-vault-v4.94';
 
 const SHELL = [
   'motu-vault.html',

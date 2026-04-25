@@ -302,7 +302,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   color: var(--t3); pointer-events: none;
 }
 .search-wrap input {
-  padding: 11px 36px 11px 38px;
+  padding: 11px 44px 11px 38px;
   border-radius: 12px;
   font-size: 15px;
 }
@@ -756,11 +756,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-thumb.has-stack.for-sale::before,
 .fig-thumb.has-stack.for-sale::after { border-color: color-mix(in srgb, var(--rd) 60%, var(--bd)); }
 .fig-thumb.has-stack::before {
-  transform: translate(3px, 3px);
+  transform: translate(5px, 5px);
+  box-shadow: 1px 1px 3px rgba(0,0,0,.3);
 }
 .fig-thumb.has-stack::after {
-  transform: translate(6px, 6px);
-  opacity: 0;  /* hidden by default; only revealed when 3+ copies */
+  transform: translate(10px, 10px);
+  box-shadow: 1px 1px 3px rgba(0,0,0,.3);
+  opacity: 0;
 }
 .fig-thumb.has-stack.has-stack-3plus::after {
   opacity: 1;
@@ -845,6 +847,77 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-card.wishlist { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--bl); }
 .fig-card.ordered { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--or); }
 .fig-card.for-sale { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--rd); }
+
+/* v4.94: Stacked-card visual for grid view. .fig-card has overflow:hidden so
+   pseudo-elements get clipped — we use layered box-shadows instead. The
+   trailing card shows a status-tinted ring + a fill matching the bg behind
+   the card. .has-stack = 2+ copies; .has-stack-3plus adds a second card. */
+.fig-card.has-stack {
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.25),
+    5px 5px 0 -1px var(--bd),
+    5px 5px 0 0 var(--bg2);
+}
+.fig-card.has-stack.has-stack-3plus {
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.25),
+    5px 5px 0 -1px var(--bd),
+    5px 5px 0 0 var(--bg2),
+    10px 10px 0 -1px var(--bd),
+    10px 10px 0 0 var(--bg3);
+}
+.fig-card.has-stack.owned {
+  box-shadow:
+    0 0 0 2px var(--gn),
+    5px 5px 0 1px var(--gn), 5px 5px 0 2px var(--bg2),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.owned {
+  box-shadow:
+    0 0 0 2px var(--gn),
+    5px 5px 0 1px var(--gn), 5px 5px 0 2px var(--bg2),
+    10px 10px 0 1px var(--gn), 10px 10px 0 2px var(--bg3),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.wishlist {
+  box-shadow:
+    0 0 0 2px var(--bl),
+    5px 5px 0 1px var(--bl), 5px 5px 0 2px var(--bg2),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.wishlist {
+  box-shadow:
+    0 0 0 2px var(--bl),
+    5px 5px 0 1px var(--bl), 5px 5px 0 2px var(--bg2),
+    10px 10px 0 1px var(--bl), 10px 10px 0 2px var(--bg3),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.ordered {
+  box-shadow:
+    0 0 0 2px var(--or),
+    5px 5px 0 1px var(--or), 5px 5px 0 2px var(--bg2),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.ordered {
+  box-shadow:
+    0 0 0 2px var(--or),
+    5px 5px 0 1px var(--or), 5px 5px 0 2px var(--bg2),
+    10px 10px 0 1px var(--or), 10px 10px 0 2px var(--bg3),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.for-sale {
+  box-shadow:
+    0 0 0 2px var(--rd),
+    5px 5px 0 1px var(--rd), 5px 5px 0 2px var(--bg2),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.for-sale {
+  box-shadow:
+    0 0 0 2px var(--rd),
+    5px 5px 0 1px var(--rd), 5px 5px 0 2px var(--bg2),
+    10px 10px 0 1px var(--rd), 10px 10px 0 2px var(--bg3),
+    0 4px 12px rgba(0,0,0,0.25);
+}
 
 .fig-card img {
   position: absolute; inset: 0;
@@ -1363,11 +1436,15 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   background: none;
   border: none;
   color: var(--t3);
-  padding: 0 2px;
+  /* v4.94: was 0 2px — too small for reliable mobile taps. Expand hit area
+     via padding + negative margin (visually identical, ~28×28 effective). */
+  padding: 6px 10px;
+  margin: -6px -8px -6px 0;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 .acc-chip-x:active { color: var(--rd); }
 .acc-add {
@@ -3788,7 +3865,7 @@ function migrateOrderedToOwned(id) {
     const prefix = `Ordered from: ${e.orderedFrom}`;
     copy.notes = copy.notes ? `${prefix}\n${copy.notes}` : prefix;
   }
-  if (e.orderedPaid && !copy.paid) copy.paid = String(e.orderedPaid);
+  if (e.orderedPaid != null && e.orderedPaid !== '' && !copy.paid) copy.paid = String(e.orderedPaid);
   delete e.orderedFrom;
   delete e.orderedDate;
   delete e.orderedPaid;
@@ -3891,7 +3968,10 @@ function patchFigRow(id) {
   // Try grid view card
   const card = document.querySelector(`.fig-card[data-fig-id="${id}"]`);
   if (card) {
-    card.className = 'fig-card ' + statusCls;
+    let cardCls = 'fig-card ' + statusCls;
+    if (copyN > 1) cardCls += ' has-stack';
+    if (copyN > 2) cardCls += ' has-stack-3plus';
+    card.className = cardCls.trim();
     updateNameInline(card.querySelector('.card-fig-name'));
     const badge = card.querySelector('.status-badge');
     if (badge) {
@@ -4942,7 +5022,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.93</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v4.94</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -5827,7 +5907,7 @@ function renderFigCard(f) {
   const cardClick = S.selectMode ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
-  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}" data-fig-id="${eId}" onclick="${cardClick}">
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}" data-fig-id="${eId}" onclick="${cardClick}">
     ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
       `<div class="card-initial">${esc(f.name[0])}</div>`}
     <div class="card-overlay"></div>
@@ -7454,6 +7534,9 @@ window.deleteKidsCoreAdminFig = async id => {
   store.set(KIDS_CORE_KEY, local);
   S.figs = S.figs.filter(f => f.id !== id);
   delete S.coll[id];
+  // v4.94: also clear overrides + photos (orphaned otherwise)
+  try { clearOverrides(id); } catch {}
+  try { photoStore.delAll && photoStore.delAll(id); } catch {}
   rebuildFigIndex();
   _derived.invalidate();
   S._kcEditId = null; S._kcForm = null;
