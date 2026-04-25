@@ -1,6 +1,5 @@
 name: Sync AF411 Catalog
 
-# On-demand only — trigger from GitHub Actions tab or via API
 on:
   workflow_dispatch:
     inputs:
@@ -9,23 +8,15 @@ on:
         required: false
         default: ''
         type: choice
-        options:
-          - ''
-          - origins
-          - masterverse
-          - chronicles
-          - classics
-          - 200x
-          - original
-          - new-adventures
-          - mondo
-          - super7
-          - eternia-minis
+        options: ['', origins, masterverse, chronicles, classics, 200x, original, new-adventures, mondo, super7, eternia-minis]
       audit_only:
         description: 'Audit only (no changes committed)'
         required: false
         default: false
         type: boolean
+  schedule:
+    # 06:00 UTC daily (≈ 2am ET, 1am CT, 11pm PT)
+    - cron: '0 6 * * *'
 
 permissions:
   contents: write
@@ -37,7 +28,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for clean commits
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -47,60 +38,81 @@ jobs:
       - name: Run sync script
         run: |
           cd ${{ github.workspace }}
-          
-          # Build the command
           CMD="python scripts/sync_af411.py"
-          
-          # Add --commit unless audit-only
-          if [ "${{ inputs.audit_only }}" != "true" ]; then
+          # Scheduled runs are always commit-mode; manual runs respect audit_only.
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.audit_only }}" != "true" ]; then
             CMD="$CMD --commit"
           else
             CMD="$CMD --audit"
           fi
-          
-          # Add --line if specified
           if [ -n "${{ inputs.line }}" ]; then
             CMD="$CMD --line ${{ inputs.line }}"
           fi
-          
           echo "Running: $CMD"
           $CMD
 
-      - name: Commit and push changes
-        if: ${{ inputs.audit_only != true }}
+      - name: Verify manual patches survived sync
+        if: ${{ github.event_name == 'schedule' || inputs.audit_only != 'true' }}
         run: |
           cd ${{ github.workspace }}
-          
-          # Configure git
+          # IDs we manually patched in figures.json (group + source). If the
+          # sync script wiped these, fail the run so we don't push regressions.
+          python3 <<'PY'
+          import json, sys
+          PATCHED = {
+            '2026-movie-4-pack-13440':                 ('Exclusives',          'af411'),
+            'beast-man-deluxe-13523':                  ('Deluxe',              'af411'),
+            'fright-fighter-2026-movie-13439':         ('Vehicles & Playsets', 'af411'),
+            'he-man-nick-galitzine-13442':             ('Action Figures',      'af411'),
+            'he-man-and-sky-sled-2026-movie-13444':    ('Vehicles & Playsets', 'af411'),
+            'spikor-2026-movie-13443':                 ('Action Figures',      'af411'),
+            'trap-jaw-2026-movie-deluxe-13438':        ('Deluxe',              'af411'),
+            'beast-man-1987-movie-8420':               ('Movie',               'af411'),
+            'king-grayskull-13486':                    (None,                  'af411'),
+            'ram-man-jon-xue-zhang-fisto-jhannes-haukur-jhannesson-13441': (None, 'af411'),
+          }
+          with open('figures.json') as f:
+              figs = {x['id']: x for x in json.load(f)}
+          fails = []
+          for fid, (g, s) in PATCHED.items():
+              fig = figs.get(fid)
+              if not fig:
+                  fails.append(f"{fid}: MISSING from figures.json")
+                  continue
+              if g and fig.get('group') != g:
+                  fails.append(f"{fid}: group expected '{g}', got '{fig.get('group','')}'")
+              if s and fig.get('source') != s:
+                  fails.append(f"{fid}: source expected '{s}', got '{fig.get('source','')}'")
+          if fails:
+              print("❌ Sync wiped manual patches. Restore them in scripts/sync_af411.py or re-apply post-sync.\n")
+              for f in fails:
+                  print("  -", f)
+              sys.exit(1)
+          print(f"✅ All {len(PATCHED)} manual patches preserved")
+          PY
+
+      - name: Commit and push changes
+        if: ${{ github.event_name == 'schedule' || inputs.audit_only != 'true' }}
+        run: |
+          cd ${{ github.workspace }}
           git config user.name "MOTU Vault Bot"
           git config user.email "motu-vault-bot@users.noreply.github.com"
-          
-          # Check if there are changes
           if git diff --quiet && git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          
-          # Stage all changes (figures.json + any new .jpg images)
           git add figures.json
           git add "*.jpg" 2>/dev/null || true
-          
-          # Count what changed
           NEW_FIGS=$(git diff --cached --numstat figures.json | awk '{print $1}')
           NEW_IMGS=$(git diff --cached --name-only -- "*.jpg" | wc -l | tr -d ' ')
-          
-          # Build commit message
           LINE_MSG=""
           if [ -n "${{ inputs.line }}" ]; then
             LINE_MSG=" (${{ inputs.line }})"
           fi
-          
+          TRIGGER="${{ github.event_name }}"
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
-          
-          git commit -m "sync: update catalog from AF411${LINE_MSG} — ${TIMESTAMP}" \
-                     -m "Figures updated: +${NEW_FIGS:-0} lines changed" \
+          git commit -m "sync: update catalog from AF411${LINE_MSG} — ${TIMESTAMP} [${TRIGGER}]" \
+                     -m "Figures updated: ${NEW_FIGS:-0} lines changed" \
                      -m "Images added: ${NEW_IMGS}"
-          
           git push
-          
           echo "✅ Changes committed and pushed"
