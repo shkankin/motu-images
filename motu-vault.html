@@ -6,11 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#06060c">
+<meta name="color-scheme" content="dark light">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
+<meta name="description" content="Track your Masters of the Universe action figure collection — works offline, no account needed.">
 <title>MOTU Collector</title>
 <!-- Preload the splash logo in parallel with HTML parse -->
-<link rel="preload" as="image" href="masters_logo.png">
+<link rel="preload" as="image" href="masters_logo.png" fetchpriority="high">
 <!-- Paint black immediately + define splash styles inline so they apply at
      first paint (independent of external stylesheet loading). -->
 <style>
@@ -46,19 +48,33 @@ html,body{background:#000;margin:0}
 }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+<link rel="dns-prefetch" href="https://raw.githubusercontent.com">
 <!-- Load fonts CSS without blocking first paint; applies when ready. -->
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="vault.css">
-</head>
+<!-- v6.01: parallel ES module fetch + pre-parse -->
+<link rel="modulepreload" href="./js/state.js">
+<link rel="modulepreload" href="./js/photos.js">
+<link rel="modulepreload" href="./js/data.js">
+<link rel="modulepreload" href="./js/eggs.js">
+<link rel="modulepreload" href="./js/render.js">
+<link rel="modulepreload" href="./js/handlers.js">
+<link rel="modulepreload" href="./js/ui-sheets.js">
+<link rel="modulepreload" href="./js/app.js">
 </head>
 <body>
+
+  <a href="#app" class="skip-link">Skip to main content</a>
+  <div id="routeAnnouncer" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
 <!-- v5.01: splash temporarily disabled per user request. Restore by removing the comment markers.
 <div class="splash" id="splash">
   <img class="splash-logo" src="masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
   <div class="splash-flash"></div>
 </div>
 -->
+<noscript><div style="padding:40px 20px;text-align:center;color:#fff;font-family:system-ui">MOTU Vault requires JavaScript to run. Please enable it in your browser settings.</div></noscript>
 <div id="app"></div>
 
 <script type="module" src="./js/app.js"></script>

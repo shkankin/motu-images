@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOTU Vault — Loadout Editor</title>
+<!-- Standalone editor for curating the shared loadouts.json that ships
+     to all users via the motu-images repo.
+
+     Usage: Open this file from the SAME ORIGIN as motu-vault.html (i.e. host
+     it at the same domain — or open via the deployed PWA's domain) so
+     localStorage is shared. Then this page can read the 'motu-acc-avail'
+     key (your in-app local loadout edits) and seed the working set from it.
+
+     If you open this file via file:// it'll work standalone (the seed-from-
+     local button will see an empty bucket because file:// is its own origin),
+     but you can still build a list and export the JSON to commit to the repo. -->
+<style>
+  :root {
+    --bg: #0f1115;
+    --bg2: #181b21;
+    --bg3: #22262e;
+    --bd: #2d323b;
+    --t1: #e6e9ef;
+    --t2: #b3b9c4;
+    --t3: #6f7783;
+    --acc: #5b9dff;
+    --gold: #e0b97a;
+    --gn: #50c878;
+    --or: #e0a063;
+    --rd: #e35b5b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--t1);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-bottom: 80px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 8px;
+    color: var(--gold);
+  }
+  .subtitle {
+    color: var(--t3);
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+  .section {
+    background: var(--bg2);
+    border: 1px solid var(--bd);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .section h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0 0 12px;
+    color: var(--t2);
+  }
+  label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--t3);
+    margin-bottom: 4px;
+    margin-top: 8px;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 9px 11px;
+    background: var(--bg3);
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    color: var(--t1);
+    font-size: 13px;
+    font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--acc);
+  }
+  textarea {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    min-height: 240px;
+    resize: vertical;
+  }
+  button {
+    background: var(--acc);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 8px;
+    margin-top: 12px;
+    font-family: inherit;
+  }
+  button.ghost {
+    background: var(--bg3);
+    color: var(--t1);
+    border: 1px solid var(--bd);
+  }
+  button.danger {
+    background: color-mix(in srgb, var(--rd) 30%, transparent);
+    color: var(--rd);
+    border: 1px solid var(--rd);
+  }
+  button.gold {
+    background: var(--gold);
+    color: #1a1611;
+  }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  code {
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--bd);
+    font-size: 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  details { margin-top: 12px; }
+  details summary {
+    cursor: pointer;
+    color: var(--acc);
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  .hint {
+    color: var(--t3);
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 6px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg3);
+    border: 1px solid var(--bd);
+    padding: 10px 18px;
+    border-radius: 999px;
+    color: var(--t1);
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity .2s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; }
+  .empty {
+    text-align: center;
+    color: var(--t3);
+    padding: 24px 0;
+    font-size: 13px;
+    font-style: italic;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--bg3);
+    color: var(--t2);
+    border: 1px solid var(--bd);
+    letter-spacing: 0.3px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .badge.gn { color: var(--gn); border-color: color-mix(in srgb, var(--gn) 50%, var(--bd)); }
+  .badge.or { color: var(--or); border-color: color-mix(in srgb, var(--or) 50%, var(--bd)); }
+  .row-flex {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 0;
+  }
+  .row-flex button { margin-top: 0; }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .toolbar input { flex: 1; min-width: 200px; margin-top: 0; padding: 8px 10px; }
+  .toolbar select { flex: 0 0 auto; width: auto; min-width: 150px; margin-top: 0; padding: 8px 10px; }
+  .fig-list {
+    max-height: 340px;
+    overflow-y: auto;
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    background: var(--bg);
+  }
+  .fig-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--bd);
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .fig-row:last-child { border-bottom: none; }
+  .fig-row:hover { background: var(--bg2); }
+  .fig-row.active { background: color-mix(in srgb, var(--acc) 22%, var(--bg2)); }
+  .fig-row .fig-id {
+    color: var(--t3);
+    font-size: 11px;
+    flex: 0 0 auto;
+    min-width: 100px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .fig-row .fig-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fig-row .fig-meta { color: var(--t3); font-size: 11px; flex: 0 0 auto; text-align: right; }
+  .fig-row.has-loadout::before { content: "●"; color: var(--gn); font-size: 10px; }
+  .fig-row:not(.has-loadout)::before { content: "○"; color: var(--t3); font-size: 10px; }
+  .acc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 8px;
+  }
+  .acc-cell {
+    background: var(--bg3);
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    padding: 9px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+  }
+  .acc-cell:hover { background: #2a2f38; }
+  .acc-cell.selected {
+    background: color-mix(in srgb, var(--acc) 22%, var(--bg3));
+    border-color: var(--acc);
+    color: var(--t1);
+  }
+  .acc-cell .check {
+    width: 16px; height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid var(--t3);
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    color: transparent;
+  }
+  .acc-cell.selected .check {
+    background: var(--acc);
+    border-color: var(--acc);
+    color: #fff;
+  }
+  .editor-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .editor-head strong { font-size: 14px; }
+  .warn-box {
+    background: color-mix(in srgb, var(--or) 12%, var(--bg2));
+    border: 1px solid color-mix(in srgb, var(--or) 40%, var(--bd));
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--t1);
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .warn-box strong { color: var(--or); }
+  @media (max-width: 600px) {
+    .acc-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    h1 { font-size: 18px; }
+    .container { padding: 14px; }
+    .fig-row .fig-id { min-width: 80px; }
+    .fig-row .fig-meta { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Loadout Editor</h1>
+  <div class="subtitle">Curate the shared <code>loadouts.json</code> — the shipped-with list pushed to all users via the <code>motu-images</code> repo.</div>
+
+  <div class="warn-box" id="originWarn" style="display:none">
+    <strong>Note:</strong> You're opened from <code id="originHost"></code>, which is a different origin than the deployed app. The "Seed from this device's local edits" button below will see an <em>empty</em> bucket because localStorage is per-origin. You can still build the list manually or paste JSON below to seed it.
+  </div>
+
+  <div class="section">
+    <h2>1. Source figures</h2>
+    <div class="row-flex">
+      <button id="loadFromRepoBtn">Fetch figures.json from repo</button>
+      <button class="ghost" id="loadFromFileBtn">Load local figures.json…</button>
+      <input type="file" id="figFileInput" accept=".json" style="display:none">
+      <span class="badge" id="figCountBadge">0 figures</span>
+    </div>
+    <div class="hint" id="figStatus">Click "Fetch" to load the live figure list, or upload a local copy.</div>
+  </div>
+
+  <div class="section" id="seedPanel" style="display:none">
+    <h2>2. Seed from existing loadouts (optional)</h2>
+    <div class="row-flex">
+      <button class="ghost" id="seedLocalBtn">Seed from this device (motu-acc-avail)</button>
+      <button class="ghost" id="seedRepoBtn">Seed from current repo loadouts.json</button>
+      <span class="badge" id="seedCountBadge">0 loadouts loaded</span>
+    </div>
+    <div class="hint">Either source merges into the working set; existing entries are overwritten on conflict. Run both if you want repo-defaults overlaid with your local edits.</div>
+  </div>
+
+  <div class="section" id="editPanel" style="display:none">
+    <h2>3. Edit loadouts</h2>
+    <div class="toolbar">
+      <input type="text" id="figSearch" placeholder="Search figures (name / id / line)…">
+      <select id="figFilter">
+        <option value="all">All figures</option>
+        <option value="with-loadout">Has loadout</option>
+        <option value="without-loadout">No loadout</option>
+      </select>
+    </div>
+    <div class="fig-list" id="figList"></div>
+
+    <div id="editor" style="margin-top:18px;display:none">
+      <div class="editor-head">
+        <strong id="editorFigName"></strong>
+        <span class="badge" id="editorFigId"></span>
+        <span class="badge" id="editorCount">0 selected</span>
+        <span style="flex:1"></span>
+        <button class="danger" id="clearLoadoutBtn">Clear loadout</button>
+      </div>
+      <div class="acc-grid" id="accGrid"></div>
+      <details>
+        <summary>Add custom accessory (rare — most figures use the canonical list)</summary>
+        <div class="row-flex" style="margin-top:8px">
+          <input type="text" id="customAccInput" placeholder="Custom accessory name" maxlength="60" style="flex:1;min-width:200px;margin-top:0;padding:8px 10px">
+          <button class="ghost" id="addCustomAccBtn">Add</button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="section" id="exportPanel" style="display:none">
+    <h2>4. Export loadouts.json</h2>
+    <div class="row-flex">
+      <button class="gold" id="exportBtn">Download loadouts.json</button>
+      <button class="ghost" id="copyBtn">Copy JSON</button>
+      <span class="badge" id="exportBadge">0 entries</span>
+    </div>
+    <div class="hint">
+      Commit the downloaded file to the repo root (next to <code>figures.json</code>). All users get the loadouts on their next sync. Local overrides on each user's device still win — this file is the default, not the override.
+    </div>
+    <details>
+      <summary>Preview / paste JSON</summary>
+      <textarea id="jsonPreview" placeholder='Paste a loadouts.json here and click "Load from textarea" to import…'></textarea>
+      <div class="row-flex" style="margin-top:8px">
+        <button class="ghost" id="loadJsonBtn">Load from textarea</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="section">
+    <details open>
+      <summary>How this works</summary>
+      <div class="hint" style="margin-top:10px">
+        The MOTU Vault app reads <code>loadouts.json</code> at the repo root on every sync. Schema:
+        <pre style="background:var(--bg);padding:10px;border-radius:8px;font-size:11px;border:1px solid var(--bd);overflow-x:auto;margin:8px 0"><code>{
+  "version": 1,
+  "loadouts": {
+    "he-man-1982": ["Power Sword", "Half Sword", "Shield"],
+    "skeletor-1982": ["Havoc Staff", "Power Sword (half)"]
+  }
+}</code></pre>
+        Each user's local override (managed in-app via the <em>Edit Loadout</em> button on the accessory picker) takes priority over the repo entry for the same figure ID. Use this editor to seed defaults for figures you've already curated locally, then ship them to everyone.
+        <br><br>
+        <strong>localStorage is per-origin.</strong> The "Seed from this device" button only sees your in-app local edits if this editor is opened from the same domain as the deployed app (e.g. <code>shkankin.github.io</code>). If you open this file via <code>file://</code>, you can still build a list and export the JSON. To pull your existing local edits when opened standalone, run this in the deployed app's browser console: <code>copy(localStorage.getItem('motu-acc-avail'))</code>, then paste into the textarea above and click "Load from textarea".
+        <br><br>
+        <strong>v6.04 plan:</strong> the schema is intentionally a flat array of strings today. A future bump may extend entries to <code>{name, required}</code> objects — string entries will be auto-treated as <code>required: true</code>.
+      </div>
+    </details>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ─── Canonical accessory list ──────────────────────────────────────
+// Mirror of state.js ACCESSORIES. Keep in sync if state.js changes.
+const ACCESSORIES = [
+  'Power Sword','Half Sword','Shield','Axe','Mace','Club',
+  'Staff','Spear','Trident','Bow','Crossbow','Gun/Blaster',
+  'Chain','Chain & Lock','Whip','Nunchucks','Hook',
+  'Cape','Harness','Armor','Helmet','Mask','Belt',
+  'Backpack','Comic','Minicomic','Mini-figure',
+  'Stand','Accessory Card','Instructions','Other',
+];
+
+const FIGS_URL = 'https://raw.githubusercontent.com/shkankin/motu-images/main/figures.json';
+const LOADOUTS_URL = 'https://raw.githubusercontent.com/shkankin/motu-images/main/loadouts.json';
+const ACC_AVAIL_KEY = 'motu-acc-avail';  // matches data.js
+
+const state = {
+  figs: [],
+  loadouts: {},
+  activeFigId: null,
+  search: '',
+  filter: 'all',
+};
+
+// ─── DOM refs ──────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// ─── Toast ─────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ─── Same-origin warning ───────────────────────────────────────────
+// Show the warning if we're not on the deployed app's origin. The host
+// check is broad — any github.io subdomain or the user's custom domain
+// counts as "probably same origin as the app". file:// triggers it.
+(function checkOrigin() {
+  const host = location.hostname;
+  const probablySameOrigin = /github\.io$/i.test(host) || /shkankin/i.test(host);
+  if (!probablySameOrigin) {
+    $('originHost').textContent = location.protocol + '//' + (host || '(file)');
+    $('originWarn').style.display = '';
+  }
+})();
+
+// ─── Loading figures ───────────────────────────────────────────────
+async function fetchFigsFromRepo() {
+  $('figStatus').textContent = 'Fetching…';
+  try {
+    const res = await fetch(FIGS_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const arr = await res.json();
+    if (!Array.isArray(arr)) throw new Error('Not an array');
+    state.figs = arr;
+    onFigsLoaded();
+    $('figStatus').textContent = `Loaded ${arr.length} figures from repo.`;
+    toast(`Loaded ${arr.length} figures`);
+  } catch (err) {
+    $('figStatus').textContent = 'Fetch failed: ' + err.message + ' — try uploading a local copy instead.';
+    toast('⚠ Fetch failed');
+  }
+}
+
+$('loadFromRepoBtn').onclick = fetchFigsFromRepo;
+$('loadFromFileBtn').onclick = () => $('figFileInput').click();
+$('figFileInput').onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const arr = JSON.parse(await f.text());
+    if (!Array.isArray(arr)) throw new Error('Not an array');
+    state.figs = arr;
+    onFigsLoaded();
+    $('figStatus').textContent = `Loaded ${arr.length} figures from ${f.name}.`;
+    toast(`Loaded ${arr.length} figures`);
+  } catch (err) {
+    $('figStatus').textContent = 'Load failed: ' + err.message;
+    toast('⚠ Load failed');
+  }
+};
+
+function onFigsLoaded() {
+  $('figCountBadge').textContent = `${state.figs.length} figures`;
+  $('seedPanel').style.display = '';
+  $('editPanel').style.display = '';
+  $('exportPanel').style.display = '';
+  renderFigList();
+  updateExport();
+}
+
+// ─── Seeding ───────────────────────────────────────────────────────
+$('seedLocalBtn').onclick = () => {
+  try {
+    const local = JSON.parse(localStorage.getItem(ACC_AVAIL_KEY) || '{}');
+    let added = 0;
+    for (const k in local) {
+      if (Array.isArray(local[k]) && local[k].length) {
+        state.loadouts[k] = local[k].slice();
+        added++;
+      }
+    }
+    if (!added) {
+      toast('No local edits found on this origin');
+      $('figStatus').textContent = 'No local loadout edits found in motu-acc-avail on this origin.';
+      return;
+    }
+    afterSeed(added, 'this device');
+  } catch (err) {
+    toast('⚠ Local seed failed');
+    $('figStatus').textContent = 'Local seed failed: ' + err.message;
+  }
+};
+
+$('seedRepoBtn').onclick = async () => {
+  try {
+    const res = await fetch(LOADOUTS_URL + '?t=' + Date.now());
+    if (!res.ok) {
+      $('figStatus').textContent = `No repo loadouts.json yet (HTTP ${res.status}). Starting fresh.`;
+      toast('No repo file yet — starting fresh');
+      return;
+    }
+    const data = await res.json();
+    const entries = data && data.loadouts && typeof data.loadouts === 'object' ? data.loadouts : {};
+    let added = 0;
+    for (const k in entries) {
+      if (Array.isArray(entries[k]) && entries[k].length) {
+        state.loadouts[k] = entries[k].slice();
+        added++;
+      }
+    }
+    afterSeed(added, 'the repo');
+  } catch (err) {
+    toast('⚠ Repo seed failed');
+    $('figStatus').textContent = 'Repo seed failed: ' + err.message;
+  }
+};
+
+function afterSeed(added, source) {
+  $('seedCountBadge').textContent = `${Object.keys(state.loadouts).length} loadouts loaded`;
+  $('figStatus').textContent = `Seeded ${added} loadouts from ${source}.`;
+  toast(`Seeded ${added} loadouts`);
+  renderFigList();
+  if (state.activeFigId) renderEditor();
+  updateExport();
+}
+
+// ─── Figure list ───────────────────────────────────────────────────
+$('figSearch').oninput = (e) => { state.search = e.target.value.trim().toLowerCase(); renderFigList(); };
+$('figFilter').onchange = (e) => { state.filter = e.target.value; renderFigList(); };
+
+function filteredFigs() {
+  const q = state.search;
+  return state.figs.filter(f => {
+    const has = !!state.loadouts[f.id];
+    if (state.filter === 'with-loadout' && !has) return false;
+    if (state.filter === 'without-loadout' && has) return false;
+    if (!q) return true;
+    const hay = `${f.name || ''} ${f.id || ''} ${f.line || ''} ${f.group || ''}`.toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+function renderFigList() {
+  const figs = filteredFigs();
+  const list = $('figList');
+  if (!figs.length) {
+    list.innerHTML = `<div class="empty">No figures match.</div>`;
+    return;
+  }
+  // Cap at 200 rows for performance — search will narrow if needed.
+  const cap = figs.slice(0, 200);
+  list.innerHTML = cap.map(f => {
+    const has = !!state.loadouts[f.id];
+    const active = f.id === state.activeFigId ? 'active' : '';
+    const cls = `fig-row ${has ? 'has-loadout' : ''} ${active}`.trim();
+    return `<div class="${cls}" data-id="${escapeAttr(f.id)}">
+      <span class="fig-id">${escapeHTML(f.id)}</span>
+      <span class="fig-name">${escapeHTML(f.name || '')}</span>
+      <span class="fig-meta">${escapeHTML(f.line || '')}${f.year ? ' · ' + f.year : ''}</span>
+    </div>`;
+  }).join('') + (figs.length > 200 ? `<div class="empty">…and ${figs.length - 200} more — narrow with search.</div>` : '');
+  list.querySelectorAll('.fig-row[data-id]').forEach(el => {
+    el.onclick = () => {
+      state.activeFigId = el.dataset.id;
+      renderFigList();
+      renderEditor();
+    };
+  });
+}
+
+// ─── Editor ────────────────────────────────────────────────────────
+function renderEditor() {
+  const f = state.figs.find(x => x.id === state.activeFigId);
+  if (!f) { $('editor').style.display = 'none'; return; }
+  $('editor').style.display = '';
+  $('editorFigName').textContent = f.name || '(unnamed)';
+  $('editorFigId').textContent = f.id;
+  const current = state.loadouts[f.id] || [];
+  const cset = new Set(current);
+  // Canonical first, then any custom entries already on this loadout.
+  const customs = current.filter(n => !ACCESSORIES.includes(n));
+  const all = [...ACCESSORIES, ...customs];
+  $('accGrid').innerHTML = all.map(name => {
+    const on = cset.has(name);
+    const isCustom = !ACCESSORIES.includes(name);
+    return `<div class="acc-cell ${on ? 'selected' : ''}" data-name="${escapeAttr(name)}">
+      <span class="check">✓</span>
+      <span>${escapeHTML(name)}${isCustom ? ' <span class="badge or">custom</span>' : ''}</span>
+    </div>`;
+  }).join('');
+  $('accGrid').querySelectorAll('.acc-cell').forEach(el => {
+    el.onclick = () => toggle(f.id, el.dataset.name);
+  });
+  $('editorCount').textContent = `${current.length} selected`;
+}
+
+function toggle(figId, name) {
+  const list = state.loadouts[figId] || [];
+  const idx = list.indexOf(name);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(name);
+  if (list.length) state.loadouts[figId] = list;
+  else delete state.loadouts[figId];
+  renderFigList();
+  renderEditor();
+  updateExport();
+}
+
+$('clearLoadoutBtn').onclick = () => {
+  if (!state.activeFigId) return;
+  delete state.loadouts[state.activeFigId];
+  renderFigList();
+  renderEditor();
+  updateExport();
+  toast('Loadout cleared');
+};
+
+$('addCustomAccBtn').onclick = () => {
+  const input = $('customAccInput');
+  const v = input.value.trim();
+  if (!v || !state.activeFigId) return;
+  toggle(state.activeFigId, v);
+  input.value = '';
+};
+$('customAccInput').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('addCustomAccBtn').click(); } };
+
+// ─── Export ────────────────────────────────────────────────────────
+function buildExportObject() {
+  // Stable sort by figId so the JSON diff stays readable across edits.
+  const sorted = {};
+  Object.keys(state.loadouts).sort().forEach(k => { sorted[k] = state.loadouts[k]; });
+  return { version: 1, loadouts: sorted };
+}
+
+function updateExport() {
+  const count = Object.keys(state.loadouts).length;
+  $('exportBadge').textContent = `${count} entries`;
+  $('jsonPreview').value = JSON.stringify(buildExportObject(), null, 2);
+}
+
+$('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(buildExportObject(), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'loadouts.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('Downloaded loadouts.json');
+};
+
+$('copyBtn').onclick = async () => {
+  const txt = JSON.stringify(buildExportObject(), null, 2);
+  try {
+    await navigator.clipboard.writeText(txt);
+    toast('Copied to clipboard');
+  } catch {
+    $('jsonPreview').focus();
+    $('jsonPreview').select();
+    toast('Select-all done — Ctrl/Cmd-C to copy');
+  }
+};
+
+$('loadJsonBtn').onclick = () => {
+  const txt = $('jsonPreview').value.trim();
+  if (!txt) { toast('Textarea is empty'); return; }
+  try {
+    const data = JSON.parse(txt);
+    // Accept either {version, loadouts} (full export) or a bare {[figId]: [...]} (raw motu-acc-avail).
+    const entries = (data && data.loadouts && typeof data.loadouts === 'object') ? data.loadouts
+                  : (data && typeof data === 'object' && !Array.isArray(data)) ? data
+                  : null;
+    if (!entries) throw new Error('Not a loadouts object');
+    let added = 0;
+    for (const k in entries) {
+      if (Array.isArray(entries[k]) && entries[k].length) {
+        state.loadouts[k] = entries[k].slice();
+        added++;
+      }
+    }
+    afterSeed(added, 'the textarea');
+  } catch (err) {
+    toast('⚠ Load failed: ' + err.message);
+  }
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHTML(s); }
+</script>
+</body>
+</html>
