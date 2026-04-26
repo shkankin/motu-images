@@ -9,6 +9,8 @@ import {
   S, store, ICO, icon, IMG,
   esc, _clone, isSelecting,
 } from './state.js';
+import { render, toast, haptic, appConfirm, patchDetailStatus, renderDetail } from './render.js';
+import { doImport, importJSON, figById } from './data.js';
 
 // § PHOTO-STORAGE ── OPFS + localStorage fallback, photoStore API ──
 // Per figure: up to MAX_PHOTOS photos, each with optional label.
@@ -639,5 +641,5 @@ document.addEventListener('drop', e => {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, compressPhoto
+  MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, _opfsReady, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, compressPhoto
 };

@@ -43,6 +43,8 @@ import {
 import {
   playSound, preloadSound, getThemeIcon, getThemeSounds,
 } from './eggs.js';
+import { initLongPress, pushNav } from './handlers.js';
+import { renderSheet } from './ui-sheets.js';
 
 // § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
 function getToastContainer() {

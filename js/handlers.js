@@ -26,6 +26,8 @@ import {
   totalCopyCount, entryCopyCount, getPrimaryCopy, copyVariant,
   rebuildFigIndex, applyOverrides, fetchFigs,
 } from './data.js';
+import { render, toast, haptic, appConfirm, patchFigRow, toastUndo, triggerPulse, renderContent, renderSelectActionbar } from './render.js';
+import { checkCompletion } from './eggs.js';
 
 // § CONTEXT-MENU ── initLongPress, showContextMenu, dismissContextMenu, ctxSetStatus ──
 let _lpTimer = null;
@@ -612,6 +614,7 @@ window.deleteKidsCoreAdminFig = async id => {
 };
 
 // ── window.* mirrors for inline-onclick handlers ──
+window.pushNav = pushNav;
 window.dismissContextMenu = dismissContextMenu;
 
 // ── Exports ─────────────────────────────────────────────────

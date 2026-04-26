@@ -9,18 +9,24 @@
 // Side-effect imports (order matters — state.js is the leaf, others
 // build on it; render.js exposes window.render which data.js + photos.js
 // call lazily to break circular refs).
-import { S, store } from './state.js';
+import { S, store, CACHE_KEY, CACHE_TTL, IMG } from './state.js';
 import {
   initOPFS, loadPhotoLabels, loadPhotoCopyMap,
+  photoStore, _opfsReady,
 } from './photos.js';
 import {
   loadOverrides, applyOverrides, fetchFigs, migrateColl,
-  rebuildFigIndex,
+  rebuildFigIndex, saveColl,
 } from './data.js';
-import { render, toast, haptic, showUpdateBanner } from './render.js';
+import {
+  render, toast, haptic, showUpdateBanner,
+  checkShareLink, checkShortcutAction,
+} from './render.js';
+import {
+  SND, preloadSound, preloadImage, getThemeSounds,
+} from './eggs.js';
 import './handlers.js';
 import './ui-sheets.js';
-import './eggs.js';
 
 // § INIT ── init(), OPFS setup, cache load, splash removal ─────────
 async function init() {

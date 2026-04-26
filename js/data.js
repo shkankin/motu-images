@@ -28,6 +28,8 @@ import {
   photoStore, photoURLs, photoCopyOf, setPhotoCopy,
   loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap,
 } from './photos.js';
+import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
+import { checkCompletion } from './eggs.js';
 
 // § DATA-FETCH ── parseCSV, fetchFigs, newFigIds detection ─────────
 function parseCSV(text) {
