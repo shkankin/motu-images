@@ -273,6 +273,36 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+/* v5.04: stagger entrance animation (restored from v5.01). Only fires when
+   #app has [data-stagger] set, which render() applies on navigation
+   transitions only. Status toggles and in-place patches don't replay it. */
+@keyframes itemStagger {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+[data-stagger] .fig-row,
+[data-stagger] .fig-card,
+[data-stagger] .line-card,
+[data-stagger] .line-row,
+[data-stagger] .subline-card {
+  animation: itemStagger 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+[data-stagger] .fig-row:nth-child(1), [data-stagger] .fig-card:nth-child(1), [data-stagger] .line-card:nth-child(1), [data-stagger] .line-row:nth-child(1), [data-stagger] .subline-card:nth-child(1) { animation-delay: 0ms; }
+[data-stagger] .fig-row:nth-child(2), [data-stagger] .fig-card:nth-child(2), [data-stagger] .line-card:nth-child(2), [data-stagger] .line-row:nth-child(2), [data-stagger] .subline-card:nth-child(2) { animation-delay: 25ms; }
+[data-stagger] .fig-row:nth-child(3), [data-stagger] .fig-card:nth-child(3), [data-stagger] .line-card:nth-child(3), [data-stagger] .line-row:nth-child(3), [data-stagger] .subline-card:nth-child(3) { animation-delay: 50ms; }
+[data-stagger] .fig-row:nth-child(4), [data-stagger] .fig-card:nth-child(4), [data-stagger] .line-card:nth-child(4), [data-stagger] .line-row:nth-child(4), [data-stagger] .subline-card:nth-child(4) { animation-delay: 75ms; }
+[data-stagger] .fig-row:nth-child(5), [data-stagger] .fig-card:nth-child(5), [data-stagger] .line-card:nth-child(5), [data-stagger] .line-row:nth-child(5), [data-stagger] .subline-card:nth-child(5) { animation-delay: 100ms; }
+[data-stagger] .fig-row:nth-child(6), [data-stagger] .fig-card:nth-child(6), [data-stagger] .line-card:nth-child(6), [data-stagger] .line-row:nth-child(6), [data-stagger] .subline-card:nth-child(6) { animation-delay: 125ms; }
+[data-stagger] .fig-row:nth-child(7), [data-stagger] .fig-card:nth-child(7), [data-stagger] .line-card:nth-child(7), [data-stagger] .line-row:nth-child(7), [data-stagger] .subline-card:nth-child(7) { animation-delay: 150ms; }
+[data-stagger] .fig-row:nth-child(8), [data-stagger] .fig-card:nth-child(8), [data-stagger] .line-card:nth-child(8), [data-stagger] .line-row:nth-child(8), [data-stagger] .subline-card:nth-child(8) { animation-delay: 170ms; }
+[data-stagger] .fig-row:nth-child(9), [data-stagger] .fig-card:nth-child(9), [data-stagger] .line-card:nth-child(9), [data-stagger] .line-row:nth-child(9), [data-stagger] .subline-card:nth-child(9) { animation-delay: 190ms; }
+[data-stagger] .fig-row:nth-child(10), [data-stagger] .fig-card:nth-child(10), [data-stagger] .line-card:nth-child(10), [data-stagger] .line-row:nth-child(10), [data-stagger] .subline-card:nth-child(10) { animation-delay: 210ms; }
+[data-stagger] .fig-row:nth-child(11), [data-stagger] .fig-card:nth-child(11), [data-stagger] .line-card:nth-child(11), [data-stagger] .line-row:nth-child(11), [data-stagger] .subline-card:nth-child(11) { animation-delay: 225ms; }
+[data-stagger] .fig-row:nth-child(12), [data-stagger] .fig-card:nth-child(12), [data-stagger] .line-card:nth-child(12), [data-stagger] .line-row:nth-child(12), [data-stagger] .subline-card:nth-child(12) { animation-delay: 240ms; }
+@media (prefers-reduced-motion: reduce) {
+  [data-stagger] .fig-row, [data-stagger] .fig-card, [data-stagger] .line-card, [data-stagger] .line-row, [data-stagger] .subline-card { animation: none; }
+}
+
 /* ── Search Bar ──────────────────────────────────────────────────── */
 .search-bar-wrap {
   overflow: hidden;
@@ -881,6 +911,47 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   border-color: var(--acc);
   background: color-mix(in srgb, var(--acc) 12%, transparent);
   color: var(--acc);
+}
+
+/* v5.04: section header for lines screen — count + view toggle. Sits
+   between the search bar and the lines grid/list with proper breathing
+   room above and below. */
+.lines-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 8px;
+  margin-top: 4px;
+}
+.lines-header-count {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--t3);
+}
+.lines-view-toggle {
+  display: inline-flex;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 2px;
+  gap: 0;
+}
+.lines-view-toggle button {
+  width: 30px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--t3);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+.lines-view-toggle button:active { transform: scale(0.94); }
+.lines-view-toggle button.active {
+  background: color-mix(in srgb, var(--acc) 18%, var(--bg3));
+  color: var(--acc);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
 }
 
 /* ── Figure Grid ────────────────────────────────────────────────── */
@@ -2481,6 +2552,7 @@ const FIGS_URL = IMG + '/figures.json';
 const KIDS_CORE_URL = IMG + '/kids-core.json';
 const CACHE_KEY = 'motu-figs-cache';
 const KIDS_CORE_KEY = 'motu-kids-core';  // localStorage key for local Kids Core figures
+const CUSTOM_FIGS_KEY = 'motu-custom-figs'; // v5.04: localStorage key for user-defined custom figures
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 const LINES = [
@@ -3197,6 +3269,12 @@ async function fetchFigs(manual = false, firstLoad = false) {
       // Detect newly added figures
       const prevIds = new Set(S.figs.map(f => f.id));
       const custom = S.figs.filter(f => f.line === 'custom');
+      // v5.04: Local custom figures (added via standalone editor). Same
+      // pattern as Kids Core local — kept across syncs, prefixed with
+      // 'custom-' to avoid future AF411 ID collisions. Each entry can
+      // declare its own `line` (origins, masterverse, etc.) so the figure
+      // appears in the right line's list.
+      const localCustom = store.get(CUSTOM_FIGS_KEY) || [];
       // Local Kids Core figures (added via admin UI) — kept across syncs
       const localKC = store.get(KIDS_CORE_KEY) || [];
       const remoteIds = new Set([...remote, ...kcHydrated].map(f => f.id));
@@ -3204,6 +3282,12 @@ async function fetchFigs(manual = false, firstLoad = false) {
         ...f, line: 'kids-core', source: 'kids-core-local',
         image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
       })).filter(f => !remoteIds.has(f.id)); // dedupe against repo
+      const localCustomFigs = localCustom.map(f => ({
+        ...f, source: 'custom-local',
+        // Force ID prefix to prevent collision with future AF411 IDs
+        id: f.id && f.id.startsWith('custom-') ? f.id : 'custom-' + f.id,
+        image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
+      })).filter(f => !remoteIds.has(f.id));
 
       const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
       // Only flag as new if we had a previous catalog loaded (not first boot)
@@ -3211,11 +3295,13 @@ async function fetchFigs(manual = false, firstLoad = false) {
         [...hydrated, ...kcHydrated].forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
       }
       const kcIds = new Set([...kcHydrated, ...localKCFigs].map(f => f.id));
+      const customIds = new Set(localCustomFigs.map(f => f.id));
       S.figs = [
         ...hydrated,
         ...kcHydrated,
         ...localKCFigs,
-        ...custom.filter(f => !remoteIds.has(f.id) && !kcIds.has(f.id)),
+        ...localCustomFigs,
+        ...custom.filter(f => !remoteIds.has(f.id) && !kcIds.has(f.id) && !customIds.has(f.id)),
       ];
       rebuildFigIndex();
       S.syncTs = Date.now();
@@ -4327,46 +4413,109 @@ function renderAccessoryPickerSheet() {
   const cp = (c && isMigrated(c)) ? c.copies.find(x => x.id === copyId) : null;
   const current = (cp && Array.isArray(cp.accessories)) ? cp.accessories : [];
   const currentSet = new Set(current);
-  // Surface any custom entries (not in ACCESSORIES) at the top as already-selected
-  const customSelected = current.filter(a => !ACCESSORIES.includes(a));
+  // v5.03: per-figure accessory availability list. If set for this figId,
+  // the picker only offers those (plus anything already on the copy or
+  // custom-added). Useful for "Battle Armor He-Man only came with Sword,
+  // Battle Axe, and mini comic" — limit the picker to those three.
+  const allAvail = getAccAvail();
+  const figAvail = allAvail[figId];   // array | undefined
+  const adminMode = !!S._accPickAdmin;
+  // In admin mode, ALL global accessories are listed with the figure's
+  // available subset checked. Tapping toggles inclusion in the available
+  // list (does NOT touch what's on the copy).
   let h = '';
   if (!cp) {
     return '<div class="text-dim text-sm" style="padding:20px;text-align:center">Copy no longer exists.</div>';
   }
-  // Build onclick payloads safely — esc() HTML-encodes for attribute context,
-  // but the resulting string is then parsed back as JS, so ' → &#39; → ' and
-  // unterminates the string literal. JSON.stringify gives us a valid JS
-  // string literal (complete with surrounding quotes and \" escapes for any
-  // embedded double-quotes); esc() on the JSON output then protects the HTML
-  // attribute. This round-trips any Unicode, quotes, or backslashes cleanly.
   const jsArg = s => esc(JSON.stringify(s));
-  h += `<div class="text-dim text-sm" style="margin-bottom:4px">Tap to toggle. Added items apply to this copy only.</div>`;
+
+  // Header / mode toggle
+  if (adminMode) {
+    h += `<div class="text-dim text-sm" style="margin-bottom:8px;line-height:1.5">
+      Editing available accessories for this figure. Selected items will be the only ones offered when checking off accessories. Leave all unchecked to allow everything.
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button onclick="S._accPickAdmin=false;renderSheetBody()" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:12px">‹ Back to Picker</button>
+      <button onclick="resetAccAvail('${esc(figId)}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:12px">Reset to All</button>
+    </div>`;
+  } else {
+    h += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="text-dim text-sm">Tap to toggle. ${figAvail ? '<span style="color:var(--acc)">Filtered list active.</span>' : 'Added items apply to this copy only.'}</div>
+      <button onclick="S._accPickAdmin=true;renderSheetBody()" title="Edit available accessories" style="padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:11px;font-weight:600">⚙ Limit list</button>
+    </div>`;
+  }
+
   h += `<div class="acc-picker-list">`;
-  // Show custom accessories first so the user can tap to remove them
-  customSelected.forEach(name => {
-    h += `<button class="acc-picker-item selected" onclick="toggleAccessoryInPicker(${jsArg(name)})">
-      <span>${esc(name)}</span>
-      <span class="acc-picker-check">✓</span>
-    </button>`;
-  });
-  ACCESSORIES.forEach(name => {
-    const on = currentSet.has(name);
-    h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccessoryInPicker(${jsArg(name)})">
-      <span>${esc(name)}</span>
-      ${on ? '<span class="acc-picker-check">✓</span>' : ''}
-    </button>`;
-  });
+  if (adminMode) {
+    // Admin mode: list ALL global accessories. Checked = part of figure's
+    // available list. customSelected aren't shown here (they're per-copy
+    // tags, not picker options).
+    const figAvailSet = new Set(figAvail || []);
+    ACCESSORIES.forEach(name => {
+      const on = figAvailSet.has(name);
+      h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccAvail(${jsArg(name)})">
+        <span>${esc(name)}</span>
+        ${on ? '<span class="acc-picker-check">✓</span>' : ''}
+      </button>`;
+    });
+  } else {
+    // Normal mode: show only the figure's available list (or all, if none).
+    // Custom-already-on-copy entries surface at top so they can be removed.
+    const customSelected = current.filter(a => !ACCESSORIES.includes(a));
+    customSelected.forEach(name => {
+      h += `<button class="acc-picker-item selected" onclick="toggleAccessoryInPicker(${jsArg(name)})">
+        <span>${esc(name)}</span>
+        <span class="acc-picker-check">✓</span>
+      </button>`;
+    });
+    const offerList = (figAvail && figAvail.length) ? figAvail : ACCESSORIES;
+    offerList.forEach(name => {
+      const on = currentSet.has(name);
+      h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccessoryInPicker(${jsArg(name)})">
+        <span>${esc(name)}</span>
+        ${on ? '<span class="acc-picker-check">✓</span>' : ''}
+      </button>`;
+    });
+  }
   h += `</div>`;
-  h += `<div class="acc-picker-custom">
-    <input type="text" id="accPickerCustomInput" placeholder="Custom accessory…" maxlength="60"
-           onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAccessory()}">
-    <button onclick="addCustomAccessory()">Add</button>
-  </div>`;
+  if (!adminMode) {
+    h += `<div class="acc-picker-custom">
+      <input type="text" id="accPickerCustomInput" placeholder="Custom accessory…" maxlength="60"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAccessory()}">
+      <button onclick="addCustomAccessory()">Add</button>
+    </div>`;
+  }
   h += `<div style="margin-top:14px;display:flex;justify-content:flex-end">
-    <button onclick="closeSheet()" style="padding:10px 18px;border-radius:10px;background:var(--bg3);border:1px solid var(--bd);color:var(--t1);font-size:13px;font-weight:600">Done</button>
+    <button onclick="S._accPickAdmin=false;closeSheet()" style="padding:10px 18px;border-radius:10px;background:var(--bg3);border:1px solid var(--bd);color:var(--t1);font-size:13px;font-weight:600">Done</button>
   </div>`;
   return h;
 }
+
+// v5.03: per-figure accessory availability
+const ACC_AVAIL_KEY = 'motu-acc-avail';
+function getAccAvail() {
+  try { return JSON.parse(localStorage.getItem(ACC_AVAIL_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveAccAvail(map) {
+  try { localStorage.setItem(ACC_AVAIL_KEY, JSON.stringify(map)); } catch {}
+}
+window.toggleAccAvail = name => {
+  const figId = S._accPickFigId; if (!figId) return;
+  const all = getAccAvail();
+  const list = new Set(all[figId] || []);
+  if (list.has(name)) list.delete(name); else list.add(name);
+  if (list.size === 0) delete all[figId];
+  else all[figId] = [...list];
+  saveAccAvail(all);
+  renderSheetBody();
+};
+window.resetAccAvail = figId => {
+  const all = getAccAvail();
+  delete all[figId];
+  saveAccAvail(all);
+  renderSheetBody();
+};
 
 // Synchronously apply any pending field debounces. Called from unload
 // handlers so note edits typed within 400ms of backgrounding aren't lost.
@@ -4807,7 +4956,7 @@ window.exportJSON = exportJSON;
 const SETTINGS_KEYS = [
   'motu-theme', 'motu-sort', 'motu-view', 'motu-lines-view', 'motu-line-order',
   'motu-hidden', 'motu-recent', 'motu-default-photo', 'motu-onboarded',
-  'motu-celebrated', 'motu-ptr-enabled',
+  'motu-celebrated', 'motu-ptr-enabled', 'motu-acc-avail', 'motu-custom-figs',
 ];
 window.exportSettings = () => {
   const settings = {};
@@ -5114,6 +5263,16 @@ const app = () => document.getElementById('app');
 
 function render() {
   try {
+    // v5.04: stagger animation gate. Only fires when render is preceded by
+    // navigation (tab change, line change, search clear, etc.) — NOT when
+    // a status toggle or in-place patch triggers a render. Without this,
+    // every status tap re-plays the entrance animation, which is annoying.
+    if (S._justNavigated) {
+      app().setAttribute('data-stagger', '1');
+      // Clear the attribute after the longest stagger delay (~250ms) so
+      // subsequent in-place updates don't animate.
+      setTimeout(() => { try { app().removeAttribute('data-stagger'); } catch {} }, 600);
+    }
     if (!S.loaded) { renderLoading(); return; }
     if (S.screen === 'figure' && S.activeFig) { renderDetail(); return; }
     renderMain();
@@ -5192,7 +5351,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.02</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.04</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -6022,10 +6181,14 @@ function renderLinesGrid() {
     // can pick independently for each screen.
     const linesView = store.get('motu-lines-view') || 'grid';
     const visibleOrdered = ordered.filter(l => !isLineFullyHidden(l.id));
-    html += `<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:0 0 8px;padding:0 4px">
-      <div class="view-toggle">
-        <button class="${linesView==='list'?'active':''}" onclick="store.set('motu-lines-view','list');render()" title="List view">${icon(ICO.list,14)}</button>
-        <button class="${linesView==='grid'?'active':''}" onclick="store.set('motu-lines-view','grid');render()" title="Grid view">${icon(ICO.lines,14)}</button>
+    // v5.04: section header with line count on the left, view toggle on the
+    // right. Matches the visual rhythm of other section headers in the app
+    // (proper margin from the search bar above, consistent padding).
+    html += `<div class="lines-header">
+      <div class="lines-header-count">${visibleOrdered.length} ${visibleOrdered.length === 1 ? 'Line' : 'Lines'}</div>
+      <div class="lines-view-toggle" role="group" aria-label="View mode">
+        <button class="${linesView==='grid'?'active':''}" onclick="store.set('motu-lines-view','grid');render()" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
+        <button class="${linesView==='list'?'active':''}" onclick="store.set('motu-lines-view','list');render()" title="List view" aria-label="List view">${icon(ICO.list,15)}</button>
       </div>
     </div>`;
     if (linesView === 'list') {
@@ -7033,6 +7196,7 @@ window.addEventListener('popstate', e => {
   // If a sheet is open, close it — preserve select mode and selection
   if (S.sheet) {
     S.sheet = null;
+    S._accPickAdmin = false;  // v5.03: reset admin mode on close
     render();
     _skipPush = false;
     return;

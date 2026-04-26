@@ -1,7 +1,28 @@
-// MOTU Vault — Service Worker v5.02
+// MOTU Vault — Service Worker v5.04
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v5.04 changelog:
+//   • CACHE bumped to v5.04.
+//   • Stagger entrance animation restored, gated to navigation only
+//     (data-stagger attribute set on #app). Status toggles and in-place
+//     patches no longer replay it.
+//   • Lines view toggle restyled into a proper section header — line
+//     count on left, segmented toggle on right, breathing room above.
+//   • Custom figures: app now loads motu-custom-figs from localStorage
+//     at sync time, IDs auto-prefixed with 'custom-' to avoid AF411
+//     collision when official entries arrive. Use the standalone
+//     custom-figs-editor.html to add/edit/delete.
+//
+// v5.03 changelog:
+//   • CACHE bumped to v5.03.
+//   • Per-figure accessory availability list. Tap "⚙ Limit list" in the
+//     accessory picker to choose which accessories are even offered for
+//     that figure (e.g. Battle Armor He-Man → just Sword, Battle Axe,
+//     mini comic). Stored under motu-acc-avail (per-figure-id list).
+//     Empty/unset = full ACCESSORIES catalog as before. Custom-added
+//     accessories on a copy still show even if not in the limited list.
 //
 // v5.02 changelog:
 //   • CACHE bumped to v5.02. v5.01 was amended in place (same CACHE
@@ -124,6 +145,27 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v5.04 changelog:
+//   • CACHE bumped to v5.04.
+//   • Stagger entrance animation restored, gated to navigation only
+//     (data-stagger attribute set on #app). Status toggles and in-place
+//     patches no longer replay it.
+//   • Lines view toggle restyled into a proper section header — line
+//     count on left, segmented toggle on right, breathing room above.
+//   • Custom figures: app now loads motu-custom-figs from localStorage
+//     at sync time, IDs auto-prefixed with 'custom-' to avoid AF411
+//     collision when official entries arrive. Use the standalone
+//     custom-figs-editor.html to add/edit/delete.
+//
+// v5.03 changelog:
+//   • CACHE bumped to v5.03.
+//   • Per-figure accessory availability list. Tap "⚙ Limit list" in the
+//     accessory picker to choose which accessories are even offered for
+//     that figure (e.g. Battle Armor He-Man → just Sword, Battle Axe,
+//     mini comic). Stored under motu-acc-avail (per-figure-id list).
+//     Empty/unset = full ACCESSORIES catalog as before. Custom-added
+//     accessories on a copy still show even if not in the limited list.
 //
 // v5.02 changelog:
 //   • CACHE bumped to v5.02. v5.01 was amended in place (same CACHE
@@ -301,7 +343,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v5.02';
+const CACHE = 'motu-vault-v5.04';
 
 const SHELL = [
   'motu-vault.html',
