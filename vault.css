@@ -1,0 +1,2515 @@
+/* ═══════════════════════════════════════════════════════════════════
+   MOTU VAULT — Pure CSS, Zero Dependencies
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Theme Variables ─────────────────────────────────────────────── */
+:root {
+  /* v5.06 Obsidian palette — moves the default from generic blue-slate to a
+     richer "tactile retro-futurism" base. Named themes (skeletor/heman/etc)
+     keep their distinct identities below. */
+  --bg:  #09090b;       /* Pure obsidian canvas — lets toy photography pop */
+  --bg2: #121217;       /* Card / surface */
+  --bg3: #1c1c24;       /* Input / elevated */
+  --bd:  #272730;       /* Subtle borders */
+  --acc: #7c3aed;       /* Radical violet — He-Man/Skeletor energy */
+  --gold:#facc15;       /* Power Sword yellow — punchier than #e8c577 */
+  --t1:  #ffffff;
+  --t2:  #b3b9c4;
+  /* v5.06: t3 lifted from #71717a → #8a8d9a to clear WCAG AA contrast on bg2/bg3 */
+  --t3:  #8a8d9a;
+  --btn-t: #ffffff;     /* white text on violet primary */
+  --gn:  #22c55e;       /* high-vis emerald */
+  --rd:  #ef4444;
+  --bl:  #60a5fa;
+  --or:  #fb923c;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* v5.06: radius bumped 14→16, sm 10→12 for slightly more "premium" feel */
+  --radius: 16px;
+  --radius-sm: 12px;
+  --shimmer: linear-gradient(90deg, var(--bg3) 25%, color-mix(in srgb, var(--bd) 40%, var(--bg3)) 50%, var(--bg3) 75%);
+}
+
+[data-theme="skeletor"] {
+  --bg: #090212; --bg2: #16062b; --bg3: #220b40; --bd: #361850;
+  --acc: #b14eff; --gold: #f2e162; --rd: #d63a76;
+  --t1: #faf5ff; --t2: #c0a8e6; --t3: #8a71b5; --btn-t: #ffffff;
+}
+[data-theme="heman"] {
+  --bg: #140803; --bg2: #241107; --bg3: #351c0e; --bd: #4a2916;
+  --acc: #cbd5e1; --gold: #ff8a1f; --rd: #c43d2a;
+  --t1: #fff7ed; --t2: #d6c5b3; --t3: #a38d7a; --btn-t: #000000;
+}
+[data-theme="grayskull"] {
+  --bg: #030d06; --bg2: #091a0f; --bg3: #102919; --bd: #1f3829;
+  --acc: #a3e635; --gold: #b8e070; --gn: #4ade80;
+  --t1: #f0fdf4; --t2: #86a693; --t3: #5b7a67; --btn-t: #022c22;
+}
+[data-theme="snake"] {
+  --bg: #120303; --bg2: #200608; --bg3: #300c10; --bd: #4a141a;
+  --acc: #fde047; --gold: #d8c089; --rd: #d6293a; --gn: #4fb83a;
+  --t1: #fef2f2; --t2: #d4c4c4; --t3: #8a7373; --btn-t: #451a03;
+}
+
+/* ── Reset & Base ────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #app {
+  height: 100%; width: 100%;
+  overflow: hidden;
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+input, select, textarea {
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg3);
+  border: 1px solid var(--bd);
+  border-radius: var(--radius-sm);
+  color: var(--t1);
+  font-size: 14px;
+  padding: 12px;
+  width: 100%;
+  /* v5.06: transition box-shadow too so focus ring fades in smoothly */
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--acc);
+  /* v5.06: dramatic focus ring per audit recommendation. 1px border shift
+     was too easy to miss. */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 30%, transparent);
+}
+button:focus-visible {
+  /* v5.06: keyboard-only focus indicator for buttons. Mouse/touch
+     interactions don't trigger it, so the visual remains unchanged
+     for normal use. */
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+input::placeholder, textarea::placeholder { color: var(--t3); }
+
+button {
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  transition: all 0.15s ease;
+}
+button:active { opacity: 0.7; transform: scale(0.97); }
+
+/* ── Typography ──────────────────────────────────────────────────── */
+.font-display { font-family: 'Cinzel', serif; font-weight: 700; }
+.text-gold { color: var(--gold); }
+.text-muted { color: var(--t2); }
+.text-dim { color: var(--t3); }
+.text-xs { font-size: 10px; }
+.text-sm { font-size: 12px; }
+.text-md { font-size: 14px; }
+.text-upper { text-transform: uppercase; letter-spacing: 1.5px; }
+
+/* ── Layout Shell ────────────────────────────────────────────────── */
+#app {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.top-bar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--bd);
+  padding-top: max(12px, var(--safe-top));
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10;
+  transform: translateY(0);
+  transition: transform 0.18s ease-out, opacity 0.15s ease-out;
+}
+.top-bar.immersive-hide {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.content-area {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bottom-nav {
+  background: var(--bg2);
+  border-top: 1px solid var(--bd);
+  padding-bottom: max(6px, var(--safe-bottom));
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 10;
+  transform: translateY(0);
+  transition: transform 0.18s ease-out, opacity 0.15s ease-out;
+}
+.bottom-nav.immersive-hide,
+.bottom-nav.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bottom-nav button {
+  padding: 7px 0 5px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--t3);
+  font-weight: 400;
+  transition: color 0.15s;
+}
+.bottom-nav button.active { color: var(--acc); font-weight: 600; }
+.bottom-nav button.active svg { stroke-width: 2.5; }
+.bottom-nav .badge {
+  font-size: 9px;
+  background: var(--bd);
+  color: var(--t3);
+  border-radius: 8px;
+  padding: 1px 5px;
+  margin-left: 0px;
+}
+.bottom-nav button.active .badge { background: var(--acc); color: var(--bg); }
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 12px;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.logo-title {
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+.logo-subtitle {
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  /* v5.06: bumped 38→44 px for WCAG tap-target minimum */
+  width: 44px; height: 44px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:hover { border-color: var(--acc); color: var(--acc); }
+.icon-btn.syncing { animation: spin 1s linear infinite; }
+.icon-btn.sync-ok { border-color: var(--gn); color: var(--gn); }
+.icon-btn.sync-err { border-color: var(--rd); color: var(--rd); }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* v5.06: status-pop. When a status button becomes active (after tapping it),
+   the icon springs in with an overshoot then settles. Uses a ::before
+   pseudo-trick: the animation runs on the BUTTON's own contents because
+   patchDetailStatus replaces the markup, triggering the element-create
+   animation. Only fires on .status-btn.active to limit to that one button. */
+@keyframes statusPop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.status-btn.active svg {
+  animation: statusPop 0.32s cubic-bezier(0.5, 1.5, 0.7, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-btn.active svg { animation: none; }
+}
+
+/* v5.04: stagger entrance animation (restored from v5.01). Only fires when
+   #app has [data-stagger] set, which render() applies on navigation
+   transitions only. Status toggles and in-place patches don't replay it. */
+@keyframes itemStagger {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+[data-stagger] .fig-row,
+[data-stagger] .fig-card,
+[data-stagger] .line-card,
+[data-stagger] .line-row,
+[data-stagger] .subline-card {
+  animation: itemStagger 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+[data-stagger] .fig-row:nth-child(1), [data-stagger] .fig-card:nth-child(1), [data-stagger] .line-card:nth-child(1), [data-stagger] .line-row:nth-child(1), [data-stagger] .subline-card:nth-child(1) { animation-delay: 0ms; }
+[data-stagger] .fig-row:nth-child(2), [data-stagger] .fig-card:nth-child(2), [data-stagger] .line-card:nth-child(2), [data-stagger] .line-row:nth-child(2), [data-stagger] .subline-card:nth-child(2) { animation-delay: 25ms; }
+[data-stagger] .fig-row:nth-child(3), [data-stagger] .fig-card:nth-child(3), [data-stagger] .line-card:nth-child(3), [data-stagger] .line-row:nth-child(3), [data-stagger] .subline-card:nth-child(3) { animation-delay: 50ms; }
+[data-stagger] .fig-row:nth-child(4), [data-stagger] .fig-card:nth-child(4), [data-stagger] .line-card:nth-child(4), [data-stagger] .line-row:nth-child(4), [data-stagger] .subline-card:nth-child(4) { animation-delay: 75ms; }
+[data-stagger] .fig-row:nth-child(5), [data-stagger] .fig-card:nth-child(5), [data-stagger] .line-card:nth-child(5), [data-stagger] .line-row:nth-child(5), [data-stagger] .subline-card:nth-child(5) { animation-delay: 100ms; }
+[data-stagger] .fig-row:nth-child(6), [data-stagger] .fig-card:nth-child(6), [data-stagger] .line-card:nth-child(6), [data-stagger] .line-row:nth-child(6), [data-stagger] .subline-card:nth-child(6) { animation-delay: 125ms; }
+[data-stagger] .fig-row:nth-child(7), [data-stagger] .fig-card:nth-child(7), [data-stagger] .line-card:nth-child(7), [data-stagger] .line-row:nth-child(7), [data-stagger] .subline-card:nth-child(7) { animation-delay: 150ms; }
+[data-stagger] .fig-row:nth-child(8), [data-stagger] .fig-card:nth-child(8), [data-stagger] .line-card:nth-child(8), [data-stagger] .line-row:nth-child(8), [data-stagger] .subline-card:nth-child(8) { animation-delay: 170ms; }
+[data-stagger] .fig-row:nth-child(9), [data-stagger] .fig-card:nth-child(9), [data-stagger] .line-card:nth-child(9), [data-stagger] .line-row:nth-child(9), [data-stagger] .subline-card:nth-child(9) { animation-delay: 190ms; }
+[data-stagger] .fig-row:nth-child(10), [data-stagger] .fig-card:nth-child(10), [data-stagger] .line-card:nth-child(10), [data-stagger] .line-row:nth-child(10), [data-stagger] .subline-card:nth-child(10) { animation-delay: 210ms; }
+[data-stagger] .fig-row:nth-child(11), [data-stagger] .fig-card:nth-child(11), [data-stagger] .line-card:nth-child(11), [data-stagger] .line-row:nth-child(11), [data-stagger] .subline-card:nth-child(11) { animation-delay: 225ms; }
+[data-stagger] .fig-row:nth-child(12), [data-stagger] .fig-card:nth-child(12), [data-stagger] .line-card:nth-child(12), [data-stagger] .line-row:nth-child(12), [data-stagger] .subline-card:nth-child(12) { animation-delay: 240ms; }
+@media (prefers-reduced-motion: reduce) {
+  [data-stagger] .fig-row, [data-stagger] .fig-card, [data-stagger] .line-card, [data-stagger] .line-row, [data-stagger] .subline-card { animation: none; }
+}
+
+/* ── Search Bar ──────────────────────────────────────────────────── */
+.search-bar-wrap {
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  max-height: 80px;
+  opacity: 1;
+}
+.search-bar-wrap.hidden {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.search-row {
+  padding: 0 16px 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-wrap {
+  flex: 1;
+  position: relative;
+}
+.search-wrap .search-icon {
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--t3); pointer-events: none;
+}
+.search-wrap input {
+  padding: 11px 44px 11px 38px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+.search-clear {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--t3);
+  padding: 4px;
+}
+
+.filter-btn, .sort-btn {
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.filter-btn.active { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); color: var(--acc); }
+.filter-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  display: inline-block;
+}
+
+.sort-label { font-size: 11px; color: var(--t3); }
+
+/* ── Breadcrumb ──────────────────────────────────────────────────── */
+.breadcrumb {
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.breadcrumb button {
+  color: var(--t2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  padding: 2px 0;
+}
+.breadcrumb .sep { color: var(--t3); }
+.breadcrumb .current {
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 14px;
+}
+.breadcrumb .crumb-link {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+}
+
+/* ── Stats Bar ───────────────────────────────────────────────────── */
+.stats-bar {
+  padding: 12px 16px 4px;
+}
+.stats-segments {
+  height: 8px; border-radius: 4px;
+  background: var(--bg3);
+  display: flex; overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid var(--bd);
+}
+.stats-segments .seg {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+.stats-segments .seg.owned { background: var(--gn); }
+.stats-segments .seg.wishlist { background: var(--bl); }
+.stats-segments .seg.ordered { background: var(--or); }
+.stats-segments .seg.for-sale { background: var(--rd); }
+.stats-legend {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 11px; color: var(--t2);
+}
+.stats-legend .stat-item {
+  display: flex; align-items: center; gap: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.stats-legend .stat-item:active {
+  background: color-mix(in srgb, var(--acc) 15%, transparent);
+}
+.stats-legend .stat-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.stats-legend .stat-dot.owned { background: var(--gn); }
+.stats-legend .stat-dot.wishlist { background: var(--bl); }
+.stats-legend .stat-dot.ordered { background: var(--or); }
+.stats-legend .stat-dot.for-sale { background: var(--rd); }
+.stats-legend .stat-dot.unowned { background: var(--bd); }
+.stats-legend .stat-val { font-weight: 600; }
+
+/* ── Lines Grid ──────────────────────────────────────────────────── */
+.lines-grid {
+  padding: 14px 16px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* v5.01: list-view variant of lines screen */
+.lines-list { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+.line-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 10px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.line-row:hover { border-color: var(--acc); }
+.line-row:active { transform: scale(0.98); }
+.line-row.has-new { border-left: 3px solid var(--acc); padding-left: 9px; }
+.line-row-thumb {
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg3);
+  position: relative;
+}
+.line-row-thumb img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top;
+}
+.line-row-info { flex: 1; min-width: 0; }
+.line-row-name {
+  font-size: 14px; color: var(--t1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.line-row-meta { font-size: 11px; color: var(--t3); margin-top: 2px; }
+.line-row-progress {
+  margin-top: 6px;
+  height: 3px; border-radius: 2px;
+  background: var(--bg3);
+  overflow: hidden;
+}
+.line-row-progress-fill {
+  height: 100%;
+  background: var(--gold);
+  transition: width 0.4s;
+}
+.line-row-progress-fill.complete { background: var(--gn); }
+.line-row-arrow { color: var(--t3); flex-shrink: 0; }
+.line-row .new-count-badge-subline {
+  position: static;
+  align-self: center;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.line-card {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--bd);
+  aspect-ratio: 3/4;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.line-card:hover { transform: scale(1.02); }
+.line-card img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top;
+}
+.line-card .overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.1) 0%, rgba(0,0,0,.3) 40%, rgba(0,0,0,.85) 100%);
+}
+.line-card .card-info {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px 12px 14px;
+}
+.line-card .card-name {
+  font-size: 13px; line-height: 1.2;
+  color: #fff; margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+}
+.line-card .card-year { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 6px; }
+.line-card .progress-bar {
+  height: 2px; background: rgba(255,255,255,.2);
+  border-radius: 2px; overflow: hidden; margin-bottom: 4px;
+}
+.line-card .progress-fill {
+  height: 100%; border-radius: 2px;
+  background: var(--gold);
+  transition: width 0.4s;
+}
+.line-card .progress-fill.complete { background: var(--gn); }
+.line-card .card-stats { font-size: 10px; color: rgba(255,255,255,.7); font-weight: 600; }
+.line-card .card-stats.complete { color: var(--gn); }
+
+/* v4.91: NEW count badge for line cards (and subline rows). On line cards
+   it floats top-right over the image. On subline rows it sits inline before
+   the hide button. The same base class is reused; the -subline modifier
+   strips the absolute positioning. The subtle accent-pulse underline on
+   the parent (.has-new) draws the eye without being a flashing element. */
+.new-count-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  background: var(--acc);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.new-count-badge-subline {
+  position: static;
+  margin-right: 4px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* v4.91: NEW figure trail — badges + accent borders on lines/sublines that
+   have figures added since the last sync. Helps the user navigate to new
+   content without scrolling through every line. */
+.line-card.has-new {
+  box-shadow: 0 0 0 2px var(--acc), 0 4px 16px color-mix(in srgb, var(--acc) 35%, transparent);
+}
+.new-count-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  padding: 3px 7px;
+  background: var(--acc);
+  color: var(--btn-t);
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--acc) 50%, transparent);
+}
+/* Subline variant — sits inline with the card content, not absolutely
+   positioned, since subline cards aren't image overlays. */
+.subline-card .new-count-badge-subline {
+  position: static;
+  align-self: center;
+  margin-right: 6px;
+  background: var(--acc);
+  color: var(--btn-t);
+  flex-shrink: 0;
+}
+.subline-card.has-new {
+  border-left: 3px solid var(--acc);
+}
+
+.reorder-toggle {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding-top: 8px;
+}
+.reorder-toggle button {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 8px;
+  border: 1px solid var(--bd);
+  color: var(--t3); font-size: 11px;
+  transition: all 0.15s;
+}
+.reorder-toggle button.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+/* ── Responsive (v4.89) ──────────────────────────────────────────
+   The app was designed mobile-first with a single-column layout.
+   On wider viewports we:
+     • Cap the effective app width so content doesn't stretch across huge
+       displays (list rows and cards become unreadably wide otherwise).
+     • Widen the figure grid to 3/4/5 columns as viewport grows.
+     • Keep the fixed top-bar and bottom-nav full-width but center their
+       content to the same column.
+   This is deliberately NOT a split-pane layout — the current nav model
+   assumes one screen at a time (main ↔ detail ↔ sheet). A true two-pane
+   layout would require restructuring renderDetail + history + scroll
+   preservation, which is out of scope for this pass.
+   The --app-max custom property is the single knob for the centered
+   max-width at each breakpoint. */
+:root {
+  --app-max: 100vw;
+  --app-pad: 0px;
+}
+@media (min-width: 768px) {
+  :root { --app-max: 960px; --app-pad: max(0px, calc((100vw - 960px) / 2)); }
+  .fig-grid { grid-template-columns: repeat(3, 1fr); }
+  /* Center the inner content of the fixed bars to match the column. */
+  .top-bar, .bottom-nav { padding-left: var(--app-pad); padding-right: var(--app-pad); }
+}
+@media (min-width: 1024px) {
+  :root { --app-max: 1200px; --app-pad: max(0px, calc((100vw - 1200px) / 2)); }
+  .fig-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1440px) {
+  :root { --app-max: 1400px; --app-pad: max(0px, calc((100vw - 1400px) / 2)); }
+  .fig-grid { grid-template-columns: repeat(5, 1fr); }
+}
+/* On wider screens, cap the width of the content inside the main and
+   detail scroll containers so rows/grids/pills don't stretch edge to edge.
+   We apply this selector-by-selector to avoid wrapping arbitrary content. */
+@media (min-width: 768px) {
+  .fig-list,
+  .stats-bar,
+  .breadcrumb,
+  .line-grid,
+  .subline-grid,
+  .fig-grid,
+  .fig-count {
+    max-width: var(--app-max);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* Detail screen: cap narrower than the grid — a 1200px-wide single-column
+     form with two inputs side-by-side feels sparse. 780px is ~ Medium article
+     column width, readable and dense.
+     Cap the header as a whole (so back button stays left of title at 780px)
+     but cap individual scroll-body children so each section centers. */
+  .detail-header {
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .detail-scroll > * {
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ── Reorder List ────────────────────────────────────────────────── */
+.reorder-list {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reorder-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: var(--radius);
+}
+.reorder-arrows {
+  display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+}
+.reorder-arrows button {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t1);
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.reorder-arrows button:disabled { color: color-mix(in srgb, var(--t3) 30%, transparent); cursor: default; }
+
+/* ── Subline Cards ───────────────────────────────────────────────── */
+.subline-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subline-card {
+  padding: 18px 20px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.15s;
+  width: 100%;
+}
+.subline-card:hover { border-color: var(--acc); }
+.subline-card.all-card {
+  background: var(--bg3);
+  border-width: 2px;
+}
+
+.subline-ring { flex-shrink: 0; }
+.subline-info { flex: 1; min-width: 0; }
+.subline-name {
+  font-family: 'Cinzel', serif;
+  font-size: 15px; font-weight: 700;
+  color: var(--t1); margin-bottom: 4px;
+}
+.subline-card.all-card .subline-name { color: var(--gold); }
+.subline-stats { font-size: 12px; color: var(--t3); }
+.subline-progress {
+  height: 3px; background: var(--bd);
+  border-radius: 2px; margin-top: 8px;
+  overflow: hidden;
+}
+.subline-progress-fill {
+  height: 100%; border-radius: 2px;
+  background: var(--acc);
+  transition: width 0.4s;
+}
+.subline-progress-fill.complete { background: var(--gn); }
+.subline-arrow { flex-shrink: 0; color: var(--t3); }
+
+/* ── Figure List ─────────────────────────────────────────────────── */
+.fig-list { padding: 12px 12px 0; }
+.fig-count { font-size: 11px; color: var(--t3); margin-bottom: 8px; padding-left: 4px; }
+
+.fig-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bd) 15%, transparent);
+  cursor: pointer;
+  transition: background 0.1s;
+  contain: content;
+}
+.fig-row:hover { background: color-mix(in srgb, var(--bg3) 50%, transparent); }
+
+.fig-thumb {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-sm);
+  background: var(--bg3);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bd);
+}
+.fig-thumb.owned { border-color: var(--gn); }
+.fig-thumb.wishlist { border-color: var(--bl); }
+.fig-thumb.ordered { border-color: var(--or); }
+.fig-thumb.for-sale { border-color: var(--rd); }
+.fig-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top;
+}
+.fig-thumb .initial {
+  font-family: 'Cinzel', serif;
+  font-size: 20px; color: var(--t3); font-weight: 700;
+}
+
+/* v4.92: Stacked-thumbnail visual for figures with multiple copies.
+   The real .fig-thumb stays 56×56 — the ::before / ::after pseudo-elements
+   are positioned BEHIND it (z-index trick) and offset down-right so they
+   peek out as if a small stack of cards is fanned underneath the photo.
+   No extra DOM and no extra image fetches. The inline ×N pill next to the
+   name still carries the exact count; the stack is purely a visual cue.
+   `.has-stack` is added to .fig-thumb in renderFigRow when copyN >= 2.
+   `.has-stack-3plus` is added when copyN >= 3 to deepen the second sliver. */
+.fig-thumb {
+  position: relative;
+}
+.fig-thumb.has-stack::before,
+.fig-thumb.has-stack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg3);
+  border: 2px solid var(--bd);
+  z-index: -1;
+}
+.fig-thumb.has-stack.owned::before,
+.fig-thumb.has-stack.owned::after { border-color: color-mix(in srgb, var(--gn) 60%, var(--bd)); }
+.fig-thumb.has-stack.wishlist::before,
+.fig-thumb.has-stack.wishlist::after { border-color: color-mix(in srgb, var(--bl) 60%, var(--bd)); }
+.fig-thumb.has-stack.ordered::before,
+.fig-thumb.has-stack.ordered::after { border-color: color-mix(in srgb, var(--or) 60%, var(--bd)); }
+.fig-thumb.has-stack.for-sale::before,
+.fig-thumb.has-stack.for-sale::after { border-color: color-mix(in srgb, var(--rd) 60%, var(--bd)); }
+.fig-thumb.has-stack::before {
+  transform: translate(5px, 5px);
+  box-shadow: 1px 1px 3px rgba(0,0,0,.3);
+}
+.fig-thumb.has-stack::after {
+  transform: translate(10px, 10px);
+  box-shadow: 1px 1px 3px rgba(0,0,0,.3);
+  opacity: 0;
+}
+.fig-thumb.has-stack.has-stack-3plus::after {
+  opacity: 1;
+}
+/* Counteract the parent's overflow:hidden which would clip the pseudo-elements.
+   We need the stack slivers visible OUTSIDE the thumb's bottom-right corner. */
+.fig-thumb.has-stack {
+  overflow: visible;
+}
+/* But the IMG still needs clipping inside the thumb bounds. Wrap visual in
+   the existing img/initial elements which already work — those don't escape
+   because they have width/height 100% relative to the parent.
+   To keep the photo from spilling now that overflow is visible, give the
+   image its own clip via border-radius. */
+.fig-thumb.has-stack img {
+  border-radius: calc(var(--radius-sm) - 2px);
+}
+
+.fig-text { flex: 1; min-width: 0; }
+.fig-name {
+  font-size: 14px; font-weight: 600;
+  color: var(--t1); line-height: 1.3;
+  margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fig-meta {
+  font-size: 12px; color: var(--t3);
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.fig-meta .line-name { color: var(--acc); font-weight: 600; }
+
+.fig-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fig-var-badge { font-size: 9px; font-weight: 700; color: var(--gold); letter-spacing: 0.5px; }
+.fig-status-dot { width: 10px; height: 10px; border-radius: 50%; }
+.fig-status-dot.owned { background: var(--gn); }
+.fig-status-dot.wishlist { background: var(--bl); }
+.fig-status-dot.ordered { background: var(--or); }
+.fig-status-dot.for-sale { background: var(--rd); }
+
+.quick-own {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t3);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── View Toggle ────────────────────────────────────────────────── */
+.view-toggle {
+  display: flex; gap: 4px;
+}
+.view-toggle button {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1px solid var(--bd); background: var(--bg3);
+  color: var(--t3); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; font-family: 'Outfit', sans-serif;
+}
+.view-toggle button:active { opacity: 0.7; transform: scale(0.97); }
+.view-toggle button.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+/* v5.04: section header for lines screen — count + view toggle. Sits
+   between the search bar and the lines grid/list with proper breathing
+   room above and below. */
+.lines-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 8px;
+  margin-top: 4px;
+}
+.lines-header-count {
+  font-size: 11px;
+  font-weight: 800;  /* v5.06: bumped 700→800 per audit */
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--t2);  /* v5.06: t3→t2 for better legibility */
+}
+.lines-view-toggle {
+  display: inline-flex;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 2px;
+  gap: 0;
+}
+.lines-view-toggle button {
+  width: 30px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--t3);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+.lines-view-toggle button:active { transform: scale(0.94); }
+.lines-view-toggle button.active {
+  background: color-mix(in srgb, var(--acc) 18%, var(--bg3));
+  color: var(--acc);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+
+/* ── Figure Grid ────────────────────────────────────────────────── */
+.fig-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; padding: 0 12px;
+}
+.fig-card {
+  position: relative; border-radius: var(--radius);
+  overflow: hidden; border: none;
+  /* v5.06: deeper layered shadow + plastic-edge inset highlight via box-shadow.
+     The 0 0 0 1px inset on the OUTER box (not the image) catches light along
+     the rim like a blister-pack edge. */
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.06),
+    0 8px 24px -8px rgba(0,0,0,0.5),
+    0 4px 8px -2px rgba(0,0,0,0.3);
+  background: var(--bg3); aspect-ratio: 3/4;
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+  contain: content;
+}
+.fig-card:active { transform: scale(0.97); }
+.fig-card.owned {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--gn) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--gn),
+    0 8px 24px -8px color-mix(in srgb, var(--gn) 20%, rgba(0,0,0,0.5));
+}
+.fig-card.wishlist {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--bl) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--bl),
+    0 8px 24px -8px color-mix(in srgb, var(--bl) 20%, rgba(0,0,0,0.5));
+}
+.fig-card.ordered {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--or) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--or),
+    0 8px 24px -8px color-mix(in srgb, var(--or) 20%, rgba(0,0,0,0.5));
+}
+.fig-card.for-sale {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--rd) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--rd),
+    0 8px 24px -8px color-mix(in srgb, var(--rd) 20%, rgba(0,0,0,0.5));
+}
+
+/* v4.95: Grid stack — bigger offsets (8/16px instead of 5/10) + a gap between
+   the card's status ring and the stack (using transparent layer at +2px) so
+   the trailing card reads as a separate object, not a thick border. The
+   status-tinted slivers are 2px wide (matching the card's status ring). */
+.fig-card.has-stack {
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.25),
+    8px 8px 0 -1px var(--bd),
+    8px 8px 0 0 var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4);
+}
+.fig-card.has-stack.has-stack-3plus {
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.25),
+    8px 8px 0 -1px var(--bd),
+    8px 8px 0 0 var(--bg2),
+    16px 16px 0 -1px var(--bd),
+    16px 16px 0 0 var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4);
+}
+/* Status-colored variants — first ring is the card's own status, then the
+   stack offsets carry the same status color so the back card peeks out
+   matching. */
+.fig-card.has-stack.owned {
+  box-shadow:
+    0 0 0 2px var(--gn),
+    8px 8px 0 1px var(--gn), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.owned {
+  box-shadow:
+    0 0 0 2px var(--gn),
+    8px 8px 0 1px var(--gn), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--gn), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.wishlist {
+  box-shadow:
+    0 0 0 2px var(--bl),
+    8px 8px 0 1px var(--bl), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.wishlist {
+  box-shadow:
+    0 0 0 2px var(--bl),
+    8px 8px 0 1px var(--bl), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--bl), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.ordered {
+  box-shadow:
+    0 0 0 2px var(--or),
+    8px 8px 0 1px var(--or), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.ordered {
+  box-shadow:
+    0 0 0 2px var(--or),
+    8px 8px 0 1px var(--or), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--or), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.for-sale {
+  box-shadow:
+    0 0 0 2px var(--rd),
+    8px 8px 0 1px var(--rd), 8px 8px 0 2px var(--bg2),
+    8px 8px 8px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+.fig-card.has-stack.has-stack-3plus.for-sale {
+  box-shadow:
+    0 0 0 2px var(--rd),
+    8px 8px 0 1px var(--rd), 8px 8px 0 2px var(--bg2),
+    16px 16px 0 1px var(--rd), 16px 16px 0 2px var(--bg3),
+    16px 16px 12px -2px rgba(0,0,0,0.4),
+    0 4px 12px rgba(0,0,0,0.25);
+}
+/* Grid uses gap, but the box-shadows now extend 16px past the card on the
+   right and bottom — guarantee the grid container has enough breathing room
+   so cards in the right column / bottom row don't get clipped by the
+   container's overflow or run into neighbors. */
+.fig-grid { padding-right: 18px; padding-bottom: 18px; }
+
+.fig-card img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain; object-position: center;
+}
+.fig-card .card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,.85) 100%);
+}
+.fig-card .card-info {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 10px;
+}
+.fig-card .card-fig-name {
+  font-size: 13px; font-weight: 600; color: #fff;
+  line-height: 1.3; margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.fig-card .card-fig-meta {
+  font-size: 11px; color: rgba(255,255,255,.6);
+}
+.fig-card .card-initial {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cinzel', serif; font-size: 36px;
+  color: var(--t3); font-weight: 900;
+}
+.fig-card .status-badge {
+  position: absolute; top: 8px; right: 8px;
+  width: 26px; height: 26px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(0,0,0,.5);
+  z-index: 2;
+}
+.fig-card .status-badge.owned { background: color-mix(in srgb, var(--gn) 25%, transparent); border-color: color-mix(in srgb, var(--gn) 40%, transparent); }
+.fig-card .status-badge.wishlist { background: color-mix(in srgb, var(--bl) 25%, transparent); border-color: color-mix(in srgb, var(--bl) 40%, transparent); }
+.fig-card .status-badge.ordered { background: color-mix(in srgb, var(--or) 25%, transparent); border-color: color-mix(in srgb, var(--or) 40%, transparent); }
+.fig-card .status-badge.for-sale { background: color-mix(in srgb, var(--rd) 25%, transparent); border-color: color-mix(in srgb, var(--rd) 40%, transparent); }
+.fig-card .new-badge {
+  position: absolute; top: 8px; left: 8px;
+  font-size: 9px; font-weight: 700; color: var(--acc);
+  letter-spacing: 0.5px; background: rgba(0,0,0,.6);
+  padding: 2px 6px; border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Empty State ─────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--t3);
+}
+.empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+.empty-state .title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px; color: var(--t2); margin-bottom: 4px;
+}
+
+/* ── Figure Detail ───────────────────────────────────────────────── */
+.detail-header {
+  padding: 16px 16px 12px;
+  padding-top: max(16px, var(--safe-top));
+  background: var(--bg2);
+  border-bottom: 1px solid var(--bd);
+  display: flex; align-items: center; gap: 12px;
+}
+.detail-title {
+  flex: 1;
+  font-family: 'Cinzel', serif;
+  font-size: 15px; font-weight: 700;
+  color: var(--t1); line-height: 1.3;
+}
+.detail-back, .detail-delete {
+  padding: 8px; border-radius: 8px;
+}
+.detail-back { color: var(--t1); }
+.detail-delete { color: var(--rd); }
+
+.detail-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+.photo-section {
+  position: relative;
+  background: var(--bg3);
+}
+.photo-container {
+  aspect-ratio: 1;
+  max-height: 320px;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.photo-container img { width: 100%; height: 100%; object-fit: contain; }
+.photo-container .initial-large {
+  font-family: 'Cinzel', serif;
+  font-size: 72px; color: var(--t3); font-weight: 900;
+}
+
+/* Multi-photo carousel */
+.photo-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg3);
+}
+.photo-carousel::-webkit-scrollbar { display: none; }
+.photo-slide {
+  position: relative;
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  aspect-ratio: 1;
+  max-height: 360px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-in;
+}
+.photo-slide img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+.photo-slide-label {
+  position: absolute; bottom: 12px; left: 12px;
+  background: rgba(0,0,0,.7); color: #fff;
+  padding: 4px 10px; border-radius: 8px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+.photo-slide-remove {
+  position: absolute; top: 10px; right: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,.6); color: var(--rd);
+  border: 1px solid rgba(248,113,113,.4);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px); cursor: pointer;
+}
+.photo-slide-default {
+  position: absolute; top: 10px; left: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,.6); color: rgba(255,255,255,.4);
+  border: 1px solid rgba(255,255,255,.15);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px); cursor: pointer;
+  font-size: 16px; line-height: 1;
+}
+.photo-slide-default.active {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 50%, transparent);
+  text-shadow: 0 0 8px var(--gold);
+}
+.photo-dots {
+  display: flex; justify-content: center; gap: 6px;
+  padding: 10px 0 4px;
+  background: var(--bg3);
+}
+.photo-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--bd);
+  transition: all 0.2s;
+}
+.photo-dot.active { background: var(--gold); width: 18px; border-radius: 3px; }
+
+.photo-controls {
+  position: absolute; bottom: 10px; right: 10px;
+  display: flex; gap: 8px;
+  z-index: 5;
+}
+.photo-btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,.7);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #fff; font-size: 12px;
+  display: flex; align-items: center; gap: 6px;
+  backdrop-filter: blur(4px); cursor: pointer;
+}
+.photo-btn.remove {
+  border-color: rgba(248,113,113,.4);
+  color: var(--rd);
+}
+
+.photo-labels {
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.photo-label-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.photo-label-num {
+  font-size: 11px; color: var(--t3); font-weight: 600;
+  width: 24px; flex-shrink: 0;
+}
+.photo-label-row input {
+  flex: 1; font-size: 13px;
+  padding: 8px 12px;
+}
+
+/* Full-screen photo viewer */
+.photo-viewer {
+  position: fixed; inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,.92);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.18s ease-out;
+}
+.photo-viewer-img-wrap {
+  position: relative;
+  max-width: 100%; max-height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.photo-viewer-img-wrap img {
+  max-width: 100%; max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.photo-viewer-close {
+  position: absolute; top: max(16px, var(--safe-top));
+  right: 16px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,.1); color: #fff;
+  border: 1px solid rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; backdrop-filter: blur(8px);
+  z-index: 2;
+}
+.photo-viewer-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,.1); color: #fff;
+  border: 1px solid rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; backdrop-filter: blur(8px);
+}
+.photo-viewer-nav.prev { left: 12px; }
+.photo-viewer-nav.next { right: 12px; }
+.photo-viewer-label {
+  margin-top: 12px; padding: 6px 14px;
+  background: rgba(255,255,255,.1); color: #fff;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(8px);
+}
+.photo-viewer-counter {
+  position: absolute; bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px; color: rgba(255,255,255,.7);
+  background: rgba(0,0,0,.4); padding: 4px 10px;
+  border-radius: 12px; backdrop-filter: blur(4px);
+}
+
+.detail-pills {
+  padding: 16px;
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--bd);
+  font-size: 12px; color: var(--t2);
+}
+
+.detail-retail {
+  padding: 0 16px 16px;
+  font-size: 14px; color: var(--t2);
+}
+.detail-retail .price { color: var(--gold); font-weight: 600; }
+
+.status-grid {
+  padding: 0 16px 16px;
+}
+.status-grid .label {
+  font-size: 11px; color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+.status-grid .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.status-btn {
+  padding: 14px 8px;
+  border-radius: 12px;
+  border: 2px solid var(--bd);
+  background: var(--bg2);
+  color: var(--t2);
+  font-size: 14px; font-weight: 600;
+  transition: all 0.15s;
+}
+.status-btn.active { background: color-mix(in srgb, var(--status-color) 12%, transparent); border-color: var(--status-color); color: var(--status-color); }
+
+.detail-fields {
+  padding: 0 16px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.detail-fields .field-label {
+  font-size: 12px; color: var(--t3); margin-bottom: 4px;
+}
+.detail-fields .field-hint {
+  font-size: 10px; color: var(--t3); margin-top: 4px;
+}
+
+/* ── Multi-Copy Detail UI (v4.43) ────────────────────────────────── */
+.copies-section {
+  padding: 0 16px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.copies-header {
+  display: flex; align-items: center; gap: 8px;
+  padding-bottom: 2px;
+}
+.copies-count {
+  font-size: 10px;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 1px;
+}
+.copy-card {
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.copy-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+  border-bottom: 1px solid var(--bd);
+}
+.copy-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t1);
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+.copy-del-btn {
+  background: none; border: none;
+  color: var(--t3);
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px;
+  transition: background .15s, color .15s;
+}
+.copy-del-btn:active {
+  background: color-mix(in srgb, var(--rd) 15%, transparent);
+  color: var(--rd);
+}
+.copy-fields {
+  padding: 12px 14px;
+  gap: 10px;
+}
+.add-copy-btn {
+  background: color-mix(in srgb, var(--acc) 8%, transparent);
+  border: 1px dashed var(--bd);
+  border-radius: 12px;
+  padding: 14px;
+  color: var(--acc);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .15s, border-color .15s;
+}
+.add-copy-btn:active {
+  background: color-mix(in srgb, var(--acc) 18%, transparent);
+  border-color: var(--acc);
+}
+.add-copy-plus {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Per-copy photos (v4.46) — strip of thumbs + add button inside the copy card */
+.copy-photos-row {
+  margin-top: 4px;
+}
+.copy-photos-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.copy-photo-thumb {
+  position: relative;
+  width: 64px; height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg3);
+  cursor: pointer;
+}
+.copy-photo-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.copy-photo-unlink {
+  position: absolute;
+  top: 2px; right: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,.65);
+  color: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.copy-photo-add {
+  width: 64px; height: 64px;
+  border-radius: 8px;
+  border: 1px dashed var(--bd);
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+  color: var(--acc);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.copy-photo-add:active {
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+  border-color: var(--acc);
+}
+
+/* Small "×N" copy count badge for list/grid views */
+.copy-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  background: color-mix(in srgb, var(--gold) 22%, var(--bg3));
+  color: var(--gold);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+.copy-count-badge-card {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
+  background: color-mix(in srgb, #000 60%, var(--gold) 40%);
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+}
+/* v4.88: inline "×N" pill that sits next to the figure name instead of in
+   the right-side actions area. Smaller + tighter than the standalone badge
+   so it doesn't crowd the name. */
+.copy-count-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 5px;
+  margin-left: 6px;
+  background: color-mix(in srgb, var(--gold) 20%, var(--bg3));
+  color: var(--gold);
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  vertical-align: 1px;
+  flex-shrink: 0;
+}
+.card-fig-name .copy-count-inline {
+  background: color-mix(in srgb, #000 50%, var(--gold) 50%);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+}
+
+/* Accessories + Location (v4.87) ─────────────────────────────────── */
+.acc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.acc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 10px;
+  background: color-mix(in srgb, var(--acc) 14%, var(--bg3));
+  color: var(--t1);
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, transparent);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  max-width: 100%;
+}
+.acc-chip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.acc-chip-x {
+  background: none;
+  border: none;
+  color: var(--t3);
+  /* v4.94: was 0 2px — too small for reliable mobile taps. Expand hit area
+     via padding + negative margin (visually identical, ~28×28 effective). */
+  padding: 6px 10px;
+  margin: -6px -8px -6px 0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.acc-chip-x:active { color: var(--rd); }
+.acc-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+  border: 1px dashed var(--bd);
+  color: var(--acc);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.acc-add:active {
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+  border-color: var(--acc);
+}
+/* Accessory picker sheet — list of tappable options */
+.acc-picker-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+@media (max-width: 360px) { .acc-picker-list { grid-template-columns: 1fr; } }
+.acc-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  color: var(--t1);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.acc-picker-item.selected {
+  background: color-mix(in srgb, var(--acc) 12%, var(--bg2));
+  border-color: var(--acc);
+  color: var(--acc);
+}
+.acc-picker-item:active { background: color-mix(in srgb, var(--acc) 18%, var(--bg2)); }
+.acc-picker-check {
+  flex-shrink: 0;
+  color: var(--acc);
+  font-size: 14px;
+}
+.acc-picker-custom {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+}
+.acc-picker-custom input {
+  flex: 1;
+  min-width: 0;
+}
+.acc-picker-custom button {
+  flex-shrink: 0;
+  padding: 0 14px;
+  background: var(--acc);
+  color: var(--btn-t);
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* ── Bottom Sheet ────────────────────────────────────────────────── */
+.sheet-overlay {
+  position: absolute; inset: 0;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.sheet-overlay.visible { opacity: 1; pointer-events: auto; }
+.sheet-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(4px);
+}
+.sheet-panel {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--bg2);
+  border-radius: 20px 20px 0 0;
+  border: none;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.4);
+  padding-bottom: max(20px, var(--safe-bottom));
+  max-height: 85%;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-overlay.visible .sheet-panel { transform: translateY(0); }
+
+.sheet-handle {
+  padding: 12px 20px 0;
+  display: flex; justify-content: center;
+}
+.sheet-handle-bar {
+  width: 40px; height: 5px;
+  border-radius: 3px; background: var(--bd);
+  margin-bottom: 12px;
+}
+.sheet-header {
+  padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; flex-shrink: 0;
+}
+.sheet-title {
+  font-family: 'Cinzel', serif;
+  font-size: 16px; font-weight: 700; color: var(--gold);
+}
+.sheet-close { color: var(--t3); padding: 4px; }
+.sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding: 0 20px 20px;
+}
+.sheet-footer {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  border-top: 1px solid var(--bd);
+  background: var(--bg2);
+}
+
+/* ── Filter/Sort Sheet Buttons ───────────────────────────────────── */
+.chip-group {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+}
+.chip {
+  /* v5.06: min-height 44 for tap-target accessibility; padding adjusted to keep visual */
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 22px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+}
+.chip.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+.sort-option {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t1);
+  font-size: 15px;
+  text-align: left;
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%;
+  margin-bottom: 4px;
+}
+.sort-option.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+/* ── Theme Picker ────────────────────────────────────────────────── */
+.theme-option {
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 2px solid var(--bd);
+  cursor: pointer;
+  display: flex; align-items: center; gap: 14px;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 10px;
+  transition: all 0.15s;
+}
+.theme-option .swatch {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* ── Import Sheet ────────────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed var(--bd);
+  border-radius: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.drop-zone.dragover {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
+}
+.overwrite-toggle {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg3);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.checkbox {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: 2px solid var(--bd);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.checkbox.checked {
+  border-color: var(--acc);
+  background: var(--acc);
+}
+.checkbox span { display: none; }
+.checkbox.checked span { display: flex; }
+
+.clear-all-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--rd);
+  background: color-mix(in srgb, var(--rd) 8%, transparent);
+  color: var(--rd);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ── Loading Screen ──────────────────────────────────────────────── */
+/* ── Splash Screen ───────────────────────────────────────────────── */
+.loading-screen {
+  height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: var(--bg);
+  padding: 32px;
+}
+.loading-name {
+  font-size: 13px; letter-spacing: 3px;
+  color: var(--t3);
+  font-family: 'Cinzel', serif;
+  margin-bottom: 32px;
+}
+.loading-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--bd);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+.loading-text { font-size: 12px; color: var(--t3); letter-spacing: 1px; }
+
+.retry-btn {
+  padding: 12px 32px;
+  border-radius: 12px;
+  border: 1px solid var(--rd);
+  background: color-mix(in srgb, var(--rd) 8%, transparent);
+  color: var(--rd);
+  font-size: 14px; font-weight: 600;
+}
+
+/* ── Pull to Refresh ─────────────────────────────────────────────── */
+.ptr-indicator {
+  text-align: center; padding: 12px 0;
+  font-size: 11px; color: var(--t3);
+  letter-spacing: 1px;
+  transition: opacity 0.2s;
+}
+.ptr-indicator .ptr-spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid var(--bd); border-top-color: var(--gold);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+
+/* ── Select Mode ─────────────────────────────────────────────────── */
+.select-btn {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--t2);
+  padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--bd); background: var(--bg3);
+  cursor: pointer;
+}
+.select-btn.active {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 12%, transparent);
+  color: var(--acc);
+}
+
+.select-checkbox {
+  width: 22px; height: 22px; border-radius: 6px;
+  border: 2px solid var(--bd);
+  background: rgba(0,0,0,.3);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.select-checkbox.checked {
+  background: var(--acc);
+  border-color: var(--acc);
+}
+.select-checkbox svg { opacity: 0; transition: opacity 0.15s; color: #fff; }
+.select-checkbox.checked svg { opacity: 1; }
+
+.fig-row.selected {
+  background: color-mix(in srgb, var(--acc) 10%, transparent);
+}
+.fig-card.selected {
+  outline: 3px solid var(--acc);
+  outline-offset: -3px;
+}
+.fig-card .select-checkbox-corner {
+  position: absolute; top: 8px; left: 8px;
+  z-index: 3;
+}
+
+.select-actionbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 20;
+  background: var(--bg2);
+  border-top: 1px solid var(--acc);
+  padding: 8px 12px;
+  padding-bottom: max(10px, var(--safe-bottom));
+  display: flex; flex-direction: column; gap: 8px;
+  box-shadow: 0 -6px 20px rgba(0,0,0,.4);
+  transform: translateY(100%);
+  transition: transform 0.22s cubic-bezier(0.2,0,0,1);
+}
+.select-actionbar.visible { transform: translateY(0); }
+.select-actionbar .sa-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.select-actionbar .count {
+  font-size: 14px; font-weight: 700; color: var(--gold);
+  flex-shrink: 0; min-width: 20px; text-align: center;
+}
+.select-actionbar button {
+  padding: 9px 14px; border-radius: 10px;
+  border: 1px solid var(--bd); background: var(--bg3);
+  color: var(--t1); font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.select-actionbar button:active { opacity: 0.7; transform: scale(0.97); }
+.select-actionbar button:disabled { opacity: 0.3; pointer-events: none; }
+.select-actionbar button.primary {
+  background: var(--acc); color: var(--btn-t);
+  border-color: var(--acc);
+}
+.select-actionbar button.danger {
+  color: var(--rd); border-color: color-mix(in srgb, var(--rd) 30%, var(--bd));
+}
+/* Status row — 4 equal pills */
+.select-actionbar .sa-status-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.select-actionbar .sa-status-btn {
+  padding: 8px 4px; border-radius: 9px;
+  border: 1.5px solid var(--st-c);
+  background: color-mix(in srgb, var(--st-c) 12%, var(--bg3));
+  color: var(--st-c);
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.select-actionbar .sa-status-btn:active { opacity: 0.7; transform: scale(0.97); }
+.select-actionbar .sa-status-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+/* ── Offline Banner ──────────────────────────────────────────────── */
+.onboard-banner {
+  background: color-mix(in srgb, var(--acc) 10%, var(--bg2));
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, var(--bd));
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 10px 12px 4px;
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.5;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.onboard-dismiss {
+  flex-shrink: 0; color: var(--t3); font-size: 20px; line-height: 1;
+  background: none; border: none; cursor: pointer; padding: 0 2px;
+}
+.offline-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  background: var(--rd);
+  color: #fff;
+  padding: 6px 16px;
+  padding-top: max(6px, var(--safe-top));
+  font-size: 12px; font-weight: 600;
+  text-align: center; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transform: translateY(-100%);
+  transition: transform 0.25s ease-out;
+  pointer-events: none;
+}
+.offline-banner.visible {
+  transform: translateY(0);
+}
+.icon-btn.offline {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Toast Notifications ─────────────────────────────────────────── */
+.toast-container {
+  position: fixed; bottom: 70px; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; z-index: 300; pointer-events: none;
+  padding-bottom: var(--safe-bottom);
+}
+.toast {
+  background: var(--bg2); border: 1px solid var(--bd);
+  border-radius: 12px; padding: 10px 18px;
+  font-size: 13px; color: var(--t1); font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  backdrop-filter: blur(8px);
+  animation: toastIn 0.25s ease-out, toastOut 0.3s ease-in 1.7s forwards;
+  pointer-events: auto;
+}
+.toast.has-undo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 18px;
+}
+.toast-msg { flex: 1; min-width: 0; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
+
+/* ── Animations ──────────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Spacers ─────────────────────────────────────────────────────── */
+.bottom-spacer { height: calc(48px + var(--safe-bottom)); }
+.detail-spacer { height: calc(32px + var(--safe-bottom)); }
+
+/* ── Status Pulse Animation ──────────────────────────────────────── */
+@keyframes statusPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 var(--pulse-color, rgba(255,255,255,.4)); }
+  40% { transform: scale(1.25); box-shadow: 0 0 0 8px transparent; }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+}
+.status-badge.pulsing, .quick-own.pulsing {
+  animation: statusPulse 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* ── Long-Press Context Menu ─────────────────────────────────────── */
+.ctx-menu-overlay {
+  position: fixed; inset: 0; z-index: 250;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  animation: ctxFadeIn 0.15s ease-out forwards;
+}
+@keyframes ctxFadeIn { to { opacity: 1; } }
+.ctx-menu {
+  position: fixed; z-index: 251;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+  min-width: 200px;
+  max-width: 260px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  overflow: hidden;
+  transform-origin: top center;
+  animation: ctxSlideIn 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes ctxSlideIn {
+  from { opacity: 0; transform: scale(0.9) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.ctx-menu-header {
+  padding: 12px 16px 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  border-bottom: 1px solid var(--bd);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-copy-count {
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--gold) 22%, transparent);
+  color: var(--gold);
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: middle;
+  letter-spacing: .3px;
+}
+.ctx-menu-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  font-size: 14px;
+  color: var(--t1);
+  border: none; background: none;
+  width: 100%;
+  text-align: left;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ctx-menu-item:active { background: color-mix(in srgb, var(--acc) 12%, transparent); }
+.ctx-menu-item.active { color: var(--acc); font-weight: 600; }
+.ctx-menu-item .ctx-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.ctx-menu-sep {
+  height: 1px; background: var(--bd); margin: 0;
+}
+
+/* ── Completion Celebration ──────────────────────────────────────── */
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120vh) rotate(720deg); opacity: 0; }
+}
+.confetti-container {
+  position: fixed; inset: 0; z-index: 999;
+  pointer-events: none; overflow: hidden;
+}
+.confetti-piece {
+  position: absolute;
+  width: 8px; height: 8px;
+  top: -10px;
+  animation: confettiFall linear forwards;
+}
+@keyframes goldGlow {
+  0% { box-shadow: 0 0 0 0 rgba(212,168,67,.6); }
+  50% { box-shadow: 0 0 20px 4px rgba(212,168,67,.3); }
+  100% { box-shadow: 0 0 0 0 rgba(212,168,67,0); }
+}
+.line-card.celebrating, .subline-card.celebrating {
+  animation: goldGlow 1.2s ease-out;
+}
+
+/* ── Easter Egg Overlays ─────────────────────────────────────────── */
+
+/* Shared overlay base */
+.egg-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  pointer-events: auto;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* ── He-Man egg ── */
+/* Full-screen conic rainbow that rotates and hue-cycles */
+.egg-heman-bg {
+  position: absolute; inset: 0;
+  /* Oversized square so rotation never reveals corners */
+  width: 200vmax; height: 200vmax;
+  top: 50%; left: 50%;
+  margin-left: -100vmax; margin-top: -100vmax;
+  background: conic-gradient(
+    hsl(0,100%,55%), hsl(45,100%,55%), hsl(90,100%,55%),
+    hsl(135,100%,55%), hsl(180,100%,55%), hsl(225,100%,55%),
+    hsl(270,100%,55%), hsl(315,100%,55%), hsl(360,100%,55%)
+  );
+  animation: hemanSpin 0.9s linear infinite, hemanHue 5s ease forwards;
+  will-change: transform, opacity, filter;
+}
+@keyframes hemanSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes hemanHue {
+  0%   { opacity: 0;    filter: saturate(4) brightness(0.65) hue-rotate(0deg); }
+  4%   { opacity: 0.92; }
+  25%  {                filter: saturate(4) brightness(0.65) hue-rotate(80deg); }
+  55%  {                filter: saturate(4) brightness(0.65) hue-rotate(200deg); }
+  88%  { opacity: 0.92; filter: saturate(4) brightness(0.65) hue-rotate(340deg); }
+  100% { opacity: 0;    filter: saturate(4) brightness(0.65) hue-rotate(400deg); }
+}
+
+/* He-Man icon — Flash-era cheese. Centered via top/left/translate trick.
+   Phases: slam → hold → wobble × 2 → spin → hold → BLAST off. 5s total. */
+.egg-heman-icon {
+  position: absolute;
+  width: 56px; height: 56px;
+  border-radius: 10px;
+  /* Start small at true center */
+  top: 50%; left: 50%;
+  transform-origin: center center;
+  transform: translate(-50%, -50%) scale(1);
+  will-change: transform, opacity;
+  animation: hemanIcon 5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  filter: drop-shadow(0 0 20px rgba(255,220,50,1)) drop-shadow(0 0 40px rgba(255,100,0,0.8));
+  z-index: 2;
+  image-rendering: -webkit-optimize-contrast;
+}
+@keyframes hemanIcon {
+  /* Slam in from bottom — Flash-era overshoot */
+  0%   { transform: translate(-50%, 120vh) scale(0.8);  opacity: 0; }
+  3%   { transform: translate(-50%, -50%)  scale(6.5);  opacity: 1; }
+  /* Overshoot bounce */
+  8%   { transform: translate(-50%, -50%)  scale(5.8);  opacity: 1; }
+  /* Hold large center */
+  12%  { transform: translate(-50%, -50%)  scale(6.2);  opacity: 1; }
+  22%  { transform: translate(-50%, -50%)  scale(6.2);  opacity: 1; }
+  /* Wobble pass 1 */
+  27%  { transform: translate(-50%, -50%)  scale(6.8) rotate(-12deg); opacity: 1; }
+  32%  { transform: translate(-50%, -50%)  scale(5.9) rotate(10deg);  opacity: 1; }
+  37%  { transform: translate(-50%, -50%)  scale(6.4) rotate(-6deg);  opacity: 1; }
+  42%  { transform: translate(-50%, -50%)  scale(6.2) rotate(0deg);   opacity: 1; }
+  /* Spin 1 — clean 360° */
+  54%  { transform: translate(-50%, -50%)  scale(6.2) rotate(360deg); opacity: 1; }
+  /* Brief re-settle */
+  58%  { transform: translate(-50%, -50%)  scale(6.5) rotate(360deg); opacity: 1; }
+  /* Wobble pass 2 — more unhinged */
+  63%  { transform: translate(-50%, -52%)  scale(7.0) rotate(348deg); opacity: 1; }
+  68%  { transform: translate(-50%, -48%)  scale(5.8) rotate(374deg); opacity: 1; }
+  72%  { transform: translate(-50%, -50%)  scale(6.3) rotate(360deg); opacity: 1; }
+  /* Spin 2 — faster */
+  84%  { transform: translate(-50%, -50%)  scale(6.3) rotate(720deg); opacity: 1; }
+  /* Tiny hold before blast */
+  88%  { transform: translate(-50%, -50%)  scale(6.5) rotate(720deg); opacity: 1; }
+  /* BLAST: scale to massive + fade out upward */
+  100% { transform: translate(-50%, -180%) scale(22)  rotate(720deg); opacity: 0; }
+}
+
+/* ── Eternia egg ── */
+.egg-eternia-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, #0a1628 0%, #020810 70%);
+  animation: eterniaBgFade 4.2s ease forwards;
+}
+@keyframes eterniaBgFade {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* Stars fade out in sync with castle descent — gone before overlay removes */
+.egg-star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: starTwinkle linear infinite, starFade 4.2s ease forwards;
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%       { opacity: 0.9;  transform: scale(1.5); }
+}
+@keyframes starFade {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  68%  { opacity: 1; }
+  88%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+/* Castle image — rises, holds, sinks */
+.egg-castle-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  display: flex; justify-content: center;
+  animation: castleRise 4.2s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+@keyframes castleRise {
+  0%   { transform: translateY(100%); opacity: 0; }
+  18%  { transform: translateY(0%);   opacity: 1; }
+  72%  { transform: translateY(0%);   opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+.egg-grayskull-img {
+  width: min(320px, 88vw);
+  height: auto;
+  /* Full color — no silhouette filter. Green glow behind. */
+  filter: drop-shadow(0 0 20px rgba(42,217,176,0.6))
+          drop-shadow(0 0 60px rgba(42,217,176,0.3));
+}
+
+/* ── Eternia egg (Orko) ── */
+
+/* Portal zap — rapid electrical flashes before Orko materialises.
+   Uses a box-shadow pulse since radial-gradient can't animate reliably
+   across Android browsers. We fake the "portal ring" with a pseudo-circle. */
+.egg-orko-portal {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 60vw; max-width: 280px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  z-index: 3;
+  background: transparent;
+  border: 4px solid #fff;
+  box-shadow: 0 0 30px 8px rgba(120,180,255,0.9), inset 0 0 30px 8px rgba(120,180,255,0.5);
+  animation: orkoPortalZap 1.4s ease forwards;
+}
+@keyframes orkoPortalZap {
+  /* Zap 1 — portal tries to open */
+  0%    { transform: translate(-50%,-50%) scale(0);   opacity: 0; }
+  4%    { transform: translate(-50%,-50%) scale(0.6); opacity: 1; }
+  10%   { transform: translate(-50%,-50%) scale(0.4); opacity: 0; }
+  /* Zap 2 — bigger */
+  16%   { transform: translate(-50%,-50%) scale(0.8); opacity: 0.9; }
+  24%   { transform: translate(-50%,-50%) scale(0.5); opacity: 0; }
+  /* Zap 3 — full open, holds */
+  32%   { transform: translate(-50%,-50%) scale(1.1); opacity: 1; }
+  42%   { transform: translate(-50%,-50%) scale(1.0); opacity: 1; }
+  /* Portal destabilises */
+  55%   { transform: translate(-50%,-50%) scale(1.05); opacity: 0.7; }
+  65%   { transform: translate(-50%,-50%) scale(0.95); opacity: 0.9; }
+  80%   { transform: translate(-50%,-50%) scale(1.0);  opacity: 0.5; }
+  /* Collapses */
+  100%  { transform: translate(-50%,-50%) scale(0);   opacity: 0; }
+}
+
+/* Screen flash — fires at portal open (zap 3) */
+.egg-orko-flash {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+  animation: orkoScreenFlash 1.4s ease forwards;
+}
+@keyframes orkoScreenFlash {
+  0%    { opacity: 0; }
+  /* Brief zap flickers */
+  5%    { opacity: 0.3; }
+  10%   { opacity: 0; }
+  18%   { opacity: 0.5; }
+  24%   { opacity: 0; }
+  /* Full flash on portal open */
+  33%   { opacity: 0.85; }
+  38%   { opacity: 0; }
+  100%  { opacity: 0; }
+}
+
+/* Second flash — fires as Orko vanishes (orkoLook ends at 0.45+3.4=3.85s) */
+.egg-orko-flash2 {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+  z-index: 1;
+  animation: orkoScreenFlash2 0.5s ease-out 6.2s forwards;
+}
+@keyframes orkoScreenFlash2 {
+  0%   { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* Orko wrapper — handles vertical hover + rumble */
+.egg-orko-wrap {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  animation: orkoHover 1.1s ease-in-out 0.45s infinite, orkoRumble 0.4s ease-in-out 0.45s infinite;
+}
+@keyframes orkoHover {
+  0%   { margin-top: 0px; }
+  50%  { margin-top: -7px; }
+  100% { margin-top: 0px; }
+}
+@keyframes orkoRumble {
+  0%   { margin-left: 0px; }
+  30%  { margin-left: 0.8px; }
+  65%  { margin-left: -0.6px; }
+  100% { margin-left: 0px; }
+}
+
+/* Orko img — handles look (scaleX) + fade in/out.
+   Total: 5.8s with 0.45s delay → ends at 6.25s. Flash at 6.3s.
+   Beat map (anim-relative seconds):
+   0.0–0.35  fade in, facing right
+   0.35–1.8  One direction ...... (long comfortable hold)
+   1.8       Flip
+   1.8–2.8   ... holds
+   2.8       Flip
+   2.8–3.6   .. holds
+   3.6       flip
+   3.6–4.1   . holds
+   4.1       flip
+   4.1–4.5   . holds
+   4.5       flip
+   4.5–4.8   , holds
+   4.8       flip ← last
+   4.8–5.1   brief pause
+   5.1–5.8   fade out → flash */
+.egg-orko-icon {
+  display: block;
+  width: 44vw; max-width: 200px;
+  transform-origin: center center;
+  filter: drop-shadow(0 0 24px rgba(100,180,255,0.8)) drop-shadow(0 0 60px rgba(100,180,255,0.4));
+  opacity: 0;
+  animation: orkoLook 5.8s ease 0.45s forwards;
+}
+@keyframes orkoLook {
+  0%    { opacity: 0;  transform: scaleX(1); }
+  6%    { opacity: 1;  transform: scaleX(1); }
+  /* One direction ...... */
+  31%   { opacity: 1;  transform: scaleX(1); }
+  /* Flip */
+  32%   { opacity: 1;  transform: scaleX(-1); }
+  /* ... holds */
+  48%   { opacity: 1;  transform: scaleX(-1); }
+  /* Flip */
+  49%   { opacity: 1;  transform: scaleX(1); }
+  /* .. holds */
+  62%   { opacity: 1;  transform: scaleX(1); }
+  /* flip */
+  63%   { opacity: 1;  transform: scaleX(-1); }
+  /* . holds */
+  70%   { opacity: 1;  transform: scaleX(-1); }
+  /* flip */
+  71%   { opacity: 1;  transform: scaleX(1); }
+  /* . holds */
+  78%   { opacity: 1;  transform: scaleX(1); }
+  /* flip */
+  79%   { opacity: 1;  transform: scaleX(-1); }
+  /* , holds */
+  83%   { opacity: 1;  transform: scaleX(-1); }
+  /* flip — last */
+  84%   { opacity: 1;  transform: scaleX(1); }
+  /* brief pause */
+  88%   { opacity: 1;  transform: scaleX(1); }
+  /* fade to flash */
+  100%  { opacity: 0;  transform: scaleX(1); }
+}
+
+/* Orko bg removed — egg plays over live app background */
+
+/* ── Skeleton Loading ────────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-grid {
+  padding: 14px 16px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.skeleton-card {
+  border-radius: 18px;
+  aspect-ratio: 3/4;
+  background: var(--shimmer);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border: 1px solid var(--bd);
+}
+.skeleton-bar {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--shimmer);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  margin: 8px 16px;
+}
+.skeleton-header {
+  padding: 16px 16px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.skeleton-circle {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--shimmer);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  flex-shrink: 0;
+}
+.skeleton-text {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.skeleton-text-line {
+  height: 10px; border-radius: 5px;
+  background: var(--shimmer);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* ── Undo Toast ──────────────────────────────────────────────────── */
+.toast-undo {
+  flex-shrink: 0;
+  padding: 5px 13px;
+  border-radius: 7px;
+  background: var(--acc);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: 'Outfit', sans-serif;
+  align-self: center;
+}

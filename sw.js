@@ -1,8 +1,25 @@
-// MOTU Vault — Service Worker v5.06
+// MOTU Vault — Service Worker v6.00
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
 //
+// v6.00 changelog:
+//   • CACHE bumped to v6.00.
+//   • Major architecture change: monolithic motu-vault.html (8204
+//     lines) split into a slim shell + vault.css + js/ ES modules
+//     (app, state, photos, data, render, handlers, ui-sheets, eggs).
+//   • SHELL precache list expanded to include vault.css and all 8
+//     module files. Single-file install gives way to multi-file
+//     install; install handler still tolerates 404s gracefully.
+//   • No behavior changes intended. All inline `onclick=` window-
+//     callable functions remain mirrored. Schema, storage keys,
+//     theme palettes, and rendering model all unchanged from v5.06.
+//   • 4 functions that previously relied on classic-script auto-
+//     globalization (setStatus, fetchFigs, exportCSV,
+//     dismissContextMenu) now have explicit window.* mirrors so they
+//     remain reachable from inline-onclick handlers in module mode.
+//
+
 // v5.06 changelog:
 //   • CACHE bumped to v5.06.
 //   • Default theme palette swap: Obsidian base (#09090b/#121217/#1c1c24)
@@ -393,12 +410,21 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v5.06';
+const CACHE = 'motu-vault-v6.00';
 
 const SHELL = [
   'motu-vault.html',
   'manifest.json',
   'masters_logo.png',
+  'vault.css',
+  'js/app.js',
+  'js/state.js',
+  'js/photos.js',
+  'js/data.js',
+  'js/render.js',
+  'js/handlers.js',
+  'js/ui-sheets.js',
+  'js/eggs.js',
 ];
 
 self.addEventListener('install', e => {
