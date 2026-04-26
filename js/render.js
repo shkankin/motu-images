@@ -31,6 +31,7 @@ import {
 } from './state.js';
 import {
   MAX_PHOTOS, photoStore, photoURLs, photoCopyOf,
+  initPhotoViewerZoom,
 } from './photos.js';
 import {
   figById, figIsHidden, getPrimaryCopy, copyVariant, copyCondition,
@@ -38,7 +39,9 @@ import {
   getStats, getSortedFigs, getLineStats, hasFilters, progressRing,
   isLineFullyHidden, isSublineHidden, getAllLocations,
   PER_COPY_FIELDS, getOverrideField, getAccAvail,
+  getLoadout, getCopyCompleteness,
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
+  isMigrated,
 } from './data.js';
 import {
   playSound, preloadSound, getThemeIcon, getThemeSounds,
@@ -146,6 +149,30 @@ window.undoStatus = id => {
   toast('↩ Undone');
   if (!patchFigRow(id)) render();
 };
+
+// v6.03: General-purpose action toast — like toastUndo but the button label
+// and handler are caller-supplied. Used for the loadout completeness
+// "Mark Loose Complete?" / "Mark Loose Incomplete?" suggestion. Auto-dismisses
+// after 5.5s. Tapping the action button runs the handler and removes the toast.
+function toastAction(msg, btnLabel, handler) {
+  const container = getToastContainer();
+  const el = document.createElement('div');
+  el.className = 'toast has-undo';
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'toast-msg';
+  msgSpan.textContent = msg;
+  const btn = document.createElement('button');
+  btn.className = 'toast-undo';
+  btn.textContent = btnLabel;
+  btn.onclick = () => {
+    try { handler(); } catch {}
+    if (el.parentNode) el.remove();
+  };
+  el.appendChild(msgSpan);
+  el.appendChild(btn);
+  container.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 5500);
+}
 
 // ─── Update Available Banner ─────────────────────────────────────
 // Shown when SW fires UPDATE_AVAILABLE. Persists until tapped or app restarts.
@@ -346,7 +373,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.06</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.03.1</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1315,6 +1342,18 @@ function renderFigRow(f) {
   const eId = esc(f.id);
   const rowClick = S.selectMode ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
+  // v6.03: subtle list-view loadout-complete tick. Shown only when:
+  // status owned, loadout exists for the figure, and every copy is fully
+  // complete against it. No partial signal in the row — that lives on detail.
+  const loadoutTick = (() => {
+    if (c.status !== 'owned' || !isMigrated(c) || !c.copies || !c.copies.length) return '';
+    if (!getLoadout(f.id)) return '';
+    const allComplete = c.copies.every(cp => {
+      const comp = getCopyCompleteness(f.id, cp);
+      return comp && comp.complete;
+    });
+    return allComplete ? '<span class="fig-loadout-tick" title="Loadout complete">✓</span>' : '';
+  })();
 
   return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" onclick="${rowClick}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
@@ -1323,7 +1362,7 @@ function renderFigRow(f) {
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
-      <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}</div>
+      <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${loadoutTick}</div>
       <div class="fig-meta">
         ${S.search ? `<span class="line-name">${esc(ln(f.line))}</span>` : ''}
         ${f.group ? `<span>${S.search?'· ':''}${esc(f.group)}</span>` : ''}
@@ -1627,13 +1666,35 @@ function renderCopyCard(f, cp, i, isMulti) {
       <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${eId}',${cid},'variant',this.value)">
     </div>
     <div>
-      <div class="field-label text-dim text-sm">Accessories</div>
+      <div class="field-label text-dim text-sm" style="display:flex;align-items:center;gap:8px">
+        <span>Accessories</span>
+        ${(() => {
+          // v6.03: Loadout completeness badge. Silent when no loadout exists.
+          const comp = getCopyCompleteness(f.id, cp);
+          if (!comp) return '';
+          if (comp.complete) return `<span class="acc-badge complete" title="All loadout items present">✓ Complete</span>`;
+          return `<span class="acc-badge partial" title="${comp.have}/${comp.total} loadout items present">Missing ${comp.missing.length}</span>`;
+        })()}
+      </div>
       <div class="acc-chips">`;
   accessories.forEach((a, idx) => {
     h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" onclick="removeAccessory('${eId}',${cid},${idx})">×</button></span>`;
   });
   h += `<button class="acc-add" onclick="openAccessoryPicker('${eId}',${cid})">+ Add</button>
       </div>
+      ${(() => {
+        // v6.03: Missing-from-loadout row. Tap a missing item to add it.
+        // Hidden when complete (would be empty) or no loadout exists.
+        const comp = getCopyCompleteness(f.id, cp);
+        if (!comp || comp.complete || !comp.missing.length) return '';
+        const items = comp.missing.map(name =>
+          `<button class="acc-missing-pill" onclick="addAccessory('${eId}',${cid},${esc(JSON.stringify(name))})" title="Mark as present">+ ${esc(name)}</button>`
+        ).join('');
+        return `<div class="acc-missing-row">
+          <span class="acc-missing-label text-dim">Missing:</span>
+          ${items}
+        </div>`;
+      })()}
     </div>
     <div>
       <div class="field-label text-dim text-sm">Location</div>
@@ -1812,5 +1873,5 @@ function renderPhotoViewer() {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  toast, haptic, appConfirm, triggerPulse, toastUndo, showUpdateBanner, patchFigRow, updateNavBadge, render, renderLoading, renderMain, renderSelectActionbar, renderNavBtn, renderBreadcrumb, renderKidsCoreAdminSheet, renderContent, renderStatsSheet, buildShareURL, decodeShareURL, renderQR, renderShareSheet, SHORTCUT_ACTIONS, checkShortcutAction, checkShareLink, renderWantListViewSheet, renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigItem, yearHeader, renderFigsWithHeaders, renderFigList, renderDetailStatusBlock, renderCopyCard, patchDetailStatus, renderDetail, renderPhotoViewer
+  toast, haptic, appConfirm, triggerPulse, toastUndo, toastAction, showUpdateBanner, patchFigRow, updateNavBadge, render, renderLoading, renderMain, renderSelectActionbar, renderNavBtn, renderBreadcrumb, renderKidsCoreAdminSheet, renderContent, renderStatsSheet, buildShareURL, decodeShareURL, renderQR, renderShareSheet, SHORTCUT_ACTIONS, checkShortcutAction, checkShareLink, renderWantListViewSheet, renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigItem, yearHeader, renderFigsWithHeaders, renderFigList, renderDetailStatusBlock, renderCopyCard, patchDetailStatus, renderDetail, renderPhotoViewer
 };

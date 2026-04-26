@@ -16,7 +16,7 @@ const openSheet = (...a) => window.openSheet?.(...a);
 // ════════════════════════════════════════════════════════════════════
 
 import {
-  S, store, ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, KIDS_CORE_KEY,
+  S, store, ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, KIDS_CORE_KEY,
   CUSTOM_FIGS_KEY, CACHE_KEY, CACHE_TTL,
   LINES, FACTIONS, CONDITIONS, ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX,
@@ -28,7 +28,7 @@ import {
   photoStore, photoURLs, photoCopyOf, setPhotoCopy,
   loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap,
 } from './photos.js';
-import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
+import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo, toastAction } from './render.js';
 import { checkCompletion } from './eggs.js';
 
 // § DATA-FETCH ── parseCSV, fetchFigs, newFigIds detection ─────────
@@ -70,10 +70,11 @@ async function fetchFigs(manual = false, firstLoad = false) {
     S.syncStatus = 'syncing'; render();
     S.fetchError = false;
     try {
-      // Fetch main figures.json and kids-core.json in parallel
-      const [res, kcRes] = await Promise.all([
+      // Fetch main figures.json, kids-core.json, and loadouts.json in parallel
+      const [res, kcRes, ldRes] = await Promise.all([
         fetch(FIGS_URL + '?t=' + Date.now()),
         fetch(KIDS_CORE_URL + '?t=' + Date.now()).catch(() => null),
+        fetch(LOADOUTS_URL + '?t=' + Date.now()).catch(() => null),
       ]);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const remote = await res.json();
@@ -83,6 +84,19 @@ async function fetchFigs(manual = false, firstLoad = false) {
       let kcRemote = [];
       if (kcRes && kcRes.ok) {
         try { kcRemote = await kcRes.json(); } catch {}
+      }
+
+      // v6.03: Shared loadouts from repo (optional — 404 is fine).
+      // Stored in S._repoLoadouts; merged with local override at read-time
+      // by getLoadout(figId). Local entry beats repo entry for the same figId.
+      // Schema: { version: 1, loadouts: { [figId]: ['Power Sword', ...] } }
+      if (ldRes && ldRes.ok) {
+        try {
+          const ld = await ldRes.json();
+          if (ld && ld.loadouts && typeof ld.loadouts === 'object') {
+            S._repoLoadouts = ld.loadouts;
+          }
+        } catch {}
       }
       // Merge: remote kids-core figures get source:'kids-core' and image from slug
       const kcHydrated = (Array.isArray(kcRemote) ? kcRemote : []).map(f => ({
@@ -631,10 +645,45 @@ function getAllLocations() {
   return [...set].sort((a,b) => a.localeCompare(b));
 }
 
+// v6.03: After an accessory add/remove, if the copy crossed the "all loadout
+// items present" threshold in either direction, surface a non-blocking toast
+// offering a one-tap condition update.
+//
+// Skipped entirely when:
+//   - no loadout exists for this figure (nothing to be complete against)
+//   - condition is sealed/mint (those track packaging, not loose contents)
+//   - the suggestion would set condition to what it already is (no-op)
+//
+// `prevComplete` is the completeness state captured BEFORE the accessory
+// list was mutated. `nextCp` is the migrated copy after the mutation.
+const SEALED_CONDITIONS = new Set(['Mint in Box', 'Mint on Card', 'New/Sealed']);
+function maybeSuggestConditionForCopy(figId, copyId, nextCp, prevComplete) {
+  if (!nextCp) return;
+  const cond = nextCp.condition || '';
+  if (SEALED_CONDITIONS.has(cond)) return;
+  const after = getCopyCompleteness(figId, nextCp);
+  if (!after) return; // no loadout
+  // Only act on transitions: incomplete → complete, or complete → incomplete.
+  if (after.complete && !prevComplete && cond !== 'Loose Complete') {
+    toastAction('Loadout complete.', 'Mark Loose Complete', () => {
+      window.updateCopy(figId, copyId, 'condition', 'Loose Complete');
+    });
+  } else if (!after.complete && prevComplete && cond === 'Loose Complete') {
+    toastAction('Loadout incomplete.', 'Mark Loose Incomplete', () => {
+      window.updateCopy(figId, copyId, 'condition', 'Loose Incomplete');
+    });
+  }
+}
+
 window.addAccessory = (figId, copyId, name) => {
   if (!name) return;
   const c = S.coll[figId];
   if (!c || !isMigrated(c)) return;
+  // Capture completeness BEFORE the mutation so the suggestion logic can
+  // detect the threshold-crossing accurately.
+  const prevCp = c.copies.find(x => x.id === copyId);
+  const prevState = prevCp ? getCopyCompleteness(figId, prevCp) : null;
+  const prevComplete = !!(prevState && prevState.complete);
   const next = {...c, copies: c.copies.map(cp => ({...cp}))};
   const cp = next.copies.find(x => x.id === copyId);
   if (!cp) return;
@@ -643,6 +692,7 @@ window.addAccessory = (figId, copyId, name) => {
   cp.accessories = list;
   S.coll[figId] = next;
   saveColl();
+  maybeSuggestConditionForCopy(figId, copyId, cp, prevComplete);
   // Picker is open — re-render it so the checkmark appears. If we're not
   // in the picker (e.g. custom-add flow), fall back to detail re-render.
   if (S.sheet === 'accessoryPicker') renderSheetBody();
@@ -652,6 +702,9 @@ window.addAccessory = (figId, copyId, name) => {
 window.removeAccessory = (figId, copyId, idx) => {
   const c = S.coll[figId];
   if (!c || !isMigrated(c)) return;
+  const prevCp = c.copies.find(x => x.id === copyId);
+  const prevState = prevCp ? getCopyCompleteness(figId, prevCp) : null;
+  const prevComplete = !!(prevState && prevState.complete);
   const next = {...c, copies: c.copies.map(cp => ({...cp}))};
   const cp = next.copies.find(x => x.id === copyId);
   if (!cp || !Array.isArray(cp.accessories)) return;
@@ -662,6 +715,7 @@ window.removeAccessory = (figId, copyId, idx) => {
   S.coll[figId] = next;
   saveColl();
   haptic();
+  maybeSuggestConditionForCopy(figId, copyId, cp, prevComplete);
   // v4.91: if the accessory picker is open, re-render the picker body so the
   // tapped item's checkmark disappears immediately. Previously only addAccessory
   // did this, which meant tapping to REMOVE appeared to do nothing until a
@@ -721,8 +775,15 @@ function renderAccessoryPickerSheet() {
   // the picker only offers those (plus anything already on the copy or
   // custom-added). Useful for "Battle Armor He-Man only came with Sword,
   // Battle Axe, and mini comic" — limit the picker to those three.
-  const allAvail = getAccAvail();
-  const figAvail = allAvail[figId];   // array | undefined
+  // v5.03 / v6.03: per-figure loadout. Source priority is local override
+  // (motu-acc-avail) > repo loadouts.json. The picker's *normal* mode reads
+  // the merged loadout via getLoadout() so users see the same offer list
+  // whether the loadout came from their device or from the repo. Admin mode
+  // edits the local override only — the repo file is read-only and shipped
+  // via the loadout-editor tool.
+  const localAvail = getAccAvail();
+  const figAvailLocal = localAvail[figId];   // local override only (admin edits this)
+  const figLoadout = getLoadout(figId);      // merged: local || repo (normal mode reads this)
   const adminMode = !!S._accPickAdmin;
   // In admin mode, ALL global accessories are listed with the figure's
   // available subset checked. Tapping toggles inclusion in the available
@@ -736,7 +797,7 @@ function renderAccessoryPickerSheet() {
   // Header / mode toggle
   if (adminMode) {
     h += `<div class="text-dim text-sm" style="margin-bottom:8px;line-height:1.5">
-      Editing available accessories for this figure. Selected items will be the only ones offered when checking off accessories. Leave all unchecked to allow everything.
+      Editing the shipped-with loadout for this figure. Selected items are tracked for completeness on every copy and limit what's offered when checking off accessories. Leave all unchecked to allow everything (no completeness tracking).
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button onclick="S._accPickAdmin=false;renderSheetBody()" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:12px">‹ Back to Picker</button>
@@ -744,17 +805,18 @@ function renderAccessoryPickerSheet() {
     </div>`;
   } else {
     h += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div class="text-dim text-sm">Tap to toggle. ${figAvail ? '<span style="color:var(--acc)">Filtered list active.</span>' : 'Added items apply to this copy only.'}</div>
-      <button onclick="S._accPickAdmin=true;renderSheetBody()" title="Edit available accessories" style="padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:11px;font-weight:600">⚙ Limit list</button>
+      <div class="text-dim text-sm">Tap to toggle. ${figLoadout ? '<span style="color:var(--acc)">Loadout active — completeness tracked.</span>' : 'Added items apply to this copy only.'}</div>
+      <button onclick="S._accPickAdmin=true;renderSheetBody()" title="Edit shipped-with loadout" style="padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:11px;font-weight:600">⚙ Edit Loadout</button>
     </div>`;
   }
 
   h += `<div class="acc-picker-list">`;
   if (adminMode) {
     // Admin mode: list ALL global accessories. Checked = part of figure's
-    // available list. customSelected aren't shown here (they're per-copy
-    // tags, not picker options).
-    const figAvailSet = new Set(figAvail || []);
+    // LOCAL override (what admin is editing). The repo loadout is shown as
+    // a hint above when present, but admin tap toggles the local override
+    // only — repo defaults stay untouched.
+    const figAvailSet = new Set(figAvailLocal || []);
     ACCESSORIES.forEach(name => {
       const on = figAvailSet.has(name);
       h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccAvail(${jsArg(name)})">
@@ -763,8 +825,9 @@ function renderAccessoryPickerSheet() {
       </button>`;
     });
   } else {
-    // Normal mode: show only the figure's available list (or all, if none).
-    // Custom-already-on-copy entries surface at top so they can be removed.
+    // Normal mode: show only the figure's loadout (merged local-or-repo),
+    // or all accessories if no loadout is set. Custom-already-on-copy
+    // entries surface at top so they can be removed.
     const customSelected = current.filter(a => !ACCESSORIES.includes(a));
     customSelected.forEach(name => {
       h += `<button class="acc-picker-item selected" onclick="toggleAccessoryInPicker(${jsArg(name)})">
@@ -772,7 +835,7 @@ function renderAccessoryPickerSheet() {
         <span class="acc-picker-check">✓</span>
       </button>`;
     });
-    const offerList = (figAvail && figAvail.length) ? figAvail : ACCESSORIES;
+    const offerList = (figLoadout && figLoadout.length) ? figLoadout : ACCESSORIES;
     offerList.forEach(name => {
       const on = currentSet.has(name);
       h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccessoryInPicker(${jsArg(name)})">
@@ -820,6 +883,52 @@ window.resetAccAvail = figId => {
   saveAccAvail(all);
   renderSheetBody();
 };
+
+// ─── Loadouts + Completeness (v6.03) ─────────────────────────────
+// "Loadout" = the canonical list of accessories a figure shipped with.
+// Source priority: local override (motu-acc-avail) > repo (loadouts.json).
+// String entries today (v6.03). v6.04 may extend to {name, required} objects;
+// getLoadout will normalize both shapes.
+//
+// Returns null when no loadout is known for this figId. Callers MUST handle
+// null — UI features (completeness badge, missing row, condition suggestion)
+// stay silent when no loadout exists, preserving v6.02 behavior.
+function getLoadout(figId) {
+  if (!figId) return null;
+  const local = getAccAvail()[figId];
+  if (Array.isArray(local) && local.length) return local.slice();
+  const repo = (S._repoLoadouts || {})[figId];
+  if (Array.isArray(repo) && repo.length) return repo.slice();
+  return null;
+}
+
+// Computes how complete a copy is against its figure's loadout.
+// Returns null when no loadout exists (caller renders nothing).
+// Otherwise returns {have, total, pct, missing[], complete} where:
+//   have     = how many loadout items are present on this copy
+//   total    = loadout length
+//   pct      = Math.round(have/total * 100)
+//   missing  = loadout items NOT on this copy (for the "Missing:" row)
+//   complete = have === total
+// Custom (non-loadout) accessories on the copy do NOT count toward have/total.
+// They're still shown in the chip row above the badge — they're extras, not gaps.
+function getCopyCompleteness(figId, cp) {
+  const loadout = getLoadout(figId);
+  if (!loadout) return null;
+  const have = Array.isArray(cp && cp.accessories) ? cp.accessories : [];
+  const haveSet = new Set(have);
+  const present = loadout.filter(name => haveSet.has(name));
+  const missing = loadout.filter(name => !haveSet.has(name));
+  const total = loadout.length;
+  const ct = present.length;
+  return {
+    have: ct,
+    total,
+    pct: total ? Math.round((ct / total) * 100) : 0,
+    missing,
+    complete: ct === total && total > 0,
+  };
+}
 
 // Synchronously apply any pending field debounces. Called from unload
 // handlers so note edits typed within 400ms of backgrounding aren't lost.
@@ -1568,5 +1677,5 @@ window.exportCSV = exportCSV;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411
+  parseCSV, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411
 };

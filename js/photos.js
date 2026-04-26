@@ -641,5 +641,5 @@ document.addEventListener('drop', e => {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, _opfsReady, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, compressPhoto
+  MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, _opfsReady, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, compressPhoto, initPhotoViewerZoom
 };

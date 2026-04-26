@@ -29,6 +29,16 @@ import {
 import { render, toast, haptic, appConfirm, patchFigRow, toastUndo, triggerPulse, renderContent, renderSelectActionbar } from './render.js';
 import { checkCompletion } from './eggs.js';
 
+
+// ── Route announcer (a11y SC 4.1.3): emit polite status when tabs change ──
+function _announceRoute(text) {
+  const el = document.getElementById('routeAnnouncer');
+  if (!el) return;
+  el.textContent = '';
+  // Microtask delay ensures screen readers re-read on identical text
+  setTimeout(() => { el.textContent = text; }, 50);
+}
+
 // § CONTEXT-MENU ── initLongPress, showContextMenu, dismissContextMenu, ctxSetStatus ──
 let _lpTimer = null;
 let _lpFigId = null;
@@ -357,6 +367,8 @@ window.onSearch = val => {
   }, 120);
 };
 window.navTo = key => {
+  const labels = { lines: 'Lines', all: 'All Figures', collection: 'My Collection' };
+  if (labels[key]) _announceRoute(labels[key]);
   S.tab = key;
   S.searchBarHidden = false;
   S.barsHidden = false;
@@ -522,12 +534,12 @@ window.cycleStatus = (e, id) => {
   const prevColl = _clone(S.coll[id] || {});
   const cur = S.coll[id]?.status || '';
   let next;
-  if (cur === 'ordered') {
-    next = 'owned';  // v4.91: shortcut ordered → owned (see comment above)
-  } else {
-    const idx = STATUS_CYCLE.indexOf(cur);
-    next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
-  }
+  // v6.01: removed ordered→owned shortcut so all 4 statuses cycle (owned
+  // → wishlist → ordered → for-sale → cleared). User report: 'cycle only
+  // hits wishlist+ordered'. The migration of orderedFrom→ownedPaid still runs
+  // on the detail-screen Owned button (setStatus path).
+  const idx = STATUS_CYCLE.indexOf(cur);
+  next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
   if (next) {
     if (!S.coll[id]) S.coll[id] = {};
     S.coll[id].status = next;

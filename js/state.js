@@ -43,6 +43,10 @@ function icon(d, size = 20, strokeW = 2) {
 const IMG = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
 const FIGS_URL = IMG + '/figures.json';
 const KIDS_CORE_URL = IMG + '/kids-core.json';
+// v6.03: shared loadouts (what each figure shipped with). Local override
+// in motu-acc-avail beats repo default for the same figId — same merge
+// model as kids-core. File is optional; 404 is fine.
+const LOADOUTS_URL = IMG + '/loadouts.json';
 const CACHE_KEY = 'motu-figs-cache';
 const KIDS_CORE_KEY = 'motu-kids-core';  // localStorage key for local Kids Core figures
 const CUSTOM_FIGS_KEY = 'motu-custom-figs'; // v5.04: localStorage key for user-defined custom figures
@@ -249,6 +253,7 @@ const S = {
   onboarded: !!store.get('motu-onboarded'),
   selected: new Set(),      // selected figure IDs
   defaultPhoto: {},         // { figId: n } — which photo is the list/grid thumbnail (-1 = stock)
+  _repoLoadouts: {},        // v6.03: shared loadouts.json from repo. {[figId]: ['Power Sword', ...]}. Local override (motu-acc-avail) beats this.
 };
 
 const DEFAULT_TITLE = 'MOTU Collector';
@@ -259,5 +264,5 @@ function getThemeTitles() {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
+  ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
 };

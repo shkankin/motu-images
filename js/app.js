@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — app.js (entry point, v6.00)
+// MOTU Vault — app.js (entry point, v6.02)
 // ────────────────────────────────────────────────────────────────────
 // Imports every module for its side effects (window.* handler
 // registration, etc.), then runs init() to boot OPFS, load cached
@@ -27,6 +27,34 @@ import {
 } from './eggs.js';
 import './handlers.js';
 import './ui-sheets.js';
+
+
+// ── Window bridge ─────────────────────────────────────────────────
+// Inline `onclick=` handlers run in window scope, not module scope.
+// Expose every name they reference. Most window-callable handlers are
+// already attached via `window.X = ...` in their defining modules; these
+// are the additional exposures (state, render, store, and a few funcs).
+import * as data from './data.js';
+import * as renderMod from './render.js';
+import * as handlersMod from './handlers.js';
+import * as uiSheets from './ui-sheets.js';
+import * as photos from './photos.js';
+import * as eggs from './eggs.js';
+
+Object.assign(window, {
+  // Core state + helpers (referenced from inline handlers in render templates)
+  S, store, render, toast, haptic,
+  // Functions used in inline handlers but not previously mirrored
+  renderSheetBody: data.renderSheetBody,
+  initPhotoViewerZoom: photos.initPhotoViewerZoom,
+  isMigrated: data.isMigrated,
+  // Already-exposed in their modules but listed here for clarity / safety net:
+  fetchFigs, saveColl,
+  // Render helpers used in inline strings
+  renderSelectActionbar: renderMod.renderSelectActionbar,
+  // Sound triggers used in title-tap inline handlers
+  playTitleSound: eggs.playTitleSound,
+});
 
 // § INIT ── init(), OPFS setup, cache load, splash removal ─────────
 async function init() {
