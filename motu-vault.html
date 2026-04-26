@@ -56,24 +56,29 @@ html,body{background:#000;margin:0}
 
 /* ── Theme Variables ─────────────────────────────────────────────── */
 :root {
-  --bg:  #090e1c;
-  --bg2: #12192b;
-  --bg3: #1a253d;
-  --bd:  #2a3b5c;
-  --acc: #38bdf8;
-  --gold:#e8c577;
+  /* v5.06 Obsidian palette — moves the default from generic blue-slate to a
+     richer "tactile retro-futurism" base. Named themes (skeletor/heman/etc)
+     keep their distinct identities below. */
+  --bg:  #09090b;       /* Pure obsidian canvas — lets toy photography pop */
+  --bg2: #121217;       /* Card / surface */
+  --bg3: #1c1c24;       /* Input / elevated */
+  --bd:  #272730;       /* Subtle borders */
+  --acc: #7c3aed;       /* Radical violet — He-Man/Skeletor energy */
+  --gold:#facc15;       /* Power Sword yellow — punchier than #e8c577 */
   --t1:  #ffffff;
-  --t2:  #a1a1aa;
-  --t3:  #71717a;
-  --btn-t: #000000;
-  --gn:  #5dd47b;
-  --rd:  #e84855;
+  --t2:  #b3b9c4;
+  /* v5.06: t3 lifted from #71717a → #8a8d9a to clear WCAG AA contrast on bg2/bg3 */
+  --t3:  #8a8d9a;
+  --btn-t: #ffffff;     /* white text on violet primary */
+  --gn:  #22c55e;       /* high-vis emerald */
+  --rd:  #ef4444;
   --bl:  #60a5fa;
   --or:  #fb923c;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --radius: 14px;
-  --radius-sm: 10px;
+  /* v5.06: radius bumped 14→16, sm 10→12 for slightly more "premium" feel */
+  --radius: 16px;
+  --radius-sm: 12px;
   --shimmer: linear-gradient(90deg, var(--bg3) 25%, color-mix(in srgb, var(--bd) 40%, var(--bg3)) 50%, var(--bg3) 75%);
 }
 
@@ -124,10 +129,21 @@ input, select, textarea {
   font-size: 14px;
   padding: 12px;
   width: 100%;
-  transition: border-color 0.2s;
+  /* v5.06: transition box-shadow too so focus ring fades in smoothly */
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 input:focus, select:focus, textarea:focus {
   border-color: var(--acc);
+  /* v5.06: dramatic focus ring per audit recommendation. 1px border shift
+     was too easy to miss. */
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 30%, transparent);
+}
+button:focus-visible {
+  /* v5.06: keyboard-only focus indicator for buttons. Mouse/touch
+     interactions don't trigger it, so the visual remains unchanged
+     for normal use. */
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
 }
 input::placeholder, textarea::placeholder { color: var(--t3); }
 
@@ -257,7 +273,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 
 .icon-btn {
-  width: 38px; height: 38px;
+  /* v5.06: bumped 38→44 px for WCAG tap-target minimum */
+  width: 44px; height: 44px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--bd);
   background: var(--bg3);
@@ -272,6 +289,23 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .icon-btn.sync-err { border-color: var(--rd); color: var(--rd); }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* v5.06: status-pop. When a status button becomes active (after tapping it),
+   the icon springs in with an overshoot then settles. Uses a ::before
+   pseudo-trick: the animation runs on the BUTTON's own contents because
+   patchDetailStatus replaces the markup, triggering the element-create
+   animation. Only fires on .status-btn.active to limit to that one button. */
+@keyframes statusPop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.status-btn.active svg {
+  animation: statusPop 0.32s cubic-bezier(0.5, 1.5, 0.7, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-btn.active svg { animation: none; }
+}
 
 /* v5.04: stagger entrance animation (restored from v5.01). Only fires when
    #app has [data-stagger] set, which render() applies on navigation
@@ -923,10 +957,10 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .lines-header-count {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;  /* v5.06: bumped 700→800 per audit */
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: var(--t3);
+  color: var(--t2);  /* v5.06: t3→t2 for better legibility */
 }
 .lines-view-toggle {
   display: inline-flex;
@@ -962,16 +996,42 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-card {
   position: relative; border-radius: var(--radius);
   overflow: hidden; border: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  /* v5.06: deeper layered shadow + plastic-edge inset highlight via box-shadow.
+     The 0 0 0 1px inset on the OUTER box (not the image) catches light along
+     the rim like a blister-pack edge. */
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.06),
+    0 8px 24px -8px rgba(0,0,0,0.5),
+    0 4px 8px -2px rgba(0,0,0,0.3);
   background: var(--bg3); aspect-ratio: 3/4;
-  cursor: pointer; transition: transform 0.15s;
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
   contain: content;
 }
 .fig-card:active { transform: scale(0.97); }
-.fig-card.owned { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--gn); }
-.fig-card.wishlist { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--bl); }
-.fig-card.ordered { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--or); }
-.fig-card.for-sale { box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px var(--rd); }
+.fig-card.owned {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--gn) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--gn),
+    0 8px 24px -8px color-mix(in srgb, var(--gn) 20%, rgba(0,0,0,0.5));
+}
+.fig-card.wishlist {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--bl) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--bl),
+    0 8px 24px -8px color-mix(in srgb, var(--bl) 20%, rgba(0,0,0,0.5));
+}
+.fig-card.ordered {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--or) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--or),
+    0 8px 24px -8px color-mix(in srgb, var(--or) 20%, rgba(0,0,0,0.5));
+}
+.fig-card.for-sale {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--rd) 30%, rgba(255,255,255,0.08)),
+    0 0 0 2px var(--rd),
+    0 8px 24px -8px color-mix(in srgb, var(--rd) 20%, rgba(0,0,0,0.5));
+}
 
 /* v4.95: Grid stack — bigger offsets (8/16px instead of 5/10) + a gap between
    the card's status ring and the stack (using transparent layer at +2px) so
@@ -1730,12 +1790,16 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
 }
 .chip {
-  padding: 8px 16px;
-  border-radius: 20px;
+  /* v5.06: min-height 44 for tap-target accessibility; padding adjusted to keep visual */
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 22px;
   border: 1px solid var(--bd);
   background: var(--bg3);
   color: var(--t2);
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
 }
 .chip.active {
   border-color: var(--acc);
@@ -2540,6 +2604,9 @@ const ICO = {
   menu:    'M4 6h16M4 12h16M4 18h16',
   share:   'M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13',
   qr:      'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17 14h.01M14 14h.01M14 17h.01M17 17h.01M20 14h.01M20 17h.01M20 20h.01M14 20h.01M17 20h.01',
+  // v5.06: status-button icons (audit recommended visual redundancy)
+  box:     'M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12',
+  tag:     'M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82zM7 7h.01',
 };
 
 function icon(d, size = 20, strokeW = 2) {
@@ -5356,7 +5423,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.05</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.06</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -6543,7 +6610,16 @@ function renderDetailStatusBlock(f, c) {
     <div class="grid">`;
   STATUSES.forEach(s => {
     const active = c.status === s;
-    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${eId}','${s}');patchDetailStatus()">${active?'✓ ':''}${STATUS_LABEL[s]}</button>`;
+    // v5.06: per-status icon (audit recommended visual redundancy beyond
+    // color). Inactive buttons show a subtle outline icon, active shows
+    // the filled checkmark variant for the user's chosen status.
+    const statIcon = {
+      owned: ICO.check,
+      wishlist: ICO.heart,
+      ordered: ICO.box || ICO.cart || ICO.check,
+      'for-sale': ICO.tag || ICO.dollar || ICO.check,
+    }[s] || ICO.check;
+    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${eId}','${s}');patchDetailStatus()">${icon(statIcon, 16)} ${STATUS_LABEL[s]}</button>`;
   });
   h += `</div></div>`;
   if (c.status) {

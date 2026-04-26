@@ -1,7 +1,24 @@
-// MOTU Vault — Service Worker v5.05
+// MOTU Vault — Service Worker v5.06
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v5.06 changelog:
+//   • CACHE bumped to v5.06.
+//   • Default theme palette swap: Obsidian base (#09090b/#121217/#1c1c24)
+//     with violet accent (#7c3aed) and Power-Sword gold (#facc15). Named
+//     themes (skeletor/heman/grayskull/snake) keep their identities.
+//   • Radius bumped 14→16px (sm 10→12) for a more premium feel.
+//   • Cards: plastic-edge inset highlight + deeper layered shadows. Status
+//     variants get tinted inset rings (the rim "catches light").
+//   • Status buttons now have per-status icons (check / heart / box / tag)
+//     in addition to color, for visual redundancy.
+//   • Status-pop spring animation when a status becomes active.
+//   • Tap targets: .icon-btn 38→44px, .chip min-height 44px.
+//   • t3 lifted #71717a → #8a8d9a for WCAG AA contrast on bg2/bg3.
+//   • Inputs gain a 3px focus ring (was 1px border shift, easy to miss).
+//   • Buttons get :focus-visible outline for keyboard nav.
+//   • Section header weight bumped 700→800, color t3→t2 for legibility.
 //
 // v5.05 changelog:
 //   • CACHE bumped to v5.05.
@@ -153,6 +170,23 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v5.06 changelog:
+//   • CACHE bumped to v5.06.
+//   • Default theme palette swap: Obsidian base (#09090b/#121217/#1c1c24)
+//     with violet accent (#7c3aed) and Power-Sword gold (#facc15). Named
+//     themes (skeletor/heman/grayskull/snake) keep their identities.
+//   • Radius bumped 14→16px (sm 10→12) for a more premium feel.
+//   • Cards: plastic-edge inset highlight + deeper layered shadows. Status
+//     variants get tinted inset rings (the rim "catches light").
+//   • Status buttons now have per-status icons (check / heart / box / tag)
+//     in addition to color, for visual redundancy.
+//   • Status-pop spring animation when a status becomes active.
+//   • Tap targets: .icon-btn 38→44px, .chip min-height 44px.
+//   • t3 lifted #71717a → #8a8d9a for WCAG AA contrast on bg2/bg3.
+//   • Inputs gain a 3px focus ring (was 1px border shift, easy to miss).
+//   • Buttons get :focus-visible outline for keyboard nav.
+//   • Section header weight bumped 700→800, color t3→t2 for legibility.
 //
 // v5.05 changelog:
 //   • CACHE bumped to v5.05.
@@ -359,7 +393,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v5.05';
+const CACHE = 'motu-vault-v5.06';
 
 const SHELL = [
   'motu-vault.html',
