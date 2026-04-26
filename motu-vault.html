@@ -3286,6 +3286,11 @@ async function fetchFigs(manual = false, firstLoad = false) {
         ...f, source: 'custom-local',
         // Force ID prefix to prevent collision with future AF411 IDs
         id: f.id && f.id.startsWith('custom-') ? f.id : 'custom-' + f.id,
+        // v5.05: coerce year to Number so it sort-merges with AF411 entries.
+        // Editor saves as string; sort-by-year groups use strict equality.
+        year: f.year ? Number(f.year) : f.year,
+        // Coerce retail too for consistency
+        retail: f.retail ? Number(f.retail) : f.retail,
         image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
       })).filter(f => !remoteIds.has(f.id));
 
@@ -5351,7 +5356,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.04</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v5.05</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -7245,9 +7250,21 @@ window.addEventListener('popstate', e => {
     return;
   }
 
-  // At root — push a state back so next back press has something to pop
-  // This prevents the app from closing on the first back press at home
+  // At root — confirm before closing. Browsers/Android will navigate away
+  // (closing the PWA) on the next back press; we intercept here, push a
+  // state to absorb this back, and pop a quick "tap again to exit" toast.
+  // If the user genuinely wants to close, two backs within 2.5s does it.
+  const now = Date.now();
+  if (S._lastBackAtRoot && now - S._lastBackAtRoot < 2500) {
+    // Two backs in quick succession at root — actually close.
+    // Don't push a new state; let history pop run its course.
+    _skipPush = false;
+    history.back();
+    return;
+  }
+  S._lastBackAtRoot = now;
   history.pushState(navState(), '');
+  toast('Press back again to exit');
   _skipPush = false;
 });
 

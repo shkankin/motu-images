@@ -1,7 +1,15 @@
-// MOTU Vault — Service Worker v5.04
+// MOTU Vault — Service Worker v5.05
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v5.05 changelog:
+//   • CACHE bumped to v5.05.
+//   • Back-at-root: no longer closes app on first press. Shows
+//     "Press back again to exit" toast; second back within 2.5s exits.
+//   • Custom figures: year coerced to Number on load so they merge into
+//     the same year-grouped section as AF411 entries (was creating a
+//     duplicate "2026" section because string!==number under ===).
 //
 // v5.04 changelog:
 //   • CACHE bumped to v5.04.
@@ -145,6 +153,14 @@
 //     which sections have recently-added figures.
 //   • CSS-only addition for the new badge; the cache bump is otherwise
 //     a soft formality.
+//
+// v5.05 changelog:
+//   • CACHE bumped to v5.05.
+//   • Back-at-root: no longer closes app on first press. Shows
+//     "Press back again to exit" toast; second back within 2.5s exits.
+//   • Custom figures: year coerced to Number on load so they merge into
+//     the same year-grouped section as AF411 entries (was creating a
+//     duplicate "2026" section because string!==number under ===).
 //
 // v5.04 changelog:
 //   • CACHE bumped to v5.04.
@@ -343,7 +359,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v5.04';
+const CACHE = 'motu-vault-v5.05';
 
 const SHELL = [
   'motu-vault.html',
