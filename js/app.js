@@ -146,4 +146,3 @@ window.addEventListener('offline', () => {
 });
 
 init();
-</script>
