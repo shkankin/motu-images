@@ -27,6 +27,7 @@ import {
 } from './eggs.js';
 import './handlers.js';
 import './ui-sheets.js';
+import './tutorial.js';
 
 
 // ── Window bridge ─────────────────────────────────────────────────

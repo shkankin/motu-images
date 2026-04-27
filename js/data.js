@@ -1371,6 +1371,7 @@ const SETTINGS_KEYS = [
   'motu-theme', 'motu-sort', 'motu-view', 'motu-lines-view', 'motu-line-order',
   'motu-hidden', 'motu-recent', 'motu-default-photo', 'motu-onboarded',
   'motu-celebrated', 'motu-ptr-enabled', 'motu-acc-avail', 'motu-custom-figs',
+  'motu-tutorial-seen',
 ];
 window.exportSettings = () => {
   const settings = {};
