@@ -544,6 +544,7 @@ document.addEventListener('touchend', e => {
     const w = swipe.ca.offsetWidth || window.innerWidth;
     const inFromX = (dir > 0 ? +1 : -1) * w;
     swipe.ca.innerHTML = newHTML;
+    swipe.ca.scrollTop = 0;
     swipe.ca.style.transform = `translateX(${inFromX}px)`;
     swipe.ca.style.willChange = 'transform';
     // Patch bottom-nav active state so the tab indicator updates immediately.
