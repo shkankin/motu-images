@@ -41,7 +41,7 @@ import {
   PER_COPY_FIELDS, getOverrideField, getAccAvail,
   getLoadout, getCopyCompleteness,
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
-  isMigrated,
+  isMigrated, saveColl, fetchFigs,
 } from './data.js';
 import {
   playSound, preloadSound, getThemeIcon, getThemeSounds,
@@ -388,7 +388,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.12</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.13</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">

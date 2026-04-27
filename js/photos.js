@@ -11,6 +11,7 @@ import {
 } from './state.js';
 import { render, toast, haptic, appConfirm, patchDetailStatus, renderDetail } from './render.js';
 import { doImport, importJSON, figById } from './data.js';
+import { pushNav } from './handlers.js';
 
 // § PHOTO-STORAGE ── OPFS + localStorage fallback, photoStore API ──
 // Per figure: up to MAX_PHOTOS photos, each with optional label.

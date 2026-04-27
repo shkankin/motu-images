@@ -27,11 +27,12 @@ import {
   copyPaid, copyNotes, getAllLocations,
   renderExportSheet, renderSheetBody,
   renderAccessoryPickerSheet, SETTINGS_KEYS,
+  _derived,
 } from './data.js';
 import {
   renderQR, renderShareSheet, renderStatsSheet,
   renderKidsCoreAdminSheet, renderWantListViewSheet, buildShareURL,
-  renderContent,
+  renderContent, render,
 } from './render.js';
 import { pushNav } from './handlers.js';
 

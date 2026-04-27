@@ -8,10 +8,10 @@
 
 import {
   S, ICO, icon, IMG, THEMES, store,
-  esc, normalize, getThemeTitles,
+  esc, normalize, getThemeTitles, ln,
 } from './state.js';
 import {
-  figById, toggleHidden, clearOverrides, saveColl, rebuildFigIndex,
+  figById, figIsHidden, toggleHidden, clearOverrides, saveColl, rebuildFigIndex,
 } from './data.js';
 import { toast, haptic, render, appConfirm } from './render.js';
 import { pushNav } from './handlers.js';
@@ -438,7 +438,7 @@ window.openSheet = name => { S.sheet = name; pushNav(); render();
   requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
 };
 window.closeSheet = () => { history.back(); };
-window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconOverride = null; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); closeSheet(); };
+window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconOverride = null; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); history.back(); };
 window.imgErr = id => { S.imgErrors[id] = true; };
 
 // ── Exports ─────────────────────────────────────────────────
