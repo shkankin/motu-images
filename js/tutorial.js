@@ -1,67 +1,100 @@
-// MOTU Vault — Tutorial Walkthrough (v6.18)
+// MOTU Vault — Tutorial Walkthrough (v6.20)
 // ─────────────────────────────────────────────
-// Action-driven coachmark tour. Each step waits for the user to perform
-// the highlighted action — tapping the spotlighted target advances the
-// tutorial. No auto-advance on action steps.
+// Action-driven coachmark tour. Spotlights real UI elements, waits for
+// real user actions, advances when those actions happen.
 //
 // Triggered from the Getting Started banner on the Lines screen.
-// Persistent "Skip tour" button always visible.
+// Persistent "Skip tour" button in every step.
 //
 // Storage:
-//   motu-tutorial-seen — set to 1 once the user finishes or skips the tour.
+//   motu-tutorial-seen — set to 1 once the user finishes or skips.
+//
+// Step model:
+//   target:     CSS selector for the spotlight, or null for a pure
+//               tooltip step (no dim, no spotlight)
+//   tooltipAnchor: 'target' (default), 'row' (anchor to the row that
+//               contains the target — better for narrow circles), or
+//               'bottom-fixed' (pinned to the screen bottom).
+//   text:       HTML for the tooltip
+//   placement:  'top' | 'bottom' | 'auto' (only when tooltipAnchor is
+//               not 'bottom-fixed')
+//   advanceOn:  'screen' (S.screen/S.tab change) | 'always' (Next button)
+//               | 'cycle-demo' (interactive status-cycle demo)
+//   waitFor:    for advanceOn:'screen', { screen?, tab? }
+//   requireScreen: don't try to find target until S.screen matches this
+//   nextLabel:  custom Next button label
+//   onNext:     side-effect to run when Next is pressed
+//   showOverlay: false to suppress the dim/spotlight entirely (e.g.
+//                step 3 detail screen — the user needs to read it)
+//   pulse:      true (default) for animated outline; false for static
 
 import { S, store } from './state.js';
 
+// Cycle order matches handlers.js STATUS_CYCLE: owned → wishlist → ordered
+// → for-sale → cleared. With a starting status of '' (cleared), the first
+// click runs setStatus(...,'owned'); subsequent clicks run cycleStatus and
+// walk the array. Five clicks total visit every visual state.
+const CYCLE_ORDER = ['owned', 'wishlist', 'ordered', 'for-sale', ''];
+const CYCLE_LABEL = {
+  owned: 'Owned',
+  wishlist: 'Wishlist',
+  ordered: 'Ordered',
+  'for-sale': 'For Sale',
+  '': 'Cleared',
+};
+const CYCLE_HEX = {
+  owned: '#34d399',
+  wishlist: '#60a5fa',
+  ordered: '#fb923c',
+  'for-sale': '#f87171',
+  '': '#6b7280',
+};
+
 const STEPS = [
-  // Step 1: Bottom nav — guide them to the All tab
+  // Step 1 — bottom nav, send them to All
   {
-    target: '.bottom-nav button:nth-child(2)', // "All" — middle
-    text: '<strong>Three views</strong> at the bottom: Lines (browse by era), <span style="color:var(--acc)">All</span> (full catalog), Collection (what you own).<br><br>Tap <strong>All</strong> to continue.',
+    target: '.bottom-nav button:nth-child(2)',
+    text: 'Three views at the bottom: <strong>Lines</strong> (browse by era), <strong>All</strong> (full catalog), <strong>Collection</strong> (what you own).<br><br>Tap <strong>All</strong> to continue.',
     placement: 'top',
     advanceOn: 'screen',
     waitFor: { tab: 'all' },
   },
 
-  // Step 2: Tap a figure to open detail
+  // Step 2 — tap any figure
   {
     target: '.fig-row[data-fig-id], .fig-card[data-fig-id]',
-    text: '<strong>Tap any figure name</strong> to open its details.',
+    tooltipAnchor: 'target',
+    text: 'Tap any figure name to open its details.',
     placement: 'auto',
     advanceOn: 'screen',
     waitFor: { screen: 'figure' },
   },
 
-  // Step 3: Detail screen — auto-close on Next so user doesn't have to
-  // hit back manually. Tooltip pinned to bottom so the screen contents
-  // are visible above it.
+  // Step 3 — detail screen overview, NO overlay (user needs to read & scroll)
   {
     target: null,
-    text: '<strong>Detail screen.</strong> Track copies, paid price, condition, location, photos, and notes per figure.<br><br>Tap <strong>Next</strong> when you\'ve had a look.',
-    placement: 'bottom-fixed',
+    showOverlay: false,
+    tooltipAnchor: 'bottom-fixed',
+    text: '<strong>Detail screen.</strong> Scroll to explore — you can track copies, paid price, condition, location, photos, and notes.<br><br>Tap <strong>Next</strong> when ready.',
     advanceOn: 'always',
     nextLabel: 'Next →',
-    onNext: () => {
-      // Close the detail screen on the user's behalf
-      if (typeof history !== 'undefined') history.back();
-    },
+    onNext: () => { try { history.back(); } catch {} },
   },
 
-  // Step 4: Interactive status cycle demo. User taps the spotlit circle
-  // and watches the color change; counter tracks progress through the
-  // 4 colors. Next button only appears once they've seen all 4.
+  // Step 4 — interactive status cycle demo
   {
-    target: '.fig-row[data-fig-id] .status-btn, .fig-card[data-fig-id] .status-btn, .fig-row[data-fig-id] .status-circle, .fig-card[data-fig-id] .status-circle',
-    text: '<strong>Tap the highlighted circle</strong> to cycle through statuses.<br><br><span style="color:#34d399">●</span> Owned · <span style="color:#fb923c">●</span> Ordered<br><span style="color:#60a5fa">●</span> Wishlist · <span style="color:#f87171">●</span> For Sale<br><br><span class="cycle-progress" data-progress="0">Tap to begin: <strong>0 / 4</strong> colors seen</span><br><br><em style="color:var(--t3);font-size:12px">Tip: long-press any figure for the full menu.</em>',
-    placement: 'auto',
+    target: '.fig-row[data-fig-id] .quick-own, .fig-card[data-fig-id] .quick-own',
+    tooltipAnchor: 'row', // anchor to the whole row, not the small circle
+    text: '', // built dynamically from CYCLE_ORDER
+    placement: 'top',
     advanceOn: 'cycle-demo',
     requireScreen: 'main',
-    requiredCount: 4, // need 4 distinct status changes (covers all 4 colors)
   },
 
-  // Step 5: Collection tab — final
+  // Step 5 — Collection tab, finish
   {
     target: '.bottom-nav button:nth-child(3)',
-    text: '<strong>Collection</strong> shows just the figures you own.<br><br>Tap any status circle on a figure to start filling it. You\'re all set!',
+    text: '<strong>Collection</strong> shows just the figures you own. Tap any status circle to start filling it. You\'re all set!',
     placement: 'top',
     advanceOn: 'always',
     nextLabel: 'Finish',
@@ -74,6 +107,7 @@ let _active = false;
 let _scanInterval = null;
 let _screenWatcher = null;
 let _clickListener = null;
+let _trackInterval = null; // re-positions the spotlight as DOM updates
 
 function startTutorial() {
   if (_active) return;
@@ -99,6 +133,7 @@ function endTutorial(completed) {
 function cleanup() {
   if (_scanInterval) { clearInterval(_scanInterval); _scanInterval = null; }
   if (_screenWatcher) { clearInterval(_screenWatcher); _screenWatcher = null; }
+  if (_trackInterval) { clearInterval(_trackInterval); _trackInterval = null; }
   if (_clickListener) {
     document.removeEventListener('click', _clickListener, true);
     _clickListener = null;
@@ -112,8 +147,15 @@ function showStep(idx) {
   const step = STEPS[idx];
   cleanup();
 
+  // For the cycle-demo step, pre-clear the figure status so the first
+  // click definitely runs setStatus(...,'owned') as a clean cleared→owned
+  // transition. Without this, a figure that's already "owned" would skip
+  // to wishlist on first click and confuse the demo counter.
+  if (step.advanceOn === 'cycle-demo') {
+    // Defer the actual reset until we've found a target (we need the figId)
+  }
+
   if (step.target == null) {
-    // Targetless step — show tooltip only (e.g. detail screen overview)
     renderStep(step, null);
     setupAdvancement(step, null);
     return;
@@ -141,7 +183,9 @@ function waitForScreenThenFindTarget(step) {
 function findTargetAndShow(step) {
   const target = document.querySelector(step.target);
   if (target) {
+    primeStepIfNeeded(step, target);
     renderStep(step, target);
+    startTracking(step, target);
     setupAdvancement(step, target);
     return;
   }
@@ -154,7 +198,9 @@ function findTargetAndShow(step) {
     if (el) {
       clearInterval(_scanInterval);
       _scanInterval = null;
+      primeStepIfNeeded(step, el);
       renderStep(step, el);
+      startTracking(step, el);
       setupAdvancement(step, el);
     } else if (ticks > 600) {
       clearInterval(_scanInterval);
@@ -164,9 +210,45 @@ function findTargetAndShow(step) {
   }, 100);
 }
 
+// Step-specific setup that runs once a target is in hand.
+// For the cycle demo: clear the figure's status so the first click
+// produces a clean cleared→owned transition.
+function primeStepIfNeeded(step, target) {
+  if (step.advanceOn === 'cycle-demo') {
+    const row = target.closest('[data-fig-id]');
+    const figId = row?.dataset?.figId;
+    if (figId && S.coll[figId]?.status) {
+      delete S.coll[figId].status;
+      if (window.saveColl) window.saveColl();
+      if (window.render) window.render();
+    }
+  }
+}
+
+// Re-position the spotlight + tooltip as the DOM changes (e.g. cycleStatus
+// re-renders the row and the original target node is replaced). Without
+// this the spotlight drifts off-screen after the first click.
+function startTracking(step, target) {
+  if (_trackInterval) clearInterval(_trackInterval);
+  let lastBox = JSON.stringify(target.getBoundingClientRect());
+  _trackInterval = setInterval(() => {
+    if (!_active) return;
+    // Re-resolve the target every tick — the original may have been replaced
+    let cur = document.querySelector(step.target);
+    if (!cur) return;
+    const boxJson = JSON.stringify(cur.getBoundingClientRect());
+    if (boxJson !== lastBox) {
+      lastBox = boxJson;
+      const overlay = document.getElementById('tutorialOverlay');
+      const tip = document.getElementById('tutorialTooltip');
+      if (overlay) positionOverlay(overlay, cur, step);
+      if (tip) positionTooltip(tip, cur, step);
+    }
+  }, 200);
+}
+
 function setupAdvancement(step, target) {
   const advance = step.advanceOn || 'click';
-
   if (advance === 'screen') {
     _screenWatcher = setInterval(() => {
       if (!_active) return;
@@ -179,114 +261,118 @@ function setupAdvancement(step, target) {
         setTimeout(() => showStep(_stepIdx + 1), 300);
       }
     }, 150);
-  } else if (advance === 'click' && target) {
-    _clickListener = (e) => {
-      if (target.contains(e.target) || e.target === target) {
-        document.removeEventListener('click', _clickListener, true);
-        _clickListener = null;
-        setTimeout(() => showStep(_stepIdx + 1), 300);
-      }
-    };
-    document.addEventListener('click', _clickListener, true);
   } else if (advance === 'cycle-demo' && target) {
     setupCycleDemo(step, target);
   }
-  // 'always' — Got it → button (rendered in renderStep)
+  // 'always' — Got it/Next button (rendered in renderStep)
 }
 
-// Step 4 interactive demo. The user taps the spotlit status circle, which
-// triggers cycleStatus() on the underlying figure. We watch S.coll[figId]
-// and count distinct status values seen. When the count hits the required
-// number, the tooltip swaps to a Next button so they can advance.
+// ── Step 4: cycle demo ──────────────────────────────────────────────
 //
-// Implementation: find the figure ID from the target's data-fig-id, then
-// poll S.coll[figId].status to detect changes. Polling beats hooking the
-// status mutation because the existing cycleStatus does its own render
-// which destroys the click listener anyway.
+// User clicks the spotlit status button on a figure. We watch S.coll[figId]
+// for the status changing, and check off each visited state in CYCLE_ORDER.
+// After all 5 states have been visited (including '' cleared), we show
+// the Next button.
 function setupCycleDemo(step, target) {
   const row = target.closest('[data-fig-id]');
   const figId = row?.dataset?.figId;
   if (!figId) {
     // Couldn't identify the figure — fall back to manual advance
-    showCycleProgress(0, step.requiredCount, true);
+    renderCycleProgress([], true);
     return;
   }
 
-  const seen = new Set();
+  // Track which states we've seen. Start fresh — primeStepIfNeeded
+  // already cleared the status above.
+  const seen = new Set(['']); // user starts at cleared
   let lastStatus = (S.coll[figId]?.status) || '';
-  if (lastStatus) seen.add(lastStatus);
 
-  showCycleProgress(seen.size, step.requiredCount, false);
+  renderCycleProgress(seen, false);
 
   _screenWatcher = setInterval(() => {
     if (!_active) return;
-    // Re-find the row + button after any re-render. Without this, the
-    // spotlight can drift off the new DOM node.
-    const row2 = document.querySelector(`[data-fig-id="${figId}"]`);
-    if (row2) {
-      const btn = row2.querySelector('.status-btn, .status-circle');
-      if (btn) {
-        const tip = document.getElementById('tutorialTooltip');
-        const overlay = document.getElementById('tutorialOverlay');
-        if (overlay) {
-          const r = btn.getBoundingClientRect();
-          const pad = 6;
-          overlay.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
-        }
-        if (tip) positionTooltip(tip, btn, step.placement);
-      }
-    }
-
     const cur = (S.coll[figId]?.status) || '';
     if (cur !== lastStatus) {
       lastStatus = cur;
-      if (cur) seen.add(cur);
-      showCycleProgress(seen.size, step.requiredCount, seen.size >= step.requiredCount);
-      if (seen.size >= step.requiredCount) {
+      seen.add(cur);
+      const allSeen = CYCLE_ORDER.every(s => seen.has(s));
+      renderCycleProgress(seen, allSeen);
+      if (allSeen) {
         clearInterval(_screenWatcher);
         _screenWatcher = null;
       }
     }
-  }, 150);
+  }, 100);
 }
 
-// Update the inline progress text inside the tooltip and toggle the Next
-// button visibility. Called by setupCycleDemo as the user cycles statuses.
-function showCycleProgress(count, total, complete) {
+// Render the cycle progress checklist inside the tooltip. Each state in
+// CYCLE_ORDER gets a row that shows ● + label, dimmed until visited.
+function renderCycleProgress(seenSet, complete) {
   const tip = document.getElementById('tutorialTooltip');
   if (!tip) return;
-  const progress = tip.querySelector('.cycle-progress');
-  if (progress) {
-    if (complete) {
-      progress.innerHTML = `<strong style="color:var(--gn,#34d399)">✓ Great! All ${total} colors seen.</strong>`;
-    } else {
-      progress.innerHTML = `Keep tapping: <strong>${count} / ${total}</strong> colors seen`;
-    }
+
+  const headline = complete
+    ? '<strong style="color:#34d399">✓ Nice — you\'ve seen the full cycle.</strong>'
+    : '<strong>Tap the highlighted circle</strong> to cycle through statuses.';
+
+  const checklist = CYCLE_ORDER.map(s => {
+    const seen = seenSet.has(s);
+    const color = CYCLE_HEX[s];
+    const label = CYCLE_LABEL[s];
+    return `<div class="cycle-row${seen ? ' seen' : ''}">
+      <span class="cycle-dot" style="background:${color}"></span>
+      <span class="cycle-label">${label}</span>
+      ${seen ? '<span class="cycle-check">✓</span>' : ''}
+    </div>`;
+  }).join('');
+
+  const body = tip.querySelector('.tutorial-text');
+  if (body) {
+    body.innerHTML = `${headline}<div class="cycle-list">${checklist}</div>
+      <div class="cycle-tip">Long-press any figure for the full menu.</div>`;
   }
-  // Add a Next button if it's not there and the demo is complete
+
+  // Add Next button when all states have been seen
   const actions = tip.querySelector('.tutorial-actions');
   if (!actions) return;
   let nextBtn = actions.querySelector('.tutorial-next');
   if (complete && !nextBtn) {
     nextBtn = document.createElement('button');
     nextBtn.className = 'tutorial-next';
-    nextBtn.textContent = 'Got it →';
-    nextBtn.onclick = () => {
-      setTimeout(() => showStep(_stepIdx + 1), 100);
-    };
+    nextBtn.textContent = 'Next →';
+    nextBtn.onclick = () => setTimeout(() => showStep(_stepIdx + 1), 100);
     actions.appendChild(nextBtn);
   }
+  // Re-position tooltip after content change
+  const overlay = document.getElementById('tutorialOverlay');
+  if (overlay) {
+    const step = STEPS[_stepIdx];
+    const target = document.querySelector(step.target);
+    if (target) positionTooltip(tip, target, step);
+  }
 }
+
+// ── Rendering ───────────────────────────────────────────────────────
 
 function renderStep(step, target, hint) {
   let overlay = document.getElementById('tutorialOverlay');
   let tip = document.getElementById('tutorialTooltip');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'tutorialOverlay';
-    overlay.className = 'tutorial-overlay';
-    document.body.appendChild(overlay);
+
+  // Manage overlay visibility per-step. Some steps don't want any dim
+  // (step 3 detail screen — user needs to scroll and read).
+  if (step.showOverlay !== false) {
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'tutorialOverlay';
+      overlay.className = 'tutorial-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.classList.toggle('pulse', step.pulse !== false);
+    positionOverlay(overlay, target, step);
+  } else if (overlay) {
+    overlay.remove();
   }
+
   if (!tip) {
     tip = document.createElement('div');
     tip.id = 'tutorialTooltip';
@@ -294,21 +380,9 @@ function renderStep(step, target, hint) {
     document.body.appendChild(tip);
   }
 
-  if (target) {
-    const r = target.getBoundingClientRect();
-    const pad = 6;
-    overlay.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
-    overlay.classList.remove('no-target');
-  } else {
-    overlay.style.cssText = 'top:50%;left:50%;width:0;height:0';
-    overlay.classList.add('no-target');
-  }
-
   const stepNum = _stepIdx + 1;
   const total = STEPS.length;
   const advance = step.advanceOn || 'click';
-  // 'cycle-demo' starts without a Next button — it's added when the user
-  // completes the demo (see showCycleProgress)
   const showGotIt = advance === 'always' || step.finalStep;
   const nextLabel = step.nextLabel || (step.finalStep ? 'Finish' : 'Got it →');
 
@@ -324,8 +398,6 @@ function renderStep(step, target, hint) {
   const nextBtn = tip.querySelector('.tutorial-next');
   if (nextBtn) {
     nextBtn.onclick = () => {
-      // Run the step's optional onNext side effect (e.g. step 3 closes
-      // the detail screen so the user doesn't have to back out manually).
       if (typeof step.onNext === 'function') {
         try { step.onNext(); } catch (err) { console.warn('tutorial onNext failed:', err); }
       }
@@ -334,20 +406,35 @@ function renderStep(step, target, hint) {
     };
   }
 
-  positionTooltip(tip, target, step.placement);
+  positionTooltip(tip, target, step);
 }
 
-function positionTooltip(tip, target, preferredPlacement) {
+function positionOverlay(overlay, target, step) {
+  if (!target) {
+    overlay.style.cssText = 'top:50%;left:50%;width:0;height:0';
+    overlay.classList.add('no-target');
+    return;
+  }
+  overlay.classList.remove('no-target');
+  const r = target.getBoundingClientRect();
+  const pad = 6;
+  overlay.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
+}
+
+function positionTooltip(tip, target, step) {
+  const anchor = step.tooltipAnchor || 'target';
+  const margin = 18;
+
+  // Reset
   tip.style.left = '12px';
   tip.style.right = '12px';
   tip.style.top = 'auto';
   tip.style.bottom = 'auto';
   tip.style.transform = '';
   tip.style.visibility = 'hidden';
+  tip.classList.remove('arrow-down', 'arrow-up');
 
-  // bottom-fixed: pin to bottom edge regardless of target (used for the
-  // detail-screen step where the entire screen is the "target")
-  if (preferredPlacement === 'bottom-fixed') {
+  if (anchor === 'bottom-fixed') {
     tip.style.bottom = 'calc(20px + var(--safe-bottom, 0px))';
     requestAnimationFrame(() => { tip.style.visibility = ''; });
     return;
@@ -360,18 +447,25 @@ function positionTooltip(tip, target, preferredPlacement) {
     return;
   }
 
-  const r = target.getBoundingClientRect();
+  // For 'row' anchor, use the closest row/card bounding box instead of
+  // the small target (e.g. 24px status circle). This gives the tooltip
+  // a much wider area to position relative to and avoids covering the
+  // target itself.
+  let anchorEl = target;
+  if (anchor === 'row') {
+    anchorEl = target.closest('.fig-row, .fig-card') || target;
+  }
+  const r = anchorEl.getBoundingClientRect();
   const vh = window.innerHeight;
-  const margin = 16;
+  const spaceAbove = r.top - margin;
+  const spaceBelow = vh - r.bottom - margin;
 
   requestAnimationFrame(() => {
     const tipH = tip.offsetHeight;
-    const spaceAbove = r.top - margin;
-    const spaceBelow = vh - r.bottom - margin;
-
+    const preferred = step.placement || 'auto';
     let placement;
-    if (preferredPlacement === 'top') placement = 'top';
-    else if (preferredPlacement === 'bottom') placement = 'bottom';
+    if (preferred === 'top') placement = 'top';
+    else if (preferred === 'bottom') placement = 'bottom';
     else placement = spaceAbove >= spaceBelow ? 'top' : 'bottom';
 
     // Flip if chosen side doesn't fit
@@ -384,15 +478,16 @@ function positionTooltip(tip, target, preferredPlacement) {
     if (placement === 'top') {
       tip.style.bottom = (vh - r.top + margin) + 'px';
       tip.style.top = 'auto';
+      tip.classList.add('arrow-down');
     } else {
       tip.style.top = (r.bottom + margin) + 'px';
       tip.style.bottom = 'auto';
+      tip.classList.add('arrow-up');
     }
     tip.style.visibility = '';
   });
 }
 
-// Re-position on viewport changes
 window.addEventListener('resize', () => {
   if (!_active) return;
   const step = STEPS[_stepIdx];
@@ -400,13 +495,8 @@ window.addEventListener('resize', () => {
   const target = step.target ? document.querySelector(step.target) : null;
   const tip = document.getElementById('tutorialTooltip');
   const overlay = document.getElementById('tutorialOverlay');
-  if (!tip || !overlay) return;
-  if (target) {
-    const r = target.getBoundingClientRect();
-    const pad = 6;
-    overlay.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
-  }
-  positionTooltip(tip, target, step.placement);
+  if (overlay) positionOverlay(overlay, target, step);
+  if (tip) positionTooltip(tip, target, step);
 });
 
 window.startTutorial = startTutorial;
