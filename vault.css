@@ -143,6 +143,11 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   top: 0; left: 0; right: 0; bottom: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* v6.15: clear the fixed .bottom-nav so the last row/card on screens
+     without a manual .bottom-spacer (e.g. Lines) isn't covered. The
+     existing .bottom-spacer divs on the All/Detail screens remain
+     harmless — they just add a small invisible gap below content. */
+  padding-bottom: calc(56px + var(--safe-bottom));
 }
 
 .bottom-nav {
