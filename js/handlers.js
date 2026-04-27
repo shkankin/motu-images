@@ -53,11 +53,17 @@ function initLongPress(el, figId) {
     _lpMoved = false;
     _lpFired = false;
     _lpFigId = figId;
+    // v6.10: snapshot coordinates synchronously. Some browsers null out
+    // TouchEvent.touches after the handler returns, so reading e.touches[0]
+    // inside the setTimeout was sometimes returning undefined and breaking
+    // the menu. Capturing primitives here makes the closure stable.
+    const lx = e.touches[0].clientX;
+    const ly = e.touches[0].clientY;
     _lpTimer = setTimeout(() => {
       if (!_lpMoved) {
         _lpFired = true;
         haptic(25);
-        showContextMenu(figId, e.touches[0].clientX, e.touches[0].clientY);
+        showContextMenu(figId, lx, ly);
       }
     }, 500);
   }, {passive: true});

@@ -22,7 +22,7 @@ import {
 } from './photos.js';
 import {
   figById, figIsHidden, getStats, getSortedFigs, getLineStats,
-  hasFilters, getOverrideField, getAccAvail, totalCopyCount,
+  hasFilters, getOverrideField, getOverridesFor, getAccAvail, totalCopyCount,
   entryCopyCount, getPrimaryCopy, copyVariant, copyCondition,
   copyPaid, copyNotes, getAllLocations,
   renderExportSheet, renderSheetBody,
@@ -254,7 +254,7 @@ function renderEditFigureSheet() {
   const f = figById(figId);
   if (!f) return '<div class="text-sm text-dim">Figure not found.</div>';
   const eFigId = esc(figId);
-  const ov = _overrides[figId]?.fields || {};
+  const ov = getOverridesFor(figId);
   const has = Object.keys(ov).length > 0;
   // For each editable field, show current effective value with an "overridden" hint.
   const row = (key, label, inputHtml, hint = '') => `
