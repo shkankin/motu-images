@@ -2747,25 +2747,46 @@ html {
   animation: toastIn 0.25s ease-out;
 }
 
-/* ── Tutorial Walkthrough (v6.17) ────────────────────────────────── */
+
+/* ── Tutorial Walkthrough (v6.20) ────────────────────────────────── */
 /* The overlay is a positioned-and-sized box around the spotlight target.
    Its giant box-shadow (9999px) darkens everything outside the box. The
-   box itself stays transparent, creating the spotlight cutout effect. */
+   box itself stays transparent, creating the spotlight cutout effect.
+   Pulsing animation on the outline draws the eye to the target. */
 .tutorial-overlay {
   position: fixed;
   z-index: 9000;
   border-radius: 8px;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.72);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
   pointer-events: none;
   transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
-  outline: 2px solid rgba(255, 255, 255, 0.4);
-  outline-offset: 2px;
+  outline: 3px solid var(--acc);
+  outline-offset: 3px;
 }
 .tutorial-overlay.no-target {
-  /* When the target hasn't appeared yet, just dim the screen with no cutout */
   border-radius: 0;
   outline: none;
 }
+.tutorial-overlay.pulse {
+  animation: tutorialPulse 1.6s ease-in-out infinite;
+}
+@keyframes tutorialPulse {
+  0%, 100% {
+    outline-width: 3px;
+    outline-color: var(--acc);
+    box-shadow:
+      0 0 0 9999px rgba(0, 0, 0, 0.65),
+      0 0 0 0 color-mix(in srgb, var(--acc) 60%, transparent);
+  }
+  50% {
+    outline-width: 4px;
+    outline-color: color-mix(in srgb, var(--acc) 100%, white 20%);
+    box-shadow:
+      0 0 0 9999px rgba(0, 0, 0, 0.65),
+      0 0 0 14px color-mix(in srgb, var(--acc) 0%, transparent);
+  }
+}
+
 .tutorial-tooltip {
   position: fixed;
   z-index: 9001;
@@ -2785,6 +2806,32 @@ html {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Arrow indicator — points at the spotlight target so the tooltip-to-target
+   relationship is unambiguous even when they're far apart. */
+.tutorial-tooltip::after {
+  content: "";
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  pointer-events: none;
+}
+.tutorial-tooltip.arrow-down::after {
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 10px 9px 0 9px;
+  border-color: var(--bg2) transparent transparent transparent;
+}
+.tutorial-tooltip.arrow-up::after {
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 9px 10px 9px;
+  border-color: transparent transparent var(--bg2) transparent;
+}
+
 .tutorial-step-count {
   font-size: 11px;
   color: var(--acc);
@@ -2800,10 +2847,60 @@ html {
 .tutorial-text strong {
   color: var(--acc);
 }
+
+/* Cycle demo checklist */
+.cycle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 8px;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border-radius: 10px;
+}
+.cycle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  opacity: 0.45;
+  transition: opacity 0.2s ease;
+}
+.cycle-row.seen {
+  opacity: 1;
+}
+.cycle-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255,255,255,0.15);
+}
+.cycle-row.seen .cycle-dot {
+  border-color: rgba(255,255,255,0.5);
+  box-shadow: 0 0 6px currentColor;
+}
+.cycle-label {
+  flex: 1;
+  color: var(--t1);
+}
+.cycle-check {
+  color: #34d399;
+  font-weight: 700;
+  font-size: 14px;
+}
+.cycle-tip {
+  font-size: 12px;
+  color: var(--t3);
+  font-style: italic;
+  margin-top: 8px;
+}
+
 .tutorial-actions {
   display: flex;
   gap: 8px;
   justify-content: space-between;
+  align-items: center;
 }
 .tutorial-skip {
   background: transparent;
@@ -2816,7 +2913,7 @@ html {
 }
 .tutorial-next {
   background: var(--acc);
-  color: var(--bg);
+  color: var(--btn-t);
   border: none;
   padding: 8px 18px;
   border-radius: 8px;
