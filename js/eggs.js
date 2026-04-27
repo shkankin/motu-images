@@ -399,7 +399,23 @@ window.openFig = id => {
   S.activeFig = figById(id);
   S.screen = 'figure'; pushNav(); render();
 };
-window.closeDetail = () => { history.back(); };
+// v6.04: closeDetail used to be just `history.back()` and rely on the
+// popstate handler. If something earlier in the chain consumed the history
+// entry (a sheet that didn't push, an aggressive scroll listener, etc.) the
+// back arrow appeared dead. Now we fire history.back AND set a 100ms watchdog:
+// if we're still on the figure screen after popstate would have run, force
+// the navigation directly. The watchdog is a no-op in the common case where
+// popstate fires correctly.
+window.closeDetail = () => {
+  history.back();
+  setTimeout(() => {
+    if (S.screen === 'figure') {
+      S.screen = 'main';
+      S.activeFig = null;
+      render();
+    }
+  }, 100);
+};
 window.deleteFig = async id => {
   if (!await appConfirm('Delete this figure and all its data?', {danger: true, ok: 'Delete'})) return;
   // Clean up all side-data before dropping the figure itself.

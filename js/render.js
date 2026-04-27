@@ -50,18 +50,28 @@ import { initLongPress, pushNav } from './handlers.js';
 import { renderSheet } from './ui-sheets.js';
 
 // § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
+// v6.04: container caps live toasts at 3. Any new toast trims the oldest
+// (FIFO) so a rapid sequence of status changes doesn't flood the screen.
+const MAX_TOASTS = 3;
 function getToastContainer() {
   let c = document.getElementById('toastContainer');
   if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+  // Trim oldest until we're below the cap (caller is about to append one more).
+  while (c.children.length >= MAX_TOASTS) {
+    c.removeChild(c.firstChild);
+  }
   return c;
 }
-function toast(msg) {
+// v6.04: opts.large bumps font/padding for high-priority messages like
+// "Press back again to exit". opts.persist disables the auto-fade animation
+// so action toasts (Undo) don't visually disappear before the timeout ends.
+function toast(msg, opts = {}) {
   const container = getToastContainer();
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = 'toast' + (opts.large ? ' large' : '') + (opts.persist ? ' persist' : '');
   el.textContent = msg;
   container.appendChild(el);
-  setTimeout(() => { if (el.parentNode) el.remove(); }, 4000);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, opts.duration || 4000);
 }
 
 function haptic(ms = 15) {
@@ -116,7 +126,11 @@ function triggerPulse(id, status) {
 function toastUndo(msg, figId, prevColl) {
   const container = getToastContainer();
   const el = document.createElement('div');
-  el.className = 'toast has-undo';
+  // v6.04: 'persist' suppresses the 2s fade-out animation. Action toasts
+  // run for 5.5s; without persist they were visually gone at 2s but still
+  // technically clickable — confusing for users who reach for "Undo" or
+  // the suggested action and find nothing there.
+  el.className = 'toast has-undo persist';
   const msgSpan = document.createElement('span');
   msgSpan.className = 'toast-msg';
   msgSpan.textContent = msg;
@@ -151,13 +165,14 @@ window.undoStatus = id => {
 };
 
 // v6.03: General-purpose action toast — like toastUndo but the button label
-// and handler are caller-supplied. Used for the loadout completeness
-// "Mark Loose Complete?" / "Mark Loose Incomplete?" suggestion. Auto-dismisses
-// after 5.5s. Tapping the action button runs the handler and removes the toast.
+// and handler are caller-supplied. v6.04: now uses 'persist' class so the
+// toast stays visible the full 5.5s instead of fading at 2s. Currently
+// retained for any caller that wants confirm-before-action UX; the loadout
+// completeness path now auto-applies and uses a plain toast() instead.
 function toastAction(msg, btnLabel, handler) {
   const container = getToastContainer();
   const el = document.createElement('div');
-  el.className = 'toast has-undo';
+  el.className = 'toast has-undo persist';
   const msgSpan = document.createElement('span');
   msgSpan.className = 'toast-msg';
   msgSpan.textContent = msg;
@@ -373,7 +388,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.03.1</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.04</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">

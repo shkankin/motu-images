@@ -30,7 +30,8 @@ import {
 } from './data.js';
 import {
   renderQR, renderShareSheet, renderStatsSheet,
-  renderKidsCoreAdminSheet, renderWantListViewSheet, buildShareURL
+  renderKidsCoreAdminSheet, renderWantListViewSheet, buildShareURL,
+  renderContent,
 } from './render.js';
 import { pushNav } from './handlers.js';
 
@@ -129,6 +130,11 @@ function renderFilterSheet() {
 }
 
 // v5.01: in-place filter chip update — no full-app re-render flicker.
+// v6.04: also refresh the underlying figure list so the user sees the filter
+// applied immediately (was: list updated only on next full render, i.e. when
+// the sheet was closed). renderContent() is a no-op-ish call: cheap to run
+// because _derived.invalidate() just clears the cache; the list rebuild is
+// the same work that would happen on sheet-close anyway.
 window.patchFilter = (key, val) => {
   if (key === 'clear') {
     S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search='';
@@ -138,10 +144,13 @@ window.patchFilter = (key, val) => {
   else if (key === 'variants')   S.filterVariants = val;
   S.savedScroll = 0;
   _derived.invalidate();
-  // Re-render only the sheet body — content underneath updates next time
-  // it's surfaced. The sheet body element is wrapped in #sheetBody.
+  // Re-render only the sheet body — pills update without flicker.
   const body = document.querySelector('.sheet-body');
   if (body) body.innerHTML = renderFilterSheet();
+  // v6.04: also patch the underlying contentArea so the figure list reflects
+  // the active filter immediately. The sheet remains open on top.
+  const contentArea = document.getElementById('contentArea');
+  if (contentArea) contentArea.innerHTML = renderContent();
 };
 
 function renderSortSheet() {

@@ -28,7 +28,7 @@ import {
   photoStore, photoURLs, photoCopyOf, setPhotoCopy,
   loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap,
 } from './photos.js';
-import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo, toastAction } from './render.js';
+import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
 import { checkCompletion } from './eggs.js';
 
 // § DATA-FETCH ── parseCSV, fetchFigs, newFigIds detection ─────────
@@ -645,14 +645,21 @@ function getAllLocations() {
   return [...set].sort((a,b) => a.localeCompare(b));
 }
 
-// v6.03: After an accessory add/remove, if the copy crossed the "all loadout
-// items present" threshold in either direction, surface a non-blocking toast
-// offering a one-tap condition update.
+// v6.03 / v6.04: After an accessory add/remove, if the copy crossed the
+// "all loadout items present" threshold in either direction, automatically
+// flip the condition to match and show an informational toast.
+//
+// v6.03 originally surfaced this as an action toast ("Mark Loose Complete?")
+// requiring a tap. v6.04 changes to auto-apply: the toast disappeared too
+// fast in the original implementation, and the action is small enough that
+// a confirm step adds friction without protecting the user (the change is
+// trivially reversible by editing the condition dropdown). The informational
+// toast still surfaces what happened so the user can correct it if undesired.
 //
 // Skipped entirely when:
 //   - no loadout exists for this figure (nothing to be complete against)
 //   - condition is sealed/mint (those track packaging, not loose contents)
-//   - the suggestion would set condition to what it already is (no-op)
+//   - the new condition would equal the current condition (no-op)
 //
 // `prevComplete` is the completeness state captured BEFORE the accessory
 // list was mutated. `nextCp` is the migrated copy after the mutation.
@@ -665,13 +672,11 @@ function maybeSuggestConditionForCopy(figId, copyId, nextCp, prevComplete) {
   if (!after) return; // no loadout
   // Only act on transitions: incomplete → complete, or complete → incomplete.
   if (after.complete && !prevComplete && cond !== 'Loose Complete') {
-    toastAction('Loadout complete.', 'Mark Loose Complete', () => {
-      window.updateCopy(figId, copyId, 'condition', 'Loose Complete');
-    });
+    window.updateCopy(figId, copyId, 'condition', 'Loose Complete');
+    toast('✓ Marked Loose Complete');
   } else if (!after.complete && prevComplete && cond === 'Loose Complete') {
-    toastAction('Loadout incomplete.', 'Mark Loose Incomplete', () => {
-      window.updateCopy(figId, copyId, 'condition', 'Loose Incomplete');
-    });
+    window.updateCopy(figId, copyId, 'condition', 'Loose Incomplete');
+    toast('Marked Loose Incomplete');
   }
 }
 

@@ -324,12 +324,86 @@ window.addEventListener('popstate', e => {
   }
   S._lastBackAtRoot = now;
   history.pushState(navState(), '');
-  toast('Press back again to exit');
+  toast('Press back again to exit', { large: true, duration: 2500 });
   _skipPush = false;
 });
 
 // Seed the initial history entry so we always have something to pop
 history.replaceState(navState(), '');
+
+// v6.04: Horizontal swipe-between-tabs. Left → next tab, right → previous.
+// Order: lines ← all ← collection (right-to-left forward). On the figure
+// detail screen, swipe-right is a secondary back action. Disabled when a
+// sheet, photo viewer, select mode, or context menu is open — those have
+// their own dismissal flows and a swipe would feel like an accidental nav.
+//
+// Threshold is deliberately conservative (60px horizontal, <40px vertical)
+// to avoid eating vertical scrolling. The `passive: true` listener means
+// we don't block native scroll while measuring.
+const TAB_ORDER = ['lines', 'all', 'collection'];
+const SWIPE_MIN_DX = 60;
+const SWIPE_MAX_DY = 40;
+const SWIPE_MAX_MS = 500;
+let _touchX = null, _touchY = null, _touchT = null;
+
+function _swipeAllowed() {
+  if (S.sheet) return false;
+  if (S.photoViewer) return false;
+  if (S.selectMode) return false;
+  if (document.querySelector('.ctx-menu-overlay')) return false;
+  return true;
+}
+
+document.addEventListener('touchstart', e => {
+  if (!_swipeAllowed()) { _touchX = null; return; }
+  // Single finger only — pinch zoom/scroll get a pass.
+  if (e.touches.length !== 1) { _touchX = null; return; }
+  // Skip the gesture if the touch starts on an interactive control. Inputs,
+  // selects, and textareas need their own native horizontal swipe (cursor
+  // movement, range scrub) and the photo carousel handles its own swipes.
+  const t = e.target;
+  if (t.closest('input, textarea, select, .photo-carousel, .acc-chips, .acc-missing-row, .copy-fields, .photo-section')) {
+    _touchX = null;
+    return;
+  }
+  _touchX = e.touches[0].clientX;
+  _touchY = e.touches[0].clientY;
+  _touchT = Date.now();
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+  if (_touchX == null) return;
+  const startX = _touchX, startY = _touchY, startT = _touchT;
+  _touchX = _touchY = _touchT = null;
+  const touch = (e.changedTouches && e.changedTouches[0]);
+  if (!touch) return;
+  const dx = touch.clientX - startX;
+  const dy = touch.clientY - startY;
+  const dt = Date.now() - startT;
+  if (dt > SWIPE_MAX_MS) return;
+  if (Math.abs(dx) < SWIPE_MIN_DX) return;
+  if (Math.abs(dy) > SWIPE_MAX_DY) return;
+  if (Math.abs(dx) < Math.abs(dy) * 1.4) return; // require horizontal dominance
+
+  // Detail screen: right-swipe is an alternate back, left-swipe is a no-op.
+  if (S.screen === 'figure') {
+    if (dx > 0) {
+      window.closeDetail();
+    }
+    return;
+  }
+
+  // Main screen: cycle through tabs. Don't wrap — feels nicer to hit a soft
+  // edge than to teleport from collection back to lines.
+  const i = TAB_ORDER.indexOf(S.tab);
+  if (i < 0) return;
+  // dx > 0 (right swipe) goes to previous tab; dx < 0 (left swipe) goes next.
+  const j = i + (dx > 0 ? -1 : 1);
+  if (j < 0 || j >= TAB_ORDER.length) return;
+  // Don't switch while in a line — back out first via the breadcrumb instead.
+  if (S.activeLine) return;
+  window.navTo(TAB_ORDER[j]);
+}, { passive: true });
 
 // ─── Event Handlers ───────────────────────────────────────────────
 let _searchTimer = null;
