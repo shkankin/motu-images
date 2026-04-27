@@ -388,7 +388,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.14</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.16</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -1224,8 +1224,8 @@ function renderLinesGrid() {
     html += `<div class="lines-header">
       <div class="lines-header-count">${visibleOrdered.length} ${visibleOrdered.length === 1 ? 'Line' : 'Lines'}</div>
       <div class="lines-view-toggle" role="group" aria-label="View mode">
-        <button class="${linesView==='grid'?'active':''}" onclick="store.set('motu-lines-view','grid');render()" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
         <button class="${linesView==='list'?'active':''}" onclick="store.set('motu-lines-view','list');render()" title="List view" aria-label="List view">${icon(ICO.list,15)}</button>
+        <button class="${linesView==='grid'?'active':''}" onclick="store.set('motu-lines-view','grid');render()" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
       </div>
     </div>`;
     if (linesView === 'list') {
