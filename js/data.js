@@ -16,7 +16,7 @@ const openSheet = (...a) => window.openSheet?.(...a);
 // ════════════════════════════════════════════════════════════════════
 
 import {
-  S, store, ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, KIDS_CORE_KEY,
+  S, store, ICO, icon, IMG, FIGS_URL, LOADOUTS_URL, KIDS_CORE_KEY,
   CUSTOM_FIGS_KEY, CACHE_KEY, CACHE_TTL,
   LINES, FACTIONS, CONDITIONS, ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX,
@@ -70,21 +70,17 @@ async function fetchFigs(manual = false, firstLoad = false) {
     S.syncStatus = 'syncing'; render();
     S.fetchError = false;
     try {
-      // Fetch main figures.json, kids-core.json, and loadouts.json in parallel
-      const [res, kcRes, ldRes] = await Promise.all([
+      // v6.16: kids-core.json is no longer maintained as a separate repo file.
+      // Kids Core figures now live in figures.json with `line: 'kids-core'`,
+      // managed by sync_af411.py like every other line. KIDS_CORE_KEY (local
+      // admin entries) is still honored for back-compat — those merge in below.
+      const [res, ldRes] = await Promise.all([
         fetch(FIGS_URL + '?t=' + Date.now()),
-        fetch(KIDS_CORE_URL + '?t=' + Date.now()).catch(() => null),
         fetch(LOADOUTS_URL + '?t=' + Date.now()).catch(() => null),
       ]);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const remote = await res.json();
       if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
-
-      // Kids Core figures from repo (optional — 404 is fine if file doesn't exist yet)
-      let kcRemote = [];
-      if (kcRes && kcRes.ok) {
-        try { kcRemote = await kcRes.json(); } catch {}
-      }
 
       // v6.03: Shared loadouts from repo (optional — 404 is fine).
       // Stored in S._repoLoadouts; merged with local override at read-time
@@ -98,13 +94,6 @@ async function fetchFigs(manual = false, firstLoad = false) {
           }
         } catch {}
       }
-      // Merge: remote kids-core figures get source:'kids-core' and image from slug
-      const kcHydrated = (Array.isArray(kcRemote) ? kcRemote : []).map(f => ({
-        ...f,
-        line: 'kids-core',
-        source: 'kids-core',
-        image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
-      }));
 
       // Detect newly added figures
       const prevIds = new Set(S.figs.map(f => f.id));
@@ -117,7 +106,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
       const localCustom = store.get(CUSTOM_FIGS_KEY) || [];
       // Local Kids Core figures (added via admin UI) — kept across syncs
       const localKC = store.get(KIDS_CORE_KEY) || [];
-      const remoteIds = new Set([...remote, ...kcHydrated].map(f => f.id));
+      const remoteIds = new Set(remote.map(f => f.id));
       const localKCFigs = localKC.map(f => ({
         ...f, line: 'kids-core', source: 'kids-core-local',
         image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
@@ -137,13 +126,12 @@ async function fetchFigs(manual = false, firstLoad = false) {
       const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
       // Only flag as new if we had a previous catalog loaded (not first boot)
       if (prevIds.size > 100) {
-        [...hydrated, ...kcHydrated].forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
+        hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
       }
-      const kcIds = new Set([...kcHydrated, ...localKCFigs].map(f => f.id));
+      const kcIds = new Set(localKCFigs.map(f => f.id));
       const customIds = new Set(localCustomFigs.map(f => f.id));
       S.figs = [
         ...hydrated,
-        ...kcHydrated,
         ...localKCFigs,
         ...localCustomFigs,
         ...custom.filter(f => !remoteIds.has(f.id) && !kcIds.has(f.id) && !customIds.has(f.id)),
