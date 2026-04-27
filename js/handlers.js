@@ -16,7 +16,7 @@ const onSearch = (...a) => window.onSearch?.(...a);
 import {
   S, store, ICO, icon, IMG, LINES, FACTIONS, KIDS_CORE_KEY,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, SUBLINES,
-  ln, normalize, esc, _clone,
+  ln, normalize, esc, _clone, isSelecting,
 } from './state.js';
 import {
   MAX_PHOTOS, photoStore, photoCopyOf,
@@ -25,6 +25,8 @@ import {
   figById, figIsHidden, setStatus, saveColl, flushAllPending,
   totalCopyCount, entryCopyCount, getPrimaryCopy, copyVariant,
   rebuildFigIndex, applyOverrides, fetchFigs,
+  clearOverrides, _derived, getSortedFigs,
+  isMigrated, migrateEntry, migrateOrderedToOwned,
 } from './data.js';
 import { render, toast, haptic, appConfirm, patchFigRow, toastUndo, triggerPulse, renderContent, renderSelectActionbar } from './render.js';
 import { checkCompletion } from './eggs.js';
