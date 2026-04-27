@@ -1,4 +1,4 @@
-// MOTU Vault — Service Worker v6.16
+// MOTU Vault — Service Worker v6.17
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
@@ -410,7 +410,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.16';
+const CACHE = 'motu-vault-v6.17';
 
 const SHELL = [
   'motu-vault.html',
@@ -425,6 +425,7 @@ const SHELL = [
   'js/handlers.js',
   'js/ui-sheets.js',
   'js/eggs.js',
+  'js/tutorial.js',
 ];
 
 self.addEventListener('install', e => {
