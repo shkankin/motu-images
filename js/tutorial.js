@@ -1,60 +1,62 @@
-// MOTU Vault — Tutorial Walkthrough (v6.17)
+// MOTU Vault — Tutorial Walkthrough (v6.18)
 // ─────────────────────────────────────────────
-// 5-step coachmark tour for new users. Triggered from the Getting Started
-// banner on the Lines screen. Gentle but direct: spotlights the target,
-// explains it briefly, lets the user tap anywhere to advance. A persistent
-// "Skip tour" button is always visible.
+// Action-driven coachmark tour. Each step waits for the user to perform
+// the highlighted action — tapping the spotlighted target advances the
+// tutorial. No auto-advance on action steps.
+//
+// Triggered from the Getting Started banner on the Lines screen.
+// Persistent "Skip tour" button always visible.
 //
 // Storage:
 //   motu-tutorial-seen — set to 1 once the user finishes or skips the tour.
-//                        Hides the "Take Tour" button on the onboard banner
-//                        for return users (banner itself stays until they
-//                        dismiss it normally via motu-onboarded).
-//
-// Architecture:
-//   - One overlay element (#tutorialOverlay) with a 9999px box-shadow that
-//     fills the screen except the spotlight cutout. Re-positioned per step.
-//   - One tooltip element (#tutorialTooltip) positioned near the spotlight,
-//     auto-flipping above/below to stay on-screen.
-//   - Each step has a `target` selector and `text` to show. Optional `wait`
-//     hooks let a step pause until the user navigates somewhere first.
-//   - Steps that depend on a particular screen (e.g. a figure row) use
-//     queryUntilFound to retry while the user navigates. Auto-advances when
-//     the target appears.
 
 import { S, store } from './state.js';
 
 const STEPS = [
+  // Step 1: Bottom nav — guide them to the All tab
   {
-    target: '.bottom-nav button[onclick*="navTo(\'lines\')"], .bottom-nav button:nth-child(1)',
-    text: '<strong>Three ways to browse.</strong><br>Lines groups by era. All shows the full catalog. Collection shows what you own.',
+    target: '.bottom-nav button:nth-child(2)', // "All" — middle
+    text: '<strong>Three views</strong> at the bottom: Lines (browse by era), <span style="color:var(--acc)">All</span> (full catalog), Collection (what you own).<br><br>Tap <strong>All</strong> to continue.',
     placement: 'top',
+    advanceOn: 'screen',
+    waitFor: { tab: 'all' },
   },
-  {
-    // Wait for a line card on the Lines screen, OR skip ahead if user already
-    // navigated to All. Either way, the next step finds a figure to highlight.
-    target: '.line-card, .line-row, .fig-row[data-fig-id], .fig-card[data-fig-id]',
-    text: '<strong>Tap any line</strong> to drill into its figures, or use <strong>All</strong> to see everything in one list.',
-    placement: 'auto',
-    waitForTarget: true,
-  },
+
+  // Step 2: Tap a figure to open detail
   {
     target: '.fig-row[data-fig-id], .fig-card[data-fig-id]',
-    text: '<strong>Tap the status circle</strong> on the right to cycle through: <span style="color:#888">none</span> → <span style="color:#4ade80">owned</span> → <span style="color:#fb923c">ordered</span> → <span style="color:#666">skip</span>.<br><br><strong>Long-press</strong> for more options like wishlist or for-sale.',
+    text: '<strong>Tap any figure name</strong> to open its details.',
     placement: 'auto',
-    spotlightExtra: { right: 0, width: 80 }, // emphasize the status circle area
-    waitForTarget: true,
+    advanceOn: 'screen',
+    waitFor: { screen: 'figure' },
   },
+
+  // Step 3: Detail screen overview — manual advance, NO target spotlight
+  // (the whole screen is "the target"). Tooltip is anchored to bottom so
+  // user can see the detail content above it.
   {
-    target: '.fig-row[data-fig-id], .fig-card[data-fig-id]',
-    text: '<strong>Tap a figure</strong> to open the detail screen — track copies, paid price, condition, location, photos, and notes per figure.',
+    target: null,
+    text: '<strong>Detail screen.</strong> Track copies, paid price, condition, location, photos, and notes per figure.<br><br>Use the back button when ready to continue.',
+    placement: 'bottom-fixed',
+    advanceOn: 'always',
+  },
+
+  // Step 4: Status circles — wait for user to back out to the figure list,
+  // then highlight a status circle.
+  {
+    target: '.fig-row[data-fig-id] .status-btn, .fig-card[data-fig-id] .status-btn, .fig-row[data-fig-id] .status-circle, .fig-card[data-fig-id] .status-circle',
+    text: '<strong>Tap the status circle</strong> on a figure to cycle its status.<br><br><span style="color:#4ade80">●</span> Owned · <span style="color:#fb923c">●</span> Ordered<br><span style="color:#3b82f6">●</span> Wishlist · <span style="color:#ef4444">●</span> For Sale<br><br><strong>Long-press</strong> any figure for the full menu.',
     placement: 'auto',
-    waitForTarget: true,
+    advanceOn: 'always',
+    requireScreen: 'main', // wait until user has backed out of detail
   },
+
+  // Step 5: Collection tab — final
   {
-    target: '.bottom-nav button:nth-child(3), .bottom-nav button[onclick*="collection"]',
-    text: "<strong>Collection</strong> shows just the figures you've marked owned. That's it — you're all set!",
+    target: '.bottom-nav button:nth-child(3)',
+    text: "<strong>Collection</strong> shows just the figures you own.<br><br>That's it — you're all set!",
     placement: 'top',
+    advanceOn: 'always',
     finalStep: true,
   },
 ];
@@ -62,22 +64,22 @@ const STEPS = [
 let _stepIdx = 0;
 let _active = false;
 let _scanInterval = null;
+let _screenWatcher = null;
+let _clickListener = null;
 
 function startTutorial() {
   if (_active) return;
   _active = true;
   _stepIdx = 0;
-  // Make sure user lands on the Lines screen so step 1's target exists
   if (S.screen !== 'main' || S.tab !== 'lines') {
     if (window.navTo) window.navTo('lines');
   }
-  // Defer so any pending render finishes first
-  setTimeout(() => showStep(0), 100);
+  setTimeout(() => showStep(0), 150);
 }
 
 function endTutorial(completed) {
   _active = false;
-  if (_scanInterval) { clearInterval(_scanInterval); _scanInterval = null; }
+  cleanup();
   document.getElementById('tutorialOverlay')?.remove();
   document.getElementById('tutorialTooltip')?.remove();
   if (completed) {
@@ -86,40 +88,103 @@ function endTutorial(completed) {
   }
 }
 
+function cleanup() {
+  if (_scanInterval) { clearInterval(_scanInterval); _scanInterval = null; }
+  if (_screenWatcher) { clearInterval(_screenWatcher); _screenWatcher = null; }
+  if (_clickListener) {
+    document.removeEventListener('click', _clickListener, true);
+    _clickListener = null;
+  }
+}
+
 function showStep(idx) {
   if (!_active) return;
   if (idx >= STEPS.length) { endTutorial(true); return; }
   _stepIdx = idx;
   const step = STEPS[idx];
+  cleanup();
 
-  if (step.waitForTarget) {
-    // Poll for the target — user may need to navigate first. Auto-advances
-    // the visible step when the target appears.
-    if (_scanInterval) clearInterval(_scanInterval);
-    let ticks = 0;
-    _scanInterval = setInterval(() => {
-      ticks++;
-      const el = document.querySelector(step.target);
-      if (el) {
-        clearInterval(_scanInterval);
-        _scanInterval = null;
-        renderStep(step, el);
-      } else if (ticks > 600) {
-        // 60 seconds with no target — bail gracefully
-        clearInterval(_scanInterval);
-        _scanInterval = null;
-        endTutorial(false);
-      }
-    }, 100);
-    // Show a hint immediately even before target appears
+  if (step.target == null) {
+    // Targetless step — show tooltip only (e.g. detail screen overview)
     renderStep(step, null);
+    setupAdvancement(step, null);
+    return;
+  }
+
+  if (step.requireScreen && S.screen !== step.requireScreen) {
+    waitForScreenThenFindTarget(step);
   } else {
-    const el = document.querySelector(step.target);
-    renderStep(step, el);
+    findTargetAndShow(step);
   }
 }
 
-function renderStep(step, target) {
+function waitForScreenThenFindTarget(step) {
+  renderStep(step, null, 'Tap back to return to the figure list.');
+  _screenWatcher = setInterval(() => {
+    if (!_active) return;
+    if (S.screen === step.requireScreen) {
+      clearInterval(_screenWatcher);
+      _screenWatcher = null;
+      setTimeout(() => findTargetAndShow(step), 250);
+    }
+  }, 200);
+}
+
+function findTargetAndShow(step) {
+  const target = document.querySelector(step.target);
+  if (target) {
+    renderStep(step, target);
+    setupAdvancement(step, target);
+    return;
+  }
+  renderStep(step, null);
+  let ticks = 0;
+  _scanInterval = setInterval(() => {
+    if (!_active) return;
+    ticks++;
+    const el = document.querySelector(step.target);
+    if (el) {
+      clearInterval(_scanInterval);
+      _scanInterval = null;
+      renderStep(step, el);
+      setupAdvancement(step, el);
+    } else if (ticks > 600) {
+      clearInterval(_scanInterval);
+      _scanInterval = null;
+      endTutorial(false);
+    }
+  }, 100);
+}
+
+function setupAdvancement(step, target) {
+  const advance = step.advanceOn || 'click';
+
+  if (advance === 'screen') {
+    _screenWatcher = setInterval(() => {
+      if (!_active) return;
+      const want = step.waitFor || {};
+      const screenOk = want.screen == null || S.screen === want.screen;
+      const tabOk = want.tab == null || S.tab === want.tab;
+      if (screenOk && tabOk) {
+        clearInterval(_screenWatcher);
+        _screenWatcher = null;
+        setTimeout(() => showStep(_stepIdx + 1), 300);
+      }
+    }, 150);
+  } else if (advance === 'click' && target) {
+    _clickListener = (e) => {
+      if (target.contains(e.target) || e.target === target) {
+        document.removeEventListener('click', _clickListener, true);
+        _clickListener = null;
+        setTimeout(() => showStep(_stepIdx + 1), 300);
+      }
+    };
+    document.addEventListener('click', _clickListener, true);
+  }
+  // 'always' — Got it → button (rendered in renderStep)
+}
+
+function renderStep(step, target, hint) {
   let overlay = document.getElementById('tutorialOverlay');
   let tip = document.getElementById('tutorialTooltip');
   if (!overlay) {
@@ -135,87 +200,113 @@ function renderStep(step, target) {
     document.body.appendChild(tip);
   }
 
-  // Position spotlight
   if (target) {
     const r = target.getBoundingClientRect();
     const pad = 6;
-    const extra = step.spotlightExtra || {};
-    const top = (extra.top != null ? extra.top : r.top) - pad;
-    const left = extra.right === 0
-      ? (r.right - (extra.width || r.width)) - pad
-      : (extra.left != null ? extra.left : r.left) - pad;
-    const width = (extra.width != null ? extra.width : r.width) + pad * 2;
-    const height = (extra.height != null ? extra.height : r.height) + pad * 2;
-    overlay.style.cssText = `top:${top}px;left:${left}px;width:${width}px;height:${height}px`;
+    overlay.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
     overlay.classList.remove('no-target');
   } else {
-    // No target visible yet — full-screen darken with no cutout
     overlay.style.cssText = 'top:50%;left:50%;width:0;height:0';
     overlay.classList.add('no-target');
   }
 
-  // Position tooltip
   const stepNum = _stepIdx + 1;
   const total = STEPS.length;
+  const advance = step.advanceOn || 'click';
+  const showGotIt = advance === 'always' || step.finalStep;
+
   tip.innerHTML = `
     <div class="tutorial-step-count">Step ${stepNum} of ${total}</div>
-    <div class="tutorial-text">${step.text}</div>
+    <div class="tutorial-text">${hint ? `<em style="color:var(--t3)">${hint}</em><br><br>` : ''}${step.text}</div>
     <div class="tutorial-actions">
       <button class="tutorial-skip">Skip tour</button>
-      <button class="tutorial-next">${step.finalStep ? 'Finish' : 'Got it →'}</button>
+      ${showGotIt ? `<button class="tutorial-next">${step.finalStep ? 'Finish' : 'Got it →'}</button>` : ''}
     </div>
   `;
-  tip.querySelector('.tutorial-skip').onclick = () => endTutorial(true); // mark seen even on skip
-  tip.querySelector('.tutorial-next').onclick = () => {
-    if (step.finalStep) endTutorial(true);
-    else showStep(_stepIdx + 1);
-  };
-
-  // Position tooltip relative to the target. 'auto' picks above/below by
-  // available space. 'top' forces above (used when target is at the bottom
-  // of the screen, like the bottom-nav).
-  if (target) {
-    const r = target.getBoundingClientRect();
-    tip.style.visibility = 'hidden';
-    tip.style.left = '12px';
-    tip.style.right = '12px';
-    tip.style.bottom = 'auto';
-    tip.style.top = '50%';
-    requestAnimationFrame(() => {
-      const tipH = tip.offsetHeight;
-      const vh = window.innerHeight;
-      const placement = step.placement === 'top' ? 'top'
-        : step.placement === 'bottom' ? 'bottom'
-        : (r.top > vh / 2 ? 'top' : 'bottom');
-      if (placement === 'top') {
-        tip.style.top = 'auto';
-        tip.style.bottom = (vh - r.top + 16) + 'px';
-      } else {
-        tip.style.top = (r.bottom + 16) + 'px';
-        tip.style.bottom = 'auto';
-      }
-      tip.style.visibility = '';
-    });
-  } else {
-    // Center vertically when no target
-    tip.style.left = '12px';
-    tip.style.right = '12px';
-    tip.style.top = '50%';
-    tip.style.bottom = 'auto';
-    tip.style.transform = 'translateY(-50%)';
+  tip.querySelector('.tutorial-skip').onclick = () => endTutorial(true);
+  const nextBtn = tip.querySelector('.tutorial-next');
+  if (nextBtn) {
+    nextBtn.onclick = () => {
+      if (step.finalStep) endTutorial(true);
+      else showStep(_stepIdx + 1);
+    };
   }
+
+  positionTooltip(tip, target, step.placement);
 }
 
-// Re-position on viewport changes (rotation, keyboard, scroll past target)
-window.addEventListener('resize', () => {
-  if (_active && _stepIdx >= 0) {
-    const step = STEPS[_stepIdx];
-    const target = document.querySelector(step.target);
-    if (target) renderStep(step, target);
+function positionTooltip(tip, target, preferredPlacement) {
+  tip.style.left = '12px';
+  tip.style.right = '12px';
+  tip.style.top = 'auto';
+  tip.style.bottom = 'auto';
+  tip.style.transform = '';
+  tip.style.visibility = 'hidden';
+
+  // bottom-fixed: pin to bottom edge regardless of target (used for the
+  // detail-screen step where the entire screen is the "target")
+  if (preferredPlacement === 'bottom-fixed') {
+    tip.style.bottom = 'calc(20px + var(--safe-bottom, 0px))';
+    requestAnimationFrame(() => { tip.style.visibility = ''; });
+    return;
   }
+
+  if (!target) {
+    tip.style.top = '50%';
+    tip.style.transform = 'translateY(-50%)';
+    requestAnimationFrame(() => { tip.style.visibility = ''; });
+    return;
+  }
+
+  const r = target.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const margin = 16;
+
+  requestAnimationFrame(() => {
+    const tipH = tip.offsetHeight;
+    const spaceAbove = r.top - margin;
+    const spaceBelow = vh - r.bottom - margin;
+
+    let placement;
+    if (preferredPlacement === 'top') placement = 'top';
+    else if (preferredPlacement === 'bottom') placement = 'bottom';
+    else placement = spaceAbove >= spaceBelow ? 'top' : 'bottom';
+
+    // Flip if chosen side doesn't fit
+    if (placement === 'top' && tipH > spaceAbove && tipH <= spaceBelow) {
+      placement = 'bottom';
+    } else if (placement === 'bottom' && tipH > spaceBelow && tipH <= spaceAbove) {
+      placement = 'top';
+    }
+
+    if (placement === 'top') {
+      tip.style.bottom = (vh - r.top + margin) + 'px';
+      tip.style.top = 'auto';
+    } else {
+      tip.style.top = (r.bottom + margin) + 'px';
+      tip.style.bottom = 'auto';
+    }
+    tip.style.visibility = '';
+  });
+}
+
+// Re-position on viewport changes
+window.addEventListener('resize', () => {
+  if (!_active) return;
+  const step = STEPS[_stepIdx];
+  if (!step) return;
+  const target = step.target ? document.querySelector(step.target) : null;
+  const tip = document.getElementById('tutorialTooltip');
+  const overlay = document.getElementById('tutorialOverlay');
+  if (!tip || !overlay) return;
+  if (target) {
+    const r = target.getBoundingClientRect();
+    const pad = 6;
+    overlay.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
+  }
+  positionTooltip(tip, target, step.placement);
 });
 
-// Expose for the onboard-banner button
 window.startTutorial = startTutorial;
 
 export { startTutorial };

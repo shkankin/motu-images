@@ -374,19 +374,15 @@ window.addEventListener('popstate', e => {
     S._lastBackAtRoot = now;
     // Push exactly one absorber so the next back press fires popstate again.
     history.pushState(navState(), '');
-    // v6.17: a back press at root strongly signals "I want to navigate" —
+    // v6.18: a back press at root strongly signals "I want to navigate" —
     // restore the immersive-hidden bars so the user actually has something
-    // to tap. Without this, bars hidden by deep scrolling stayed hidden
-    // through the back press and (because nothing re-renders here) didn't
-    // come back when the user scrolled up to look for them.
+    // to tap. Force a full render too, since previous attempts at just
+    // toggling classes left the UI in an inconsistent state for some users
+    // (likely a render-on-resume race that re-applied the hide class).
     if (S.barsHidden) {
-      const tb = document.getElementById('topBar');
-      const bn = document.getElementById('bottomNav');
-      const sb = document.getElementById('searchBar');
-      if (tb) tb.classList.remove('immersive-hide');
-      if (bn) bn.classList.remove('immersive-hide');
-      if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
       S.barsHidden = false;
+      S.searchBarHidden = false;
+      render();
     }
     toast('Press back again to exit', { large: true, duration: 2500 });
   } finally {
