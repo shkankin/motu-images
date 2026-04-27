@@ -5328,6 +5328,54 @@
     "source": "af411"
   },
   {
+    "id": "battle-cat-13551",
+    "name": "Battle Cat",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 22.0,
+    "slug": "battle-cat-13551",
+    "faction": "Other",
+    "source": "af411"
+  },
+  {
+    "id": "beast-man-13550",
+    "name": "Beast Man",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 11.0,
+    "slug": "beast-man-13550",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "combat-ready-roboto-twist-release-13546",
+    "name": "Combat Ready Roboto (Twist & Release)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 17.0,
+    "slug": "combat-ready-roboto-twist-release-13546",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "evil-lyn-alison-brie-13554",
+    "name": "Evil-Lyn (Alison Brie)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 27.0,
+    "slug": "evil-lyn-alison-brie-13554",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
     "id": "he-man-13242",
     "name": "He-Man",
     "line": "chronicles",
@@ -5336,6 +5384,42 @@
     "year": 2026,
     "retail": 24.99,
     "slug": "he-man-13242",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "he-man-nicholas-galitzine-13242",
+    "name": "He-Man (Nicholas Galitzine)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "1",
+    "year": 2026,
+    "retail": 24.99,
+    "slug": "he-man-nicholas-galitzine-13242",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "he-man-nicholas-galitzine-13549",
+    "name": "He-Man (Nicholas Galitzine)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 11.0,
+    "slug": "he-man-nicholas-galitzine-13549",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "he-man-power-sword-slash-13544",
+    "name": "He-Man (Power Sword Slash)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 17.0,
+    "slug": "he-man-power-sword-slash-13544",
     "faction": "Heroic Warriors",
     "source": "af411"
   },
@@ -5364,6 +5448,30 @@
     "source": "af411"
   },
   {
+    "id": "man-at-arms-idris-elba-13243",
+    "name": "Man-At-Arms (Idris Elba)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "1",
+    "year": 2026,
+    "retail": 24.99,
+    "slug": "man-at-arms-idris-elba-13243",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "mekaneck-13547",
+    "name": "Mekaneck",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 11.0,
+    "slug": "mekaneck-13547",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
     "id": "ram-man-jon-xue-zhang-fisto-jhannes-haukur-jhannesson-13441",
     "name": "Ram Man (Jon Xue Zhang) & Fisto (Jóhannes Haukur Jóhannesson)",
     "line": "chronicles",
@@ -5376,6 +5484,18 @@
     "source": "af411"
   },
   {
+    "id": "roton-assault-vehicle-13541",
+    "name": "Roton Assault Vehicle",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 37.79,
+    "slug": "roton-assault-vehicle-13541",
+    "faction": "Other",
+    "source": "af411"
+  },
+  {
     "id": "scare-glow-13246",
     "name": "Scare Glow",
     "line": "chronicles",
@@ -5384,6 +5504,30 @@
     "year": 2026,
     "retail": 26.97,
     "slug": "scare-glow-13246",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "skel-knight-13545",
+    "name": "Skel-Knight",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 11.0,
+    "slug": "skel-knight-13545",
+    "faction": "Other",
+    "source": "af411"
+  },
+  {
+    "id": "skeletor-13542",
+    "name": "Skeletor",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 11.0,
+    "slug": "skeletor-13542",
     "faction": "Evil Warriors",
     "source": "af411"
   },
@@ -5400,6 +5544,66 @@
     "source": "af411"
   },
   {
+    "id": "skeletor-havoc-staff-13543",
+    "name": "Skeletor (Havoc Staff)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 17.0,
+    "slug": "skeletor-havoc-staff-13543",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "skeletor-jared-leto-13553",
+    "name": "Skeletor (Jared Leto)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 27.0,
+    "slug": "skeletor-jared-leto-13553",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "teela-13552",
+    "name": "Teela",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 10.0,
+    "slug": "teela-13552",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "teela-camila-mendes-13555",
+    "name": "Teela (Camila Mendes)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 27.0,
+    "slug": "teela-camila-mendes-13555",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "trap-jaw-13548",
+    "name": "Trap Jaw",
+    "line": "chronicles",
+    "group": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 17.0,
+    "slug": "trap-jaw-13548",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
     "id": "tri-klops-13244",
     "name": "Tri-Klops",
     "line": "chronicles",
@@ -5408,6 +5612,18 @@
     "year": 2026,
     "retail": 24.99,
     "slug": "tri-klops-13244",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "tri-klops-kojo-attah-13244",
+    "name": "Tri-Klops (Kojo Attah)",
+    "line": "chronicles",
+    "group": "",
+    "wave": "1",
+    "year": 2026,
+    "retail": 24.99,
+    "slug": "tri-klops-kojo-attah-13244",
     "faction": "Evil Warriors",
     "source": "af411"
   },
