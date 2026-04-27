@@ -331,20 +331,36 @@ window.addEventListener('popstate', e => {
 // Seed the initial history entry so we always have something to pop
 history.replaceState(navState(), '');
 
-// v6.04: Horizontal swipe-between-tabs. Left → next tab, right → previous.
-// Order: lines ← all ← collection (right-to-left forward). On the figure
-// detail screen, swipe-right is a secondary back action. Disabled when a
-// sheet, photo viewer, select mode, or context menu is open — those have
-// their own dismissal flows and a swipe would feel like an accidental nav.
+// v6.04 / v6.05: Horizontal swipe-between-tabs with finger-tracking and
+// slide animation. Order: lines → all → collection. Swipe left = next tab,
+// swipe right = previous (or back-out on detail screen).
 //
-// Threshold is deliberately conservative (60px horizontal, <40px vertical)
-// to avoid eating vertical scrolling. The `passive: true` listener means
-// we don't block native scroll while measuring.
+// Why this is implemented as it is:
+//  - touchstart records origin; we don't yet know if this will be a
+//    horizontal swipe or a vertical scroll.
+//  - touchmove enters "tracking" mode once horizontal motion clearly
+//    dominates vertical (|dx| > 12 AND |dx| > |dy| * 1.5). Up to that
+//    point we DO NOT translate the content — letting native scroll work
+//    if the user is scrolling vertically.
+//  - Once tracking starts, we set translateX on #contentArea on every move
+//    and call e.preventDefault() to suppress native scroll. The listener
+//    therefore can't be `passive: true` from the start — we install both a
+//    passive touchstart and a non-passive touchmove.
+//  - On touchend: if we were tracking and threshold met, animate off-screen,
+//    swap content, animate in from the opposite side. If threshold not met,
+//    spring back to translateX(0).
+//
+// The tabs render NOT side-by-side. We slide the current contentArea out,
+// then call render() to swap, then slide the new contentArea in. This avoids
+// the cost of rendering two large lists simultaneously.
+
 const TAB_ORDER = ['lines', 'all', 'collection'];
-const SWIPE_MIN_DX = 60;
-const SWIPE_MAX_DY = 40;
-const SWIPE_MAX_MS = 500;
-let _touchX = null, _touchY = null, _touchT = null;
+const SWIPE_MIN_DX = 60;          // px to commit on touchend
+const SWIPE_TRACK_DX = 12;        // px before we engage tracking
+const SWIPE_HORIZ_RATIO = 1.5;    // |dx| > |dy| * this to be horizontal
+const SWIPE_RUBBER_BAND = 0.35;   // resistance ratio at edge tabs
+
+let _swipe = null; // null | { startX, startY, tracking, ca, blockedReason }
 
 function _swipeAllowed() {
   if (S.sheet) return false;
@@ -354,56 +370,197 @@ function _swipeAllowed() {
   return true;
 }
 
+function _swipeTargetIsExcluded(t) {
+  // Touches starting inside these regions get native behavior — no swipe nav.
+  return !!t.closest(
+    'input, textarea, select, .photo-carousel, .acc-chips, .acc-missing-row, .copy-fields, .photo-section, .sheet, .photo-viewer'
+  );
+}
+
+function _atEdge(direction) {
+  // direction: -1 (swiping right, going to previous tab) or +1 (left → next)
+  if (S.screen === 'figure') return false; // detail screen handles its own
+  const i = TAB_ORDER.indexOf(S.tab);
+  if (i < 0) return true;
+  const j = i + direction;
+  return j < 0 || j >= TAB_ORDER.length;
+}
+
 document.addEventListener('touchstart', e => {
-  if (!_swipeAllowed()) { _touchX = null; return; }
-  // Single finger only — pinch zoom/scroll get a pass.
-  if (e.touches.length !== 1) { _touchX = null; return; }
-  // Skip the gesture if the touch starts on an interactive control. Inputs,
-  // selects, and textareas need their own native horizontal swipe (cursor
-  // movement, range scrub) and the photo carousel handles its own swipes.
-  const t = e.target;
-  if (t.closest('input, textarea, select, .photo-carousel, .acc-chips, .acc-missing-row, .copy-fields, .photo-section')) {
-    _touchX = null;
-    return;
-  }
-  _touchX = e.touches[0].clientX;
-  _touchY = e.touches[0].clientY;
-  _touchT = Date.now();
+  _swipe = null;
+  if (!_swipeAllowed()) return;
+  if (e.touches.length !== 1) return;
+  if (_swipeTargetIsExcluded(e.target)) return;
+  // Don't allow swipe when inside a line (use breadcrumb to back out).
+  if (S.screen !== 'figure' && S.activeLine) return;
+  _swipe = {
+    startX: e.touches[0].clientX,
+    startY: e.touches[0].clientY,
+    tracking: false,
+    ca: document.getElementById('contentArea'),
+  };
 }, { passive: true });
 
-document.addEventListener('touchend', e => {
-  if (_touchX == null) return;
-  const startX = _touchX, startY = _touchY, startT = _touchT;
-  _touchX = _touchY = _touchT = null;
-  const touch = (e.changedTouches && e.changedTouches[0]);
-  if (!touch) return;
-  const dx = touch.clientX - startX;
-  const dy = touch.clientY - startY;
-  const dt = Date.now() - startT;
-  if (dt > SWIPE_MAX_MS) return;
-  if (Math.abs(dx) < SWIPE_MIN_DX) return;
-  if (Math.abs(dy) > SWIPE_MAX_DY) return;
-  if (Math.abs(dx) < Math.abs(dy) * 1.4) return; // require horizontal dominance
+document.addEventListener('touchmove', e => {
+  if (!_swipe) return;
+  const t = e.touches[0];
+  const dx = t.clientX - _swipe.startX;
+  const dy = t.clientY - _swipe.startY;
 
-  // Detail screen: right-swipe is an alternate back, left-swipe is a no-op.
+  if (!_swipe.tracking) {
+    // Decide: horizontal swipe or vertical scroll. Once we commit to one,
+    // we don't change our mind for the duration of this gesture.
+    if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) {
+      // Vertical scroll — abandon swipe tracking entirely.
+      _swipe = null;
+      return;
+    }
+    if (Math.abs(dx) > SWIPE_TRACK_DX && Math.abs(dx) > Math.abs(dy) * SWIPE_HORIZ_RATIO) {
+      _swipe.tracking = true;
+      if (_swipe.ca) {
+        _swipe.ca.style.transition = 'none';
+        _swipe.ca.style.willChange = 'transform';
+      }
+    } else {
+      return; // not enough information yet
+    }
+  }
+
+  // Tracking — translate contentArea with the finger. preventDefault to stop
+  // native scroll from kicking in alongside.
+  if (_swipe.ca) {
+    let translate = dx;
+    // Apply rubber-band resistance when at an edge tab (or on detail screen
+    // for left-swipes which don't have a target).
+    const wantPrev = dx > 0;
+    const wantNext = dx < 0;
+    const direction = wantPrev ? -1 : (wantNext ? +1 : 0);
+    const blocked = S.screen === 'figure'
+      ? wantNext // detail screen: left-swipe has nowhere to go
+      : _atEdge(direction);
+    if (blocked) translate = dx * SWIPE_RUBBER_BAND;
+    _swipe.ca.style.transform = `translateX(${translate}px)`;
+    e.preventDefault();
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  if (!_swipe) return;
+  const swipe = _swipe;
+  _swipe = null;
+  if (!swipe.tracking) return; // wasn't a horizontal gesture
+  const t = (e.changedTouches && e.changedTouches[0]);
+  if (!t) {
+    if (swipe.ca) _swipeReset(swipe.ca);
+    return;
+  }
+  const dx = t.clientX - swipe.startX;
+
+  // Detail screen handling
   if (S.screen === 'figure') {
-    if (dx > 0) {
-      window.closeDetail();
+    if (dx > SWIPE_MIN_DX) {
+      // Slide out to the right and trigger back navigation.
+      if (swipe.ca) _swipeAnimateOut(swipe.ca, +1, () => window.closeDetail());
+    } else {
+      if (swipe.ca) _swipeReset(swipe.ca);
     }
     return;
   }
 
-  // Main screen: cycle through tabs. Don't wrap — feels nicer to hit a soft
-  // edge than to teleport from collection back to lines.
+  // Main screen — figure out target tab.
+  if (Math.abs(dx) < SWIPE_MIN_DX) {
+    if (swipe.ca) _swipeReset(swipe.ca);
+    return;
+  }
   const i = TAB_ORDER.indexOf(S.tab);
-  if (i < 0) return;
-  // dx > 0 (right swipe) goes to previous tab; dx < 0 (left swipe) goes next.
-  const j = i + (dx > 0 ? -1 : 1);
-  if (j < 0 || j >= TAB_ORDER.length) return;
-  // Don't switch while in a line — back out first via the breadcrumb instead.
-  if (S.activeLine) return;
-  window.navTo(TAB_ORDER[j]);
+  if (i < 0) { if (swipe.ca) _swipeReset(swipe.ca); return; }
+  const dir = dx > 0 ? -1 : +1; // right swipe → previous tab (-1)
+  const j = i + dir;
+  if (j < 0 || j >= TAB_ORDER.length) {
+    if (swipe.ca) _swipeReset(swipe.ca);
+    return;
+  }
+  // Animate out → swap → animate in.
+  if (swipe.ca) {
+    _swipeAnimateOut(swipe.ca, dir > 0 ? -1 : +1, () => {
+      window.navTo(TAB_ORDER[j]);
+      // After navTo render, animate the NEW contentArea in from the opposite side.
+      requestAnimationFrame(() => {
+        const newCa = document.getElementById('contentArea');
+        if (newCa) _swipeAnimateIn(newCa, dir > 0 ? +1 : -1);
+      });
+    });
+  } else {
+    window.navTo(TAB_ORDER[j]);
+  }
 }, { passive: true });
+
+document.addEventListener('touchcancel', () => {
+  if (_swipe && _swipe.ca) _swipeReset(_swipe.ca);
+  _swipe = null;
+}, { passive: true });
+
+function _swipeReset(ca) {
+  // Spring back to translateX(0) with a short transition.
+  ca.style.transition = 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)';
+  ca.style.transform = 'translateX(0)';
+  // Clean up after the transition.
+  const cleanup = () => {
+    ca.style.transition = '';
+    ca.style.willChange = '';
+    ca.style.transform = '';
+    ca.removeEventListener('transitionend', cleanup);
+  };
+  ca.addEventListener('transitionend', cleanup);
+  // Safety: forced cleanup even if transitionend doesn't fire (e.g. rapid
+  // re-touch).
+  setTimeout(cleanup, 320);
+}
+
+function _swipeAnimateOut(ca, sign, done) {
+  // sign: -1 = slide out to left, +1 = slide out to right.
+  const w = ca.offsetWidth || window.innerWidth;
+  ca.style.transition = 'transform 220ms cubic-bezier(0.4, 0, 1, 1), opacity 220ms ease-out';
+  ca.style.transform = `translateX(${sign * w}px)`;
+  ca.style.opacity = '0';
+  let fired = false;
+  const fire = () => {
+    if (fired) return;
+    fired = true;
+    ca.style.transition = '';
+    ca.style.willChange = '';
+    ca.style.transform = '';
+    ca.style.opacity = '';
+    try { done && done(); } catch {}
+  };
+  ca.addEventListener('transitionend', fire, { once: true });
+  setTimeout(fire, 260);
+}
+
+function _swipeAnimateIn(ca, sign) {
+  // Place starting position off-screen on `sign` side, then animate to 0.
+  const w = ca.offsetWidth || window.innerWidth;
+  ca.style.transition = 'none';
+  ca.style.transform = `translateX(${sign * w}px)`;
+  ca.style.opacity = '0';
+  ca.style.willChange = 'transform, opacity';
+  // Force layout so the next transition takes effect.
+  // eslint-disable-next-line no-unused-expressions
+  ca.offsetWidth;
+  ca.style.transition = 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease-in';
+  ca.style.transform = 'translateX(0)';
+  ca.style.opacity = '1';
+  const cleanup = () => {
+    ca.style.transition = '';
+    ca.style.willChange = '';
+    ca.style.transform = '';
+    ca.style.opacity = '';
+    ca.removeEventListener('transitionend', cleanup);
+  };
+  ca.addEventListener('transitionend', cleanup);
+  setTimeout(cleanup, 280);
+}
+
 
 // ─── Event Handlers ───────────────────────────────────────────────
 let _searchTimer = null;

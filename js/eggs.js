@@ -399,14 +399,20 @@ window.openFig = id => {
   S.activeFig = figById(id);
   S.screen = 'figure'; pushNav(); render();
 };
-// v6.04: closeDetail used to be just `history.back()` and rely on the
-// popstate handler. If something earlier in the chain consumed the history
-// entry (a sheet that didn't push, an aggressive scroll listener, etc.) the
-// back arrow appeared dead. Now we fire history.back AND set a 100ms watchdog:
-// if we're still on the figure screen after popstate would have run, force
-// the navigation directly. The watchdog is a no-op in the common case where
-// popstate fires correctly.
+// v6.04 / v6.05: closeDetail. The chevron must always work, regardless of
+// what state flags happen to be set. Strategy:
+//   1. Pre-clear any flags that would route popstate to the WRONG branch
+//      (a sheet flag stuck open would steal the back action from the
+//      figure-detail branch).
+//   2. Fire history.back() — popstate handler does the real work.
+//   3. Watchdog at 250ms: if we're somehow still on the figure screen,
+//      force the screen change directly. 250ms is generous; popstate is
+//      typically synchronous-microtask but Safari occasionally defers.
 window.closeDetail = () => {
+  // Defensive: nothing pop-stealing. If the photo viewer is open, that
+  // branch should fire instead and the user wouldn't see the chevron anyway.
+  // If a sheet is somehow set without a sheet visible in the DOM, clear it.
+  if (S.sheet && !document.querySelector('.sheet')) S.sheet = null;
   history.back();
   setTimeout(() => {
     if (S.screen === 'figure') {
@@ -414,7 +420,7 @@ window.closeDetail = () => {
       S.activeFig = null;
       render();
     }
-  }, 100);
+  }, 250);
 };
 window.deleteFig = async id => {
   if (!await appConfirm('Delete this figure and all its data?', {danger: true, ok: 'Delete'})) return;
