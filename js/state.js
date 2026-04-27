@@ -131,6 +131,7 @@ const SUBLINES = {
   ],
   'kids-core': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets','Vehicles and Playsets']},
     {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
   ],
   original: [
