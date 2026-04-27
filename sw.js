@@ -1,4 +1,4 @@
-// MOTU Vault — Service Worker v6.08
+// MOTU Vault — Service Worker v6.09
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
@@ -410,7 +410,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.08';
+const CACHE = 'motu-vault-v6.09';
 
 const SHELL = [
   'motu-vault.html',
