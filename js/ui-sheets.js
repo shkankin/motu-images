@@ -180,7 +180,7 @@ function renderImportSheet() {
     <div style="font-size:48px;margin-bottom:12px">📂</div>
     <div class="text-md" style="font-weight:500;margin-bottom:4px">Drop CSV or JSON backup here</div>
     <div class="text-sm text-dim">or tap to browse files</div>
-    <input type="file" id="csvInput" accept=".csv,.json" style="display:none" onchange="handleImportFile(this)">
+    <input type="file" id="csvInput" accept=".csv,.json,text/csv,application/json,application/vnd.ms-excel,text/comma-separated-values,text/plain" style="display:none" onchange="handleImportFile(this)">
   </div>`;
 }
 

@@ -540,6 +540,10 @@ function renderMain() {
     };
     // v5.01: when scrolling pauses for 3.5s, fade the bars back in. Avoids
     // leaving the user stranded with no nav after they stop reading.
+    // v6.16: also expose this so user interactions (status taps, long-press
+    // context menu, etc.) reset the timer — without this, a user who scrolls,
+    // hides the bars, then taps a status would still see the bars reappear
+    // 3.5s later mid-interaction.
     let _idleTimer = null;
     function _scheduleIdleShow() {
       if (_idleTimer) clearTimeout(_idleTimer);
@@ -556,7 +560,19 @@ function renderMain() {
         _lastToggleTs = Date.now();
       }, 3500);
     }
+    ca._bumpIdleTimer = _scheduleIdleShow;
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
+
+    // v6.16: bump the idle-show timer on user interactions other than scroll.
+    // Without this, tapping a status or invoking the long-press menu while
+    // bars are hidden would still fire the 3.5s timer mid-action, popping
+    // the bars back in unexpectedly. click covers taps; contextmenu is what
+    // the long-press handler dispatches.
+    ca._bumpHandler && ca.removeEventListener('click', ca._bumpHandler);
+    ca._bumpHandler && ca.removeEventListener('contextmenu', ca._bumpHandler);
+    ca._bumpHandler = () => { if (ca._bumpIdleTimer) ca._bumpIdleTimer(); };
+    ca.addEventListener('click', ca._bumpHandler, {passive: true, capture: true});
+    ca.addEventListener('contextmenu', ca._bumpHandler, {passive: true, capture: true});
 
     // Pull-to-refresh
     let _ptrStart = 0, _ptrActive = false;
