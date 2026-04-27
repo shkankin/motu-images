@@ -9,6 +9,51 @@ Usage:
   python sync_af411.py                    # dry run — shows what's new
   python sync_af411.py --commit           # updates figures.json + downloads images
   python sync_af411.py --audit            # compare only, detailed report
+
+CHANGELOG
+  v1.3 (2026-04-27)
+    - Line-override protection. Each scraped entry now also writes a
+      `sourceLine` field equal to whatever AF411 said the line was. The
+      active `line` field is whatever the user/maintainer set it to.
+      If `line != sourceLine` on an existing entry, the script treats it
+      as a manual override and never touches the `line` field again.
+    - This solves: AF411 mis-categorizes Kids Core figures under
+      "chronicles". Manually re-tagging them `line: "kids-core"` in
+      figures.json now sticks across syncs.
+    - Audit mode now reports every `line != sourceLine` entry — your
+      master list of "what AF411 has wrong."
+    - New chronicles entries are flagged in the audit report as
+      potentially-Kids-Core, since AF411 buries them there with no
+      structural marker.
+    - One-time backfill: existing Kids Core figures need
+      `sourceLine: "chronicles"` added so the protection kicks in. See
+      MIGRATION section below.
+
+  v1.2 (2026-04-27)
+    - Kids Core line added to LINES (commented out — uncomment when AF411
+      publishes the checklist page).
+    - Group normalization: scraped group strings are passed through
+      KIDS_CORE_GROUP_MAP before write, so AF411's labeling (likely
+      "Kids Core Action Figures" etc.) maps to the canonical group names
+      the app expects ("Action Figures", "Vehicles & Playsets", "Movie (2026)").
+    - kids-core.json file is no longer maintained — Kids Core figures live
+      in figures.json like every other line. App was updated in v6.16 to
+      stop fetching the separate file.
+
+MIGRATION (v1.3 one-time)
+  For every Kids Core figure currently in figures.json that was originally
+  scraped from AF411's chronicles page and hand-corrected to line:'kids-core',
+  add `"sourceLine": "chronicles"` to the entry. After that, the script
+  detects the line!=sourceLine mismatch and protects the entry forever.
+
+  Quick way to find them all (jq):
+    jq '[.[] | select(.line=="kids-core" and (has("sourceLine")|not))
+        | .id]' figures.json
+
+  Then bulk-add the field — example with jq:
+    jq '(.[] | select(.line=="kids-core" and (has("sourceLine")|not)))
+        |= . + {"sourceLine":"chronicles"}' figures.json > tmp.json \
+        && mv tmp.json figures.json
 """
 
 import argparse
@@ -39,7 +84,53 @@ LINES = [
     ("mondo",           "mondo-checklist.php",                      "mondo"),
     ("super7",          "super7-checklist.php",                     "super7"),
     ("eternia-minis",   "eternia-minis-checklist.php",              "eternia-minis"),
+    # v1.2: Kids Core. AF411 has not published a checklist page for this
+    # line yet (line is too new). Uncomment when the page exists. The most
+    # likely URL pattern based on AF411's other lines:
+    # ("kids-core",       "kids-core-checklist.php",                  "kids-core"),
+    # If AF411 uses a different slug, only this entry needs to change.
 ]
+
+# v1.2: Kids Core group normalization.
+# AF411 labels its bold-header groups verbosely (e.g. "Kids Core Action Figures").
+# The MOTU Vault app's SUBLINES config recognizes shorter canonical names.
+# This map normalizes the scraped group string before writing to figures.json,
+# so each Kids Core figure lands in the right subline in the app.
+#
+# The app's recognized Kids Core groups (from state.js SUBLINES['kids-core']):
+#   - "Action Figures"
+#   - "Vehicles & Playsets"  (also accepts "Vehicles and Playsets")
+#   - "Movie (2026)"         (also accepts "Movie")
+#
+# Any group string not matched here passes through unchanged.
+KIDS_CORE_GROUP_MAP = {
+    # Action figures — strip the "Kids Core" prefix
+    "Kids Core Action Figures": "Action Figures",
+    "Kids Core Figures": "Action Figures",
+    "Action Figures": "Action Figures",
+    # Vehicles & playsets — normalize all phrasings
+    "Kids Core Vehicles & Playsets": "Vehicles & Playsets",
+    "Kids Core Vehicles and Playsets": "Vehicles & Playsets",
+    "Vehicles and Playsets": "Vehicles & Playsets",
+    "Vehicles & Playsets": "Vehicles & Playsets",
+    "Vehicles": "Vehicles & Playsets",
+    "Playsets": "Vehicles & Playsets",
+    # Movie line (the 2026 film tie-in figures)
+    "Kids Core Movie": "Movie (2026)",
+    "Kids Core Movie (2026)": "Movie (2026)",
+    "Movie": "Movie (2026)",
+    "Movie (2026)": "Movie (2026)",
+    "2026 Movie": "Movie (2026)",
+}
+
+def normalize_group(line_id, raw_group):
+    """v1.2: Map AF411-scraped group strings to canonical app group names.
+    Currently only Kids Core needs this — other lines' groups pass through."""
+    if not raw_group:
+        return raw_group
+    if line_id == "kids-core":
+        return KIDS_CORE_GROUP_MAP.get(raw_group.strip(), raw_group.strip())
+    return raw_group
 
 # Faction keywords to auto-classify (best-effort from name/group)
 FACTION_KEYWORDS = {
@@ -229,10 +320,12 @@ def scrape_line(line_id, checklist_slug, series_path):
     parser = ChecklistParser()
     parser.feed(html)
 
-    # Attach line_id to each figure
+    # Attach line_id to each figure, normalize group strings
     for fig in parser.figures:
         fig["line"] = line_id
         fig["id"] = fig["slug"]  # Use slug as the app ID
+        # v1.2: normalize group names per-line (Kids Core needs this)
+        fig["group"] = normalize_group(line_id, fig.get("group", ""))
 
     print(f"  ✓ Found {len(parser.figures)} figures in {line_id}")
     return parser.figures
@@ -330,11 +423,21 @@ def main():
     new_ids = scraped_ids - existing_ids
     removed_ids = existing_ids - scraped_ids if not args.line else set()  # Only flag removals on full sync
     updated = []
+    line_overrides = []  # v1.3: entries where user has manually re-tagged the line
 
     # Check for data changes in existing figures
     for fid in scraped_ids & existing_ids:
         s = scraped_by_id[fid]
         e = existing_by_id[fid]
+        # v1.3: detect manual line overrides. If existing line differs from
+        # what AF411 says (sourceLine), the user has reclassified — never
+        # touch the line field on this entry. Track it so the audit report
+        # can show it.
+        existing_source_line = e.get("sourceLine") or e.get("line")
+        is_overridden = e.get("line") and e.get("line") != s["line"]
+        if is_overridden:
+            line_overrides.append((fid, e.get("line"), s["line"]))
+
         changes = []
         if s["name"] != e.get("name"):
             changes.append(f"name: '{e.get('name')}' → '{s['name']}'")
@@ -348,6 +451,16 @@ def main():
         # silently overwritten.
         if s["group"] and s["group"] != e.get("group", ""):
             changes.append(f"group: '{e.get('group','')}' → '{s['group']}'")
+        # v1.3: backfill sourceLine on legacy entries that don't have it.
+        # Without this field, the override-detection above can't work on
+        # future syncs. Backfill = whatever AF411 currently says.
+        if e.get("sourceLine") != s["line"]:
+            if "sourceLine" not in e:
+                changes.append(f"sourceLine: missing → '{s['line']}'")
+            elif not is_overridden:
+                # AF411 changed its categorization of this figure (uncommon
+                # but possible). Update sourceLine to match.
+                changes.append(f"sourceLine: '{e.get('sourceLine')}' → '{s['line']}'")
         # v1.1: flag entries missing source (we'll fix on commit)
         if not e.get("source"):
             changes.append("source: missing → 'af411'")
