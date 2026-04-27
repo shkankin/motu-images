@@ -1,4 +1,4 @@
-// MOTU Vault — Service Worker v6.14
+// MOTU Vault — Service Worker v6.16
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
@@ -410,7 +410,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.14';
+const CACHE = 'motu-vault-v6.16';
 
 const SHELL = [
   'motu-vault.html',
@@ -530,8 +530,22 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Everything else — cache first
+  // Everything else (JS modules, CSS, fonts, etc.) — network first.
+  // v6.16: switched from cache-first to network-first so app code updates
+  // reach users on the next page load without requiring a CACHE bump and
+  // SW reinstall. Cache is still populated and used as the offline fallback.
+  // Trade-off: one network round-trip per asset when online; for a small
+  // app this is invisible, and it eliminates the "bump CACHE every patch"
+  // tax that was making iteration painful.
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(res => {
+        if (res.ok && e.request.method === 'GET' && url.origin === location.origin) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
