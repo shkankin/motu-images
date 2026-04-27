@@ -213,14 +213,6 @@ window.ctxSetStatus = (id, status) => {
 // Each navigation action pushes a state so Android/browser back button
 // walks backward through the app instead of closing it.
 let _skipPush = false; // flag to avoid pushing during popstate handling
-// v6.06: Allow other modules (eggs.js closeDetail) to suppress the next
-// popstate event entirely. Set true; popstate clears it on the next fire.
-// Used when we've already done the imperative state change ourselves and
-// just want to clean up the history stack without triggering popstate's
-// branch logic — which would walk through other state branches and
-// consume back presses meant for them.
-let _suppressNextPop = false;
-window._suppressNextPopstate = () => { _suppressNextPop = true; };
 
 function navState() {
   // Snapshot of the navigable state (not the full S — just what back needs)
@@ -251,96 +243,122 @@ function restoreNav(state) {
   S.search = state.search || '';
 }
 
+// v6.07: tiny ring buffer of nav events for debugging when users report
+// "back button doesn't work". Logs to localStorage so it survives crashes
+// and can be inspected via the console: `JSON.parse(localStorage.navlog)`.
+function _navlog(label) {
+  try {
+    const arr = JSON.parse(localStorage.getItem('navlog') || '[]');
+    arr.push({
+      t: Date.now(),
+      label,
+      screen: S.screen,
+      tab: S.tab,
+      activeLine: S.activeLine,
+      activeSubline: S.activeSubline,
+      sheet: S.sheet,
+      photoViewer: !!S.photoViewer,
+      selectMode: !!S.selectMode,
+      search: !!S.search,
+      historyLen: history.length,
+    });
+    while (arr.length > 30) arr.shift();
+    localStorage.setItem('navlog', JSON.stringify(arr));
+  } catch {}
+}
+
 // Listen for back button (Android hardware back, browser back, swipe back)
+// v6.07: full handler wrapped in try/finally so a thrown render() can NEVER
+// leave _skipPush stuck true. A stuck _skipPush would silently break every
+// future navigation push — symptoms exactly match the user's "back button
+// does nothing then exits app" report.
 window.addEventListener('popstate', e => {
-  // v6.06: If something just told us to skip this popstate, consume the flag
-  // and bail. closeDetail uses this to clean up the history stack without
-  // triggering branch logic after it has already done the screen change.
-  if (_suppressNextPop) {
-    _suppressNextPop = false;
-    return;
-  }
+  _navlog('popstate-in');
   _skipPush = true;
-  // Always restore bars on back navigation
-  S.barsHidden = false;
-  S.searchBarHidden = false;
+  try {
+    // Always restore bars on back navigation
+    S.barsHidden = false;
+    S.searchBarHidden = false;
 
-  // If photo viewer is open, close it first
-  if (S.photoViewer) {
-    S.photoViewer = null;
-    render();
-    _skipPush = false;
-    return;
-  }
+    // If photo viewer is open, close it first
+    if (S.photoViewer) {
+      S.photoViewer = null;
+      render();
+      return;
+    }
 
-  // If a sheet is open, close it — preserve select mode and selection
-  if (S.sheet) {
-    S.sheet = null;
-    S._accPickAdmin = false;  // v5.03: reset admin mode on close
-    render();
-    _skipPush = false;
-    return;
-  }
+    // If a sheet is open, close it — preserve select mode and selection
+    if (S.sheet) {
+      S.sheet = null;
+      S._accPickAdmin = false;
+      render();
+      return;
+    }
 
-  // Sheet is gone — now exit select mode if active
-  if (isSelecting()) {
-    S.selectMode = false;
-    S.selected = new Set();
-    render();
-    _skipPush = false;
-    return;
-  }
+    // Sheet is gone — now exit select mode if active
+    if (isSelecting()) {
+      S.selectMode = false;
+      S.selected = new Set();
+      render();
+      return;
+    }
 
-  // If on figure detail, go back to list
-  if (S.screen === 'figure') {
-    S.screen = 'main';
-    render();
-    _skipPush = false;
-    return;
-  }
+    // If on figure detail, go back to list
+    if (S.screen === 'figure') {
+      S.screen = 'main';
+      S.activeFig = null;
+      render();
+      return;
+    }
 
-  // If viewing a subline, go back to line
-  if (S.activeSubline) {
-    S.activeSubline = null;
-    render();
-    _skipPush = false;
-    return;
-  }
+    // If viewing a subline, go back to line
+    if (S.activeSubline) {
+      S.activeSubline = null;
+      render();
+      return;
+    }
 
-  // If viewing a line, go back to lines grid
-  if (S.activeLine) {
-    S.activeLine = null;
-    S.activeSubline = null;
-    S.tab = 'lines';
-    render();
-    _skipPush = false;
-    return;
-  }
+    // If viewing a line, go back to lines grid
+    if (S.activeLine) {
+      S.activeLine = null;
+      S.activeSubline = null;
+      S.tab = 'lines';
+      render();
+      return;
+    }
 
-  // If searching, clear search
-  if (S.search) {
-    S.search = '';
-    render();
-    _skipPush = false;
-    return;
-  }
+    // If searching, clear search
+    if (S.search) {
+      S.search = '';
+      render();
+      return;
+    }
 
-  // At root — confirm before closing. Browsers/Android will navigate away
-  // (closing the PWA) on the next back press; we intercept here, push a
-  // state to absorb this back, and pop a quick "tap again to exit" toast.
-  // If the user genuinely wants to close, two backs within 2.5s does it.
-  const now = Date.now();
-  if (S._lastBackAtRoot && now - S._lastBackAtRoot < 2500) {
-    // Two backs in quick succession at root — actually close.
-    // Don't push a new state; let history pop run its course.
+    // At root — show "tap again to exit" toast on the FIRST root-level back.
+    // v6.07: The previous implementation called history.pushState() to absorb
+    // the back, which was growing the history stack on every root-level back
+    // press. After several taps, the stack had multiple absorber entries that
+    // all needed popping before reaching real prior states. Symptom: rapid
+    // backs would suddenly close the app once the absorber stack ran out.
+    //
+    // New approach: on the FIRST back at root, just toast and re-push ONE
+    // absorber. On the SECOND back within 2.5s, let the browser actually
+    // navigate away (default popstate behavior — we don't intercept).
+    const now = Date.now();
+    if (S._lastBackAtRoot && now - S._lastBackAtRoot < 2500) {
+      // Don't intercept — browser will navigate away from the page,
+      // closing the PWA. Clear the flag so we don't loop.
+      S._lastBackAtRoot = 0;
+      return;
+    }
+    S._lastBackAtRoot = now;
+    // Push exactly one absorber so the next back press fires popstate again.
+    history.pushState(navState(), '');
+    toast('Press back again to exit', { large: true, duration: 2500 });
+  } finally {
     _skipPush = false;
-    history.back();
-    return;
+    _navlog('popstate-out');
   }
-  S._lastBackAtRoot = now;
-  history.pushState(navState(), '');
-  toast('Press back again to exit', { large: true, duration: 2500 });
-  _skipPush = false;
 });
 
 // Seed the initial history entry so we always have something to pop
@@ -496,22 +514,71 @@ document.addEventListener('touchend', e => {
     return;
   }
 
-  // v6.06: Commit immediately by calling navTo() — which calls render() —
-  // synchronously. The old contentArea gets destroyed by render() (along
-  // with whatever transform we set on it), and a fresh contentArea is in
-  // the DOM with new-tab content. Then we animate it in from the swipe
-  // direction. This eliminates the perceived "blank gap" between slide-out
-  // and slide-in: the user's finger release triggers an immediate render,
-  // and the slide-in animation runs on top of already-painted content.
-  // Total perceived latency: just the render time (no extra 220ms wait).
-  window.navTo(TAB_ORDER[j]);
-  // After render, the new contentArea exists. Animate it in from the
-  // direction OPPOSITE the swipe (a left swipe means new content slides in
-  // from the right; a right swipe means new content slides in from the left).
-  requestAnimationFrame(() => {
-    const newCa = document.getElementById('contentArea');
-    if (newCa) _swipeAnimateIn(newCa, dir > 0 ? +1 : -1);
-  });
+  // v6.07: content-area-only swap, no full render. Updating tab/activeLine
+  // and rebuilding only #contentArea is dramatically faster than render()
+  // because we skip rebuilding the header, search bar, nav, breadcrumbs.
+  // The new content paints almost immediately; user sees no blank flash.
+  //
+  // We also patch the bottom-nav active state inline so the tab indicator
+  // moves with the swipe (otherwise lines→all swipe would still highlight
+  // 'lines' until the next render).
+  S.tab = TAB_ORDER[j];
+  S.searchBarHidden = false;
+  S.barsHidden = false;
+  S.activeLine = null;
+  S.activeSubline = null;
+  S.savedScroll = 0;
+  S._justNavigated = true;
+  pushNav();
+
+  // Build the new content HTML BEFORE we touch the DOM. Now the slowest
+  // part (string concat for 1140 figs) happens before the visual swap.
+  const newHTML = '<div id="topSpacer"></div>' + renderContent();
+
+  if (swipe.ca) {
+    // Replace contentArea innerHTML with new content. New content is briefly
+    // at translateX(0) — but we override that with the slide-in transform
+    // BEFORE the browser paints the new layout.
+    swipe.ca.style.transition = 'none';
+    // Direction of slide-in: opposite of swipe direction.
+    const w = swipe.ca.offsetWidth || window.innerWidth;
+    const inFromX = (dir > 0 ? +1 : -1) * w;
+    swipe.ca.innerHTML = newHTML;
+    swipe.ca.style.transform = `translateX(${inFromX}px)`;
+    swipe.ca.style.willChange = 'transform';
+    // Patch bottom-nav active state so the tab indicator updates immediately.
+    const nav = document.getElementById('bottomNav');
+    if (nav) {
+      nav.querySelectorAll('button').forEach(btn => {
+        const onclick = btn.getAttribute('onclick') || '';
+        const m = onclick.match(/navTo\('(\w+)'\)/);
+        if (m) {
+          if (m[1] === S.tab) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+      });
+    }
+    // Force layout, then transition to 0.
+    // eslint-disable-next-line no-unused-expressions
+    swipe.ca.offsetWidth;
+    swipe.ca.style.transition = 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1)';
+    swipe.ca.style.transform = 'translateX(0)';
+    const cleanup = () => {
+      swipe.ca.style.transition = '';
+      swipe.ca.style.willChange = '';
+      swipe.ca.style.transform = '';
+      swipe.ca.removeEventListener('transitionend', cleanup);
+    };
+    swipe.ca.addEventListener('transitionend', cleanup);
+    setTimeout(cleanup, 280);
+    // Bind long-press to new fig rows.
+    swipe.ca.querySelectorAll('[data-fig-id]').forEach(el => {
+      if (!el._lpBound) { el._lpBound = true; initLongPress(el, el.dataset.figId); }
+    });
+  } else {
+    // No contentArea (shouldn't happen) — fall back to full render.
+    render();
+  }
 }, { passive: true });
 
 document.addEventListener('touchcancel', () => {
@@ -557,23 +624,25 @@ function _swipeAnimateOut(ca, sign, done) {
 }
 
 function _swipeAnimateIn(ca, sign) {
-  // Place starting position off-screen on `sign` side, then animate to 0.
+  // v6.07: Slide-in only, NO opacity fade. The previous version transitioned
+  // opacity 0 → 1 alongside the transform, which made the new content appear
+  // to fade in from black during the 240ms — feeling like a delay before
+  // figures appeared. The render is synchronous; by the time we call this
+  // function, the content is fully painted. We just slide it from off-screen
+  // to translateX(0).
   const w = ca.offsetWidth || window.innerWidth;
   ca.style.transition = 'none';
   ca.style.transform = `translateX(${sign * w}px)`;
-  ca.style.opacity = '0';
-  ca.style.willChange = 'transform, opacity';
+  ca.style.willChange = 'transform';
   // Force layout so the next transition takes effect.
   // eslint-disable-next-line no-unused-expressions
   ca.offsetWidth;
-  ca.style.transition = 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease-in';
+  ca.style.transition = 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1)';
   ca.style.transform = 'translateX(0)';
-  ca.style.opacity = '1';
   const cleanup = () => {
     ca.style.transition = '';
     ca.style.willChange = '';
     ca.style.transform = '';
-    ca.style.opacity = '';
     ca.removeEventListener('transitionend', cleanup);
   };
   ca.addEventListener('transitionend', cleanup);

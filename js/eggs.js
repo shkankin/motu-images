@@ -399,29 +399,27 @@ window.openFig = id => {
   S.activeFig = figById(id);
   S.screen = 'figure'; pushNav(); render();
 };
-// v6.04 / v6.05 / v6.06: closeDetail.
-// History of attempts:
-//   v6.04: history.back() with 100ms watchdog. Watchdog too short for Safari.
-//   v6.05: direct mutate then history.back. Caused popstate to fire AFTER
-//          state was 'main', so popstate's branch logic walked through
-//          other state (sheets, search, line) consuming back presses. User
-//          symptom: "back doesn't close detail, but app eventually closes".
-//   v6.06: direct mutate AND history.back, but with _suppressNextPopstate
-//          so popstate's branch logic is bypassed for THIS back. The history
-//          stack is still rewound by one entry (clean back-stack), but no
-//          branch logic runs to confuse other state.
+// v6.07: closeDetail. Lots of churn here in v6.04/05/06 that didn't help.
+// Going back to the simplest possible version: history.back fires popstate,
+// popstate handler in handlers.js sees S.screen === 'figure' and does the
+// work. 350ms watchdog covers the case where popstate doesn't fire (rare,
+// but it has happened on Android in PWA context). Watchdog forces the
+// state change if popstate didn't run.
+//
+// Why earlier attempts failed:
+//   v6.05 inverted order to "mutate first". This caused popstate to find
+//     S.screen already 'main' and walk through OTHER state branches.
+//   v6.06 added a flag to suppress popstate, but the flag could get stuck
+//     if popstate didn't fire promptly.
 window.closeDetail = () => {
-  if (S.screen === 'figure') {
-    S.screen = 'main';
-    S.activeFig = null;
-    render();
-  }
-  // Clean up the history entry pushed when openFig fired. The popstate
-  // handler is a no-op for this fire — see _suppressNextPopstate above.
-  if (typeof window._suppressNextPopstate === 'function') {
-    window._suppressNextPopstate();
-  }
-  try { history.back(); } catch {}
+  history.back();
+  setTimeout(() => {
+    if (S.screen === 'figure') {
+      S.screen = 'main';
+      S.activeFig = null;
+      render();
+    }
+  }, 350);
 };
 window.deleteFig = async id => {
   if (!await appConfirm('Delete this figure and all its data?', {danger: true, ok: 'Delete'})) return;
