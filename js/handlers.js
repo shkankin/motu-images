@@ -44,6 +44,8 @@ let _lpTimer = null;
 let _lpFigId = null;
 let _lpMoved = false;
 let _lpFired = false;
+let _lpStartX = 0;
+let _lpStartY = 0;
 
 function initLongPress(el, figId) {
   // Passive touchstart — do NOT preventDefault here or it kills scrolling.
@@ -59,6 +61,8 @@ function initLongPress(el, figId) {
     // the menu. Capturing primitives here makes the closure stable.
     const lx = e.touches[0].clientX;
     const ly = e.touches[0].clientY;
+    _lpStartX = lx;
+    _lpStartY = ly;
     _lpTimer = setTimeout(() => {
       if (!_lpMoved) {
         _lpFired = true;
@@ -67,7 +71,15 @@ function initLongPress(el, figId) {
       }
     }, 500);
   }, {passive: true});
-  el.addEventListener('touchmove', () => {
+  el.addEventListener('touchmove', e => {
+    // v6.11: require ≥10px movement before cancelling. Without a threshold,
+    // natural finger jitter while holding still registers as touchmove and
+    // kills the timer before it can fire — long-press appeared broken on
+    // every device. 10px matches typical platform tap-slop.
+    if (!e.touches[0]) return;
+    const dx = e.touches[0].clientX - _lpStartX;
+    const dy = e.touches[0].clientY - _lpStartY;
+    if (dx * dx + dy * dy < 100) return;
     _lpMoved = true;
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   }, {passive: true});
