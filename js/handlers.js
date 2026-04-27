@@ -213,6 +213,14 @@ window.ctxSetStatus = (id, status) => {
 // Each navigation action pushes a state so Android/browser back button
 // walks backward through the app instead of closing it.
 let _skipPush = false; // flag to avoid pushing during popstate handling
+// v6.06: Allow other modules (eggs.js closeDetail) to suppress the next
+// popstate event entirely. Set true; popstate clears it on the next fire.
+// Used when we've already done the imperative state change ourselves and
+// just want to clean up the history stack without triggering popstate's
+// branch logic — which would walk through other state branches and
+// consume back presses meant for them.
+let _suppressNextPop = false;
+window._suppressNextPopstate = () => { _suppressNextPop = true; };
 
 function navState() {
   // Snapshot of the navigable state (not the full S — just what back needs)
@@ -245,6 +253,13 @@ function restoreNav(state) {
 
 // Listen for back button (Android hardware back, browser back, swipe back)
 window.addEventListener('popstate', e => {
+  // v6.06: If something just told us to skip this popstate, consume the flag
+  // and bail. closeDetail uses this to clean up the history stack without
+  // triggering branch logic after it has already done the screen change.
+  if (_suppressNextPop) {
+    _suppressNextPop = false;
+    return;
+  }
   _skipPush = true;
   // Always restore bars on back navigation
   S.barsHidden = false;
@@ -480,19 +495,23 @@ document.addEventListener('touchend', e => {
     if (swipe.ca) _swipeReset(swipe.ca);
     return;
   }
-  // Animate out → swap → animate in.
-  if (swipe.ca) {
-    _swipeAnimateOut(swipe.ca, dir > 0 ? -1 : +1, () => {
-      window.navTo(TAB_ORDER[j]);
-      // After navTo render, animate the NEW contentArea in from the opposite side.
-      requestAnimationFrame(() => {
-        const newCa = document.getElementById('contentArea');
-        if (newCa) _swipeAnimateIn(newCa, dir > 0 ? +1 : -1);
-      });
-    });
-  } else {
-    window.navTo(TAB_ORDER[j]);
-  }
+
+  // v6.06: Commit immediately by calling navTo() — which calls render() —
+  // synchronously. The old contentArea gets destroyed by render() (along
+  // with whatever transform we set on it), and a fresh contentArea is in
+  // the DOM with new-tab content. Then we animate it in from the swipe
+  // direction. This eliminates the perceived "blank gap" between slide-out
+  // and slide-in: the user's finger release triggers an immediate render,
+  // and the slide-in animation runs on top of already-painted content.
+  // Total perceived latency: just the render time (no extra 220ms wait).
+  window.navTo(TAB_ORDER[j]);
+  // After render, the new contentArea exists. Animate it in from the
+  // direction OPPOSITE the swipe (a left swipe means new content slides in
+  // from the right; a right swipe means new content slides in from the left).
+  requestAnimationFrame(() => {
+    const newCa = document.getElementById('contentArea');
+    if (newCa) _swipeAnimateIn(newCa, dir > 0 ? +1 : -1);
+  });
 }, { passive: true });
 
 document.addEventListener('touchcancel', () => {

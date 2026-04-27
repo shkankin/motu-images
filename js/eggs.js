@@ -399,28 +399,29 @@ window.openFig = id => {
   S.activeFig = figById(id);
   S.screen = 'figure'; pushNav(); render();
 };
-// v6.04 / v6.05: closeDetail. The chevron must always work, regardless of
-// what state flags happen to be set. Strategy:
-//   1. Pre-clear any flags that would route popstate to the WRONG branch
-//      (a sheet flag stuck open would steal the back action from the
-//      figure-detail branch).
-//   2. Fire history.back() — popstate handler does the real work.
-//   3. Watchdog at 250ms: if we're somehow still on the figure screen,
-//      force the screen change directly. 250ms is generous; popstate is
-//      typically synchronous-microtask but Safari occasionally defers.
+// v6.04 / v6.05 / v6.06: closeDetail.
+// History of attempts:
+//   v6.04: history.back() with 100ms watchdog. Watchdog too short for Safari.
+//   v6.05: direct mutate then history.back. Caused popstate to fire AFTER
+//          state was 'main', so popstate's branch logic walked through
+//          other state (sheets, search, line) consuming back presses. User
+//          symptom: "back doesn't close detail, but app eventually closes".
+//   v6.06: direct mutate AND history.back, but with _suppressNextPopstate
+//          so popstate's branch logic is bypassed for THIS back. The history
+//          stack is still rewound by one entry (clean back-stack), but no
+//          branch logic runs to confuse other state.
 window.closeDetail = () => {
-  // Defensive: nothing pop-stealing. If the photo viewer is open, that
-  // branch should fire instead and the user wouldn't see the chevron anyway.
-  // If a sheet is somehow set without a sheet visible in the DOM, clear it.
-  if (S.sheet && !document.querySelector('.sheet')) S.sheet = null;
-  history.back();
-  setTimeout(() => {
-    if (S.screen === 'figure') {
-      S.screen = 'main';
-      S.activeFig = null;
-      render();
-    }
-  }, 250);
+  if (S.screen === 'figure') {
+    S.screen = 'main';
+    S.activeFig = null;
+    render();
+  }
+  // Clean up the history entry pushed when openFig fired. The popstate
+  // handler is a no-op for this fire — see _suppressNextPopstate above.
+  if (typeof window._suppressNextPopstate === 'function') {
+    window._suppressNextPopstate();
+  }
+  try { history.back(); } catch {}
 };
 window.deleteFig = async id => {
   if (!await appConfirm('Delete this figure and all its data?', {danger: true, ok: 'Delete'})) return;
