@@ -2720,3 +2720,24 @@ html {
     color: CanvasText !important;
   }
 }
+
+/* ── v6.04 toast variants ────────────────────────────────────────
+   .large — bumps font + padding for high-priority messages like
+   "Press back again to exit". Caller passes opts.large=true.
+   .persist — suppresses the 1.7s-delayed fade-out. Used by toasts
+   with action buttons (Undo, Mark Loose Complete suggestions) so the
+   button stays visible and tappable for the full 5.5s timeout instead
+   of disappearing visually at 2s.
+*/
+.toast.large {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 14px 24px;
+  border-radius: 14px;
+  letter-spacing: 0.2px;
+}
+.toast.persist {
+  /* Only the entry animation; no toastOut. The setTimeout that owns the
+     toast removes it from the DOM at the right time. */
+  animation: toastIn 0.25s ease-out;
+}
