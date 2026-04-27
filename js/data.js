@@ -149,6 +149,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
         ...custom.filter(f => !remoteIds.has(f.id) && !kcIds.has(f.id) && !customIds.has(f.id)),
       ];
       rebuildFigIndex();
+      _derived.invalidate();
       S.syncTs = Date.now();
       store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
       S.syncStatus = 'ok';
@@ -279,6 +280,7 @@ function clearOverrides(figId) {
     S.figs = cached.rows.map(f => ({...f, image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')}));
   }
   rebuildFigIndex();
+  _derived.invalidate();
 }
 window.setOverrideField = setOverrideField;
 window.clearOverrides = clearOverrides;
