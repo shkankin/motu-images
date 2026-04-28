@@ -388,7 +388,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.20</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.21</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
         </div>
       </div>
       <div class="header-actions">
@@ -540,7 +540,7 @@ function renderMain() {
     };
     // v5.01: when scrolling pauses for 3.5s, fade the bars back in. Avoids
     // leaving the user stranded with no nav after they stop reading.
-    // v6.20: also expose this so user interactions (status taps, long-press
+    // v6.21: also expose this so user interactions (status taps, long-press
     // context menu, etc.) reset the timer — without this, a user who scrolls,
     // hides the bars, then taps a status would still see the bars reappear
     // 3.5s later mid-interaction.
@@ -563,7 +563,7 @@ function renderMain() {
     ca._bumpIdleTimer = _scheduleIdleShow;
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
 
-    // v6.20: bump the idle-show timer on user interactions other than scroll.
+    // v6.21: bump the idle-show timer on user interactions other than scroll.
     // Without this, tapping a status or invoking the long-press menu while
     // bars are hidden would still fire the 3.5s timer mid-action, popping
     // the bars back in unexpectedly. click covers taps; contextmenu is what

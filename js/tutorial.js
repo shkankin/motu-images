@@ -70,12 +70,14 @@ const STEPS = [
     waitFor: { screen: 'figure' },
   },
 
-  // Step 3 — detail screen overview, NO overlay (user needs to read & scroll)
+  // Step 3 — detail screen overview. No overlay so user can scroll & read.
+  // Compact translucent tooltip so the detail content is visible behind it.
   {
     target: null,
     showOverlay: false,
     tooltipAnchor: 'bottom-fixed',
-    text: '<strong>Detail screen.</strong> Scroll to explore — you can track copies, paid price, condition, location, photos, and notes.<br><br>Tap <strong>Next</strong> when ready.',
+    compact: true,
+    text: '<strong>Detail screen.</strong> Scroll to explore. Tap <strong>Next</strong> when ready.',
     advanceOn: 'always',
     nextLabel: 'Next →',
     onNext: () => { try { history.back(); } catch {} },
@@ -91,13 +93,13 @@ const STEPS = [
     requireScreen: 'main',
   },
 
-  // Step 5 — Collection tab, finish
+  // Step 5 — Collection tab. Tapping the spotlit tab auto-closes the tour.
   {
     target: '.bottom-nav button:nth-child(3)',
-    text: '<strong>Collection</strong> shows just the figures you own. Tap any status circle to start filling it. You\'re all set!',
+    text: '<strong>Collection</strong> shows just the figures you own. Tap any status circle to start filling it.<br><br>Tap <strong>Collection</strong> to finish the tour.',
     placement: 'top',
-    advanceOn: 'always',
-    nextLabel: 'Finish',
+    advanceOn: 'screen',
+    waitFor: { tab: 'collection' },
     finalStep: true,
   },
 ];
@@ -282,9 +284,11 @@ function setupCycleDemo(step, target) {
     return;
   }
 
-  // Track which states we've seen. Start fresh — primeStepIfNeeded
-  // already cleared the status above.
-  const seen = new Set(['']); // user starts at cleared
+  // Track which states we've seen. The tour only completes when the user
+  // has cycled all the way back to '' (cleared). primeStepIfNeeded already
+  // set status to cleared, but we don't credit it as "seen" until the user
+  // returns to it via cycling.
+  const seen = new Set();
   let lastStatus = (S.coll[figId]?.status) || '';
 
   renderCycleProgress(seen, false);
@@ -379,6 +383,7 @@ function renderStep(step, target, hint) {
     tip.className = 'tutorial-tooltip';
     document.body.appendChild(tip);
   }
+  tip.classList.toggle('compact', !!step.compact);
 
   const stepNum = _stepIdx + 1;
   const total = STEPS.length;
