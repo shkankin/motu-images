@@ -11,6 +11,18 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.4 (2026-04-27)
+    - Review queue. New figures route to figures-pending.json instead of
+      figures.json. Existing figures still get metadata updates applied
+      directly (only brand-new entries need review).
+    - figures-rejected.json: optional list of slugs the editor has rejected.
+      Skipped on every subsequent sync so they don't keep re-queueing.
+    - --no-pending flag bypasses the queue (legacy behavior).
+    - Companion: figures-editor.html — standalone web editor that reads
+      the pending queue, lets you fix line/group/faction/loadout/etc., and
+      downloads merged figures.json + loadouts.json + figures-rejected.json
+      on approval.
+
   v1.3 (2026-04-27)
     - Line-override protection. Each scraped entry now also writes a
       `sourceLine` field equal to whatever AF411 said the line was. The
@@ -157,6 +169,8 @@ FACTION_KEYWORDS = {
 
 REPO_ROOT = Path(__file__).resolve().parent.parent  # assumes scripts/ is one level down
 FIGURES_JSON = REPO_ROOT / "figures.json"
+PENDING_JSON = REPO_ROOT / "figures-pending.json"   # v1.4: review queue for new figures
+REJECTED_JSON = REPO_ROOT / "figures-rejected.json" # v1.4: slugs the editor said no to
 IMAGES_DIR = REPO_ROOT  # images sit at repo root as {slug}.jpg
 
 # v1.1: fields that the scraper KNOWS about. Anything else on an existing entry
@@ -382,6 +396,9 @@ def main():
                         help="Sync only this line (e.g. 'origins')")
     parser.add_argument("--delay", type=float, default=1.5,
                         help="Seconds between page fetches (be polite)")
+    parser.add_argument("--no-pending", action="store_true",
+                        help="v1.4: write new figures directly to figures.json "
+                             "instead of routing them to the review queue.")
     args = parser.parse_args()
 
     print("═" * 60)
@@ -399,6 +416,29 @@ def main():
 
     existing_by_id = {f["id"]: f for f in existing}
     existing_ids = set(existing_by_id.keys())
+
+    # v1.4: Load review queue (figures awaiting editor approval)
+    pending = []
+    if PENDING_JSON.exists():
+        try:
+            pending = json.loads(PENDING_JSON.read_text())
+            print(f"📋 Loaded {len(pending)} figures already in pending queue")
+        except json.JSONDecodeError:
+            print("⚠ Could not parse figures-pending.json — starting fresh queue")
+    pending_by_id = {f["id"]: f for f in pending}
+    pending_ids = set(pending_by_id.keys())
+
+    # v1.4: Load rejection list (slugs the editor has explicitly said no to).
+    # Without this, every nightly run would re-queue rejected figures forever.
+    rejected_ids = set()
+    if REJECTED_JSON.exists():
+        try:
+            rj = json.loads(REJECTED_JSON.read_text())
+            # Accept either ["slug",...] or {"rejected":["slug",...]}
+            rejected_ids = set(rj if isinstance(rj, list) else rj.get("rejected", []))
+            print(f"🚫 {len(rejected_ids)} figures permanently rejected (will be skipped)")
+        except json.JSONDecodeError:
+            print("⚠ Could not parse figures-rejected.json")
 
     # Scrape AF411
     print(f"\n🔍 Scraping AF411...\n")
@@ -420,7 +460,19 @@ def main():
     scraped_ids = set(scraped_by_id.keys())
 
     # ── Diff ──────────────────────────────────────────────────────
-    new_ids = scraped_ids - existing_ids
+    # v1.4: bucket scraped figures into 4 categories:
+    #   - skipped_rejected: editor said no, ignore forever
+    #   - pending_refresh: already in queue, refresh metadata
+    #   - new_for_pending: brand new, route to review queue
+    #   - new_for_existing: with --no-pending, new figures bypass the queue
+    # Existing-figure metadata diffs (figures.json) handled separately below.
+    skipped_rejected = scraped_ids & rejected_ids
+    pending_refresh = scraped_ids & pending_ids
+    new_candidates = scraped_ids - existing_ids - pending_ids - rejected_ids
+    new_for_pending = set() if args.no_pending else new_candidates
+    new_for_existing = new_candidates if args.no_pending else set()
+
+    new_ids = new_for_existing  # legacy alias used in commit block below
     removed_ids = existing_ids - scraped_ids if not args.line else set()  # Only flag removals on full sync
     updated = []
     line_overrides = []  # v1.3: entries where user has manually re-tagged the line
@@ -471,17 +523,26 @@ def main():
     print(f"\n{'═' * 60}")
     print(f"  SYNC REPORT")
     print(f"{'═' * 60}")
-    print(f"  AF411 total:   {len(all_scraped)}")
-    print(f"  Existing:      {len(existing)}")
-    print(f"  New figures:   {len(new_ids)}")
-    print(f"  Updated:       {len(updated)}")
+    print(f"  AF411 total:        {len(all_scraped)}")
+    print(f"  In figures.json:    {len(existing)}")
+    print(f"  In pending queue:   {len(pending)}")
+    print(f"  Permanently rejected: {len(rejected_ids)}")
+    print(f"  ─" * 30)
+    print(f"  New → pending queue: {len(new_for_pending)}")
+    if args.no_pending:
+        print(f"  New → figures.json:  {len(new_for_existing)}")
+    print(f"  Existing updated:    {len(updated)}")
+    print(f"  Pending refreshed:   {len(pending_refresh)}")
+    print(f"  Skipped (rejected):  {len(skipped_rejected)}")
     if not args.line:
-        print(f"  Removed:       {len(removed_ids)}")
+        print(f"  Removed:             {len(removed_ids)}")
     print()
 
-    if new_ids:
-        print("  ── NEW FIGURES ──")
-        for fid in sorted(new_ids):
+    new_to_show = new_for_pending or new_for_existing
+    if new_to_show:
+        bucket = "PENDING QUEUE" if new_for_pending else "figures.json (no-pending)"
+        print(f"  ── NEW FIGURES → {bucket} ──")
+        for fid in sorted(new_to_show):
             f = scraped_by_id[fid]
             print(f"    + [{f['line']}] {f['name']} (W{f['wave']}, {f['year']}) — {fid}")
         print()
@@ -500,7 +561,7 @@ def main():
             print(f"    ? [{f.get('line','')}] {f.get('name',fid)}")
         print()
 
-    if not new_ids and not updated:
+    if not new_for_pending and not new_for_existing and not updated and not pending_refresh:
         print("  ✓ Everything is in sync!\n")
         return
 
@@ -518,9 +579,16 @@ def main():
     # Update existing figures with new data.
     # v1.1: source='af411' is now ALWAYS set on AF411-sourced entries — this
     # backfills the ~10 figures that were imported before source-tagging existed.
+    # v1.3: never overwrite the `line` or `group` fields on entries with a
+    # manual line override (line != AF411's classification). The user has
+    # decided this figure belongs somewhere AF411 doesn't agree with;
+    # respect that on every field that depends on classification.
+    # v1.4: also write `sourceLine` so the override-detection works on
+    # future syncs.
     for fid, _ in updated:
         s = scraped_by_id[fid]
         e = merged_by_id[fid]
+        is_overridden = e.get("line") and e.get("line") != s["line"]
         if s["name"]:
             e["name"] = s["name"]
         if s["wave"]:
@@ -529,21 +597,27 @@ def main():
             e["year"] = s["year"]
         if s["retail"]:
             e["retail"] = s["retail"]
-        if s["group"]:
+        # v1.3: group is line-dependent (e.g. "Movie (2026)" only makes
+        # sense under kids-core, not chronicles). On overridden entries,
+        # keep the group the user set. On non-overridden entries, take
+        # AF411's value.
+        if s["group"] and not is_overridden:
             e["group"] = s["group"]
+        # v1.3: always update sourceLine to whatever AF411 currently says.
+        # This is bookkeeping — the active `line` field is preserved on
+        # overrides above.
+        e["sourceLine"] = s["line"]
         # Always tag source — these entries DEFINITELY came from AF411 since
         # we matched them by ID. Backfills missing source on legacy entries.
         e["source"] = "af411"
 
-    # Add new figures
-    img_downloaded = 0
-    img_failed = 0
-    for fid in sorted(new_ids):
-        s = scraped_by_id[fid]
-        new_fig = {
+    # v1.4: helper — build a fresh figure dict for new entries.
+    def build_new_fig(s, for_pending):
+        out = {
             "id": s["id"],
             "name": s["name"],
             "line": s["line"],
+            "sourceLine": s["line"],  # v1.3: track AF411's classification
             "group": s["group"] or "",          # v1.1: ensure string, never None
             "wave": s["wave"] or "",
             "year": s["year"],                  # may be None if not parsed
@@ -552,15 +626,48 @@ def main():
             "faction": guess_faction(s["name"], s["group"]),
             "source": "af411",                  # v1.1: tag every new fig as AF411-sourced
         }
-        merged.append(new_fig)
+        if for_pending:
+            out["_addedToPending"] = int(time.time())  # editor can sort by date
+        return out
 
-        # Download image
+    img_downloaded = 0
+    img_failed = 0
+
+    # v1.4: refresh metadata of pending entries (in case AF411 corrected
+    # something). DON'T touch line/group/faction on pending entries — the
+    # user may have already started editing them. Only refresh objective
+    # AF411 facts: name/wave/year/retail.
+    new_pending = list(pending)
+    new_pending_by_id = {f["id"]: f for f in new_pending}
+    for fid in pending_refresh:
+        s = scraped_by_id[fid]
+        p = new_pending_by_id[fid]
+        if s["name"]: p["name"] = s["name"]
+        if s["wave"]: p["wave"] = s["wave"]
+        if s["year"]: p["year"] = s["year"]
+        if s["retail"] is not None: p["retail"] = s["retail"]
+
+    # v1.4: brand-new figures route to pending queue (default) or directly
+    # to figures.json (--no-pending flag).
+    for fid in sorted(new_for_pending):
+        s = scraped_by_id[fid]
+        new_pending.append(build_new_fig(s, for_pending=True))
         print(f"  📷 Downloading image: {s['slug']}")
         if download_image(s["slug"], s.get("af411_url", "")):
             img_downloaded += 1
         else:
             img_failed += 1
         time.sleep(0.5)  # Be polite
+
+    for fid in sorted(new_for_existing):
+        s = scraped_by_id[fid]
+        merged.append(build_new_fig(s, for_pending=False))
+        print(f"  📷 Downloading image: {s['slug']}")
+        if download_image(s["slug"], s.get("af411_url", "")):
+            img_downloaded += 1
+        else:
+            img_failed += 1
+        time.sleep(0.5)
 
     # Sort by line then name for clean diffs
     line_order = {l[0]: i for i, l in enumerate(LINES)}
@@ -569,7 +676,18 @@ def main():
     # Write figures.json
     FIGURES_JSON.write_text(json.dumps(merged, indent=2, ensure_ascii=False))
     print(f"\n  ✓ Wrote {len(merged)} figures to figures.json")
+
+    # v1.4: write pending queue (only if it changed). When no new figures
+    # were added and no pending entries were refreshed, skip the write to
+    # avoid spurious git churn.
+    if new_for_pending or pending_refresh:
+        new_pending.sort(key=lambda f: (line_order.get(f.get("line", ""), 99), f.get("name", "")))
+        PENDING_JSON.write_text(json.dumps(new_pending, indent=2, ensure_ascii=False))
+        print(f"  ✓ Wrote {len(new_pending)} figures to figures-pending.json")
+
     print(f"  ✓ Downloaded {img_downloaded} images ({img_failed} failed)")
+    if new_for_pending:
+        print(f"\n  ▸ Open figures-editor.html to review {len(new_for_pending)} new figure(s)")
     print(f"{'═' * 60}\n")
 
 
