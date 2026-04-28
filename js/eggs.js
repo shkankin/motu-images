@@ -8,7 +8,7 @@
 
 import {
   S, ICO, icon, IMG, THEMES, store,
-  esc, normalize, getThemeTitles, ln,
+  esc, normalize, getThemeTitles, ln, SUBLINES,
 } from './state.js';
 import {
   figById, figIsHidden, toggleHidden, clearOverrides, saveColl, rebuildFigIndex,
