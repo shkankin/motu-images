@@ -2920,3 +2920,20 @@ html {
   font-size: 13px;
   font-weight: 700;
 }
+
+/* Step 3 detail-screen tooltip: translucent + compact so the detail
+   content underneath is still visible. The user can read & scroll the
+   real screen while seeing the tour prompt. */
+.tutorial-tooltip.compact {
+  background: color-mix(in srgb, var(--bg2) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 10px 14px 8px;
+  font-size: 13px;
+}
+.tutorial-tooltip.compact .tutorial-text {
+  margin-bottom: 8px;
+}
+.tutorial-tooltip.compact .tutorial-step-count {
+  margin-bottom: 4px;
+}
