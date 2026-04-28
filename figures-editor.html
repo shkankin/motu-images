@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOTU Vault — Figures Editor</title>
+<!-- Standalone editor for the figures-pending review queue.
+
+     Usage:
+       1. Host this file at the same origin as figures-pending.json (i.e. in
+          the motu-images repo root, or served locally next to the JSON).
+          Or open it via file:// from the repo root — then "Load JSON from
+          disk" buttons let you select files manually.
+       2. Click Load. Editor pulls figures-pending.json + figures.json + loadouts.json.
+       3. For each pending figure, set/correct: line, group, faction, name,
+          year, wave, retail, accessories (loadout). Then Approve or Reject.
+       4. Click "Download merged outputs" to get three updated files:
+          figures.json (with approved entries merged in)
+          loadouts.json (with new loadout entries merged in)
+          figures-rejected.json (with newly-rejected slugs added)
+       5. Commit the three files to the repo.
+
+     The editor never modifies files in place — you commit the downloads.
+     The scraper reads figures-rejected.json to skip those slugs forever. -->
+<style>
+  :root {
+    --bg: #0f1115;
+    --bg2: #181b21;
+    --bg3: #22262e;
+    --bd: #2d323b;
+    --t1: #e6e9ef;
+    --t2: #b3b9c4;
+    --t3: #6f7783;
+    --acc: #7c3aed;
+    --gold: #facc15;
+    --gn: #34d399;
+    --or: #fb923c;
+    --rd: #f87171;
+    --bl: #60a5fa;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--t1);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+    padding-bottom: 120px;
+  }
+  h1 { font-size: 22px; margin: 0 0 6px; color: var(--t1); }
+  .subtitle { color: var(--t3); font-size: 13px; margin-bottom: 20px; }
+
+  .toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 16px; padding: 12px; background: var(--bg2);
+    border: 1px solid var(--bd); border-radius: 10px;
+  }
+  .toolbar input[type="file"] { color: var(--t2); font-size: 12px; }
+  button {
+    background: var(--acc); color: white; border: none;
+    padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.1); }
+  button.secondary { background: var(--bg3); color: var(--t1); border: 1px solid var(--bd); }
+  button.danger { background: var(--rd); }
+  button.success { background: var(--gn); color: #042; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--bg2); border: 1px solid var(--bd);
+    padding: 10px 12px; border-radius: 8px;
+  }
+  .stat .num { font-size: 22px; font-weight: 700; color: var(--acc); }
+  .stat .label { font-size: 11px; color: var(--t3); text-transform: uppercase; }
+
+  .filter-bar {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .filter-bar input {
+    flex: 1; min-width: 200px;
+    background: var(--bg3); color: var(--t1);
+    border: 1px solid var(--bd); padding: 8px 12px;
+    border-radius: 6px; font-size: 13px;
+  }
+  .filter-bar select {
+    background: var(--bg3); color: var(--t1);
+    border: 1px solid var(--bd); padding: 8px;
+    border-radius: 6px; font-size: 13px;
+  }
+
+  .fig-card {
+    background: var(--bg2); border: 1px solid var(--bd);
+    border-radius: 10px; padding: 14px; margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 14px;
+    transition: opacity 0.2s, border-color 0.2s;
+  }
+  .fig-card.approved { border-color: var(--gn); opacity: 0.7; }
+  .fig-card.rejected { border-color: var(--rd); opacity: 0.45; }
+
+  .fig-img {
+    width: 120px; height: 120px;
+    background: var(--bg3); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; color: var(--t3); font-size: 11px;
+  }
+  .fig-img img { width: 100%; height: 100%; object-fit: cover; }
+
+  .fig-body { display: flex; flex-direction: column; gap: 10px; }
+  .fig-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; flex-wrap: wrap;
+  }
+  .fig-name { font-size: 16px; font-weight: 600; color: var(--t1); }
+  .fig-id { font-size: 11px; color: var(--t3); font-family: ui-monospace, monospace; }
+  .fig-meta-orig { font-size: 11px; color: var(--t3); margin-top: 4px; }
+
+  .fig-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+  }
+  .field { display: flex; flex-direction: column; gap: 3px; }
+  .field label { font-size: 11px; color: var(--t3); text-transform: uppercase; }
+  .field input, .field select {
+    background: var(--bg3); color: var(--t1);
+    border: 1px solid var(--bd); padding: 6px 8px;
+    border-radius: 5px; font-size: 13px;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--acc); }
+  .field.changed input, .field.changed select { border-color: var(--gold); }
+
+  .accessories {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 8px; background: var(--bg3); border-radius: 6px;
+  }
+  .acc-chip {
+    font-size: 11px; padding: 3px 8px; border-radius: 4px;
+    background: var(--bg); color: var(--t2); cursor: pointer;
+    border: 1px solid transparent; user-select: none;
+  }
+  .acc-chip.checked {
+    background: var(--acc); color: white; border-color: var(--acc);
+  }
+
+  .actions {
+    display: flex; gap: 6px; justify-content: flex-end;
+    border-top: 1px solid var(--bd); padding-top: 10px;
+  }
+  .actions button { padding: 6px 14px; font-size: 12px; }
+
+  .empty {
+    text-align: center; padding: 60px 20px;
+    color: var(--t3); background: var(--bg2);
+    border: 1px dashed var(--bd); border-radius: 10px;
+  }
+  .empty h2 { color: var(--t2); margin: 0 0 8px; font-size: 16px; }
+
+  .download-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg2); border-top: 1px solid var(--bd);
+    padding: 14px 20px;
+    display: flex; gap: 10px; justify-content: center; align-items: center;
+    z-index: 10;
+  }
+  .download-summary { color: var(--t2); font-size: 13px; margin-right: auto; }
+  .download-summary strong { color: var(--gn); }
+
+  details { margin-top: 8px; }
+  details summary {
+    cursor: pointer; color: var(--t3); font-size: 12px; padding: 4px 0;
+    user-select: none;
+  }
+  details summary:hover { color: var(--acc); }
+
+  .warning {
+    background: color-mix(in srgb, var(--gold) 15%, var(--bg2));
+    border: 1px solid var(--gold); border-radius: 6px;
+    padding: 8px 12px; font-size: 12px; color: var(--gold);
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>MOTU Vault — Figures Editor</h1>
+  <div class="subtitle">Review the AF411 pending queue. Edit fields, set accessories, approve or reject. Download three updated files when done.</div>
+
+  <div class="toolbar">
+    <button onclick="loadFromFetch()">Load from server</button>
+    <span style="color:var(--t3);font-size:11px;align-self:center">— or —</span>
+    <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
+      figures-pending.json <input id="fPending" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'pending')">
+    </label>
+    <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
+      figures.json <input id="fApproved" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'approved')">
+    </label>
+    <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
+      loadouts.json <input id="fLoadouts" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'loadouts')">
+    </label>
+    <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
+      figures-rejected.json <input id="fRejected" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'rejected')">
+    </label>
+  </div>
+
+  <div id="stats" class="stats" style="display:none"></div>
+
+  <div class="filter-bar" id="filterBar" style="display:none">
+    <input type="text" id="searchBox" placeholder="Filter by name…" oninput="renderList()">
+    <select id="filterLine" onchange="renderList()">
+      <option value="">All lines</option>
+    </select>
+    <select id="filterStatus" onchange="renderList()">
+      <option value="all">All (incl. decided)</option>
+      <option value="undecided">Undecided only</option>
+      <option value="approved">Approved only</option>
+      <option value="rejected">Rejected only</option>
+    </select>
+    <button class="secondary" onclick="bulkApproveLine()" title="Approve every undecided figure in the current line filter as-is">Approve filtered</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div id="emptyState" class="empty" style="display:none">
+    <h2>No pending figures</h2>
+    <div>Run the scraper to populate the queue, then load <code>figures-pending.json</code>.</div>
+  </div>
+</div>
+
+<div id="downloadBar" class="download-bar" style="display:none">
+  <div class="download-summary">
+    <strong id="dlApproved">0</strong> approved · <strong id="dlRejected">0</strong> rejected · <span id="dlPending">0</span> still undecided
+  </div>
+  <button class="secondary" onclick="downloadOutputs()">Download outputs</button>
+</div>
+
+<script>
+// ── Constants — MIRRORED FROM state.js ─────────────────────────────
+// These MUST stay in sync with /js/state.js. The audit harness at the
+// bottom of this <script> block will verify against state.js if it can
+// be fetched from the same origin.
+
+// Display names match state.js LINES[].name. ID order matches the array.
+const LINES = [
+  {id:'origins',        name:'Origins'},
+  {id:'masterverse',    name:'Masterverse'},
+  {id:'kids-core',      name:'Kids Core'},
+  {id:'chronicles',     name:'Chronicles'},
+  {id:'classics',       name:'Mattel Classics'},
+  {id:'200x',           name:'Mattel 200x'},
+  {id:'original',       name:'Original'},
+  {id:'new-adventures', name:'New Adventures'},
+  {id:'mondo',          name:'Mondo'},
+  {id:'super7',         name:'Super7'},
+  {id:'eternia-minis',  name:'Eternia Minis'},
+];
+
+// SUBLINES structure mirrors state.js exactly: each line maps to an
+// array of {key, label, groups[]} objects. groups[0] is the canonical
+// group string written to figures.json. Additional groups[] entries are
+// alternate phrasings the app also recognizes (e.g. "Vehicles and
+// Playsets" maps to the same subline as "Vehicles & Playsets").
+//
+// Lines with no SUBLINES entry (mondo) are flat — figures from those
+// lines get a free-text group field in the editor.
+const SUBLINES = {
+  origins: [
+    {key:'action',     label:'Action Figures',           groups:['Action Figures']},
+    {key:'deluxe',     label:'Deluxe',                   groups:['Deluxe']},
+    {key:'exclusives', label:'Exclusives',               groups:['Exclusives']},
+    {key:'vehicles',   label:'Vehicles & Playsets',      groups:['Vehicles & Playsets']},
+    {key:'turtles',    label:'Turtles of Grayskull',     groups:['Turtles of Grayskull']},
+    {key:'crossovers', label:'Crossovers',               groups:['Crossovers']},
+    {key:'wwe',        label:'WWE',                      groups:['WWE']},
+  ],
+  masterverse: [
+    {key:'revelation',     label:'Revelation',           groups:['Revelation','Revelation Deluxe']},
+    {key:'new-eternia',    label:'New Eternia',          groups:['New Eternia']},
+    {key:'new-etheria',    label:'New Etheria',          groups:['New Etheria']},
+    {key:'princess-power', label:'Princess of Power',    groups:['Princess of Power']},
+    {key:'revolution',     label:'Revolution',           groups:['Revolution']},
+    {key:'new-adventures', label:'New Adventures',       groups:['New Adventures']},
+    {key:'movie',          label:'Movie (1987)',         groups:['Movie']},
+    {key:'cgi',            label:'CGI Cartoon',          groups:['CGI Cartoon']},
+    {key:'40th',           label:'40th Anniversary',     groups:['40th Anniversary']},
+    {key:'rulers',         label:'Rulers of the Sun',    groups:['Rulers of the Sun']},
+    {key:'vintage',        label:'Vintage Collection',   groups:['Vintage Collection']},
+  ],
+  classics: [
+    {key:'heroic',    label:'Heroic Warriors',       groups:['Heroic Warriors']},
+    {key:'evil',      label:'Evil Warriors',         groups:['Evil Warriors']},
+    {key:'horde',     label:'Evil Horde',            groups:['Evil Horde']},
+    {key:'snake',     label:'Snake Men',             groups:['Snake Men']},
+    {key:'rebellion', label:'Great Rebellion',       groups:['Great Rebellion']},
+    {key:'galactic',  label:'Galactic Protectors',   groups:['Galactic Protectors']},
+    {key:'mutants',   label:'Evil Mutants',          groups:['Evil Mutants']},
+    {key:'filmation', label:'Filmation',             groups:['Filmation']},
+    {key:'packs',     label:'Packs',                 groups:['Packs']},
+    {key:'creatures', label:'Creatures',             groups:['Creatures']},
+    {key:'vehicles',  label:'Vehicles & Playsets',   groups:['Vehicles & Playsets']},
+    {key:'other',     label:'Other',                 groups:['Other','Battle Sets']},
+  ],
+  'kids-core': [
+    {key:'action',   label:'Action Figures',         groups:['Action Figures']},
+    {key:'vehicles', label:'Vehicles & Playsets',    groups:['Vehicles & Playsets','Vehicles and Playsets']},
+    {key:'movie',    label:'Movie (2026)',           groups:['Movie (2026)','Movie']},
+  ],
+  original: [
+    {key:'action',   label:'Action Figures',                 groups:['Action Figures']},
+    {key:'vehicles', label:'Vehicles & Playsets',            groups:['Vehicles and Playsets','Vehicles & Playsets']},
+    {key:'sheera',   label:'She-Ra / Princess of Power',     groups:['She-Ra / Princess of Power']},
+  ],
+  '200x': [
+    {key:'action',    label:'Action Figures',         groups:['Action Figures']},
+    {key:'creatures', label:'Creatures',              groups:['Creatures']},
+    {key:'vehicles',  label:'Vehicles & Playsets',    groups:['Vehicles & Playsets']},
+  ],
+  super7: [
+    {key:'ultimate', label:'Ultimate',          groups:['Ultimate']},
+    {key:'club',     label:'Club Grayskull',    groups:['Club Grayskull']},
+    {key:'vintage',  label:'Vintage',           groups:['Vintage']},
+    {key:'classics', label:'Classics',          groups:['Classics']},
+  ],
+  chronicles: [
+    {key:'movie', label:'Movie',                groups:['Movie']},
+    {key:'core',  label:'Core (Non-Movie)',     groups:['Core (Non-Movie)']},
+  ],
+  'new-adventures': [
+    {key:'action',   label:'Action Figures',  groups:['Action Figures']},
+    {key:'vehicles', label:'Vehicles',        groups:['Vehicles']},
+    {key:'playsets', label:'Playsets',        groups:['Playsets']},
+  ],
+  'eternia-minis': [
+    {key:'action',   label:'Action Figures',         groups:['Action Figures']},
+    {key:'vehicles', label:'Vehicles & Playsets',    groups:['Vehicles & Playsets']},
+  ],
+  // mondo: no sublines — flat free-text group field
+};
+
+const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
+
+const ACCESSORIES = [
+  'Power Sword','Half Sword','Shield','Axe','Mace','Club',
+  'Staff','Spear','Trident','Bow','Crossbow','Gun/Blaster',
+  'Chain','Chain & Lock','Whip','Nunchucks','Hook',
+  'Cape','Harness','Armor','Helmet','Mask','Belt',
+  'Backpack','Comic','Minicomic','Mini-figure',
+  'Stand','Accessory Card','Instructions','Other',
+];
+
+// Helper: flat list of canonical group strings for a line, dropdown-ready
+function groupsForLine(lineId) {
+  const subs = SUBLINES[lineId];
+  if (!subs) return null; // free-text fallback (mondo)
+  return subs.map(s => ({ value: s.groups[0], label: s.label }));
+}
+
+// ── State ──────────────────────────────────────────────────────────
+let pendingFigs = [];      // figures awaiting review (from figures-pending.json)
+let approvedFigs = [];     // current figures.json contents
+let loadouts = {};         // {figId: ['Power Sword', ...]}
+let rejectedSet = new Set(); // slug strings that are permanently rejected
+// Per-figure decisions made in this session: {[id]: 'approved' | 'rejected'}
+let decisions = {};
+// Per-figure edits: {[id]: {field: newValue}}
+let edits = {};
+// Per-figure accessory selections: {[id]: ['Power Sword', ...]}
+let figAccessories = {};
+
+// ── File loading ───────────────────────────────────────────────────
+
+async function loadFromFetch() {
+  // Try fetching from same-origin paths
+  const tryFetch = async (path) => {
+    try {
+      const r = await fetch(path);
+      if (r.ok) return await r.json();
+    } catch {}
+    return null;
+  };
+  const pending = await tryFetch('figures-pending.json');
+  const approved = await tryFetch('figures.json');
+  const lds = await tryFetch('loadouts.json');
+  const rej = await tryFetch('figures-rejected.json');
+
+  if (pending == null && approved == null) {
+    alert('Could not fetch JSON files from server. Use the file pickers instead, or host the editor at the same path as the JSON files.');
+    return;
+  }
+  if (pending) ingestPending(pending);
+  if (approved) ingestApproved(approved);
+  if (lds) ingestLoadouts(lds);
+  if (rej) ingestRejected(rej);
+  refreshUI();
+}
+
+function loadFile(ev, kind) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (kind === 'pending') ingestPending(data);
+      else if (kind === 'approved') ingestApproved(data);
+      else if (kind === 'loadouts') ingestLoadouts(data);
+      else if (kind === 'rejected') ingestRejected(data);
+      refreshUI();
+    } catch (e) {
+      alert(`Failed to parse ${file.name}: ${e.message}`);
+    }
+  };
+  r.readAsText(file);
+}
+
+function ingestPending(data) {
+  if (!Array.isArray(data)) { alert('figures-pending.json must be an array'); return; }
+  pendingFigs = data;
+  // Initialize per-figure accessories from any existing loadout entry
+  for (const f of pendingFigs) {
+    if (loadouts[f.id]) figAccessories[f.id] = [...loadouts[f.id]];
+  }
+}
+
+function ingestApproved(data) {
+  if (!Array.isArray(data)) { alert('figures.json must be an array'); return; }
+  approvedFigs = data;
+}
+
+function ingestLoadouts(data) {
+  if (data && typeof data === 'object') {
+    loadouts = data.loadouts || data;
+    // Re-seed per-figure selections in case pending was loaded first
+    for (const f of pendingFigs) {
+      if (loadouts[f.id]) figAccessories[f.id] = [...loadouts[f.id]];
+    }
+  }
+}
+
+function ingestRejected(data) {
+  if (Array.isArray(data)) rejectedSet = new Set(data);
+  else if (data && Array.isArray(data.rejected)) rejectedSet = new Set(data.rejected);
+}
+
+// ── UI rendering ───────────────────────────────────────────────────
+
+function refreshUI() {
+  // Stats panel
+  const stats = document.getElementById('stats');
+  const undecided = pendingFigs.filter(f => !decisions[f.id]).length;
+  const approved = pendingFigs.filter(f => decisions[f.id] === 'approved').length;
+  const rejected = pendingFigs.filter(f => decisions[f.id] === 'rejected').length;
+  stats.innerHTML = `
+    <div class="stat"><div class="num">${pendingFigs.length}</div><div class="label">Pending Total</div></div>
+    <div class="stat"><div class="num">${undecided}</div><div class="label">Undecided</div></div>
+    <div class="stat"><div class="num">${approved}</div><div class="label">Approved</div></div>
+    <div class="stat"><div class="num">${rejected}</div><div class="label">Rejected</div></div>
+    <div class="stat"><div class="num">${approvedFigs.length}</div><div class="label">In figures.json</div></div>
+    <div class="stat"><div class="num">${rejectedSet.size}</div><div class="label">Already rejected</div></div>
+  `;
+  stats.style.display = pendingFigs.length || approvedFigs.length ? 'grid' : 'none';
+
+  // Line filter dropdown
+  const filterLine = document.getElementById('filterLine');
+  const seen = new Set(['']);
+  filterLine.innerHTML = '<option value="">All lines</option>' +
+    LINES.filter(l => pendingFigs.some(f => f.line === l.id || (f.sourceLine === l.id && !decisions[f.id])))
+         .map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  document.getElementById('filterBar').style.display = pendingFigs.length ? 'flex' : 'none';
+
+  // Download bar
+  const dl = document.getElementById('downloadBar');
+  dl.style.display = pendingFigs.length ? 'flex' : 'none';
+  document.getElementById('dlApproved').textContent = approved;
+  document.getElementById('dlRejected').textContent = rejected;
+  document.getElementById('dlPending').textContent = undecided;
+
+  document.getElementById('emptyState').style.display = pendingFigs.length ? 'none' : 'block';
+  renderList();
+}
+
+function renderList() {
+  const list = document.getElementById('list');
+  const search = document.getElementById('searchBox').value.toLowerCase().trim();
+  const lineFilter = document.getElementById('filterLine').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+
+  const visible = pendingFigs.filter(f => {
+    if (search && !f.name.toLowerCase().includes(search)) return false;
+    const effLine = (edits[f.id]?.line) ?? f.line;
+    if (lineFilter && effLine !== lineFilter) return false;
+    const dec = decisions[f.id];
+    if (statusFilter === 'undecided' && dec) return false;
+    if (statusFilter === 'approved' && dec !== 'approved') return false;
+    if (statusFilter === 'rejected' && dec !== 'rejected') return false;
+    return true;
+  });
+
+  if (visible.length === 0) {
+    list.innerHTML = `<div class="empty"><h2>No matches</h2><div>Try clearing filters above.</div></div>`;
+    return;
+  }
+  list.innerHTML = visible.map(renderCard).join('');
+}
+
+function renderCard(f) {
+  const dec = decisions[f.id];
+  const cls = dec ? `fig-card ${dec}` : 'fig-card';
+  const e = edits[f.id] || {};
+  const eff = (k) => e[k] !== undefined ? e[k] : (f[k] ?? '');
+  const lineNow = eff('line');
+  const groupOpts = groupsForLine(lineNow);
+  const accs = figAccessories[f.id] || [];
+  const sourceLineWarning = (f.sourceLine && f.sourceLine !== lineNow)
+    ? `<div class="warning">⚠ AF411 categorized this under <strong>${f.sourceLine}</strong>. You\u2019ve set it to <strong>${lineNow}</strong>. The override will be preserved on future syncs.</div>`
+    : '';
+
+  // Resolve current group to its canonical equivalent for the new line.
+  // If the user changed the line and the old group has an equivalent in
+  // the new line's SUBLINES (matched via any string in subline.groups[]),
+  // pre-select the canonical groups[0] form. Otherwise fall back to the
+  // raw value as a "(custom)" option.
+  const curGroup = eff('group');
+  let canonicalGroup = curGroup;
+  if (groupOpts && curGroup) {
+    const subs = SUBLINES[lineNow] || [];
+    const match = subs.find(s => s.groups.includes(curGroup));
+    if (match) canonicalGroup = match.groups[0];
+  }
+
+  // Image: <slug>.jpg in same directory as the editor
+  const imgSrc = f.slug ? `${f.slug}.jpg` : '';
+
+  return `<div class="${cls}" data-id="${esc(f.id)}">
+    <div class="fig-img">
+      ${imgSrc ? `<img src="${esc(imgSrc)}" onerror="this.style.display='none';this.parentNode.textContent='no image'">` : 'no image'}
+    </div>
+    <div class="fig-body">
+      <div class="fig-header">
+        <div>
+          <div class="fig-name">${esc(eff('name'))}</div>
+          <div class="fig-id">${esc(f.id)}</div>
+          <div class="fig-meta-orig">AF411 said: line=<strong>${esc(f.sourceLine || f.line)}</strong>, group=<strong>${esc(f.group || '—')}</strong>, year=${f.year ?? '—'}, wave=${esc(f.wave || '—')}</div>
+        </div>
+        <div class="actions" style="border:none;padding:0">
+          <button class="success" onclick="decide('${esc(f.id)}','approved')" ${dec==='approved'?'disabled':''}>Approve</button>
+          <button class="danger" onclick="decide('${esc(f.id)}','rejected')" ${dec==='rejected'?'disabled':''}>Reject</button>
+          ${dec ? `<button class="secondary" onclick="decide('${esc(f.id)}',null)">Reset</button>` : ''}
+        </div>
+      </div>
+      ${sourceLineWarning}
+      <div class="fig-grid">
+        <div class="field${e.line!==undefined?' changed':''}"><label>Line</label>
+          <select onchange="setEdit('${esc(f.id)}','line',this.value)">
+            ${LINES.map(l => `<option value="${l.id}" ${l.id===lineNow?'selected':''}>${l.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field${e.group!==undefined?' changed':''}"><label>Group / Subline</label>
+          ${groupOpts ? `<select onchange="setEdit('${esc(f.id)}','group',this.value)">
+            <option value="">—</option>
+            ${groupOpts.map(g => `<option value="${esc(g.value)}" ${g.value===canonicalGroup?'selected':''}>${esc(g.label)}</option>`).join('')}
+            ${groupOpts.some(g => g.value === canonicalGroup) || !canonicalGroup ? '' : `<option value="${esc(canonicalGroup)}" selected>${esc(canonicalGroup)} (custom)</option>`}
+          </select>` : `<input type="text" value="${esc(curGroup)}" oninput="setEdit('${esc(f.id)}','group',this.value)" placeholder="${esc(lineNow)} has no preset sublines">`}
+        </div>
+        <div class="field${e.faction!==undefined?' changed':''}"><label>Faction</label>
+          <select onchange="setEdit('${esc(f.id)}','faction',this.value)">
+            ${FACTIONS.map(fac => `<option value="${fac}" ${fac===eff('faction')?'selected':''}>${fac}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field${e.name!==undefined?' changed':''}"><label>Name</label>
+          <input type="text" value="${esc(eff('name'))}" oninput="setEdit('${esc(f.id)}','name',this.value)">
+        </div>
+        <div class="field${e.year!==undefined?' changed':''}"><label>Year</label>
+          <input type="number" value="${eff('year') ?? ''}" oninput="setEdit('${esc(f.id)}','year',this.value?Number(this.value):null)">
+        </div>
+        <div class="field${e.wave!==undefined?' changed':''}"><label>Wave</label>
+          <input type="text" value="${esc(eff('wave'))}" oninput="setEdit('${esc(f.id)}','wave',this.value)">
+        </div>
+        <div class="field${e.retail!==undefined?' changed':''}"><label>Retail $</label>
+          <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit('${esc(f.id)}','retail',this.value?Number(this.value):0)">
+        </div>
+      </div>
+      <details>
+        <summary>Accessories / Loadout (${accs.length} selected)</summary>
+        <div class="accessories">
+          ${ACCESSORIES.map(a => `<span class="acc-chip${accs.includes(a)?' checked':''}" onclick="toggleAcc('${esc(f.id)}','${esc(a)}',this)">${esc(a)}</span>`).join('')}
+        </div>
+      </details>
+    </div>
+  </div>`;
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Decisions / edits ──────────────────────────────────────────────
+
+function decide(id, status) {
+  if (status == null) delete decisions[id];
+  else decisions[id] = status;
+  refreshUI();
+}
+
+function setEdit(id, field, val) {
+  if (!edits[id]) edits[id] = {};
+  edits[id][field] = val;
+  // If line changed, group dropdown options change too — re-render this card
+  if (field === 'line') {
+    edits[id].group = ''; // wipe group, force re-pick
+    renderList();
+  }
+}
+
+function toggleAcc(id, acc, el) {
+  if (!figAccessories[id]) figAccessories[id] = [];
+  const i = figAccessories[id].indexOf(acc);
+  if (i >= 0) {
+    figAccessories[id].splice(i, 1);
+    el.classList.remove('checked');
+  } else {
+    figAccessories[id].push(acc);
+    el.classList.add('checked');
+  }
+  // Update the count in the details summary without full re-render
+  const card = el.closest('.fig-card');
+  const summary = card.querySelector('details summary');
+  if (summary) summary.textContent = `Accessories / Loadout (${figAccessories[id].length} selected)`;
+}
+
+function bulkApproveLine() {
+  const lineFilter = document.getElementById('filterLine').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+  const search = document.getElementById('searchBox').value.toLowerCase().trim();
+  const targets = pendingFigs.filter(f => {
+    if (decisions[f.id]) return false; // only undecided
+    const effLine = (edits[f.id]?.line) ?? f.line;
+    if (lineFilter && effLine !== lineFilter) return false;
+    if (search && !f.name.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  if (targets.length === 0) { alert('No undecided figures match the current filter.'); return; }
+  if (!confirm(`Approve ${targets.length} figure(s) as-is?`)) return;
+  for (const f of targets) decisions[f.id] = 'approved';
+  refreshUI();
+}
+
+// ── Output generation ──────────────────────────────────────────────
+
+function downloadOutputs() {
+  const approvedNew = pendingFigs.filter(f => decisions[f.id] === 'approved').map(f => buildFinal(f));
+  const rejectedNew = pendingFigs.filter(f => decisions[f.id] === 'rejected').map(f => f.id);
+
+  if (approvedNew.length === 0 && rejectedNew.length === 0) {
+    alert('No decisions to export.');
+    return;
+  }
+
+  // 1. Merge approved into approvedFigs
+  const existingIds = new Set(approvedFigs.map(f => f.id));
+  const merged = [...approvedFigs];
+  for (const f of approvedNew) {
+    if (existingIds.has(f.id)) {
+      // Replace existing entry
+      const i = merged.findIndex(x => x.id === f.id);
+      merged[i] = f;
+    } else {
+      merged.push(f);
+    }
+  }
+  // Sort by line then name to match scraper output
+  const lineOrder = Object.fromEntries(LINES.map((l, i) => [l.id, i]));
+  merged.sort((a, b) => {
+    const la = lineOrder[a.line] ?? 99, lb = lineOrder[b.line] ?? 99;
+    if (la !== lb) return la - lb;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  // 2. Merge loadouts
+  const newLoadouts = { ...loadouts };
+  for (const f of approvedNew) {
+    const accs = figAccessories[f.id];
+    if (accs && accs.length > 0) {
+      newLoadouts[f.id] = [...accs];
+    }
+  }
+
+  // 3. Build rejected list
+  const allRejected = Array.from(new Set([...rejectedSet, ...rejectedNew])).sort();
+
+  // Trigger downloads
+  downloadJSON('figures.json', merged);
+  downloadJSON('loadouts.json', { version: 1, loadouts: newLoadouts });
+  downloadJSON('figures-rejected.json', allRejected);
+
+  // Note: we don't generate a new pending file. The scraper will rebuild
+  // it next run, omitting approved (now in figures.json) and rejected
+  // (now in figures-rejected.json) entries.
+  alert(`Downloaded:\n• figures.json (${merged.length} entries, +${approvedNew.length} new)\n• loadouts.json (${Object.keys(newLoadouts).length} loadouts)\n• figures-rejected.json (${allRejected.length} rejected)\n\nCommit these three files to the repo. Pending entries you didn't decide on stay in figures-pending.json for next time.`);
+}
+
+function buildFinal(f) {
+  const e = edits[f.id] || {};
+  const out = {};
+  // Preserve original key order roughly; produce a clean object
+  for (const k of ['id','name','line','sourceLine','group','wave','year','retail','slug','faction','source']) {
+    if (e[k] !== undefined) out[k] = e[k];
+    else if (f[k] !== undefined) out[k] = f[k];
+  }
+  // sourceLine: if user changed line, keep AF411's sourceLine intact
+  // (it's already preserved above, since we don't edit it).
+  // If sourceLine was missing, set it to whatever the original line was
+  // (so override-detection works on next sync).
+  if (out.sourceLine == null) out.sourceLine = f.sourceLine || f.line;
+  return out;
+}
+
+function downloadJSON(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Audit harness ──────────────────────────────────────────────────
+// On startup, attempt to fetch /js/state.js and verify our embedded
+// LINES + SUBLINES are in sync. Logs a console warning if they drift —
+// catches the case where state.js gets a new line/subline added but
+// nobody updated this editor.
+async function auditAgainstStateJs() {
+  try {
+    const r = await fetch('js/state.js');
+    if (!r.ok) return;
+    const src = await r.text();
+
+    // Extract the LINES array's id values
+    const linesBlock = src.match(/const LINES\s*=\s*\[([\s\S]*?)\];/);
+    if (linesBlock) {
+      const realIds = [...linesBlock[1].matchAll(/id:\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
+      const ourIds = LINES.map(l => l.id);
+      const missing = realIds.filter(id => !ourIds.includes(id));
+      const extra = ourIds.filter(id => !realIds.includes(id));
+      if (missing.length) console.warn('[editor audit] LINES missing from editor:', missing);
+      if (extra.length) console.warn('[editor audit] LINES in editor but not state.js:', extra);
+    }
+
+    // Extract SUBLINES top-level keys
+    const subBlock = src.match(/const SUBLINES\s*=\s*\{([\s\S]*?)\n\};/);
+    if (subBlock) {
+      // Match keys at start of line (top-level only). Handles 'kids-core': [
+      const realKeys = [...subBlock[1].matchAll(/^\s*['"]?([\w-]+)['"]?\s*:\s*\[/gm)].map(m => m[1]);
+      const ourKeys = Object.keys(SUBLINES);
+      const missing = realKeys.filter(k => !ourKeys.includes(k));
+      const extra = ourKeys.filter(k => !realKeys.includes(k));
+      if (missing.length) console.warn('[editor audit] SUBLINES missing from editor:', missing);
+      if (extra.length) console.warn('[editor audit] SUBLINES in editor but not state.js:', extra);
+      if (!missing.length && !extra.length) {
+        console.log('[editor audit] LINES + SUBLINES match state.js ✓');
+      }
+    }
+  } catch (e) {
+    // Same-origin fetch may fail if editor opened via file:// or hosted
+    // separately — that's fine, audit is best-effort.
+  }
+}
+auditAgainstStateJs();
+</script>
+</body>
+</html>
