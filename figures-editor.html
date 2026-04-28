@@ -246,6 +246,45 @@
     border-radius: 5px;
     font-size: 11px;
   }
+
+  /* v1.6: subline section headers in the long list. Sticky so the
+     current section stays visible while scrolling. */
+  .section-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: linear-gradient(to bottom, var(--bg) 60%, color-mix(in srgb, var(--bg) 80%, transparent));
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 14px 8px 8px;
+    margin: 16px 0 8px;
+    border-bottom: 1px solid var(--bd);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-header:first-child { margin-top: 0; }
+  .section-header .line-tag {
+    font-size: 11px;
+    color: var(--t3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .section-header h3 {
+    margin: 0;
+    font-size: 15px;
+    color: var(--t1);
+    font-weight: 700;
+  }
+  .section-header .count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--t3);
+    background: var(--bg2);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
 </style>
 </head>
 <body>
@@ -414,13 +453,35 @@ const SUBLINES = {
 
 const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
 
+// ── Accessories ────────────────────────────────────────────────────
+// Master list of accessories the editor shows as toggleable chips when
+// building a figure's loadout entry.
+//
+// **TO ADD A NEW ACCESSORY:** add it to the array below AND to the
+// matching ACCESSORIES const in /js/state.js. Both lists MUST stay
+// identical or the app will not recognize the new accessory when it
+// reads loadouts.json. The audit harness at the bottom of this script
+// will warn in the console if they drift.
+//
+// Naming convention: title-case, exact strings (the app does
+// case-sensitive matching). Group by type for visual scanability.
 const ACCESSORIES = [
-  'Power Sword','Half Sword','Shield','Axe','Mace','Club',
-  'Staff','Spear','Trident','Bow','Crossbow','Gun/Blaster',
-  'Chain','Chain & Lock','Whip','Nunchucks','Hook',
-  'Cape','Harness','Armor','Helmet','Mask','Belt',
-  'Backpack','Comic','Minicomic','Mini-figure',
-  'Stand','Accessory Card','Instructions','Other',
+  // Bladed
+  'Sword','Power Sword','Half Sword','Axe','Spear','Trident',
+  // Striking
+  'Mace','Club','Hammer',
+  // Defense
+  'Shield',
+  // Ranged
+  'Bow','Crossbow','Gun/Blaster',
+  // Restraints / utility
+  'Staff','Chain','Chain & Lock','Whip','Nunchucks','Hook',
+  // Worn
+  'Cape','Harness','Armor','Helmet','Mask','Belt','Backpack',
+  // Paper / extras
+  'Comic','Minicomic','Info Card','Accessory Card','Instructions',
+  // Misc
+  'Mini-figure','Stand','Other',
 ];
 
 // Helper: flat list of canonical group strings for a line, dropdown-ready
@@ -656,7 +717,6 @@ function renderList() {
       if (statusFilter === 'approved' && dec !== 'approved') return false;
       if (statusFilter === 'rejected' && dec !== 'rejected') return false;
     } else {
-      // existing mode
       const ed = hasEdits(f.id);
       if (statusFilter === 'edited' && !ed) return false;
       if (statusFilter === 'unedited' && ed) return false;
@@ -671,11 +731,62 @@ function renderList() {
     list.innerHTML = `<div class="empty"><h2>No matches</h2><div>${msg}</div></div>`;
     return;
   }
-  // For very large existing pools (1000+) the DOM is heavy — cap initial
-  // render and let users narrow with filters.
-  const HARDCAP = 200;
+
+  // v1.6: group cards by line + subline so the user can navigate a long
+  // list of 1138 figures without losing context. Sticky headers keep the
+  // current section visible during scroll. Render cap of 300 prevents
+  // browser lockup on full unfiltered loads.
+  const HARDCAP = 300;
   const pool = visible.length > HARDCAP ? visible.slice(0, HARDCAP) : visible;
-  let html = pool.map(f => mode === 'pending' ? renderCard(f) : renderExistingCard(f)).join('');
+  const lineOrder = Object.fromEntries(LINES.map((l, i) => [l.id, i]));
+  const lineName = Object.fromEntries(LINES.map(l => [l.id, l.name]));
+
+  // Resolve each figure's effective line + subline label
+  function getSection(f) {
+    const ln = (edits[f.id]?.line) ?? f.line ?? '';
+    const grp = (edits[f.id]?.group) ?? f.group ?? '';
+    const subs = SUBLINES[ln] || [];
+    const match = subs.find(s => s.groups.includes(grp));
+    return {
+      lineId: ln,
+      lineName: lineName[ln] || ln || '(unknown line)',
+      sublineLabel: match ? match.label : (grp || '(no subline)'),
+      sortLine: lineOrder[ln] ?? 99,
+      // sortSub: index within SUBLINES[line]; missing groups go last
+      sortSub: match ? subs.indexOf(match) : 999,
+    };
+  }
+
+  // Bucket cards by section
+  const buckets = new Map(); // key: "lineId|sublineLabel" → { meta, figs[] }
+  for (const f of pool) {
+    const sec = getSection(f);
+    const key = sec.lineId + '|' + sec.sublineLabel;
+    let b = buckets.get(key);
+    if (!b) { b = { meta: sec, figs: [] }; buckets.set(key, b); }
+    b.figs.push(f);
+  }
+
+  // Sort buckets: by line order, then by subline order within line
+  const sortedBuckets = [...buckets.values()].sort((a, b) => {
+    if (a.meta.sortLine !== b.meta.sortLine) return a.meta.sortLine - b.meta.sortLine;
+    return a.meta.sortSub - b.meta.sortSub;
+  });
+
+  // Sort figures within each bucket by name
+  for (const b of sortedBuckets) {
+    b.figs.sort((x, y) => (x.name || '').localeCompare(y.name || ''));
+  }
+
+  let html = '';
+  for (const b of sortedBuckets) {
+    html += `<div class="section-header">
+      <span class="line-tag">${esc(b.meta.lineName)}</span>
+      <h3>${esc(b.meta.sublineLabel)}</h3>
+      <span class="count">${b.figs.length}</span>
+    </div>`;
+    html += b.figs.map(f => mode === 'pending' ? renderCard(f) : renderExistingCard(f)).join('');
+  }
   if (visible.length > HARDCAP) {
     html += `<div class="empty" style="padding:30px"><div>Showing first ${HARDCAP} of ${visible.length} matches. Use filters above to narrow.</div></div>`;
   }
@@ -900,10 +1011,21 @@ function decide(id, status) {
 function setEdit(id, field, val) {
   if (!edits[id]) edits[id] = {};
   edits[id][field] = val;
-  // If line changed, group dropdown options change too — re-render this card
+  // v1.6: every edit now triggers refreshUI so the EDITED badge, "Existing
+  // edited" stat counter, download bar visibility, and download summary
+  // all stay in sync. Without this, edits looked invisible — the user
+  // would type something, but no badge appeared and the download bar
+  // wouldn't show up. The download button vanishing was the most-reported
+  // confusion.
   if (field === 'line') {
-    edits[id].group = ''; // wipe group, force re-pick
-    renderList();
+    // Line change wipes the group (different sublines per line)
+    edits[id].group = '';
+    refreshUI(); // full UI refresh — group dropdown options also depend on line
+  } else {
+    // Lighter refresh: just update stats, badge, and download bar.
+    // We avoid a full renderList() so the focused input doesn't lose
+    // focus mid-typing on text fields.
+    refreshChromeOnly();
   }
 }
 
@@ -920,7 +1042,66 @@ function toggleAcc(id, acc, el) {
   // Update the count in the details summary without full re-render
   const card = el.closest('.fig-card');
   const summary = card.querySelector('details summary');
-  if (summary) summary.textContent = `Accessories / Loadout (${figAccessories[id].length} selected)`;
+  if (summary) {
+    const changed = hasLoadoutChange(id) ? ' · changed' : '';
+    summary.textContent = `Accessories / Loadout (${figAccessories[id].length} selected${changed})`;
+  }
+  // v1.6: also update the EDITED badge, stats, and download bar
+  refreshChromeOnly();
+}
+
+// v1.6: refresh stats + download bar + the edited-badge state on the
+// currently-rendered cards, WITHOUT calling renderList(). renderList
+// destroys input focus, so we avoid it for incremental text edits.
+function refreshChromeOnly() {
+  // Refresh stats numbers
+  const editedExistingCount = approvedFigs.filter(f => hasEdits(f.id)).length;
+  const stats = document.querySelectorAll('.stat .num');
+  if (stats[5]) stats[5].textContent = editedExistingCount;
+
+  // Refresh download bar visibility + summary
+  const approvedN = pendingFigs.filter(f => decisions[f.id] === 'approved').length;
+  const rejectedN = pendingFigs.filter(f => decisions[f.id] === 'rejected').length;
+  const undecidedN = pendingFigs.filter(f => !decisions[f.id]).length;
+  const haveAny = pendingFigs.length || approvedFigs.length;
+  const dl = document.getElementById('downloadBar');
+  dl.style.display = (haveAny && (approvedN > 0 || rejectedN > 0 || editedExistingCount > 0)) ? 'flex' : 'none';
+  const dlSummary = document.querySelector('.download-summary');
+  if (dlSummary) {
+    dlSummary.innerHTML = mode === 'existing' && editedExistingCount > 0
+      ? `<strong>${editedExistingCount}</strong> existing figure(s) edited · <strong>${approvedN}</strong> pending approved · <strong>${rejectedN}</strong> pending rejected`
+      : `<strong>${approvedN}</strong> approved · <strong>${rejectedN}</strong> rejected · <span>${undecidedN}</span> still undecided`;
+  }
+
+  // Refresh per-card EDITED badge + reset button on visible cards
+  document.querySelectorAll('.fig-card[data-id]').forEach(card => {
+    const id = card.dataset.id;
+    const ed = hasEdits(id);
+    card.classList.toggle('edited', ed && mode === 'existing');
+    // Add/remove the badge in the name line
+    const nameDiv = card.querySelector('.fig-name');
+    if (nameDiv && mode === 'existing') {
+      const hasBadge = !!nameDiv.querySelector('.edit-badge');
+      if (ed && !hasBadge) {
+        nameDiv.insertAdjacentHTML('beforeend', ' <span class="edit-badge">edited</span>');
+      } else if (!ed && hasBadge) {
+        nameDiv.querySelector('.edit-badge').remove();
+      }
+    }
+    // Reset button in actions
+    if (mode === 'existing') {
+      const actions = card.querySelector('.actions');
+      if (actions) {
+        const hasBtn = !!actions.querySelector('.reset-edit-btn');
+        if (ed && !hasBtn) {
+          actions.insertAdjacentHTML('beforeend',
+            `<button class="reset-edit-btn" onclick="resetExistingEdit('${esc(id)}')">Reset</button>`);
+        } else if (!ed && hasBtn) {
+          actions.querySelector('.reset-edit-btn').remove();
+        }
+      }
+    }
+  });
 }
 
 function bulkApproveLine() {
@@ -1097,8 +1278,21 @@ async function auditAgainstStateJs() {
       const extra = ourKeys.filter(k => !realKeys.includes(k));
       if (missing.length) console.warn('[editor audit] SUBLINES missing from editor:', missing);
       if (extra.length) console.warn('[editor audit] SUBLINES in editor but not state.js:', extra);
+    }
+
+    // v1.6: extract ACCESSORIES list — must be identical or app won't
+    // recognize accessories saved from the editor.
+    const accBlock = src.match(/const ACCESSORIES\s*=\s*\[([\s\S]*?)\];/);
+    if (accBlock) {
+      const realAccs = [...accBlock[1].matchAll(/['"]([^'"]+)['"]/g)].map(m => m[1]);
+      const realSet = new Set(realAccs);
+      const ourSet = new Set(ACCESSORIES);
+      const missing = realAccs.filter(a => !ourSet.has(a));
+      const extra = ACCESSORIES.filter(a => !realSet.has(a));
+      if (missing.length) console.warn('[editor audit] ACCESSORIES in state.js but not editor:', missing);
+      if (extra.length) console.warn('[editor audit] ACCESSORIES in editor but not state.js:', extra);
       if (!missing.length && !extra.length) {
-        console.log('[editor audit] LINES + SUBLINES match state.js ✓');
+        console.log('[editor audit] LINES + SUBLINES + ACCESSORIES match state.js ✓');
       }
     }
   } catch (e) {
