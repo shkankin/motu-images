@@ -72,12 +72,12 @@ const CONDITIONS = ['Mint in Box','Mint on Card','Loose Complete','Loose Incompl
 // "Custom…" picker option lets users enter anything not listed. The list
 // intentionally stays flat (no categories) to keep the picker simple on mobile.
 const ACCESSORIES = [
-  'Power Sword','Half Sword','Shield','Axe','Mace','Club',
-  'Staff','Spear','Trident','Bow','Crossbow','Gun/Blaster',
+  'Sword','Power Sword','Half Sword','Shield','Axe','Mace','Club',
+  'Hammer','Staff','Spear','Trident','Bow','Crossbow','Gun/Blaster',
   'Chain','Chain & Lock','Whip','Nunchucks','Hook',
   'Cape','Harness','Armor','Helmet','Mask','Belt',
   'Backpack','Comic','Minicomic','Mini-figure',
-  'Stand','Accessory Card','Instructions','Other',
+  'Stand','Info Card','Accessory Card','Instructions','Other',
 ];
 const STATUSES = ['owned','wishlist','ordered','for-sale'];
 const STATUS_LABEL = {owned:'Owned',wishlist:'Wishlist',ordered:'Ordered','for-sale':'For Sale'};
