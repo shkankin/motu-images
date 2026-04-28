@@ -194,12 +194,64 @@
     padding: 8px 12px; font-size: 12px; color: var(--gold);
     margin-top: 6px;
   }
+
+  /* Mode toggle — segmented control */
+  .mode-toggle {
+    display: inline-flex;
+    background: var(--bg2);
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 12px;
+    gap: 2px;
+  }
+  .mode-toggle button {
+    background: transparent;
+    color: var(--t2);
+    border: none;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mode-toggle button.active {
+    background: var(--acc);
+    color: white;
+  }
+  .mode-toggle button:hover:not(.active) {
+    background: var(--bg3);
+    color: var(--t1);
+  }
+
+  /* "Edited" badge for existing-mode cards with unsaved changes */
+  .fig-card.edited {
+    border-color: var(--gold);
+  }
+  .edit-badge {
+    background: var(--gold);
+    color: #1a1a1a;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .reset-edit-btn {
+    background: transparent;
+    color: var(--t3);
+    border: 1px solid var(--bd);
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+  }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>MOTU Vault — Figures Editor</h1>
-  <div class="subtitle">Review the AF411 pending queue. Edit fields, set accessories, approve or reject. Download three updated files when done.</div>
+  <div class="subtitle">Review the AF411 pending queue, or edit existing figures already in figures.json. Toggle between modes below. Download merged outputs when done.</div>
 
   <div class="toolbar">
     <button onclick="loadFromFetch()">Load from server</button>
@@ -220,18 +272,26 @@
 
   <div id="stats" class="stats" style="display:none"></div>
 
+  <div id="modeToggleWrap" style="display:none">
+    <div class="mode-toggle" role="tablist" aria-label="Editor mode">
+      <button id="modePending" class="active" onclick="setMode('pending')" role="tab">
+        Pending <span id="modePendingCount" style="opacity:.7"></span>
+      </button>
+      <button id="modeExisting" onclick="setMode('existing')" role="tab">
+        Existing <span id="modeExistingCount" style="opacity:.7"></span>
+      </button>
+    </div>
+  </div>
+
   <div class="filter-bar" id="filterBar" style="display:none">
     <input type="text" id="searchBox" placeholder="Filter by name…" oninput="renderList()">
     <select id="filterLine" onchange="renderList()">
       <option value="">All lines</option>
     </select>
     <select id="filterStatus" onchange="renderList()">
-      <option value="all">All (incl. decided)</option>
-      <option value="undecided">Undecided only</option>
-      <option value="approved">Approved only</option>
-      <option value="rejected">Rejected only</option>
+      <!-- Options injected per-mode by refreshUI() -->
     </select>
-    <button class="secondary" onclick="bulkApproveLine()" title="Approve every undecided figure in the current line filter as-is">Approve filtered</button>
+    <button id="bulkBtn" class="secondary" onclick="bulkApproveLine()" title="Approve every undecided figure in the current line filter as-is">Approve filtered</button>
   </div>
 
   <div id="list"></div>
@@ -371,13 +431,16 @@ function groupsForLine(lineId) {
 }
 
 // ── State ──────────────────────────────────────────────────────────
+let mode = 'pending';      // 'pending' | 'existing' — which list to show
 let pendingFigs = [];      // figures awaiting review (from figures-pending.json)
 let approvedFigs = [];     // current figures.json contents
 let loadouts = {};         // {figId: ['Power Sword', ...]}
 let rejectedSet = new Set(); // slug strings that are permanently rejected
 // Per-figure decisions made in this session: {[id]: 'approved' | 'rejected'}
+// Only used in 'pending' mode.
 let decisions = {};
 // Per-figure edits: {[id]: {field: newValue}}
+// Used in BOTH modes — same shape, same setEdit() flow.
 let edits = {};
 // Per-figure accessory selections: {[id]: ['Power Sword', ...]}
 let figAccessories = {};
@@ -440,14 +503,23 @@ function ingestPending(data) {
 function ingestApproved(data) {
   if (!Array.isArray(data)) { alert('figures.json must be an array'); return; }
   approvedFigs = data;
+  // v1.5: existing figures may already have loadout entries; seed the
+  // editable accessories selections so users can adjust them in Existing mode.
+  for (const f of approvedFigs) {
+    if (loadouts[f.id] && !figAccessories[f.id]) {
+      figAccessories[f.id] = [...loadouts[f.id]];
+    }
+  }
 }
 
 function ingestLoadouts(data) {
   if (data && typeof data === 'object') {
     loadouts = data.loadouts || data;
-    // Re-seed per-figure selections in case pending was loaded first
-    for (const f of pendingFigs) {
-      if (loadouts[f.id]) figAccessories[f.id] = [...loadouts[f.id]];
+    // Re-seed for both pending and approved (in case loadouts loaded last)
+    for (const f of [...pendingFigs, ...approvedFigs]) {
+      if (loadouts[f.id] && !figAccessories[f.id]) {
+        figAccessories[f.id] = [...loadouts[f.id]];
+      }
     }
   }
 }
@@ -459,38 +531,111 @@ function ingestRejected(data) {
 
 // ── UI rendering ───────────────────────────────────────────────────
 
+// v1.5: switch between pending review queue and existing-figure editor.
+function setMode(m) {
+  if (m !== 'pending' && m !== 'existing') return;
+  mode = m;
+  document.getElementById('modePending').classList.toggle('active', m === 'pending');
+  document.getElementById('modeExisting').classList.toggle('active', m === 'existing');
+  // Reset per-mode filters
+  document.getElementById('searchBox').value = '';
+  refreshUI();
+}
+
+// True if the user has made a meaningful edit to figure id `fid`.
+// (mode-agnostic — same `edits` object both modes use.)
+function hasEdits(fid) {
+  if (edits[fid] && Object.keys(edits[fid]).length > 0) return true;
+  // Also count accessory changes: if loadout differs from saved, it's edited
+  const saved = loadouts[fid] || [];
+  const cur = figAccessories[fid] || [];
+  if (cur.length !== saved.length) return true;
+  for (const a of cur) if (!saved.includes(a)) return true;
+  return false;
+}
+
 function refreshUI() {
-  // Stats panel
   const stats = document.getElementById('stats');
+  // Stats — pending-related stats are always shown so user sees the queue
+  // size even while editing existing.
   const undecided = pendingFigs.filter(f => !decisions[f.id]).length;
   const approved = pendingFigs.filter(f => decisions[f.id] === 'approved').length;
   const rejected = pendingFigs.filter(f => decisions[f.id] === 'rejected').length;
+  const editedExistingCount = approvedFigs.filter(f => hasEdits(f.id)).length;
   stats.innerHTML = `
     <div class="stat"><div class="num">${pendingFigs.length}</div><div class="label">Pending Total</div></div>
     <div class="stat"><div class="num">${undecided}</div><div class="label">Undecided</div></div>
     <div class="stat"><div class="num">${approved}</div><div class="label">Approved</div></div>
     <div class="stat"><div class="num">${rejected}</div><div class="label">Rejected</div></div>
     <div class="stat"><div class="num">${approvedFigs.length}</div><div class="label">In figures.json</div></div>
-    <div class="stat"><div class="num">${rejectedSet.size}</div><div class="label">Already rejected</div></div>
+    <div class="stat"><div class="num">${editedExistingCount}</div><div class="label">Existing edited</div></div>
   `;
-  stats.style.display = pendingFigs.length || approvedFigs.length ? 'grid' : 'none';
+  const haveAny = pendingFigs.length || approvedFigs.length;
+  stats.style.display = haveAny ? 'grid' : 'none';
 
-  // Line filter dropdown
+  // Mode toggle visibility + counts. Hidden until both are loaded so user
+  // doesn't get a useless toggle if only one file is loaded.
+  const modeWrap = document.getElementById('modeToggleWrap');
+  modeWrap.style.display = haveAny ? 'block' : 'none';
+  document.getElementById('modePendingCount').textContent =
+    pendingFigs.length ? `(${pendingFigs.length})` : '';
+  document.getElementById('modeExistingCount').textContent =
+    approvedFigs.length ? `(${approvedFigs.length})` : '';
+  // If user is in a mode with no data, auto-flip to the other one
+  if (mode === 'pending' && !pendingFigs.length && approvedFigs.length) mode = 'existing';
+  if (mode === 'existing' && !approvedFigs.length && pendingFigs.length) mode = 'pending';
+  document.getElementById('modePending').classList.toggle('active', mode === 'pending');
+  document.getElementById('modeExisting').classList.toggle('active', mode === 'existing');
+
+  // Filter dropdowns are populated per-mode
   const filterLine = document.getElementById('filterLine');
-  const seen = new Set(['']);
+  const filterStatus = document.getElementById('filterStatus');
+  const bulkBtn = document.getElementById('bulkBtn');
+  const sourcePool = mode === 'pending' ? pendingFigs : approvedFigs;
   filterLine.innerHTML = '<option value="">All lines</option>' +
-    LINES.filter(l => pendingFigs.some(f => f.line === l.id || (f.sourceLine === l.id && !decisions[f.id])))
+    LINES.filter(l => sourcePool.some(f => f.line === l.id || f.sourceLine === l.id))
          .map(l => `<option value="${l.id}">${l.name}</option>`).join('');
-  document.getElementById('filterBar').style.display = pendingFigs.length ? 'flex' : 'none';
 
-  // Download bar
+  // Status filter options differ per mode. Bulk button only appears in pending.
+  if (mode === 'pending') {
+    filterStatus.innerHTML = `
+      <option value="all">All (incl. decided)</option>
+      <option value="undecided">Undecided only</option>
+      <option value="approved">Approved only</option>
+      <option value="rejected">Rejected only</option>`;
+    bulkBtn.style.display = '';
+    bulkBtn.textContent = 'Approve filtered';
+    bulkBtn.title = 'Approve every undecided figure in the current line filter';
+    bulkBtn.onclick = bulkApproveLine;
+  } else {
+    filterStatus.innerHTML = `
+      <option value="all">All existing</option>
+      <option value="edited">Edited only</option>
+      <option value="unedited">Unedited only</option>`;
+    bulkBtn.style.display = '';
+    bulkBtn.textContent = 'Reset all edits';
+    bulkBtn.title = 'Discard all edits to existing figures (does not affect pending decisions)';
+    bulkBtn.onclick = resetAllExistingEdits;
+  }
+
+  document.getElementById('filterBar').style.display = haveAny ? 'flex' : 'none';
+
+  // Download bar — show if either mode has actionable changes
+  const hasPendingDecisions = approved > 0 || rejected > 0;
   const dl = document.getElementById('downloadBar');
-  dl.style.display = pendingFigs.length ? 'flex' : 'none';
+  dl.style.display = (haveAny && (hasPendingDecisions || editedExistingCount > 0)) ? 'flex' : 'none';
   document.getElementById('dlApproved').textContent = approved;
   document.getElementById('dlRejected').textContent = rejected;
   document.getElementById('dlPending').textContent = undecided;
+  // Reuse pending element for "edited count" hint when in existing mode
+  const dlSummary = document.querySelector('.download-summary');
+  if (dlSummary) {
+    dlSummary.innerHTML = mode === 'existing' && editedExistingCount > 0
+      ? `<strong>${editedExistingCount}</strong> existing figure(s) edited · <strong id="dlApproved">${approved}</strong> pending approved · <strong id="dlRejected">${rejected}</strong> pending rejected`
+      : `<strong id="dlApproved">${approved}</strong> approved · <strong id="dlRejected">${rejected}</strong> rejected · <span id="dlPending">${undecided}</span> still undecided`;
+  }
 
-  document.getElementById('emptyState').style.display = pendingFigs.length ? 'none' : 'block';
+  document.getElementById('emptyState').style.display = haveAny ? 'none' : 'block';
   renderList();
 }
 
@@ -499,23 +644,55 @@ function renderList() {
   const search = document.getElementById('searchBox').value.toLowerCase().trim();
   const lineFilter = document.getElementById('filterLine').value;
   const statusFilter = document.getElementById('filterStatus').value;
+  const sourcePool = mode === 'pending' ? pendingFigs : approvedFigs;
 
-  const visible = pendingFigs.filter(f => {
-    if (search && !f.name.toLowerCase().includes(search)) return false;
+  const visible = sourcePool.filter(f => {
+    if (search && !(f.name || '').toLowerCase().includes(search)) return false;
     const effLine = (edits[f.id]?.line) ?? f.line;
     if (lineFilter && effLine !== lineFilter) return false;
-    const dec = decisions[f.id];
-    if (statusFilter === 'undecided' && dec) return false;
-    if (statusFilter === 'approved' && dec !== 'approved') return false;
-    if (statusFilter === 'rejected' && dec !== 'rejected') return false;
+    if (mode === 'pending') {
+      const dec = decisions[f.id];
+      if (statusFilter === 'undecided' && dec) return false;
+      if (statusFilter === 'approved' && dec !== 'approved') return false;
+      if (statusFilter === 'rejected' && dec !== 'rejected') return false;
+    } else {
+      // existing mode
+      const ed = hasEdits(f.id);
+      if (statusFilter === 'edited' && !ed) return false;
+      if (statusFilter === 'unedited' && ed) return false;
+    }
     return true;
   });
 
   if (visible.length === 0) {
-    list.innerHTML = `<div class="empty"><h2>No matches</h2><div>Try clearing filters above.</div></div>`;
+    const msg = mode === 'pending'
+      ? 'No pending figures match your filters. Try clearing them, or run the scraper.'
+      : 'No existing figures match your filters. Try clearing them.';
+    list.innerHTML = `<div class="empty"><h2>No matches</h2><div>${msg}</div></div>`;
     return;
   }
-  list.innerHTML = visible.map(renderCard).join('');
+  // For very large existing pools (1000+) the DOM is heavy — cap initial
+  // render and let users narrow with filters.
+  const HARDCAP = 200;
+  const pool = visible.length > HARDCAP ? visible.slice(0, HARDCAP) : visible;
+  let html = pool.map(f => mode === 'pending' ? renderCard(f) : renderExistingCard(f)).join('');
+  if (visible.length > HARDCAP) {
+    html += `<div class="empty" style="padding:30px"><div>Showing first ${HARDCAP} of ${visible.length} matches. Use filters above to narrow.</div></div>`;
+  }
+  list.innerHTML = html;
+}
+
+function resetAllExistingEdits() {
+  const editedIds = approvedFigs.filter(f => hasEdits(f.id)).map(f => f.id);
+  if (editedIds.length === 0) { alert('No existing edits to reset.'); return; }
+  if (!confirm(`Discard edits to ${editedIds.length} existing figure(s)? This does not touch pending decisions.`)) return;
+  for (const id of editedIds) {
+    delete edits[id];
+    // Restore loadout from saved baseline
+    if (loadouts[id]) figAccessories[id] = [...loadouts[id]];
+    else delete figAccessories[id];
+  }
+  refreshUI();
 }
 
 function renderCard(f) {
@@ -610,6 +787,108 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// v1.5: Existing-mode card. Same fields/dropdowns as renderCard, but the
+// header has an "EDITED" badge + per-card reset instead of approve/reject
+// buttons. The "AF411 said" meta-line is omitted for existing figures
+// because they're already in figures.json — the user knows the current
+// state, and the editor only matters for what they're changing TO.
+function renderExistingCard(f) {
+  const e = edits[f.id] || {};
+  const eff = (k) => e[k] !== undefined ? e[k] : (f[k] ?? '');
+  const lineNow = eff('line');
+  const groupOpts = groupsForLine(lineNow);
+  const accs = figAccessories[f.id] || [];
+  const isEdited = hasEdits(f.id);
+  const cls = isEdited ? 'fig-card edited' : 'fig-card';
+
+  const sourceLineWarning = (f.sourceLine && f.sourceLine !== lineNow)
+    ? `<div class="warning">⚠ Override: AF411 categorizes this under <strong>${esc(f.sourceLine)}</strong>, you have it as <strong>${esc(lineNow)}</strong>. The override will be preserved on syncs.</div>`
+    : '';
+
+  const curGroup = eff('group');
+  let canonicalGroup = curGroup;
+  if (groupOpts && curGroup) {
+    const subs = SUBLINES[lineNow] || [];
+    const match = subs.find(s => s.groups.includes(curGroup));
+    if (match) canonicalGroup = match.groups[0];
+  }
+
+  const imgSrc = f.slug ? `${f.slug}.jpg` : '';
+
+  return `<div class="${cls}" data-id="${esc(f.id)}">
+    <div class="fig-img">
+      ${imgSrc ? `<img src="${esc(imgSrc)}" onerror="this.style.display='none';this.parentNode.textContent='no image'">` : 'no image'}
+    </div>
+    <div class="fig-body">
+      <div class="fig-header">
+        <div>
+          <div class="fig-name">${esc(eff('name'))} ${isEdited ? '<span class="edit-badge">edited</span>' : ''}</div>
+          <div class="fig-id">${esc(f.id)}</div>
+          <div class="fig-meta-orig">Currently: line=<strong>${esc(f.line || '—')}</strong>, group=<strong>${esc(f.group || '—')}</strong>, faction=<strong>${esc(f.faction || '—')}</strong></div>
+        </div>
+        <div class="actions" style="border:none;padding:0">
+          ${isEdited ? `<button class="reset-edit-btn" onclick="resetExistingEdit('${esc(f.id)}')">Reset</button>` : ''}
+        </div>
+      </div>
+      ${sourceLineWarning}
+      <div class="fig-grid">
+        <div class="field${e.line!==undefined?' changed':''}"><label>Line</label>
+          <select onchange="setEdit('${esc(f.id)}','line',this.value)">
+            ${LINES.map(l => `<option value="${l.id}" ${l.id===lineNow?'selected':''}>${l.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field${e.group!==undefined?' changed':''}"><label>Group / Subline</label>
+          ${groupOpts ? `<select onchange="setEdit('${esc(f.id)}','group',this.value)">
+            <option value="">—</option>
+            ${groupOpts.map(g => `<option value="${esc(g.value)}" ${g.value===canonicalGroup?'selected':''}>${esc(g.label)}</option>`).join('')}
+            ${groupOpts.some(g => g.value === canonicalGroup) || !canonicalGroup ? '' : `<option value="${esc(canonicalGroup)}" selected>${esc(canonicalGroup)} (custom)</option>`}
+          </select>` : `<input type="text" value="${esc(curGroup)}" oninput="setEdit('${esc(f.id)}','group',this.value)" placeholder="${esc(lineNow)} has no preset sublines">`}
+        </div>
+        <div class="field${e.faction!==undefined?' changed':''}"><label>Faction</label>
+          <select onchange="setEdit('${esc(f.id)}','faction',this.value)">
+            ${FACTIONS.map(fac => `<option value="${fac}" ${fac===eff('faction')?'selected':''}>${fac}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field${e.name!==undefined?' changed':''}"><label>Name</label>
+          <input type="text" value="${esc(eff('name'))}" oninput="setEdit('${esc(f.id)}','name',this.value)">
+        </div>
+        <div class="field${e.year!==undefined?' changed':''}"><label>Year</label>
+          <input type="number" value="${eff('year') ?? ''}" oninput="setEdit('${esc(f.id)}','year',this.value?Number(this.value):null)">
+        </div>
+        <div class="field${e.wave!==undefined?' changed':''}"><label>Wave</label>
+          <input type="text" value="${esc(eff('wave'))}" oninput="setEdit('${esc(f.id)}','wave',this.value)">
+        </div>
+        <div class="field${e.retail!==undefined?' changed':''}"><label>Retail $</label>
+          <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit('${esc(f.id)}','retail',this.value?Number(this.value):0)">
+        </div>
+      </div>
+      <details ${isEdited && hasLoadoutChange(f.id) ? 'open' : ''}>
+        <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''})</summary>
+        <div class="accessories">
+          ${ACCESSORIES.map(a => `<span class="acc-chip${accs.includes(a)?' checked':''}" onclick="toggleAcc('${esc(f.id)}','${esc(a)}',this)">${esc(a)}</span>`).join('')}
+        </div>
+      </details>
+    </div>
+  </div>`;
+}
+
+// True if loadout for fid differs from saved baseline.
+function hasLoadoutChange(fid) {
+  const saved = loadouts[fid] || [];
+  const cur = figAccessories[fid] || [];
+  if (cur.length !== saved.length) return true;
+  for (const a of cur) if (!saved.includes(a)) return true;
+  return false;
+}
+
+// Reset all edits for one existing figure (per-card "Reset" button).
+function resetExistingEdit(fid) {
+  delete edits[fid];
+  if (loadouts[fid]) figAccessories[fid] = [...loadouts[fid]];
+  else delete figAccessories[fid];
+  refreshUI();
+}
+
 // ── Decisions / edits ──────────────────────────────────────────────
 
 function decide(id, status) {
@@ -666,18 +945,25 @@ function bulkApproveLine() {
 function downloadOutputs() {
   const approvedNew = pendingFigs.filter(f => decisions[f.id] === 'approved').map(f => buildFinal(f));
   const rejectedNew = pendingFigs.filter(f => decisions[f.id] === 'rejected').map(f => f.id);
+  // v1.5: existing-mode edits to figures already in figures.json
+  const editedExisting = approvedFigs.filter(f => hasEdits(f.id));
 
-  if (approvedNew.length === 0 && rejectedNew.length === 0) {
-    alert('No decisions to export.');
+  if (approvedNew.length === 0 && rejectedNew.length === 0 && editedExisting.length === 0) {
+    alert('No decisions or edits to export.');
     return;
   }
 
-  // 1. Merge approved into approvedFigs
-  const existingIds = new Set(approvedFigs.map(f => f.id));
-  const merged = [...approvedFigs];
+  // 1. Start with existing figures, applying any edits made in 'existing' mode.
+  // Build merged from approvedFigs, applying per-figure edits as we go.
+  const merged = approvedFigs.map(f => {
+    if (!hasEdits(f.id)) return f;
+    return applyEditsToFig(f);
+  });
+  const existingIds = new Set(merged.map(f => f.id));
+
+  // 2. Then merge in newly-approved pending figures
   for (const f of approvedNew) {
     if (existingIds.has(f.id)) {
-      // Replace existing entry
       const i = merged.findIndex(x => x.id === f.id);
       merged[i] = f;
     } else {
@@ -692,27 +978,63 @@ function downloadOutputs() {
     return (a.name || '').localeCompare(b.name || '');
   });
 
-  // 2. Merge loadouts
+  // 3. Merge loadouts. v1.5: also pick up loadout changes made on existing figures.
   const newLoadouts = { ...loadouts };
+  // Approved-pending loadouts
   for (const f of approvedNew) {
     const accs = figAccessories[f.id];
     if (accs && accs.length > 0) {
       newLoadouts[f.id] = [...accs];
     }
   }
+  // Existing-mode loadout edits
+  for (const f of editedExisting) {
+    if (hasLoadoutChange(f.id)) {
+      const accs = figAccessories[f.id] || [];
+      if (accs.length > 0) {
+        newLoadouts[f.id] = [...accs];
+      } else {
+        delete newLoadouts[f.id];  // user cleared it
+      }
+    }
+  }
 
-  // 3. Build rejected list
+  // 4. Build rejected list
   const allRejected = Array.from(new Set([...rejectedSet, ...rejectedNew])).sort();
 
   // Trigger downloads
   downloadJSON('figures.json', merged);
   downloadJSON('loadouts.json', { version: 1, loadouts: newLoadouts });
-  downloadJSON('figures-rejected.json', allRejected);
+  // Only re-download rejected file if it actually changed (to reduce
+  // unnecessary commits on existing-edit-only sessions)
+  if (rejectedNew.length > 0 || allRejected.length !== rejectedSet.size) {
+    downloadJSON('figures-rejected.json', allRejected);
+  }
 
-  // Note: we don't generate a new pending file. The scraper will rebuild
-  // it next run, omitting approved (now in figures.json) and rejected
-  // (now in figures-rejected.json) entries.
-  alert(`Downloaded:\n• figures.json (${merged.length} entries, +${approvedNew.length} new)\n• loadouts.json (${Object.keys(newLoadouts).length} loadouts)\n• figures-rejected.json (${allRejected.length} rejected)\n\nCommit these three files to the repo. Pending entries you didn't decide on stay in figures-pending.json for next time.`);
+  const summary = [
+    `figures.json (${merged.length} entries${approvedNew.length ? `, +${approvedNew.length} new approved` : ''}${editedExisting.length ? `, ${editedExisting.length} existing edited` : ''})`,
+    `loadouts.json (${Object.keys(newLoadouts).length} loadouts)`,
+    rejectedNew.length > 0 || allRejected.length !== rejectedSet.size
+      ? `figures-rejected.json (${allRejected.length} rejected)`
+      : null,
+  ].filter(Boolean).join('\n• ');
+  alert(`Downloaded:\n• ${summary}\n\nCommit these files to the repo. Pending entries you didn't decide on stay in figures-pending.json for next time.`);
+}
+
+// Apply per-figure edits + loadout changes to an existing figure entry,
+// returning a new object suitable for figures.json. Mirrors buildFinal
+// but for existing figures (which have a complete schema already).
+function applyEditsToFig(f) {
+  const e = edits[f.id] || {};
+  const out = { ...f };
+  for (const k of Object.keys(e)) {
+    if (e[k] === '' && k === 'group') {
+      out[k] = '';  // explicit clear
+    } else {
+      out[k] = e[k];
+    }
+  }
+  return out;
 }
 
 function buildFinal(f) {
