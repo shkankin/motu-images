@@ -168,11 +168,25 @@ const STEPS = [
     },
     advance: {
       type: 'always',
-      // Use the app's named navigation rather than history.back() so the
-      // tour isn't coupled to a particular history-stack shape.
+      // Exit the figure detail screen, then switch to the All tab. We
+      // mutate S.screen directly (mirroring what the popstate handler
+      // does on browser-back, and what deleteFig does at line ~434 of
+      // eggs.js) instead of calling closeDetail/history.back. Reasons:
+      //   - navTo() only changes S.tab; it does NOT change S.screen,
+      //     so calling it alone leaves the user stuck on the figure
+      //     detail screen with the tab silently switched underneath.
+      //   - history.back() is async (popstate fires later), so combining
+      //     it with a synchronous navTo() produces a brief frame where
+      //     S.screen='figure' and S.tab='all' render together.
+      // The leaked openFig history entry is harmless: when the user
+      // later presses back at root, popstate sees S.screen='main' and
+      // walks the standard "are we at root?" branches.
       onNext: () => {
+        if (S.screen === 'figure') {
+          S.screen = 'main';
+          S.activeFig = null;
+        }
         if (typeof window.navTo === 'function') window.navTo('all');
-        else if (history.length > 1) history.back();
       },
     },
   },
@@ -337,15 +351,43 @@ function endTutorial(reason /* 'completed' | 'skipped' | 'failed' */) {
   tour.triggerEl = null;
 
   // Persist outcome and toast accordingly.
+  // v6.23: tutorial toasts use showTourToast (below) rather than calling
+  // window.toast directly. The global .toast rule in vault.css hardcodes
+  // a fade-out animation that starts at 1.7s, so even with a long JS
+  // duration the message becomes invisible at 2s — far too short for
+  // multi-word "Tour complete — replay anytime from the Lines screen".
+  // showTourToast overrides the animation inline on the just-appended
+  // element so the fade-out fires when we want it to.
   if (reason === 'completed') {
     saveState({ completed: 1 });
-    if (window.toast) window.toast('🎓 Tour complete — replay anytime from the Lines screen', { duration: 3500 });
+    showTourToast('🎓 Tour complete — replay anytime from the Lines screen', 4);
   } else if (reason === 'skipped') {
     saveState({ completed: 0 });
-    if (window.toast) window.toast('Tour skipped — replay anytime from the Lines screen', { duration: 3000 });
+    showTourToast('Tour skipped — replay anytime from the Lines screen', 3);
   } else if (reason === 'failed') {
     saveState({ completed: 0 });
-    if (window.toast) window.toast('Couldn\u2019t finish the tour — try again from the Lines screen', { duration: 3500 });
+    showTourToast('Couldn\u2019t finish the tour — try again from the Lines screen', 4);
+  }
+}
+
+// Show a toast with an explicit "visible time" before the fade-out
+// starts. visibleSec is seconds (3, 4, etc.). The function calls
+// window.toast() and then overrides the .toast element's animation
+// inline, which is the only way to delay the fade — the global CSS
+// rule's 1.7s fade-out delay isn't parameterized.
+function showTourToast(msg, visibleSec) {
+  if (typeof window.toast !== 'function') return;
+  // Total lifecycle = fade-in (0.25s) + visible + fade-out (0.3s) + small
+  // buffer so the JS removal doesn't cut the fade short on slow devices.
+  const totalMs = Math.round((0.25 + visibleSec + 0.3 + 0.2) * 1000);
+  window.toast(msg, { duration: totalMs });
+  // The toast element is the last child of .toast-container right after
+  // window.toast() returns. We grab and override its animation inline.
+  const container = document.querySelector('.toast-container');
+  const el = container && container.lastElementChild;
+  if (el && el.classList && el.classList.contains('toast')) {
+    el.style.animation =
+      `toastIn 0.25s ease-out, toastOut 0.3s ease-in ${visibleSec}s forwards`;
   }
 }
 
@@ -894,50 +936,32 @@ function renderActions(tip, step) {
 
 // ── Cycle demo progress UI ───────────────────────────────────────────
 //
-// Build the checklist using DOM nodes instead of innerHTML strings so
-// the inline status colors are CSS classes, not inline styles. The
-// tooltip body is replaced; everything else on the dialog is preserved.
+// v6.23: this used to rebuild the dialog body on every tap (innerHTML
+// clear + re-append), which produced a visible flash between cycle
+// taps — there's a frame where the body is empty before the new content
+// lands. The refactored version builds the static structure once and
+// then mutates only what changed:
+//   • headline text/class (transitions at 3-of-5 and 5-of-5 thresholds)
+//   • per-row .seen class (CSS handles the ✓ fade-in)
+//   • Next button's disabled state (no need to rebuild the whole
+//     actions row, which itself caused subtle button-shape churn)
+// Position is unchanged — content height is stable across taps.
 
-function renderCycleProgress(seenSet, ready) {
-  const tip = document.getElementById('tutorialTooltip');
-  if (!tip) return;
-
-  const bodyEl = tip.querySelector('#tutorialBody');
-  if (!bodyEl) return;
-
+function buildCycleStructure(bodyEl) {
   bodyEl.innerHTML = '';
 
-  // Headline — three states, none of which lie about completeness:
-  //   < CYCLE_MIN_STATES (3): user hasn't unlocked Next yet
-  //   3 or 4 of 5:           Next is unlocked but cycle isn't truly done
-  //   5 of 5:                full cycle complete
-  // Previous version always showed "you've seen how the cycle works"
-  // once the threshold for unlocking Next was reached, which was
-  // misleading when 2 of 5 states still hadn't been visited.
   const headline = document.createElement('div');
-  const total = CYCLE_ORDER.length; // 5
-  const seen = seenSet.size;
-  if (seen >= total) {
-    headline.className = 'tutorial-cycle-done';
-    headline.textContent = '✓ Full cycle complete.';
-  } else if (ready) {
-    headline.className = 'tutorial-cycle-progress';
-    headline.innerHTML = `Got the hang of it (${seen} of ${total}). Tap <strong>Next</strong> when ready, or keep cycling.`;
-  } else {
-    headline.innerHTML = '<strong>Tap the highlighted circle</strong> to cycle through statuses.';
-  }
+  headline.className = 'cycle-headline';
   bodyEl.appendChild(headline);
 
-  // Checklist
   const list = document.createElement('div');
   list.className = 'cycle-list';
   for (const s of CYCLE_ORDER) {
-    const wasSeen = seenSet.has(s);
     const row = document.createElement('div');
-    row.className = 'cycle-row' + (wasSeen ? ' seen' : '');
+    row.className = 'cycle-row';
+    row.dataset.state = s || 'cleared';
 
     const dot = document.createElement('span');
-    // Class-based status color (no inline style); see CSS additions
     dot.className = 'cycle-dot s-' + (s || 'cleared');
     row.appendChild(dot);
 
@@ -946,28 +970,90 @@ function renderCycleProgress(seenSet, ready) {
     label.textContent = CYCLE_LABEL[s];
     row.appendChild(label);
 
-    if (wasSeen) {
-      const check = document.createElement('span');
-      check.className = 'cycle-check';
-      check.textContent = '✓';
-      check.setAttribute('aria-hidden', 'true');
-      row.appendChild(check);
-    }
+    // Pre-create the check; CSS hides it via opacity:0 unless the row
+    // also has .seen. Pre-creating avoids any layout shift when toggling
+    // the seen state — and avoids the parent flash from creating/
+    // destroying child nodes mid-tap.
+    const check = document.createElement('span');
+    check.className = 'cycle-check';
+    check.textContent = '✓';
+    check.setAttribute('aria-hidden', 'true');
+    row.appendChild(check);
+
     list.appendChild(row);
   }
   bodyEl.appendChild(list);
+}
 
-  // (v6.23: removed the long-press / "tap a figure" tip that lived here.
-  // It described step 2 behavior — opening a figure for the full menu —
-  // which has nothing to do with cycling status from the list view, so
-  // it confused users mid-demo.)
+function renderCycleProgress(seenSet, ready) {
+  const tip = document.getElementById('tutorialTooltip');
+  if (!tip) return;
+  const bodyEl = tip.querySelector('#tutorialBody');
+  if (!bodyEl) return;
 
-  // Re-render actions so the Next button reflects ready/not ready
-  renderActions(tip, STEPS[tour.stepIdx]);
+  // Build static structure on first invocation. After that, every call
+  // is a targeted update that doesn't touch innerHTML.
+  let list = bodyEl.querySelector('.cycle-list');
+  const isFirstBuild = !list;
+  if (isFirstBuild) {
+    buildCycleStructure(bodyEl);
+    list = bodyEl.querySelector('.cycle-list');
+    // Render actions once, then update Next.disabled in place on
+    // subsequent calls.
+    renderActions(tip, STEPS[tour.stepIdx]);
+  }
 
-  // Reposition — content height has changed
-  const target = querySelectors(STEPS[tour.stepIdx].target);
-  if (target) positionTooltip(tip, target, STEPS[tour.stepIdx]);
+  // Update headline text in place — three states, none of which lie
+  // about completeness:
+  //   < CYCLE_MIN_STATES (3): user hasn't unlocked Next yet
+  //   3 or 4 of 5:           Next is unlocked but cycle isn't truly done
+  //   5 of 5:                full cycle complete
+  // Previous version always said "you've seen how the cycle works" once
+  // the threshold for unlocking Next was reached, which was misleading
+  // when 2 of 5 states still hadn't been visited.
+  const headline = bodyEl.querySelector('.cycle-headline');
+  if (headline) {
+    const total = CYCLE_ORDER.length; // 5
+    const seen = seenSet.size;
+    if (seen >= total) {
+      headline.className = 'cycle-headline tutorial-cycle-done';
+      headline.textContent = '✓ Full cycle complete.';
+    } else if (ready) {
+      headline.className = 'cycle-headline tutorial-cycle-progress';
+      headline.innerHTML = `Got the hang of it (${seen} of ${total}). Tap <strong>Next</strong> when ready, or keep cycling.`;
+    } else {
+      headline.className = 'cycle-headline';
+      headline.innerHTML = '<strong>Tap the highlighted circle</strong> to cycle through statuses.';
+    }
+  }
+
+  // Toggle .seen on each row — CSS handles the visual transition
+  for (const s of CYCLE_ORDER) {
+    const key = s || 'cleared';
+    const row = list.querySelector(`.cycle-row[data-state="${key}"]`);
+    if (row) row.classList.toggle('seen', seenSet.has(s));
+  }
+
+  // Update Next button's disabled state without rebuilding the actions row
+  const nextBtn = tip.querySelector('.tutorial-next');
+  if (nextBtn) {
+    nextBtn.disabled = !ready;
+    if (ready) {
+      nextBtn.removeAttribute('aria-disabled');
+      nextBtn.removeAttribute('title');
+    } else {
+      nextBtn.setAttribute('aria-disabled', 'true');
+      nextBtn.title = `Cycle through at least ${CYCLE_MIN_STATES} statuses to continue`;
+    }
+  }
+
+  // Position only on first build — content height is stable across taps,
+  // so subsequent positionTooltip calls are unnecessary work that can
+  // cause subtle reflow flicker on lower-end devices.
+  if (isFirstBuild) {
+    const target = querySelectors(STEPS[tour.stepIdx].target);
+    if (target) positionTooltip(tip, target, STEPS[tour.stepIdx]);
+  }
 }
 
 // ── Focus management & keyboard ──────────────────────────────────────
