@@ -2900,11 +2900,26 @@ html {
   opacity: 1;
 }
 /* Headline classes — split into base + state-modifier so we can update
-   text in place without rebuilding the element. */
+   text in place without rebuilding the element. v6.23: fixed
+   min-height with flex centering keeps the dialog at a constant
+   overall height across all three message states ("Tap the highlighted
+   circle..." / "Got the hang of it (3 of 5)..." / "✓ Full cycle
+   complete."). Without the reserved space, the dialog shrinks/grows
+   between taps — and since the dialog is anchored from its bottom edge
+   to the spotlight target, the *top* edge visibly jumps each time the
+   message wraps to a different number of lines. */
 .cycle-headline {
   font-size: 14px;
   color: var(--t1);
   margin-bottom: 8px;
+  /* Reserve ~3 lines of space — enough for the longest message ("Got
+     the hang of it (3 of 5). Tap Next when ready, or keep cycling.")
+     on a typical mobile content width. Line-height 1.4 × 14px ≈ 20px
+     per line; 60px = 3 lines. */
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  line-height: 1.4;
 }
 .cycle-headline.tutorial-cycle-done {
   color: var(--gn, #34d399);
