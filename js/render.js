@@ -1199,9 +1199,14 @@ function renderLinesGrid() {
 
   let html = '';
   if (!S.onboarded) {
-    const seenTour = store.get('motu-tutorial-seen');
+    // v7.00: show the tour button on every render so users who skipped
+    // or completed can replay. Label switches between Take / Replay
+    // based on tour state read via window.tutorialState() (exposed
+    // from tutorial.js).
+    const tState = (typeof window.tutorialState === 'function') ? window.tutorialState() : { seen: false };
+    const tourLabel = tState.seen ? '🎓 Replay tour' : '🎓 Take a 1-minute tour';
     html += `<div class="onboard-banner">
-      <div style="flex:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Wishlist, or For Sale — it'll appear in your Collection tab.${seenTour ? '' : `<br><button onclick="startTutorial()" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🎓 Take a 1-minute tour</button>`}</div>
+      <div style="flex:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Wishlist, or For Sale — it'll appear in your Collection tab.<br><button onclick="startTutorial()" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
       <button class="onboard-dismiss" onclick="S.onboarded=true;store.set('motu-onboarded',1);render()" title="Dismiss">×</button>
     </div>`;
   }
