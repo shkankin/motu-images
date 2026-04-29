@@ -210,6 +210,12 @@ const STEPS = [
     placement: 'top',
     advance: { type: 'state', when: () => S.tab === 'collection' },
     finalStep: true,
+    // The Skip button is suppressed on this step — tapping Collection
+    // is the entire point of the final step, and Close was an easy
+    // out that left users without ever actually visiting the screen
+    // the tour was teaching them about. Esc still ends the tour for
+    // users who genuinely need an escape hatch.
+    hideSkip: true,
   },
 ];
 
@@ -892,13 +898,17 @@ function renderActions(tip, step) {
   const isCycle  = adv.type === 'cycle-demo';
   const idx      = tour.stepIdx;
 
-  // Skip — present on every step
-  const skip = document.createElement('button');
-  skip.type = 'button';
-  skip.className = 'tutorial-skip';
-  skip.textContent = step.finalStep ? 'Close' : 'Skip tour';
-  skip.addEventListener('click', () => endTutorial('skipped'));
-  actions.appendChild(skip);
+  // Skip — present on every step UNLESS the step explicitly opts out
+  // via hideSkip. Used by the final "Tap Collection" step where Close
+  // would let users dodge the very action the step is teaching.
+  if (!step.hideSkip) {
+    const skip = document.createElement('button');
+    skip.type = 'button';
+    skip.className = 'tutorial-skip';
+    skip.textContent = step.finalStep ? 'Close' : 'Skip tour';
+    skip.addEventListener('click', () => endTutorial('skipped'));
+    actions.appendChild(skip);
+  }
 
   // Spacer pushes Back/Next to the right
   const spacer = document.createElement('span');
@@ -1042,14 +1052,11 @@ function renderCycleProgress(seenSet, ready) {
     renderActions(tip, STEPS[tour.stepIdx]);
   }
 
-  // Update headline text in place — three states, none of which lie
-  // about completeness:
-  //   < CYCLE_MIN_STATES (3): user hasn't unlocked Next yet
-  //   3 or 4 of 5:           Next is unlocked but cycle isn't truly done
-  //   5 of 5:                full cycle complete
-  // Previous version always said "you've seen how the cycle works" once
-  // the threshold for unlocking Next was reached, which was misleading
-  // when 2 of 5 states still hadn't been visited.
+  // Update headline text in place — three states. Messages deliberately
+  // don't reference the "Next" button (the button is two rows below;
+  // mentioning it in body text reads as a duplicate) and don't include
+  // a "(N of 5)" count (the cycle-list itself is the progress meter —
+  // each visited state lights up its row).
   const headline = bodyEl.querySelector('.cycle-headline');
   if (headline) {
     const total = CYCLE_ORDER.length; // 5
@@ -1059,7 +1066,7 @@ function renderCycleProgress(seenSet, ready) {
       headline.textContent = '✓ Full cycle complete.';
     } else if (ready) {
       headline.className = 'cycle-headline tutorial-cycle-progress';
-      headline.innerHTML = `Got the hang of it (${seen} of ${total}). Tap <strong>Next</strong> when ready, or keep cycling.`;
+      headline.textContent = 'Got the hang of it. Keep cycling or move on.';
     } else {
       headline.className = 'cycle-headline';
       headline.innerHTML = '<strong>Tap the highlighted circle</strong> to cycle through statuses.';
