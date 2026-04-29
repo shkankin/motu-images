@@ -39,6 +39,7 @@
 // ─────────────────────────────────────────────────────────────────────
 
 import { S, store, STATUS_LABEL } from './state.js';
+import { getLoadout } from './data.js';
 
 // ── Configuration ────────────────────────────────────────────────────
 
@@ -105,6 +106,11 @@ const STEPS = [
     body: 'Each row is a figure in the catalog.',
     instruction: 'Tap any figure name to open its details.',
     target: 'figRow',
+    // The whole row is the spotlight, but the .quick-own status circle
+    // inside the row is excluded — tapping it would cycle status (mutating
+    // the user's data) instead of navigating to detail. The click trap
+    // blocks .quick-own clicks during this step.
+    excludeClicks: '.quick-own',
     tooltipAnchor: 'target',
     placement: 'auto',
     advance: { type: 'state', when: () => S.screen === 'figure' },
@@ -118,6 +124,48 @@ const STEPS = [
     showOverlay: false,
     tooltipAnchor: 'bottom-fixed',
     compact: true,
+    requireScreen: 'figure', // wait for the figure detail to be on-screen
+    noBack: true,            // user navigated here from step 2; "back" would
+                             // land them on a step that expects S.screen='main'
+    // v6.23: artificially populate the figure as owned with a Loose Complete
+    // copy so the user sees a fully-furnished detail screen during the tour
+    // (vs the empty unowned state). Snapshot + restore on cleanup ensures
+    // their actual data is untouched. Cleanup runs from the Next button (see
+    // renderActions) BEFORE onNext navigates, so the artificial state never
+    // leaks onto the destination screen.
+    prime: () => {
+      const figId = S.activeFig?.id;
+      if (!figId || S.screen !== 'figure') return;
+      const original = S.coll[figId];
+      tour.detailSnapshot = {
+        figId,
+        entry: original ? structuredClone(original) : null,
+      };
+      // Pull the canonical loadout if available so the demo shows accessory
+      // chips populated. getLoadout returns null for figures without a
+      // shared loadout entry — in that case we leave accessories empty.
+      let loadout = [];
+      try { loadout = getLoadout(figId) || []; } catch {}
+      S.coll[figId] = {
+        status: 'owned',
+        copies: [{
+          id: 1,
+          condition: 'Loose Complete',
+          accessories: loadout.length ? [...loadout] : undefined,
+        }],
+      };
+      if (window.saveColl) window.saveColl();
+      if (window.render) window.render();
+      addCleanup(() => {
+        const snap = tour.detailSnapshot;
+        if (!snap) return;
+        tour.detailSnapshot = null;
+        if (snap.entry) S.coll[snap.figId] = snap.entry;
+        else delete S.coll[snap.figId];
+        if (window.saveColl) window.saveColl();
+        if (window.render) window.render();
+      });
+    },
     advance: {
       type: 'always',
       // Use the app's named navigation rather than history.back() so the
@@ -159,7 +207,8 @@ const tour = {
   triggerEl: null,        // element that started the tour, for focus return
   cleanupFns: [],         // per-step cleanup (observers, listeners)
   globalCleanupFns: [],   // tour-wide cleanup (resize, key handlers)
-  cycleSnapshot: null,    // { figId, entry } for restore on exit
+  cycleSnapshot: null,    // { figId, entry } for restore on exit (cycle demo)
+  detailSnapshot: null,   // { figId, entry } for restore on exit (step 3 detail)
   cycleSeen: null,        // Set of states visited during cycle demo
   reducedMotion: false,
 };
@@ -259,6 +308,7 @@ function startTutorial() {
 
   installGlobalKeyHandlers();
   installResizeHandler();
+  installClickTrap();
 
   // Defer first paint by one rAF so the tour isn't competing with the
   // navTo render, and so reduced-motion users get an immediate but not
@@ -312,8 +362,14 @@ function showStep(idx) {
   const step = STEPS[idx];
   runStepCleanup();
 
-  // Pure-tooltip step (no spotlight).
+  // Pure-tooltip step (no spotlight). Still prime if the step has a
+  // prime() function (e.g. step 3 marks the figure as owned for the demo).
   if (!step.target) {
+    if (step.requireScreen && S.screen !== step.requireScreen) {
+      waitForScreen(step);
+      return;
+    }
+    primeIfNeeded(step, null);
     renderStep(step, null);
     setupAdvancement(step, null);
     return;
@@ -346,13 +402,21 @@ function onTargetReady(step, target) {
 // because there's no subscribe API in state.js, but this is bounded —
 // the moment the predicate matches we tear it down.
 function waitForScreen(step) {
-  renderStep(step, null, 'Tap back to return to the figure list.');
+  renderStep(step, null, 'Waiting for the right screen\u2026');
   const handle = setInterval(() => {
     if (!tour.active) { clearInterval(handle); return; }
     if (S.screen === step.requireScreen) {
       clearInterval(handle);
-      // Let the resulting render flush before resolving the target
+      // Let the resulting render flush before resolving the target / priming
       requestAnimationFrame(() => {
+        if (!tour.active) return;
+        // Null-target step: just prime + render
+        if (!step.target) {
+          primeIfNeeded(step, null);
+          renderStep(step, null);
+          setupAdvancement(step, null);
+          return;
+        }
         const target = querySelectors(step.target);
         if (target) onTargetReady(step, target);
         else waitForTarget(step);
@@ -394,13 +458,27 @@ function waitForTarget(step) {
   addCleanup(() => { observer.disconnect(); clearTimeout(timeoutId); });
 }
 
-// Step-specific entry behavior. For the cycle demo, snapshot the
-// figure's current collection entry so we can restore it on exit
-// (skip, finish, or failure). Then prime status to '' so the first
-// click is a clean cleared→owned transition.
+// Step-specific entry behavior. Each step can declare its own prime()
+// function (e.g. step 3 artificially marks the figure as owned, step 4
+// snapshots+clears the figure status for a clean demo). Prime functions
+// are responsible for registering their own cleanup via addCleanup() so
+// the original state is restored on every exit path (Next, Skip, Esc,
+// browser back, tour fail).
 function primeIfNeeded(step, target) {
-  if (step.advance.type !== 'cycle-demo') return;
+  if (typeof step.prime === 'function') {
+    try { step.prime(target); }
+    catch (err) { console.warn('tutorial prime failed:', err); }
+  }
+  // Cycle-demo's priming has special structure (depends on target) and
+  // is kept here so the snapshot/cleanup logic is co-located with the
+  // setupCycleDemo state-tracking that uses it.
+  if (step.advance && step.advance.type === 'cycle-demo') {
+    primeCycleDemo(step, target);
+  }
+}
 
+function primeCycleDemo(step, target) {
+  if (!target) return;
   const row = target.closest('[data-fig-id]');
   const figId = row?.dataset?.figId;
   if (!figId) return;
@@ -618,6 +696,12 @@ function buildTooltipShell() {
   tip.setAttribute('aria-modal', 'true');
   tip.setAttribute('aria-labelledby', 'tutorialTitle');
   tip.setAttribute('aria-describedby', 'tutorialBody');
+  // v6.23: hide the freshly-created tooltip until the first
+  // positionTooltip() call settles it. positionTooltip clears this on
+  // first run; subsequent step transitions leave visibility alone, which
+  // eliminates the inter-step blink the previous version produced
+  // (visibility:hidden was being toggled on every reposition).
+  tip.style.visibility = 'hidden';
 
   const stepCount = document.createElement('div');
   stepCount.className = 'tutorial-step-count';
@@ -747,7 +831,10 @@ function renderActions(tip, step) {
   // time we reach cycle-demo we're back on the list view, so Back
   // would land the user on a "Detail screen" step while not on the
   // detail screen. Skip is the correct exit there.
-  if (idx > 0 && isAlways) {
+  // step.noBack also lets a specific step opt out (e.g. step 3, where
+  // going back from the figure detail to "Open a figure" would hit a
+  // navigation-state mismatch similar to cycle-demo).
+  if (idx > 0 && isAlways && !step.noBack) {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'tutorial-back';
@@ -780,6 +867,13 @@ function renderActions(tip, step) {
 
     next.addEventListener('click', () => {
       if (next.disabled) return;
+      // v6.23: run step cleanup BEFORE onNext so any data restoration
+      // (e.g. step 3 unmarking the artificial "owned" state) completes
+      // before the navigation re-renders the destination screen. Without
+      // this, the destination would briefly show artificial state until
+      // showStep's own cleanup runs a frame later. cleanupFns is emptied
+      // here, so showStep(idx+1)'s runStepCleanup is a harmless no-op.
+      runStepCleanup();
       try { if (typeof adv.onNext === 'function') adv.onNext(); } catch (err) {
         console.warn('tutorial onNext failed:', err);
       }
@@ -813,11 +907,22 @@ function renderCycleProgress(seenSet, ready) {
 
   bodyEl.innerHTML = '';
 
-  // Headline
+  // Headline — three states, none of which lie about completeness:
+  //   < CYCLE_MIN_STATES (3): user hasn't unlocked Next yet
+  //   3 or 4 of 5:           Next is unlocked but cycle isn't truly done
+  //   5 of 5:                full cycle complete
+  // Previous version always showed "you've seen how the cycle works"
+  // once the threshold for unlocking Next was reached, which was
+  // misleading when 2 of 5 states still hadn't been visited.
   const headline = document.createElement('div');
-  if (ready) {
+  const total = CYCLE_ORDER.length; // 5
+  const seen = seenSet.size;
+  if (seen >= total) {
     headline.className = 'tutorial-cycle-done';
-    headline.textContent = '✓ Nice — you’ve seen how the cycle works.';
+    headline.textContent = '✓ Full cycle complete.';
+  } else if (ready) {
+    headline.className = 'tutorial-cycle-progress';
+    headline.innerHTML = `Got the hang of it (${seen} of ${total}). Tap <strong>Next</strong> when ready, or keep cycling.`;
   } else {
     headline.innerHTML = '<strong>Tap the highlighted circle</strong> to cycle through statuses.';
   }
@@ -827,9 +932,9 @@ function renderCycleProgress(seenSet, ready) {
   const list = document.createElement('div');
   list.className = 'cycle-list';
   for (const s of CYCLE_ORDER) {
-    const seen = seenSet.has(s);
+    const wasSeen = seenSet.has(s);
     const row = document.createElement('div');
-    row.className = 'cycle-row' + (seen ? ' seen' : '');
+    row.className = 'cycle-row' + (wasSeen ? ' seen' : '');
 
     const dot = document.createElement('span');
     // Class-based status color (no inline style); see CSS additions
@@ -841,7 +946,7 @@ function renderCycleProgress(seenSet, ready) {
     label.textContent = CYCLE_LABEL[s];
     row.appendChild(label);
 
-    if (seen) {
+    if (wasSeen) {
       const check = document.createElement('span');
       check.className = 'cycle-check';
       check.textContent = '✓';
@@ -852,11 +957,10 @@ function renderCycleProgress(seenSet, ready) {
   }
   bodyEl.appendChild(list);
 
-  // Tip — long-press OR regular tap (covers gesture-alternative UX)
-  const tip2 = document.createElement('div');
-  tip2.className = 'cycle-tip';
-  tip2.textContent = 'Tip: tap a figure to open it for the full menu, or long-press for shortcuts.';
-  bodyEl.appendChild(tip2);
+  // (v6.23: removed the long-press / "tap a figure" tip that lived here.
+  // It described step 2 behavior — opening a figure for the full menu —
+  // which has nothing to do with cycling status from the list view, so
+  // it confused users mid-demo.)
 
   // Re-render actions so the Next button reflects ready/not ready
   renderActions(tip, STEPS[tour.stepIdx]);
@@ -973,29 +1077,36 @@ function positionTooltip(tip, target, step) {
   const anchor = step.tooltipAnchor || 'target';
   const margin = 18;
 
-  // Reset positioning state
+  // Reset positioning state. We deliberately do NOT touch visibility
+  // here — buildTooltipShell sets it to hidden on creation, and we
+  // only clear it once positioning has settled (see reveal helper at
+  // end of each branch). Toggling visibility on every step transition
+  // produced an inter-step blink in v7.00.
   tip.style.left = '12px';
   tip.style.right = '12px';
   tip.style.top = 'auto';
   tip.style.bottom = 'auto';
   tip.style.transform = '';
-  tip.style.visibility = 'hidden';
   tip.classList.remove('arrow-down', 'arrow-up');
+
+  // Reveals the tooltip iff it's still hidden from initial creation.
+  // Subsequent calls (after first reveal) are no-ops.
+  const reveal = () => {
+    if (tour.active && tip.style.visibility === 'hidden') {
+      tip.style.visibility = '';
+    }
+  };
 
   if (anchor === 'bottom-fixed') {
     tip.style.bottom = 'calc(20px + var(--safe-bottom, 0px))';
-    requestAnimationFrame(() => {
-      if (tour.active) tip.style.visibility = '';
-    });
+    requestAnimationFrame(reveal);
     return;
   }
 
   if (!target) {
     tip.style.top = '50%';
     tip.style.transform = 'translateY(-50%)';
-    requestAnimationFrame(() => {
-      if (tour.active) tip.style.visibility = '';
-    });
+    requestAnimationFrame(reveal);
     return;
   }
 
@@ -1036,7 +1147,7 @@ function positionTooltip(tip, target, step) {
       tip.style.bottom = 'auto';
       tip.classList.add('arrow-up');
     }
-    tip.style.visibility = '';
+    reveal();
   });
 }
 
@@ -1063,6 +1174,66 @@ function installResizeHandler() {
     addGlobalCleanup(() => window.visualViewport.removeEventListener('resize', onResize));
   }
   addGlobalCleanup(() => window.removeEventListener('resize', onResize));
+}
+
+// ── Click trap ───────────────────────────────────────────────────────
+//
+// v6.23: while the tour is active, block clicks anywhere except the
+// dialog itself and the spotlight target. Without this, a stray tap
+// outside the spotlight could navigate, mutate data, or open menus
+// behind the overlay (the overlay has pointer-events:none so it can
+// be visually translucent; clicks pass through it).
+//
+// We listen in the capture phase on `document` so our handler fires
+// before any element-level listeners. Click is the primary block;
+// pointerdown is also blocked so buttons don't get the visual
+// "pressed" state on disallowed targets, which would feel like the
+// tap "almost" worked.
+//
+// Allowed regions:
+//   - The dialog (#tutorialTooltip and descendants)
+//   - The current step's spotlight target (and descendants), minus
+//     anything matching step.excludeClicks (e.g. step 2 excludes the
+//     status circle to prevent accidental status mutation when the
+//     intent is to navigate to detail).
+
+function installClickTrap() {
+  const isAllowed = (evTarget) => {
+    const tip = document.getElementById('tutorialTooltip');
+    if (tip && tip.contains(evTarget)) return true;
+    const step = STEPS[tour.stepIdx];
+    if (!step || !step.target) return false;
+    const t = querySelectors(step.target);
+    if (!t) return false;
+    if (t !== evTarget && !t.contains(evTarget)) return false;
+    // Inside the spotlight — but check excludeClicks (sub-zones the
+    // step explicitly bars even though they're visually within the
+    // spotlight).
+    if (step.excludeClicks) {
+      const excluded = evTarget.closest(step.excludeClicks);
+      if (excluded && t.contains(excluded)) return false;
+    }
+    return true;
+  };
+
+  const block = (ev) => {
+    if (!tour.active) return;
+    if (isAllowed(ev.target)) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+  };
+
+  // Capture phase so we run before element-level listeners. We block
+  // 'click' only (not pointerdown/touchstart) — preventDefault on the
+  // press half of a tap can suppress native touch scrolling, which we
+  // need to remain functional (especially on step 3, where the user
+  // is supposed to scroll the figure detail screen). Click fires only
+  // on tap-release, so blocking click stops button activation while
+  // letting scroll gestures complete normally.
+  document.addEventListener('click', block, true);
+  addGlobalCleanup(() => {
+    document.removeEventListener('click', block, true);
+  });
 }
 
 // ── Window exposure ──────────────────────────────────────────────────

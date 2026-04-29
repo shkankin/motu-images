@@ -18,7 +18,7 @@ const openSheet = (...a) => window.openSheet?.(...a);
 import {
   S, store, ICO, icon, IMG, FIGS_URL, LOADOUTS_URL, KIDS_CORE_KEY,
   CUSTOM_FIGS_KEY, CACHE_KEY, CACHE_TTL,
-  LINES, FACTIONS, CONDITIONS, ACCESSORIES,
+  LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX,
   THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP,
   ln, normalize, esc, isSelecting, _clone,
@@ -478,6 +478,13 @@ function setStatus(id, status) {
 // (legacy plural) which is normalized to 'variant' (singular) in the schema.
 const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'variants']);
 
+// v6.23: conditions that imply the copy contains all loadout accessories.
+// MIB/MOC/New-Sealed are packaged; Loose Complete is a user assertion.
+// Used by updateCopy to auto-fill cp.accessories with the full loadout.
+const AUTOFILL_CONDITIONS = new Set([
+  'Mint in Box', 'Mint on Card', 'New/Sealed', 'Loose Complete',
+]);
+
 function updateColl(id, key, val) {
   const cur = S.coll[id] || {};
   // Ensure migrated shape so future reads are consistent.
@@ -569,7 +576,7 @@ window.removeCopy = async (id, copyId) => {
   patchDetailStatus();
 };
 
-window.updateCopy = (id, copyId, key, val) => {
+window.updateCopy = (id, copyId, key, val, opts) => {
   const c = S.coll[id];
   if (!c) return;
   // Auto-migrate (defensive — shouldn't happen post-v4.42 init).
@@ -582,6 +589,39 @@ window.updateCopy = (id, copyId, key, val) => {
   }
   if (val === '' || val == null) delete cp[key];
   else cp[key] = val;
+
+  // v6.23: auto-fill accessories when the condition is set to a value that
+  // implies a complete copy. MIB/MOC/New-Sealed = sealed in packaging,
+  // assumed to contain everything. Loose Complete = user is asserting all
+  // accessories are present. We populate cp.accessories with the full
+  // loadout (including paper goods, since the user may want to start
+  // "all marked" and uncheck specific items).
+  //
+  // We DON'T overwrite an existing accessories list — only add missing
+  // items. This avoids destroying data the user explicitly tracked.
+  //
+  // Skipped when opts.skipAutofill is true — used by maybeSuggestConditionForCopy
+  // which auto-flips condition based on accessories already being complete.
+  // Without the skip, the user would see two toasts in a row ("Marked Loose
+  // Complete" + "Marked N accessories") and we'd add paper goods they may
+  // not actually have.
+  const skipAutofill = !!(opts && opts.skipAutofill);
+  if (key === 'condition' && AUTOFILL_CONDITIONS.has(val) && !skipAutofill) {
+    const loadout = getLoadout(id);
+    if (loadout && loadout.length) {
+      const existing = new Set(Array.isArray(cp.accessories) ? cp.accessories : []);
+      let added = 0;
+      for (const name of loadout) {
+        if (!existing.has(name)) { existing.add(name); added++; }
+      }
+      if (added > 0) {
+        cp.accessories = [...existing];
+        // Informational toast — non-blocking, surfaces what changed.
+        try { toast(`✓ Marked ${added} accessor${added === 1 ? 'y' : 'ies'} present`); } catch {}
+      }
+    }
+  }
+
   S.coll[id] = next;
   saveColl();
   // v4.91: if the key is 'location', refresh the datalist so the value is
@@ -592,6 +632,13 @@ window.updateCopy = (id, copyId, key, val) => {
     if (dl) {
       dl.innerHTML = getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('');
     }
+  }
+  // v6.23: if condition just changed to an autofill condition and we
+  // populated accessories, the detail screen needs to re-render so the
+  // newly-checked accessory chips appear. patchDetailStatus is the
+  // lightweight refresh path used elsewhere in this module.
+  if (key === 'condition' && AUTOFILL_CONDITIONS.has(val) && !skipAutofill) {
+    patchDetailStatus();
   }
 };
 
@@ -667,11 +714,15 @@ function maybeSuggestConditionForCopy(figId, copyId, nextCp, prevComplete) {
   const after = getCopyCompleteness(figId, nextCp);
   if (!after) return; // no loadout
   // Only act on transitions: incomplete → complete, or complete → incomplete.
+  // v6.23: pass skipAutofill so updateCopy doesn't try to auto-add paper
+  // goods on top of the user's just-completed required items (would chain
+  // a second "Marked N accessories" toast and add items the user may not
+  // actually have).
   if (after.complete && !prevComplete && cond !== 'Loose Complete') {
-    window.updateCopy(figId, copyId, 'condition', 'Loose Complete');
+    window.updateCopy(figId, copyId, 'condition', 'Loose Complete', { skipAutofill: true });
     toast('✓ Marked Loose Complete');
   } else if (!after.complete && prevComplete && cond === 'Loose Complete') {
-    window.updateCopy(figId, copyId, 'condition', 'Loose Incomplete');
+    window.updateCopy(figId, copyId, 'condition', 'Loose Incomplete', { skipAutofill: true });
     toast('Marked Loose Incomplete');
   }
 }
@@ -913,21 +964,39 @@ function getLoadout(figId) {
 //   complete = have === total
 // Custom (non-loadout) accessories on the copy do NOT count toward have/total.
 // They're still shown in the chip row above the badge — they're extras, not gaps.
+//
+// v6.23: paper goods (Comic, Minicomic, Info Card, Accessory Card, Instructions)
+// are treated as optional. Their absence does not block ✓ Complete or the
+// auto-flip to Loose Complete — many collectors don't keep paper goods, and
+// requiring them would mean the badge essentially never lights up. They still
+// appear in the missing-pills row so users can add them if they want.
 function getCopyCompleteness(figId, cp) {
   const loadout = getLoadout(figId);
   if (!loadout) return null;
   const have = Array.isArray(cp && cp.accessories) ? cp.accessories : [];
   const haveSet = new Set(have);
-  const present = loadout.filter(name => haveSet.has(name));
+  // Split loadout into required (counts toward complete) and optional
+  // (paper goods — informational only).
+  const required = loadout.filter(name => !OPTIONAL_ACCESSORIES.has(name));
+  const presentRequired = required.filter(name => haveSet.has(name));
+  // missing list still includes optional missing items so the pills row
+  // can still suggest adding them.
   const missing = loadout.filter(name => !haveSet.has(name));
-  const total = loadout.length;
-  const ct = present.length;
+  const missingRequired = required.filter(name => !haveSet.has(name));
+  const total = required.length;
+  const ct = presentRequired.length;
   return {
     have: ct,
     total,
     pct: total ? Math.round((ct / total) * 100) : 0,
     missing,
-    complete: ct === total && total > 0,
+    missingRequired,
+    // Complete = all REQUIRED items present. Paper-good absence is OK.
+    // Edge case: a figure whose loadout is *entirely* paper goods (rare —
+    // shouldn't happen in practice) would have total=0 and never be complete;
+    // we treat that as "no meaningful loadout" and return complete=false to
+    // match the prior contract.
+    complete: total > 0 && ct === total,
   };
 }
 

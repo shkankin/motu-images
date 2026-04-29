@@ -84,6 +84,15 @@ const STATUS_LABEL = {owned:'Owned',wishlist:'Wishlist',ordered:'Ordered','for-s
 const STATUS_COLOR = {owned:'var(--gn)',wishlist:'var(--bl)',ordered:'var(--or)','for-sale':'var(--rd)'};
 const STATUS_HEX = {owned:'#34d399',wishlist:'#60a5fa',ordered:'#fb923c','for-sale':'#f87171'};
 
+// v6.23: paper goods — accessories that don't count toward "complete."
+// A figure with the full hard-goods loadout (sword/cape/etc.) but missing
+// these is still considered Loose Complete. They appear in the missing-
+// pills row so users can still add them, but absence doesn't block the
+// ✓ Complete badge or the auto-flip to Loose Complete.
+const OPTIONAL_ACCESSORIES = new Set([
+  'Comic', 'Minicomic', 'Info Card', 'Accessory Card', 'Instructions',
+]);
+
 const THEMES = {
   eternia:  {name:'Eternia',       bg:'#090e1c', acc:'#38bdf8', gold:'#e8c577', icons:['eternia1-icon.png']},
   skeletor: {name:'Skeletor',      bg:'#090212', acc:'#b14eff', gold:'#f2e162', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
@@ -265,5 +274,5 @@ function getThemeTitles() {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
+  ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
 };
