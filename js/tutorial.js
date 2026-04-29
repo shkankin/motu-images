@@ -567,9 +567,28 @@ function startTracking(step) {
   let ro = null;
   let lastResizeTarget = null;
 
+  // Resolve the element used for *placement* and *sig comparison*.
+  // For tooltipAnchor='row', this is the parent row, not the small
+  // target inside it. Critical for step 4: the .quick-own status
+  // circle scales 1.0→1.25→1.0 during cycleStatus's triggerPulse
+  // animation. If sig used the target's bbox, the pulse would trip
+  // sig changes on every tap and trigger an unnecessary reposition
+  // (which itself produces a one-frame flash even when the math
+  // resolves to the same final placement). The row's bbox is stable
+  // through the pulse, so sig stays unchanged and reposition skips.
+  const resolveAnchor = (cur) => {
+    const anchor = step.tooltipAnchor || 'target';
+    if (anchor === 'row') {
+      return cur.closest('.fig-row, .fig-card, [data-fig-id]') || cur;
+    }
+    return cur;
+  };
+
   const reposition = () => {
     if (!tour.active) return;
-    // Re-resolve in case the original node was replaced
+    // Re-resolve in case the original node was replaced by a render
+    // (patchFigRow rewrites .fig-actions innerHTML on every cycle tap,
+    // which destroys and recreates the .quick-own element).
     const cur = querySelectors(step.target);
     if (!cur) return;
 
@@ -581,8 +600,12 @@ function startTracking(step) {
       lastResizeTarget = cur;
     }
 
-    const r = cur.getBoundingClientRect();
-    const sig = r.top + ',' + r.left + ',' + r.width + ',' + r.height;
+    const anchorEl = resolveAnchor(cur);
+    const r = anchorEl.getBoundingClientRect();
+    // Round to integer pixels so sub-pixel jitter from re-renders
+    // doesn't trip a sig change.
+    const sig = Math.round(r.top) + ',' + Math.round(r.left) + ',' +
+                Math.round(r.width) + ',' + Math.round(r.height);
     if (sig === lastSig) return;
     lastSig = sig;
     const overlay = document.getElementById('tutorialOverlay');
@@ -604,7 +627,23 @@ function startTracking(step) {
 
   // Single subtree observer handles both target-replacement detection
   // and ResizeObserver rebinding via the unified reposition path.
-  const mo = new MutationObserver(scheduleReposition);
+  // We filter out mutations that originate inside the tutorial dialog
+  // itself: the dialog's own incremental updates (headline text,
+  // cycle-progress class toggles, etc.) cannot have moved the
+  // spotlight target, so reacting to them is wasted work — and
+  // worse, can produce a visible flash when positionTooltip runs
+  // for an unchanged geometry.
+  const mo = new MutationObserver((mutations) => {
+    const tip = document.getElementById('tutorialTooltip');
+    if (tip) {
+      let allInsideDialog = true;
+      for (const m of mutations) {
+        if (!tip.contains(m.target)) { allInsideDialog = false; break; }
+      }
+      if (allInsideDialog) return;
+    }
+    scheduleReposition();
+  });
   mo.observe(document.body, { childList: true, subtree: true });
 
   // Initial bind
@@ -1163,18 +1202,6 @@ function positionTooltip(tip, target, step) {
   const anchor = step.tooltipAnchor || 'target';
   const margin = 18;
 
-  // Reset positioning state. We deliberately do NOT touch visibility
-  // here — buildTooltipShell sets it to hidden on creation, and we
-  // only clear it once positioning has settled (see reveal helper at
-  // end of each branch). Toggling visibility on every step transition
-  // produced an inter-step blink in v7.00.
-  tip.style.left = '12px';
-  tip.style.right = '12px';
-  tip.style.top = 'auto';
-  tip.style.bottom = 'auto';
-  tip.style.transform = '';
-  tip.classList.remove('arrow-down', 'arrow-up');
-
   // Reveals the tooltip iff it's still hidden from initial creation.
   // Subsequent calls (after first reveal) are no-ops.
   const reveal = () => {
@@ -1183,22 +1210,42 @@ function positionTooltip(tip, target, step) {
     }
   };
 
+  // v6.23: positioning is set atomically — we never write `top:auto`
+  // or `bottom:auto` at the start and then set the real value in a
+  // later rAF. That intermediate "no positioning" state caused a
+  // one-frame flash whenever positionTooltip was called for an
+  // already-rendered dialog (which happens whenever any sig change
+  // trips the reposition path). Instead we compute everything
+  // synchronously, set only the styles that need to change, and
+  // explicitly clear the *opposite* side after setting the active one.
+
   if (anchor === 'bottom-fixed') {
+    tip.style.left = '12px';
+    tip.style.right = '12px';
+    tip.style.top = 'auto';
     tip.style.bottom = 'calc(20px + var(--safe-bottom, 0px))';
+    tip.style.transform = '';
+    tip.classList.remove('arrow-down', 'arrow-up');
     requestAnimationFrame(reveal);
     return;
   }
 
   if (!target) {
+    tip.style.left = '12px';
+    tip.style.right = '12px';
+    tip.style.bottom = 'auto';
     tip.style.top = '50%';
     tip.style.transform = 'translateY(-50%)';
+    tip.classList.remove('arrow-down', 'arrow-up');
     requestAnimationFrame(reveal);
     return;
   }
 
   // For 'row' anchor, use the row/card box rather than the tiny target
   // (e.g. 24px status circle). Gives more space for placement and
-  // avoids the tooltip ever covering the small target.
+  // avoids the tooltip ever covering the small target. Critically,
+  // it also stays stable through the pulse animation that scales the
+  // status circle on every cycleStatus call.
   let anchorEl = target;
   if (anchor === 'row') {
     anchorEl = target.closest('.fig-row, .fig-card, [data-fig-id]') || target;
@@ -1208,33 +1255,42 @@ function positionTooltip(tip, target, step) {
   const spaceAbove = r.top - margin;
   const spaceBelow = vh - r.bottom - margin;
 
-  requestAnimationFrame(() => {
-    if (!tour.active) return;
-    const tipH = tip.offsetHeight;
-    const preferred = step.placement || 'auto';
-    let placement;
-    if (preferred === 'top') placement = 'top';
-    else if (preferred === 'bottom') placement = 'bottom';
-    else placement = spaceAbove >= spaceBelow ? 'top' : 'bottom';
+  // Read tooltip height synchronously. On the very first paint, the
+  // tooltip is visibility:hidden but already in the DOM with content,
+  // so offsetHeight reflects content size. If for some reason it's
+  // 0 (race with content build), fall back to a reasonable estimate
+  // so we don't make a placement decision against zero space.
+  const tipH = tip.offsetHeight || 200;
+  const preferred = step.placement || 'auto';
+  let placement;
+  if (preferred === 'top') placement = 'top';
+  else if (preferred === 'bottom') placement = 'bottom';
+  else placement = spaceAbove >= spaceBelow ? 'top' : 'bottom';
 
-    // Flip if chosen side doesn't fit
-    if (placement === 'top' && tipH > spaceAbove && tipH <= spaceBelow) {
-      placement = 'bottom';
-    } else if (placement === 'bottom' && tipH > spaceBelow && tipH <= spaceAbove) {
-      placement = 'top';
-    }
+  // Flip if chosen side doesn't fit
+  if (placement === 'top' && tipH > spaceAbove && tipH <= spaceBelow) {
+    placement = 'bottom';
+  } else if (placement === 'bottom' && tipH > spaceBelow && tipH <= spaceAbove) {
+    placement = 'top';
+  }
 
-    if (placement === 'top') {
-      tip.style.bottom = (vh - r.top + margin) + 'px';
-      tip.style.top = 'auto';
-      tip.classList.add('arrow-down');
-    } else {
-      tip.style.top = (r.bottom + margin) + 'px';
-      tip.style.bottom = 'auto';
-      tip.classList.add('arrow-up');
-    }
-    reveal();
-  });
+  tip.style.left = '12px';
+  tip.style.right = '12px';
+  tip.style.transform = '';
+  if (placement === 'top') {
+    // Set the active edge first, then clear the inactive edge — never
+    // a frame where both are auto.
+    tip.style.bottom = (vh - r.top + margin) + 'px';
+    tip.style.top = 'auto';
+    tip.classList.remove('arrow-up');
+    tip.classList.add('arrow-down');
+  } else {
+    tip.style.top = (r.bottom + margin) + 'px';
+    tip.style.bottom = 'auto';
+    tip.classList.remove('arrow-down');
+    tip.classList.add('arrow-up');
+  }
+  requestAnimationFrame(reveal);
 }
 
 // ── Resize handling ──────────────────────────────────────────────────
