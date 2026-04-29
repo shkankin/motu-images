@@ -2888,6 +2888,30 @@ html {
   color: #34d399;
   font-weight: 700;
   font-size: 14px;
+  /* v6.23: pre-rendered on every row but invisible until the parent
+     gets .seen. opacity transition gives a smooth fade-in per tap and,
+     more importantly, eliminates the per-tap DOM mutation that the
+     v7.00 implementation produced (each tap added then removed
+     a child node, contributing to the inter-tap flash). */
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.cycle-row.seen .cycle-check {
+  opacity: 1;
+}
+/* Headline classes — split into base + state-modifier so we can update
+   text in place without rebuilding the element. */
+.cycle-headline {
+  font-size: 14px;
+  color: var(--t1);
+  margin-bottom: 8px;
+}
+.cycle-headline.tutorial-cycle-done {
+  color: var(--gn, #34d399);
+  font-weight: 600;
+}
+.cycle-headline.tutorial-cycle-progress {
+  color: var(--t1);
 }
 .cycle-tip {
   font-size: 12px;
