@@ -2937,3 +2937,106 @@ html {
 .tutorial-tooltip.compact .tutorial-step-count {
   margin-bottom: 4px;
 }
+/* ════════════════════════════════════════════════════════════════════
+   MOTU Vault — tutorial v7.00 CSS additions
+   ────────────────────────────────────────────────────────────────────
+   Append the rules below to the end of vault.css. They:
+     • Replace the inline status-color styles with class-based colors
+       (forced-colors-safe, themable, no inline style).
+     • Add visible focus indicators to the dialog buttons (WCAG 2.4.7).
+     • Add the new Back button styling.
+     • Disable the Next button visually when not ready.
+     • Add a hint variant for the "Looking for…" message.
+     • Add a celebratory style for the cycle-demo completion headline.
+     • Cover prefers-reduced-motion edge cases (the global universal
+       @media block at line 2596 already handles most animation kills,
+       but the spotlight pulse needs an explicit no-pulse path because
+       JS adds the .pulse class only when motion is allowed — this is
+       defensive in case JS ever forgets).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Cycle-demo dot colors — replaces inline style="background:..." */
+.cycle-dot { background: #6b7280; }              /* fallback / cleared */
+.cycle-dot.s-owned     { background: #34d399; }
+.cycle-dot.s-wishlist  { background: #60a5fa; }
+.cycle-dot.s-ordered   { background: #fb923c; }
+.cycle-dot.s-for-sale  { background: #f87171; }
+.cycle-dot.s-cleared   { background: #6b7280; }
+
+/* Cycle-demo completion headline — was inline style="color:#34d399" */
+.tutorial-cycle-done {
+  color: #34d399;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+/* "Looking for the right place..." hint variant */
+.tutorial-hint {
+  color: var(--t3);
+  font-style: italic;
+}
+
+/* Back button — sits between Skip and Next */
+.tutorial-back {
+  background: transparent;
+  color: var(--t1);
+  border: 1px solid var(--bd);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-right: 6px;
+}
+
+/* Disabled Next button (cycle demo before threshold met) */
+.tutorial-next:disabled,
+.tutorial-next[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Focus indicators on dialog buttons — keyboard-only via :focus-visible
+   so mouse clicks don't show the ring. WCAG 2.4.7 + 2.4.13. */
+.tutorial-skip:focus-visible,
+.tutorial-back:focus-visible,
+.tutorial-next:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+/* Touch-target floor: WCAG 2.5.8 minimum is 24px; we aim for ~44px to
+   match Apple HIG and Material Design. The existing .tutorial-skip /
+   .tutorial-next padding gives ~36px tall — bump min-height. */
+.tutorial-skip,
+.tutorial-back,
+.tutorial-next {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The tutorial-actions container needs to allow wrapping on narrow
+   screens so three buttons (Skip / Back / Next) don't overflow. */
+.tutorial-actions {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+/* prefers-reduced-motion — defensive guards for the pulse animation
+   and the tutorialIn entry transition. The global universal @media
+   block at line 2596 already catches these, but explicit rules here
+   document the intent and survive any future global-block changes. */
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-overlay.pulse {
+    animation: none !important;
+  }
+  .tutorial-tooltip {
+    animation: none !important;
+  }
+  .tutorial-overlay {
+    /* Disable the position transitions so the spotlight snaps rather
+       than slides between targets. */
+    transition: none !important;
+  }
+}
