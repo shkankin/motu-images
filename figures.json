@@ -5953,18 +5953,6 @@
     "sourceLine": "chronicles"
   },
   {
-    "id": "he-man-13242",
-    "name": "He-Man",
-    "line": "chronicles",
-    "group": "Movie",
-    "wave": "1",
-    "year": 2026,
-    "retail": 24.99,
-    "slug": "he-man-13242",
-    "faction": "Heroic Warriors",
-    "source": "af411"
-  },
-  {
     "id": "he-man-nicholas-galitzine-13242",
     "name": "He-Man (Nicholas Galitzine)",
     "line": "chronicles",
@@ -5989,18 +5977,6 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "chronicles"
-  },
-  {
-    "id": "man-at-arms-13243",
-    "name": "Man-At-Arms",
-    "line": "chronicles",
-    "group": "Movie",
-    "wave": "1",
-    "year": 2026,
-    "retail": 24.99,
-    "slug": "man-at-arms-13243",
-    "faction": "Heroic Warriors",
-    "source": "af411"
   },
   {
     "id": "man-at-arms-idris-elba-13243",
@@ -6066,18 +6042,6 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "chronicles"
-  },
-  {
-    "id": "tri-klops-13244",
-    "name": "Tri-Klops",
-    "line": "chronicles",
-    "group": "Movie",
-    "wave": "1",
-    "year": 2026,
-    "retail": 24.99,
-    "slug": "tri-klops-13244",
-    "faction": "Evil Warriors",
-    "source": "af411"
   },
   {
     "id": "tri-klops-kojo-attah-13244",
