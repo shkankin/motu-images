@@ -306,13 +306,18 @@ function render() {
     // every status tap re-plays the entrance animation, which is annoying.
     if (S._justNavigated) {
       app().setAttribute('data-stagger', '1');
-      // v6.24: reverse stagger — bottom items animate first. Stamp --stagger-i
-      // on each child counting from the end (last=0) so CSS delay calc gives
-      // 0ms to the bottom item and increases going up.
+      // v6.24: reverse stagger — bottom items animate first.
+      // v6.25: cap at STAGGER_CAP so long lists (All/Collection tabs) don't
+      // make top items wait seconds. Items beyond the cap share the max delay
+      // so the wave still reads as bottom-up without growing unboundedly.
       requestAnimationFrame(() => {
+        const STAGGER_CAP = 11;
         const nodes = [...(app().querySelectorAll('.fig-row,.fig-card,.line-card,.line-row,.subline-card'))];
         const last = nodes.length - 1;
-        nodes.forEach((el, i) => el.style.setProperty('--stagger-i', last - i));
+        nodes.forEach((el, i) => {
+          const idx = Math.min(last - i, STAGGER_CAP);
+          el.style.setProperty('--stagger-i', idx);
+        });
       });
       setTimeout(() => { try { app().removeAttribute('data-stagger'); } catch {} }, 600);
     }
@@ -394,7 +399,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.24</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.25</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -500,8 +505,38 @@ function renderMain() {
   // Immersive scroll: hide/show bars via transform only — no layout changes
   if (ca) {
     let lastScrollTop = ca.scrollTop;
-    let _suppressed = true; // suppress initial scroll events from restore
-    let _lastToggleTs = 0;  // v4.95: hysteresis timer to prevent header flashing
+    let _suppressed = true;
+    let _lastToggleTs = 0;
+    // v6.25: accumulate delta over a 60ms window before acting. Per-event
+    // delta at low thresholds caused flicker — touchscreens emit rapid jitter
+    // events while the finger is held still or during momentum decay, which
+    // was flip-flopping the bars continuously.
+    let _accDelta = 0;
+    let _accTimer = null;
+    function _flushDelta() {
+      _accTimer = null;
+      const delta = _accDelta;
+      _accDelta = 0;
+      const tb2 = document.getElementById('topBar');
+      const bn2 = document.getElementById('bottomNav');
+      const sb2 = document.getElementById('searchBar');
+      if (!tb2 || !bn2) return;
+      const now = Date.now();
+      if (now - _lastToggleTs < 300) return;
+      if (delta > 6 && ca.scrollTop > 30 && !S.barsHidden) {
+        tb2.classList.add('immersive-hide');
+        bn2.classList.add('immersive-hide');
+        if (sb2) { sb2.classList.add('hidden'); S.searchBarHidden = true; }
+        S.barsHidden = true;
+        _lastToggleTs = now;
+      } else if (delta < -6 && S.barsHidden) {
+        tb2.classList.remove('immersive-hide');
+        bn2.classList.remove('immersive-hide');
+        if (sb2) { sb2.classList.remove('hidden'); S.searchBarHidden = false; }
+        S.barsHidden = false;
+        _lastToggleTs = now;
+      }
+    }
     requestAnimationFrame(() => { _suppressed = false; lastScrollTop = ca.scrollTop; });
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
@@ -511,13 +546,21 @@ function renderMain() {
       const sb = document.getElementById('searchBar');
       if (!tb || !bn) return;
       const st = ca.scrollTop;
-      const delta = st - lastScrollTop;
+      const raw = st - lastScrollTop;
       lastScrollTop = st;
-      const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
-      // v5.00: at the bottom of the list, force bars back so the user can
-      // tap nav/search without scrolling up first. Was previously a hard
-      // return that left bars in whatever state they were on entry.
-      if (nearBottom) {
+      // Near-top: show immediately, no accumulation needed
+      if (st < 10 && S.barsHidden) {
+        tb.classList.remove('immersive-hide');
+        bn.classList.remove('immersive-hide');
+        if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
+        S.barsHidden = false;
+        _lastToggleTs = Date.now();
+        _accDelta = 0;
+        if (_accTimer) { clearTimeout(_accTimer); _accTimer = null; }
+        return;
+      }
+      // Near-bottom: show immediately
+      if (ca.scrollHeight - st - ca.clientHeight < 30) {
         if (S.barsHidden) {
           tb.classList.remove('immersive-hide');
           bn.classList.remove('immersive-hide');
@@ -525,31 +568,15 @@ function renderMain() {
           S.barsHidden = false;
           _lastToggleTs = Date.now();
         }
+        _accDelta = 0;
+        if (_accTimer) { clearTimeout(_accTimer); _accTimer = null; }
         return;
       }
-      // v4.95: lock out reverse-direction toggles for 200ms after the last
-      // toggle, plus require a larger delta (8px instead of 4px) to start
-      // hiding. Without this, fast/jittery scrolls would flap the bars on
-      // and off as small overshoot/correction motions crossed the ±4 line.
-      const now = Date.now();
-      if (now - _lastToggleTs < 80) {
-        _scheduleIdleShow();
-        return;
-      }
-      if (delta > 4 && st > 20 && !S.barsHidden) {
-        tb.classList.add('immersive-hide');
-        bn.classList.add('immersive-hide');
-        if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
-        S.barsHidden = true;
-        _lastToggleTs = now;
-      } else if ((delta < -4 || st < 10) && S.barsHidden) {
-        tb.classList.remove('immersive-hide');
-        bn.classList.remove('immersive-hide');
-        if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
-        S.barsHidden = false;
-        _lastToggleTs = now;
-      }
-      _scheduleIdleShow();
+      // Accumulate and debounce
+      _accDelta += raw;
+      if (_accTimer) clearTimeout(_accTimer);
+      _accTimer = setTimeout(_flushDelta, 60);
+      if (S.barsHidden) _scheduleIdleShow();
     };
     // v5.01: when scrolling pauses for 3.5s, fade the bars back in. Avoids
     // leaving the user stranded with no nav after they stop reading.
