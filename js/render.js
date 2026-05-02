@@ -534,15 +534,15 @@ function renderMain() {
         _scheduleIdleShow();
         return;
       }
-      // Scroll down: hide immediately on any downward movement past top
+      // Scroll down: hide immediately on any deliberate downward movement
       if (delta > 1 && st > 0 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
         if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
         S.barsHidden = true;
         _lastToggleTs = now;
-      // Scroll up: show immediately on any upward movement
-      } else if ((delta < -1 || st < 20) && S.barsHidden) {
+      // Scroll up: require 8px to filter held-finger micro-jitter
+      } else if ((delta < -8 || st < 20) && S.barsHidden) {
         tb.classList.remove('immersive-hide');
         bn.classList.remove('immersive-hide');
         if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
