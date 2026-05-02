@@ -64,8 +64,8 @@ function renderSheet() {
       </div>
       <div class="sheet-body">${body}</div>
       ${S.sheet === 'wantListView' ? `<div class="sheet-footer" style="text-align:center">
-        <div style="font-size:12px;color:var(--t3);margin-bottom:10px">Track your own MOTU collection</div>
-        <a href="${location.href.split('#')[0]}" style="display:inline-block;padding:10px 24px;border-radius:10px;background:var(--acc);color:var(--btn-t);font-size:13px;font-weight:700;text-decoration:none">Open MOTU Vault</a>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:10px">Browse the full MOTU catalog</div>
+        <a href="https://www.actionfigure411.com/masters-of-the-universe/" target="_blank" rel="noopener" style="display:inline-block;padding:10px 24px;border-radius:10px;background:var(--acc);color:var(--btn-t);font-size:13px;font-weight:700;text-decoration:none">View on AF411</a>
       </div>` : ''}
     </div>
   </div>`;

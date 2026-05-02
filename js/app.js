@@ -9,7 +9,7 @@
 // Side-effect imports (order matters — state.js is the leaf, others
 // build on it; render.js exposes window.render which data.js + photos.js
 // call lazily to break circular refs).
-import { S, store, CACHE_KEY, CACHE_TTL, IMG } from './state.js';
+import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL, IMG } from './state.js';
 import {
   initOPFS, loadPhotoLabels, loadPhotoCopyMap,
   photoStore, _opfsReady,
@@ -105,6 +105,9 @@ async function init() {
     rebuildFigIndex();
     S.syncTs = cached.ts;
     S.loaded = true;
+    // v6.24: restore loadouts so complete badges render correctly before fetch
+    const cachedLoadouts = store.get(LOADOUTS_CACHE_KEY);
+    if (cachedLoadouts && typeof cachedLoadouts === 'object') S._repoLoadouts = cachedLoadouts;
   }
   // Apply theme
   document.documentElement.setAttribute('data-theme', S.theme);

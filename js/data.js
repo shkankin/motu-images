@@ -17,7 +17,7 @@ const openSheet = (...a) => window.openSheet?.(...a);
 
 import {
   S, store, ICO, icon, IMG, FIGS_URL, LOADOUTS_URL, KIDS_CORE_KEY,
-  CUSTOM_FIGS_KEY, CACHE_KEY, CACHE_TTL,
+  CUSTOM_FIGS_KEY, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL,
   LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX,
   THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP,
@@ -140,6 +140,8 @@ async function fetchFigs(manual = false, firstLoad = false) {
       _derived.invalidate();
       S.syncTs = Date.now();
       store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
+      // v6.24: persist loadouts so cached cold-start renders show complete badges
+      if (Object.keys(S._repoLoadouts).length) store.set(LOADOUTS_CACHE_KEY, S._repoLoadouts);
       S.syncStatus = 'ok';
       if (firstLoad) { S.loaded = true; }
       const newCount = S.newFigIds.size;

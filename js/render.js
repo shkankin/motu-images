@@ -306,8 +306,14 @@ function render() {
     // every status tap re-plays the entrance animation, which is annoying.
     if (S._justNavigated) {
       app().setAttribute('data-stagger', '1');
-      // Clear the attribute after the longest stagger delay (~250ms) so
-      // subsequent in-place updates don't animate.
+      // v6.24: reverse stagger — bottom items animate first. Stamp --stagger-i
+      // on each child counting from the end (last=0) so CSS delay calc gives
+      // 0ms to the bottom item and increases going up.
+      requestAnimationFrame(() => {
+        const nodes = [...(app().querySelectorAll('.fig-row,.fig-card,.line-card,.line-row,.subline-card'))];
+        const last = nodes.length - 1;
+        nodes.forEach((el, i) => el.style.setProperty('--stagger-i', last - i));
+      });
       setTimeout(() => { try { app().removeAttribute('data-stagger'); } catch {} }, 600);
     }
     if (!S.loaded) { renderLoading(); return; }
@@ -388,7 +394,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.23</span>${S.syncTs ? ' · '+new Date(S.syncTs).toLocaleDateString() : ''}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold">v6.24</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -470,6 +476,13 @@ function renderMain() {
   if (S.barsHidden && !S.sheet) {
     if (tb) tb.classList.add('immersive-hide');
     if (bn) bn.classList.add('immersive-hide');
+  } else {
+    // Explicitly clear — covers the back-button case where S.barsHidden was
+    // reset to false in popstate but the CSS class persisted across the render.
+    if (tb) tb.classList.remove('immersive-hide');
+    if (bn) bn.classList.remove('immersive-hide');
+    const sb2 = document.getElementById('searchBar');
+    if (sb2 && !S.searchBarHidden) sb2.classList.remove('hidden');
   }
 
   // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
@@ -519,17 +532,17 @@ function renderMain() {
       // hiding. Without this, fast/jittery scrolls would flap the bars on
       // and off as small overshoot/correction motions crossed the ±4 line.
       const now = Date.now();
-      if (now - _lastToggleTs < 200) {
+      if (now - _lastToggleTs < 80) {
         _scheduleIdleShow();
         return;
       }
-      if (delta > 8 && st > 40 && !S.barsHidden) {
+      if (delta > 4 && st > 20 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
         if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
         S.barsHidden = true;
         _lastToggleTs = now;
-      } else if ((delta < -8 || st < 20) && S.barsHidden) {
+      } else if ((delta < -4 || st < 10) && S.barsHidden) {
         tb.classList.remove('immersive-hide');
         bn.classList.remove('immersive-hide');
         if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
