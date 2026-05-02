@@ -505,8 +505,8 @@ function renderMain() {
   // Immersive scroll: hide/show bars via transform only — no layout changes
   if (ca) {
     let lastScrollTop = ca.scrollTop;
-    let _suppressed = true;
-    let _lastToggleTs = 0;
+    let _suppressed = true; // suppress initial scroll events from restore
+    let _lastToggleTs = 0;  // v4.95: hysteresis timer to prevent header flashing
     requestAnimationFrame(() => { _suppressed = false; lastScrollTop = ca.scrollTop; });
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
@@ -534,13 +534,15 @@ function renderMain() {
         _scheduleIdleShow();
         return;
       }
-      if (delta > 12 && st > 60 && !S.barsHidden) {
+      // Scroll down: hide immediately on any downward movement past top
+      if (delta > 1 && st > 0 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
         if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
         S.barsHidden = true;
         _lastToggleTs = now;
-      } else if ((delta < -6 || st < 20) && S.barsHidden) {
+      // Scroll up: show immediately on any upward movement
+      } else if ((delta < -1 || st < 20) && S.barsHidden) {
         tb.classList.remove('immersive-hide');
         bn.classList.remove('immersive-hide');
         if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
@@ -549,12 +551,7 @@ function renderMain() {
       }
       _scheduleIdleShow();
     };
-    // v5.01: when scrolling pauses for 3.5s, fade the bars back in. Avoids
-    // leaving the user stranded with no nav after they stop reading.
-    // v6.22: also expose this so user interactions (status taps, long-press
-    // context menu, etc.) reset the timer — without this, a user who scrolls,
-    // hides the bars, then taps a status would still see the bars reappear
-    // 3.5s later mid-interaction.
+    // Idle show: bars reappear 2.5s after scrolling stops or any screen activity.
     let _idleTimer = null;
     function _scheduleIdleShow() {
       if (_idleTimer) clearTimeout(_idleTimer);
@@ -569,7 +566,7 @@ function renderMain() {
         if (sb2) { sb2.classList.remove('hidden'); S.searchBarHidden = false; }
         S.barsHidden = false;
         _lastToggleTs = Date.now();
-      }, 3500);
+      }, 2500);
     }
     ca._bumpIdleTimer = _scheduleIdleShow;
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});
