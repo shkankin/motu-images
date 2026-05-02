@@ -507,36 +507,6 @@ function renderMain() {
     let lastScrollTop = ca.scrollTop;
     let _suppressed = true;
     let _lastToggleTs = 0;
-    // v6.25: accumulate delta over a 60ms window before acting. Per-event
-    // delta at low thresholds caused flicker — touchscreens emit rapid jitter
-    // events while the finger is held still or during momentum decay, which
-    // was flip-flopping the bars continuously.
-    let _accDelta = 0;
-    let _accTimer = null;
-    function _flushDelta() {
-      _accTimer = null;
-      const delta = _accDelta;
-      _accDelta = 0;
-      const tb2 = document.getElementById('topBar');
-      const bn2 = document.getElementById('bottomNav');
-      const sb2 = document.getElementById('searchBar');
-      if (!tb2 || !bn2) return;
-      const now = Date.now();
-      if (now - _lastToggleTs < 300) return;
-      if (delta > 6 && ca.scrollTop > 30 && !S.barsHidden) {
-        tb2.classList.add('immersive-hide');
-        bn2.classList.add('immersive-hide');
-        if (sb2) { sb2.classList.add('hidden'); S.searchBarHidden = true; }
-        S.barsHidden = true;
-        _lastToggleTs = now;
-      } else if (delta < -6 && S.barsHidden) {
-        tb2.classList.remove('immersive-hide');
-        bn2.classList.remove('immersive-hide');
-        if (sb2) { sb2.classList.remove('hidden'); S.searchBarHidden = false; }
-        S.barsHidden = false;
-        _lastToggleTs = now;
-      }
-    }
     requestAnimationFrame(() => { _suppressed = false; lastScrollTop = ca.scrollTop; });
     ca._scrollHandler && ca.removeEventListener('scroll', ca._scrollHandler);
     ca._scrollHandler = () => {
@@ -546,21 +516,10 @@ function renderMain() {
       const sb = document.getElementById('searchBar');
       if (!tb || !bn) return;
       const st = ca.scrollTop;
-      const raw = st - lastScrollTop;
+      const delta = st - lastScrollTop;
       lastScrollTop = st;
-      // Near-top: show immediately, no accumulation needed
-      if (st < 10 && S.barsHidden) {
-        tb.classList.remove('immersive-hide');
-        bn.classList.remove('immersive-hide');
-        if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
-        S.barsHidden = false;
-        _lastToggleTs = Date.now();
-        _accDelta = 0;
-        if (_accTimer) { clearTimeout(_accTimer); _accTimer = null; }
-        return;
-      }
-      // Near-bottom: show immediately
-      if (ca.scrollHeight - st - ca.clientHeight < 30) {
+      const nearBottom = ca.scrollHeight - st - ca.clientHeight < 30;
+      if (nearBottom) {
         if (S.barsHidden) {
           tb.classList.remove('immersive-hide');
           bn.classList.remove('immersive-hide');
@@ -568,15 +527,27 @@ function renderMain() {
           S.barsHidden = false;
           _lastToggleTs = Date.now();
         }
-        _accDelta = 0;
-        if (_accTimer) { clearTimeout(_accTimer); _accTimer = null; }
         return;
       }
-      // Accumulate and debounce
-      _accDelta += raw;
-      if (_accTimer) clearTimeout(_accTimer);
-      _accTimer = setTimeout(_flushDelta, 60);
-      if (S.barsHidden) _scheduleIdleShow();
+      const now = Date.now();
+      if (now - _lastToggleTs < 200) {
+        _scheduleIdleShow();
+        return;
+      }
+      if (delta > 12 && st > 60 && !S.barsHidden) {
+        tb.classList.add('immersive-hide');
+        bn.classList.add('immersive-hide');
+        if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
+        S.barsHidden = true;
+        _lastToggleTs = now;
+      } else if ((delta < -6 || st < 20) && S.barsHidden) {
+        tb.classList.remove('immersive-hide');
+        bn.classList.remove('immersive-hide');
+        if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
+        S.barsHidden = false;
+        _lastToggleTs = now;
+      }
+      _scheduleIdleShow();
     };
     // v5.01: when scrolling pauses for 3.5s, fade the bars back in. Avoids
     // leaving the user stranded with no nav after they stop reading.
