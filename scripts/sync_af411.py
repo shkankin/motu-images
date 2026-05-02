@@ -52,7 +52,17 @@ CHANGELOG
       in figures.json like every other line. App was updated in v6.16 to
       stop fetching the separate file.
 
-MIGRATION (v1.3 one-time)
+  v1.5 (2026-05-01)
+    - sourceGroup field. Parallel to sourceLine — tracks what AF411 says the
+      group/subline is. If `group != sourceGroup` on an existing entry, the
+      script treats it as a manual override and never overwrites `group` again.
+      Fixes: a figure manually moved from "Chronicles" to "Exclusives" staying
+      put across syncs even if AF411 still lists it under the old group.
+    - Audit mode now reports group overrides alongside line overrides.
+    - One-time backfill: existing figures with manual group corrections need
+      `sourceGroup` added (same jq pattern as the sourceLine migration).
+
+
   For every Kids Core figure currently in figures.json that was originally
   scraped from AF411's chronicles page and hand-corrected to line:'kids-core',
   add `"sourceLine": "chronicles"` to the entry. After that, the script
@@ -475,7 +485,8 @@ def main():
     new_ids = new_for_existing  # legacy alias used in commit block below
     removed_ids = existing_ids - scraped_ids if not args.line else set()  # Only flag removals on full sync
     updated = []
-    line_overrides = []  # v1.3: entries where user has manually re-tagged the line
+    line_overrides = []   # v1.3: entries where user has manually re-tagged the line
+    group_overrides = []  # v1.5: entries where user has manually re-tagged the group/subline
 
     # Check for data changes in existing figures
     for fid in scraped_ids & existing_ids:
@@ -490,6 +501,15 @@ def main():
         if is_overridden:
             line_overrides.append((fid, e.get("line"), s["line"]))
 
+        # v1.5: detect manual group overrides. If sourceGroup is set and
+        # differs from the current group, the user has reclassified — never
+        # overwrite group on this entry.
+        is_group_overridden = (
+            "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
+        )
+        if is_group_overridden:
+            group_overrides.append((fid, e.get("group"), s["group"]))
+
         changes = []
         if s["name"] != e.get("name"):
             changes.append(f"name: '{e.get('name')}' → '{s['name']}'")
@@ -499,10 +519,16 @@ def main():
             changes.append(f"year: {e.get('year')} → {s['year']}")
         if s["retail"] and s["retail"] != e.get("retail"):
             changes.append(f"retail: {e.get('retail')} → {s['retail']}")
-        # v1.1: detect when scraped group differs from existing — used to be
-        # silently overwritten.
-        if s["group"] and s["group"] != e.get("group", ""):
+        # v1.5: only flag group change when there's no manual override AND
+        # AF411's value actually differs from what we have.
+        if s["group"] and s["group"] != e.get("group", "") and not is_group_overridden:
             changes.append(f"group: '{e.get('group','')}' → '{s['group']}'")
+        # v1.5: backfill sourceGroup on entries that don't have it yet.
+        if "sourceGroup" not in e and s["group"]:
+            changes.append(f"sourceGroup: missing → '{s['group']}'")
+        elif not is_group_overridden and e.get("sourceGroup") != s["group"]:
+            # AF411 changed its group label — update sourceGroup to track it.
+            changes.append(f"sourceGroup: '{e.get('sourceGroup')}' → '{s['group']}'")
         # v1.3: backfill sourceLine on legacy entries that don't have it.
         # Without this field, the override-detection above can't work on
         # future syncs. Backfill = whatever AF411 currently says.
@@ -551,6 +577,12 @@ def main():
         print("  ── UPDATED FIELDS ──")
         for fid, changes in updated:
             print(f"    ~ {fid}: {', '.join(changes)}")
+        print()
+
+    if args.audit and group_overrides:
+        print("  ── GROUP OVERRIDES (manual group != AF411 group) ──")
+        for fid, local_g, af411_g in group_overrides:
+            print(f"    ⊙ {fid}: group='{local_g}' (AF411 says '{af411_g}')")
         print()
 
     if removed_ids and args.audit:
@@ -602,11 +634,19 @@ def main():
         # keep the group the user set. On non-overridden entries, take
         # AF411's value.
         if s["group"] and not is_overridden:
-            e["group"] = s["group"]
+            # v1.5: also gate on group override — user may have moved figure
+            # to a different subline independently of the line override.
+            is_group_overridden = (
+                "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
+            )
+            if not is_group_overridden:
+                e["group"] = s["group"]
         # v1.3: always update sourceLine to whatever AF411 currently says.
         # This is bookkeeping — the active `line` field is preserved on
         # overrides above.
         e["sourceLine"] = s["line"]
+        # v1.5: always update sourceGroup to whatever AF411 currently says.
+        e["sourceGroup"] = s["group"]
         # Always tag source — these entries DEFINITELY came from AF411 since
         # we matched them by ID. Backfills missing source on legacy entries.
         e["source"] = "af411"
@@ -617,14 +657,15 @@ def main():
             "id": s["id"],
             "name": s["name"],
             "line": s["line"],
-            "sourceLine": s["line"],  # v1.3: track AF411's classification
-            "group": s["group"] or "",          # v1.1: ensure string, never None
+            "sourceLine": s["line"],   # v1.3: track AF411's classification
+            "group": s["group"] or "",           # v1.1: ensure string, never None
+            "sourceGroup": s["group"] or "",     # v1.5: track AF411's group
             "wave": s["wave"] or "",
-            "year": s["year"],                  # may be None if not parsed
-            "retail": s["retail"] or 0,         # v1.1: default to 0 instead of None
+            "year": s["year"],                   # may be None if not parsed
+            "retail": s["retail"] or 0,          # v1.1: default to 0 instead of None
             "slug": s["slug"],
             "faction": guess_faction(s["name"], s["group"]),
-            "source": "af411",                  # v1.1: tag every new fig as AF411-sourced
+            "source": "af411",                   # v1.1: tag every new fig as AF411-sourced
         }
         if for_pending:
             out["_addedToPending"] = int(time.time())  # editor can sort by date
