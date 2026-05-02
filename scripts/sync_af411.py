@@ -188,6 +188,23 @@ IMAGES_DIR = REPO_ROOT  # images sit at repo root as {slug}.jpg
 # during merge. Keep this list narrow to be data-loss-safe.
 SCRAPER_FIELDS = {"name", "line", "group", "wave", "year", "retail", "slug"}
 
+# v1.5: Manual field patches applied unconditionally after every sync.
+# Mirrors the PATCHED dict in the CI verify step (sync-af411.yml) so the
+# post-sync assertion always passes. Add entries here whenever a figure
+# needs a permanent group correction that AF411 hasn't fixed upstream.
+# Schema: { fig_id: { field: value } }
+MANUAL_PATCHES = {
+    "2026-movie-4-pack-13440":                           {"group": "Exclusives"},
+    "beast-man-deluxe-13523":                            {"group": "Deluxe"},
+    "fright-fighter-2026-movie-13439":                   {"group": "Vehicles & Playsets"},
+    "he-man-nick-galitzine-13442":                       {"group": "Action Figures"},
+    "he-man-and-sky-sled-2026-movie-13444":              {"group": "Vehicles & Playsets"},
+    "spikor-2026-movie-13443":                           {"group": "Action Figures"},
+    "trap-jaw-2026-movie-deluxe-13438":                  {"group": "Deluxe"},
+    "beast-man-1987-movie-8420":                         {"group": "Movie"},
+    # king-grayskull-13486 and ram-man-*-13441 only assert source in CI, no group patch needed
+}
+
 # ─── HTML Parser for Checklist Pages ──────────────────────────────
 
 class ChecklistParser(HTMLParser):
@@ -521,7 +538,10 @@ def main():
             changes.append(f"retail: {e.get('retail')} → {s['retail']}")
         # v1.5: only flag group change when there's no manual override AND
         # AF411's value actually differs from what we have.
-        if s["group"] and s["group"] != e.get("group", "") and not is_group_overridden:
+        # Also skip if this figure has a MANUAL_PATCHES group entry — it will
+        # be re-applied unconditionally at write time, no need to surface as a change.
+        _has_manual_group = fid in MANUAL_PATCHES and "group" in MANUAL_PATCHES[fid]
+        if s["group"] and s["group"] != e.get("group", "") and not is_group_overridden and not _has_manual_group:
             changes.append(f"group: '{e.get('group','')}' → '{s['group']}'")
         # v1.5: backfill sourceGroup on entries that don't have it yet.
         if "sourceGroup" not in e and s["group"]:
@@ -709,6 +729,21 @@ def main():
         else:
             img_failed += 1
         time.sleep(0.5)
+
+    # v1.5: Apply manual patches unconditionally before write.
+    # These override whatever AF411 scraped, matching the CI verify assertions.
+    merged_by_id_final = {f["id"]: f for f in merged}
+    patched_count = 0
+    for fid, fields in MANUAL_PATCHES.items():
+        e = merged_by_id_final.get(fid)
+        if not e:
+            continue
+        for field, val in fields.items():
+            if e.get(field) != val:
+                e[field] = val
+                patched_count += 1
+    if patched_count:
+        print(f"  🔒 Applied {patched_count} manual patch field(s) from MANUAL_PATCHES")
 
     # Sort by line then name for clean diffs
     line_order = {l[0]: i for i, l in enumerate(LINES)}
