@@ -260,9 +260,9 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   .status-btn.active svg { animation: none; }
 }
 
-/* v5.04: stagger entrance animation (restored from v5.01). Only fires when
-   #app has [data-stagger] set, which render() applies on navigation
-   transitions only. Status toggles and in-place patches don't replay it. */
+/* v6.24: stagger entrance animation. Reversed — bottom items appear first.
+   JS stamps --stagger-i per element (last child=0, first=n-1). Delay is
+   capped at 275ms so very long lists don't make top items wait forever. */
 @keyframes itemStagger {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -273,19 +273,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 [data-stagger] .line-row,
 [data-stagger] .subline-card {
   animation: itemStagger 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: min(calc(var(--stagger-i, 0) * 25ms), 275ms);
 }
-[data-stagger] .fig-row:nth-child(1), [data-stagger] .fig-card:nth-child(1), [data-stagger] .line-card:nth-child(1), [data-stagger] .line-row:nth-child(1), [data-stagger] .subline-card:nth-child(1) { animation-delay: 0ms; }
-[data-stagger] .fig-row:nth-child(2), [data-stagger] .fig-card:nth-child(2), [data-stagger] .line-card:nth-child(2), [data-stagger] .line-row:nth-child(2), [data-stagger] .subline-card:nth-child(2) { animation-delay: 25ms; }
-[data-stagger] .fig-row:nth-child(3), [data-stagger] .fig-card:nth-child(3), [data-stagger] .line-card:nth-child(3), [data-stagger] .line-row:nth-child(3), [data-stagger] .subline-card:nth-child(3) { animation-delay: 50ms; }
-[data-stagger] .fig-row:nth-child(4), [data-stagger] .fig-card:nth-child(4), [data-stagger] .line-card:nth-child(4), [data-stagger] .line-row:nth-child(4), [data-stagger] .subline-card:nth-child(4) { animation-delay: 75ms; }
-[data-stagger] .fig-row:nth-child(5), [data-stagger] .fig-card:nth-child(5), [data-stagger] .line-card:nth-child(5), [data-stagger] .line-row:nth-child(5), [data-stagger] .subline-card:nth-child(5) { animation-delay: 100ms; }
-[data-stagger] .fig-row:nth-child(6), [data-stagger] .fig-card:nth-child(6), [data-stagger] .line-card:nth-child(6), [data-stagger] .line-row:nth-child(6), [data-stagger] .subline-card:nth-child(6) { animation-delay: 125ms; }
-[data-stagger] .fig-row:nth-child(7), [data-stagger] .fig-card:nth-child(7), [data-stagger] .line-card:nth-child(7), [data-stagger] .line-row:nth-child(7), [data-stagger] .subline-card:nth-child(7) { animation-delay: 150ms; }
-[data-stagger] .fig-row:nth-child(8), [data-stagger] .fig-card:nth-child(8), [data-stagger] .line-card:nth-child(8), [data-stagger] .line-row:nth-child(8), [data-stagger] .subline-card:nth-child(8) { animation-delay: 170ms; }
-[data-stagger] .fig-row:nth-child(9), [data-stagger] .fig-card:nth-child(9), [data-stagger] .line-card:nth-child(9), [data-stagger] .line-row:nth-child(9), [data-stagger] .subline-card:nth-child(9) { animation-delay: 190ms; }
-[data-stagger] .fig-row:nth-child(10), [data-stagger] .fig-card:nth-child(10), [data-stagger] .line-card:nth-child(10), [data-stagger] .line-row:nth-child(10), [data-stagger] .subline-card:nth-child(10) { animation-delay: 210ms; }
-[data-stagger] .fig-row:nth-child(11), [data-stagger] .fig-card:nth-child(11), [data-stagger] .line-card:nth-child(11), [data-stagger] .line-row:nth-child(11), [data-stagger] .subline-card:nth-child(11) { animation-delay: 225ms; }
-[data-stagger] .fig-row:nth-child(12), [data-stagger] .fig-card:nth-child(12), [data-stagger] .line-card:nth-child(12), [data-stagger] .line-row:nth-child(12), [data-stagger] .subline-card:nth-child(12) { animation-delay: 240ms; }
 @media (prefers-reduced-motion: reduce) {
   [data-stagger] .fig-row, [data-stagger] .fig-card, [data-stagger] .line-card, [data-stagger] .line-row, [data-stagger] .subline-card { animation: none; }
 }
