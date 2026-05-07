@@ -16,7 +16,7 @@ const onSearch = (...a) => window.onSearch?.(...a);
 import {
   S, store, ICO, icon, IMG, LINES, FACTIONS, KIDS_CORE_KEY,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, SUBLINES,
-  ln, normalize, esc, _clone, isSelecting,
+  ln, normalize, esc, jsArg, _clone, isSelecting,
 } from './state.js';
 import {
   MAX_PHOTOS, photoStore, photoCopyOf,
@@ -91,10 +91,18 @@ function initLongPress(el, figId) {
   el.addEventListener('touchcancel', () => {
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   }, {passive: true});
-  // Block the system context menu (Android copy/paste/select callout).
-  // This is sufficient — contextmenu fires after the long-press delay,
-  // not on every touch, so it doesn't interfere with scrolling.
-  el.addEventListener('contextmenu', e => { e.preventDefault(); });
+  // Block the system context menu (Android copy/paste/select callout) and
+  // — v6.26 — also use the contextmenu event to surface the in-app menu on
+  // desktop. Previously desktop users had no equivalent of mobile long-press
+  // because the touch handlers above never fire; now right-click does it.
+  // contextmenu fires once per gesture (not on every touch), so it doesn't
+  // interfere with scrolling or tap-to-open.
+  el.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (isSelecting()) return;
+    haptic(15);
+    showContextMenu(figId, e.clientX, e.clientY);
+  });
   // Prevent tap from firing after long-press
   el.addEventListener('click', e => {
     if (_lpFired) { e.stopPropagation(); e.preventDefault(); _lpFired = false; }
@@ -111,6 +119,7 @@ function showContextMenu(figId, x, y) {
   // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
   // ID source (import, manual edit) could carry a quote and break out.
   const eFigId = esc(figId);
+  const jFigId = jsArg(figId);
   const overlay = document.createElement('div');
   overlay.className = 'ctx-menu-overlay';
   overlay.id = 'ctxOverlay';
@@ -130,13 +139,13 @@ function showContextMenu(figId, x, y) {
   STATUSES.forEach(s => {
     const active = c.status === s;
     const dotColor = STATUS_HEX[s];
-    items += `<button class="ctx-menu-item ${active ? 'active' : ''}" onclick="ctxSetStatus('${eFigId}','${s}')">
+    items += `<button class="ctx-menu-item ${active ? 'active' : ''}" onclick="ctxSetStatus(${jFigId},'${s}')">
       <span class="ctx-dot" style="background:${dotColor}"></span>
       ${active ? '✓ ' : ''}${STATUS_LABEL[s]}
     </button>`;
   });
   if (c.status) {
-    items += `<button class="ctx-menu-item" onclick="ctxSetStatus('${eFigId}','clear')" style="color:var(--t3)">
+    items += `<button class="ctx-menu-item" onclick="ctxSetStatus(${jFigId},'clear')" style="color:var(--t3)">
       <span class="ctx-dot" style="background:var(--bd)"></span>Clear status
     </button>`;
   }
@@ -144,23 +153,23 @@ function showContextMenu(figId, x, y) {
   // Quick "Add copy" shortcut for figures that already have at least one copy.
   // Skips opening the detail screen for power users adding multiples in bulk.
   if (c.status === 'owned' || c.status === 'for-sale') {
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addCopy('${eFigId}');toast('✓ Copy added')">
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addCopy(${jFigId});toast('✓ Copy added')">
       ${icon(ICO.import, 16)} Add another copy
     </button>`;
   }
   if (fig.line !== 'kids-core' && fig.line !== 'custom') {
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openAF411('${eFigId}')">
+    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openAF411(${jFigId})">
       ${icon(ICO.export, 16)} View on AF411
     </button>`;
   }
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig('${eFigId}')">
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig(${jFigId})">
     ${icon(ICO.edit, 16)} ${copyN > 1 ? 'Manage copies' : 'Open details'}
   </button>`;
   // Local edit (override) — for fixing missing/wrong AF411 metadata
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFigureEditor('${eFigId}')">
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFigureEditor(${jFigId})">
     ${icon(ICO.menu, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
   </button>`;
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith('${eFigId}')">
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith(${jFigId})">
     ${icon(ICO.check, 16)} Select
   </button>`;
   menu.innerHTML = items;
@@ -211,6 +220,12 @@ function showContextMenu(figId, x, y) {
 function dismissContextMenu() {
   const el = document.getElementById('ctxOverlay');
   if (el) el.remove();
+  // v6.26: clear the long-press fired flag. Without this, if the user opened
+  // the context menu via long-press and then dismissed it by tapping the
+  // backdrop (rather than choosing an item), the next legitimate tap on
+  // any figure row would be swallowed by the click-suppression handler in
+  // initLongPress, which only resets _lpFired after it fires.
+  _lpFired = false;
 }
 
 window.ctxSetStatus = (id, status) => {
@@ -693,6 +708,25 @@ window.deleteKidsCoreAdminFig = async id => {
 // ── window.* mirrors for inline-onclick handlers ──
 window.pushNav = pushNav;
 window.dismissContextMenu = dismissContextMenu;
+
+// v6.27: keyboard shortcuts. "/" focuses search from anywhere (unless an input
+// already has focus); Escape clears search if active. Doesn't conflict with
+// the tutorial's keydown handler — that runs in capture phase only while the
+// tutorial overlay is open.
+document.addEventListener('keydown', e => {
+  // Ignore when a sheet, photo viewer, or tutorial is open — those have
+  // their own dismissal flows and we don't want to fight them.
+  if (S.sheet || S.photoViewer) return;
+  const tag = (e.target && e.target.tagName) || '';
+  const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
+                  (e.target && e.target.isContentEditable);
+  if (e.key === '/' && !inField) {
+    const inp = document.getElementById('searchInput');
+    if (inp) { e.preventDefault(); inp.focus(); inp.select?.(); }
+  } else if (e.key === 'Escape' && S.search && !inField) {
+    onSearch('');
+  }
+});
 
 // ── Exports ─────────────────────────────────────────────────
 export {

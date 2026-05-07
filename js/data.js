@@ -21,36 +21,61 @@ import {
   LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX,
   THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP,
-  ln, normalize, esc, isSelecting, _clone,
+  ln, normalize, esc, jsArg, isSelecting, _clone,
 } from './state.js';
 import {
   MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY,
   photoStore, photoURLs, photoCopyOf, setPhotoCopy,
   loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap,
+  getPhotoCopyMap, replacePhotoCopyMap, mergePhotoCopyMap,
 } from './photos.js';
 import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
 import { checkCompletion } from './eggs.js';
 
 // § DATA-FETCH ── parseCSV, fetchFigs, newFigIds detection ─────────
-function parseCSV(text) {
-  if (text.length > 10000000) throw new Error('File too large');
-  const lines = text.split('\n').filter(l => l.trim());
-  const parseRow = line => {
-    const cols = []; let cur = ''; let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
-      else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
+// v6.27: rewrote the CSV parser to handle RFC-4180 quoted newlines correctly.
+// Previous version did `text.split('\n')` first, which split mid-field for
+// any cell containing a newline (notes columns frequently do). Also caps the
+// row count to refuse pathological inputs early.
+const _CSV_MAX_BYTES = 10_000_000;   // 10 MB
+const _CSV_MAX_ROWS  = 100_000;
+function parseCSVRows(text) {
+  if (text.length > _CSV_MAX_BYTES) throw new Error('File too large');
+  const rows = [];
+  let row = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; }   // escaped quote
+        else inQ = false;                                // end of quoted field
+      } else {
+        cur += c;
+      }
+    } else {
+      if (c === '"' && cur === '') inQ = true;          // start of quoted field
+      else if (c === ',') { row.push(cur); cur = ''; }
+      else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; if (rows.length > _CSV_MAX_ROWS) throw new Error('Too many rows (max ' + _CSV_MAX_ROWS + ')'); }
+      else if (c === '\r') { /* CRLF — eat the CR, the LF will close the row */ }
       else cur += c;
     }
-    cols.push(cur); return cols;
-  };
-  const headers = parseRow(lines[0]).map(h => h.trim());
+  }
+  // Trailing field / row at EOF
+  if (cur.length > 0 || row.length > 0) { row.push(cur); rows.push(row); }
+  // Drop empty trailing rows (e.g., file ends with \n)
+  while (rows.length && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') rows.pop();
+  return rows;
+}
+function parseCSV(text) {
+  const rows = parseCSVRows(text);
+  if (rows.length === 0) return [];
+  const headers = rows[0].map(h => (h || '').trim());
   const idx = h => headers.indexOf(h);
   const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere,iVariation] =
     ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased','Variation Name'].map(idx);
-  return lines.slice(1).map(l => {
-    const c = parseRow(l);
+  return rows.slice(1).map(c => {
     const csvGroup = c[iGroup]?.trim() || '';
     return { genre:c[iGenre], series:c[iSeries], name:c[iName]?.trim(),
       group:GROUP_MAP[csvGroup]||csvGroup, wave:c[iWave]?.trim()||'', paid:c[iPaid]?.trim(),
@@ -846,7 +871,7 @@ function renderAccessoryPickerSheet() {
   if (!cp) {
     return '<div class="text-dim text-sm" style="padding:20px;text-align:center">Copy no longer exists.</div>';
   }
-  const jsArg = s => esc(JSON.stringify(s));
+  // v6.26: jsArg now imported from state.js — local declaration removed.
 
   // Header / mode toggle
   if (adminMode) {
@@ -855,7 +880,7 @@ function renderAccessoryPickerSheet() {
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button onclick="S._accPickAdmin=false;renderSheetBody()" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:12px">‹ Back to Picker</button>
-      <button onclick="resetAccAvail('${esc(figId)}')" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:12px">Reset to All</button>
+      <button onclick="resetAccAvail(${jsArg(figId)})" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:12px">Reset to All</button>
     </div>`;
   } else {
     h += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -1091,12 +1116,21 @@ function _computeSortedFigs() {
   else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
   if (S.filterVariants) list = list.filter(f => /\w/.test(copyVariant(S.coll[f.id]) || ''));
   if (S.search) {
-    const s = S.search.toLowerCase().replace(/[-'']/g, '');
+    // v6.27: normalize for diacritic + punctuation insensitivity. Collectors
+    // type "Sheera" and expect to match "She-Ra"; international users type
+    // "skeletor" for "Skèletor". NFD splits combining marks off, then we
+    // strip them; remaining ASCII-folding handles hyphens / curly quotes.
+    const fold = str => (str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')   // strip combining marks
+      .toLowerCase()
+      .replace(/[-'’‘`]/g, '');
+    const s = fold(S.search);
     list = list.filter(f => {
-      const name = f.name.toLowerCase().replace(/[-'']/g, '');
+      const name = fold(f.name);
       if (name.includes(s)) return true;
-      const lineName = ln(f.line).toLowerCase().replace(/[-'']/g, '');
-      const group = (f.group||'').toLowerCase().replace(/[-'']/g, '');
+      const lineName = fold(ln(f.line));
+      const group = fold(f.group||'');
       return lineName.includes(s) || group.includes(s);
     });
   }
@@ -1309,7 +1343,7 @@ async function exportJSON() {
     exported: new Date().toISOString(),
     collection: S.coll,
     photos: {},
-    photoCopy: _photoCopy,  // {figId: {n: copyId}} — which copy each photo belongs to
+    photoCopy: getPhotoCopyMap(),  // {figId: {n: copyId}} — which copy each photo belongs to
     overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
   };
   // Include custom photos as arrays of {label, dataUrl}
@@ -1330,104 +1364,119 @@ async function exportJSON() {
   toast(`✓ Backup saved · ${totalPhotos} photos`);
 }
 
-function importJSON(file) {
-  const reader = new FileReader();
-  reader.onload = async ev => {
-    try {
-      const backup = JSON.parse(ev.target.result);
-      const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4'];
-      if (!knownVersions.includes(backup.version)) throw new Error('Unknown format');
-      if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
-      const overwrite = document.querySelector('.checkbox.checked') !== null;
-      let imported = 0, skipped = 0, photos = 0;
-      // v1/v2 backups have flat-shape entries; v3 has copies[]. migrateEntry
-      // is idempotent so it's safe to run on either.
-      Object.entries(backup.collection).forEach(([id, entry]) => {
-        if (!overwrite && S.coll[id]?.status) { skipped++; return; }
-        const incoming = migrateEntry(entry);
-        if (overwrite) {
+// v6.27: split into apply-from-parsed-object + file wrapper. handleImportFile
+// can now read the file once and pass the parsed object directly.
+async function applyImportedBackup(backup) {
+  // v6.26: sentinel keys to skip when iterating user-supplied JSON. Prevents
+  // a crafted backup from manipulating S.coll's prototype via bracket-assignment.
+  const RESERVED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+  try {
+    const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4'];
+    if (!backup || !knownVersions.includes(backup.version)) throw new Error('Unknown format');
+    if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
+    const overwrite = document.querySelector('.checkbox.checked') !== null;
+    let imported = 0, skipped = 0, photos = 0;
+    // v1/v2 backups have flat-shape entries; v3 has copies[]. migrateEntry
+    // is idempotent so it's safe to run on either.
+    Object.entries(backup.collection).forEach(([id, entry]) => {
+      if (RESERVED_KEYS.has(id)) return;
+      if (!overwrite && S.coll[id]?.status) { skipped++; return; }
+      const incoming = migrateEntry(entry);
+      if (overwrite) {
+        S.coll[id] = incoming;
+      } else {
+        // Merge: keep existing copies, append incoming copies as additional
+        // ones (avoiding obvious dupes by paid+condition+notes signature).
+        const existing = S.coll[id];
+        if (!existing) {
           S.coll[id] = incoming;
         } else {
-          // Merge: keep existing copies, append incoming copies as additional
-          // ones (avoiding obvious dupes by paid+condition+notes signature).
-          const existing = S.coll[id];
-          if (!existing) {
-            S.coll[id] = incoming;
-          } else {
-            const merged = isMigrated(existing) ? {...existing, copies: [...existing.copies]} : migrateEntry(existing);
-            if (incoming.status && !merged.status) merged.status = incoming.status;
-            if (incoming.copies) {
-              const sig = c => [c.condition||'', c.paid||'', c.variant||'', (c.notes||'').slice(0,40)].join('|');
-              const have = new Set((merged.copies||[]).map(sig));
-              let nextId = (merged.copies||[]).reduce((m,c) => Math.max(m, c.id||0), 0) + 1;
-              for (const cp of incoming.copies) {
-                if (!have.has(sig(cp))) {
-                  merged.copies.push({...cp, id: nextId++});
-                }
+          const merged = isMigrated(existing) ? {...existing, copies: [...existing.copies]} : migrateEntry(existing);
+          if (incoming.status && !merged.status) merged.status = incoming.status;
+          if (incoming.copies) {
+            const sig = c => [c.condition||'', c.paid||'', c.variant||'', (c.notes||'').slice(0,40)].join('|');
+            const have = new Set((merged.copies||[]).map(sig));
+            let nextId = (merged.copies||[]).reduce((m,c) => Math.max(m, c.id||0), 0) + 1;
+            for (const cp of incoming.copies) {
+              if (!have.has(sig(cp))) {
+                merged.copies.push({...cp, id: nextId++});
               }
             }
-            S.coll[id] = merged;
           }
-        }
-        imported++;
-      });
-      saveColl();
-      // Restore photos (handle both v1 single-photo and v2/v3/v4 multi-photo formats)
-      if (backup.photos) {
-        for (const [id, val] of Object.entries(backup.photos)) {
-          // v1 format: photos[id] is a single dataUrl string
-          // v2+ format: photos[id] is an array of {label, dataUrl}
-          const photoArr = typeof val === 'string'
-            ? [{label: '', dataUrl: val}]
-            : (Array.isArray(val) ? val : []);
-          const count = await photoStore.importPhotos(id, photoArr);
-          photos += count;
+          S.coll[id] = merged;
         }
       }
-      // v4: restore per-copy photo assignments
-      if (backup.photoCopy && typeof backup.photoCopy === 'object') {
-        if (overwrite) {
-          _photoCopy = {...backup.photoCopy};
-        } else {
-          // Merge — incoming wins on conflict
-          for (const [figId, m] of Object.entries(backup.photoCopy)) {
-            _photoCopy[figId] = {...(_photoCopy[figId] || {}), ...m};
-          }
-        }
-        savePhotoCopyMap();
+      imported++;
+    });
+    saveColl();
+    // Restore photos (handle both v1 single-photo and v2/v3/v4 multi-photo formats)
+    if (backup.photos) {
+      for (const [id, val] of Object.entries(backup.photos)) {
+        if (RESERVED_KEYS.has(id)) continue;
+        // v1 format: photos[id] is a single dataUrl string
+        // v2+ format: photos[id] is an array of {label, dataUrl}
+        const photoArr = typeof val === 'string'
+          ? [{label: '', dataUrl: val}]
+          : (Array.isArray(val) ? val : []);
+        const count = await photoStore.importPhotos(id, photoArr);
+        photos += count;
       }
-      // v4 (added later): restore figure field overrides
-      if (backup.overrides && typeof backup.overrides === 'object') {
-        if (overwrite) {
-          _overrides = {...backup.overrides};
-        } else {
-          for (const [figId, m] of Object.entries(backup.overrides)) {
-            const incoming = m?.fields || {};
-            const existing = _overrides[figId]?.fields || {};
-            _overrides[figId] = { fields: { ...existing, ...incoming } };
-          }
-        }
-        saveOverrides();
-        // Re-apply against current S.figs so the view updates without a reload
-        rebuildFigIndex();
-      }
-      const body = document.querySelector('.sheet-body');
-      if (body) {
-        body.innerHTML = `<div style="text-align:center;padding:20px 0">
-          <div style="font-size:48px;margin-bottom:12px">${imported>0?'✅':'🤷'}</div>
-          <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${imported} restored</div>
-          ${skipped>0 ? `<div class="text-sm text-dim" style="margin-bottom:4px">${skipped} skipped (already set)</div>` : ''}
-          ${photos>0 ? `<div class="text-sm text-dim">${photos} photos restored</div>` : ''}
-        </div>`;
-      }
-      // Ensure the collection write hits localStorage before the user can
-      // close the app. The view re-renders automatically via popstate when
-      // the sheet is dismissed, so no render() here (it would clobber the
-      // success summary above).
-      flushSaveColl();
-    } catch(e) {
-      toast('✗ Invalid backup: ' + e.message.slice(0, 80));
     }
+    // v4: restore per-copy photo assignments
+    if (backup.photoCopy && typeof backup.photoCopy === 'object') {
+      if (overwrite) {
+        replacePhotoCopyMap(backup.photoCopy);
+      } else {
+        // Merge — incoming wins on conflict (skips __proto__/constructor/prototype)
+        mergePhotoCopyMap(backup.photoCopy);
+      }
+    }
+    // v4 (added later): restore figure field overrides
+    if (backup.overrides && typeof backup.overrides === 'object') {
+      if (overwrite) {
+        _overrides = {};
+        for (const [figId, m] of Object.entries(backup.overrides)) {
+          if (RESERVED_KEYS.has(figId)) continue;
+          _overrides[figId] = m;
+        }
+      } else {
+        for (const [figId, m] of Object.entries(backup.overrides)) {
+          if (RESERVED_KEYS.has(figId)) continue;
+          const incoming = m?.fields || {};
+          const existing = _overrides[figId]?.fields || {};
+          _overrides[figId] = { fields: { ...existing, ...incoming } };
+        }
+      }
+      saveOverrides();
+      // Re-apply against current S.figs so the view updates without a reload
+      rebuildFigIndex();
+    }
+    const body = document.querySelector('.sheet-body');
+    if (body) {
+      body.innerHTML = `<div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:12px">${imported>0?'✅':'🤷'}</div>
+        <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${imported} restored</div>
+        ${skipped>0 ? `<div class="text-sm text-dim" style="margin-bottom:4px">${skipped} skipped (already set)</div>` : ''}
+        ${photos>0 ? `<div class="text-sm text-dim">${photos} photos restored</div>` : ''}
+      </div>`;
+    }
+    // Ensure the collection write hits localStorage before the user can
+    // close the app. The view re-renders automatically via popstate when
+    // the sheet is dismissed, so no render() here (it would clobber the
+    // success summary above).
+    flushSaveColl();
+  } catch (e) {
+    toast('✗ Invalid backup: ' + (e.message || '').slice(0, 80));
+  }
+}
+
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    let parsed;
+    try { parsed = JSON.parse(ev.target.result); }
+    catch { toast('✗ File is not valid JSON'); return; }
+    applyImportedBackup(parsed);
   };
   reader.readAsText(file);
 }
@@ -1462,26 +1511,29 @@ window.exportSettings = () => {
   toast('✓ Settings exported');
 };
 
+// v6.27: split into apply-from-parsed-object + file wrapper so handleImportFile
+// can route after a single read. Keeps the public window.importSettings(file)
+// API for any external caller (and the older code path that passes a File).
+function applyImportedSettings(payload) {
+  if (!payload || payload.version !== 'motu-vault-settings-v1' || !payload.settings) {
+    toast('✗ Not a settings file'); return;
+  }
+  let restored = 0;
+  for (const k of SETTINGS_KEYS) {
+    if (payload.settings[k] != null) {
+      store.set(k, payload.settings[k]);
+      restored++;
+    }
+  }
+  toast(`✓ Restored ${restored} settings — reloading…`);
+  setTimeout(() => location.reload(), 800);
+}
+
 window.importSettings = file => {
   const reader = new FileReader();
   reader.onload = ev => {
-    try {
-      const payload = JSON.parse(ev.target.result);
-      if (payload.version !== 'motu-vault-settings-v1' || !payload.settings) {
-        toast('✗ Not a settings file'); return;
-      }
-      let restored = 0;
-      for (const k of SETTINGS_KEYS) {
-        if (payload.settings[k] != null) {
-          store.set(k, payload.settings[k]);
-          restored++;
-        }
-      }
-      toast(`✓ Restored ${restored} settings — reloading…`);
-      setTimeout(() => location.reload(), 800);
-    } catch (e) {
-      toast('✗ Import failed: ' + e.message);
-    }
+    try { applyImportedSettings(JSON.parse(ev.target.result)); }
+    catch (e) { toast('✗ Import failed: ' + e.message); }
   };
   reader.readAsText(file);
 };
@@ -1489,21 +1541,22 @@ window.importSettings = file => {
 window.handleImportFile = input => {
   const file = input.files?.[0]; if (!file) return;
   if (file.name.endsWith('.json')) {
-    // v4.99: peek at the version field to route between collection backup
-    // and settings backup automatically.
+    // v6.27: read the file once, then dispatch on the parsed shape. The
+    // previous version peeked at .version then re-read the file in the
+    // chosen path — fine for a small settings file, wasteful for a 50MB
+    // photo backup.
     const reader = new FileReader();
     reader.onload = ev => {
-      try {
-        const peek = JSON.parse(ev.target.result);
-        if (peek.version === 'motu-vault-settings-v1') {
-          window.importSettings(file);
-        } else {
-          importJSON(file);
-        }
-      } catch {
-        importJSON(file);  // fallthrough; importJSON will surface its own error
+      let parsed;
+      try { parsed = JSON.parse(ev.target.result); }
+      catch { toast('✗ File is not valid JSON'); return; }
+      if (parsed && parsed.version === 'motu-vault-settings-v1') {
+        applyImportedSettings(parsed);
+      } else {
+        applyImportedBackup(parsed);
       }
     };
+    reader.onerror = () => toast('✗ Could not read file');
     reader.readAsText(file);
     return;
   }
@@ -1595,18 +1648,9 @@ function buildFigIndexes() {
   return {idx4, idx3, idx2};
 }
 function doImportVault(csvText, overwrite) {
-  const lines = csvText.split('\n').filter(l => l.trim());
-  const parseRow = line => {
-    const cols = []; let cur = ''; let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
-      else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
-      else cur += c;
-    }
-    cols.push(cur); return cols;
-  };
-  const headers = parseRow(lines[0]).map(h => h.trim());
+  const rows = parseCSVRows(csvText);
+  if (rows.length === 0) return { matched: 0, skipped: 0, unmatched: [] };
+  const headers = rows[0].map(h => (h || '').trim());
   const col = h => headers.indexOf(h);
   const [iName,iLine,iGroup,iWave,iStatus,iCond,iPaid,iNotes] =
     ['Name','Line','Group','Wave','Status','Condition','Paid','Notes'].map(col);
@@ -1624,8 +1668,7 @@ function doImportVault(csvText, overwrite) {
   const matchedIds = new Set();
   let skipped = 0; const unmatched = [];
 
-  lines.slice(1).forEach(l => {
-    const c = parseRow(l);
+  rows.slice(1).forEach(c => {
     const name = c[iName]?.trim();
     if (!name) return;
     const lineName = c[iLine]?.trim() || '';

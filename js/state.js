@@ -195,6 +195,15 @@ const GROUP_MAP = {
 const ln = id => LINES.find(l => l.id === id)?.name || id;
 const normalize = s => (s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+// v6.26: JS-string-literal-safe interpolation for inline event handlers.
+// `esc()` alone is unsafe inside `onclick="fn('${esc(x)}')"` because the HTML
+// parser decodes `&#39;` back to `'` *before* the JS engine sees the string,
+// letting a value like `evil');alert(1);//` break out. `jsArg()` JSON-encodes
+// (which produces a valid JS string literal with embedded quotes) and then
+// HTML-escapes the result so it survives the attribute layer too. Use as:
+//   `<button onclick="cycleStatus(event,${jsArg(figId)})">…</button>`
+// Note: NO surrounding quotes — JSON.stringify already adds them.
+const jsArg = s => esc(JSON.stringify(s == null ? '' : String(s)));
 const isSelecting = () => !!S.selectMode;
 // v4.86: structuredClone is ~3× faster than JSON.parse(JSON.stringify(...)) for
 // the small undo snapshots we take on every status tap. Fallback retained for
@@ -275,5 +284,5 @@ function getThemeTitles() {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
+  ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
 };

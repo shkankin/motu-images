@@ -144,6 +144,11 @@ function celebrateCompletion(label) {
 }
 
 function spawnConfetti() {
+  // v6.26: respect the user's motion preferences. Confetti is purely decorative
+  // — anyone with reduced-motion turned on (vestibular sensitivity, motion
+  // sickness, low-end device) shouldn't be hit with 40 animated divs.
+  if (typeof matchMedia === 'function' &&
+      matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const container = document.createElement('div');
   container.className = 'confetti-container';
   document.body.appendChild(container);

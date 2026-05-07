@@ -67,6 +67,28 @@ function setPhotoCopy(figId, n, copyId) {
   savePhotoCopyMap();
 }
 
+// v6.26: public accessors for the module-private _photoCopy map.
+// Previously data.js (exportJSON / importJSON) reached into _photoCopy directly,
+// which silently produced a ReferenceError because _photoCopy is module-scoped
+// here and was never imported. Result: backups did not include per-copy photo
+// assignments and import failed at the photoCopy step. These accessors keep
+// the storage encapsulated while letting the import/export layer do its job.
+function getPhotoCopyMap() { return _photoCopy; }
+function replacePhotoCopyMap(m) {
+  _photoCopy = (m && typeof m === 'object') ? m : {};
+  savePhotoCopyMap();
+}
+function mergePhotoCopyMap(incoming) {
+  if (!incoming || typeof incoming !== 'object') return;
+  // Skip sentinel keys to avoid prototype manipulation via crafted backup files.
+  const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
+  for (const figId of Object.keys(incoming)) {
+    if (RESERVED.has(figId)) continue;
+    _photoCopy[figId] = {...(_photoCopy[figId] || {}), ...incoming[figId]};
+  }
+  savePhotoCopyMap();
+}
+
 const photoStore = {
   // Sync: get primary (first) photo URL for a figure — used in list/grid thumbnails
   // Sync: get primary photo URL for list/grid thumbnails
@@ -552,12 +574,19 @@ function initPhotoViewerZoom() {
   });
 
   // Pinch
+  // v6.27: track single-touch start so swipe-left/right (when not zoomed)
+  // navigates between photos. Mirrors the chevron buttons on desktop.
+  let _swipeStart = null;
   wrap.addEventListener('touchstart', e => {
     if (e.touches.length === 2) {
       startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       startScale = scale; startTx = tx; startTy = ty;
+      _swipeStart = null;
     } else if (e.touches.length === 1 && scale > 1) {
       panStart = {x: e.touches[0].clientX - tx, y: e.touches[0].clientY - ty};
+      _swipeStart = null;
+    } else if (e.touches.length === 1) {
+      _swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
     }
   }, {passive: true});
 
@@ -578,6 +607,19 @@ function initPhotoViewerZoom() {
   wrap.addEventListener('touchend', e => {
     if (e.touches.length < 2 && scale < 1.05) { scale = 1; tx = 0; ty = 0; apply(); }
     panStart = null;
+    // v6.27: detect a swipe — only when not zoomed, the gesture was fast,
+    // mostly horizontal, and crossed a sane threshold. Navigates to prev/next.
+    if (_swipeStart && scale === 1 && e.changedTouches.length) {
+      const dx = e.changedTouches[0].clientX - _swipeStart.x;
+      const dy = e.changedTouches[0].clientY - _swipeStart.y;
+      const dt = Date.now() - _swipeStart.t;
+      if (dt < 500 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (typeof window.photoViewerNav === 'function') {
+          window.photoViewerNav(dx > 0 ? -1 : 1);
+        }
+      }
+    }
+    _swipeStart = null;
   }, {passive: true});
 }
 
@@ -642,5 +684,5 @@ document.addEventListener('drop', e => {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, _opfsReady, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, compressPhoto, initPhotoViewerZoom
+  MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, _opfsReady, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, getPhotoCopyMap, replacePhotoCopyMap, mergePhotoCopyMap, compressPhoto, initPhotoViewerZoom
 };

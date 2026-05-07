@@ -27,7 +27,7 @@ import {
   S, store, ICO, icon, IMG, THEMES, LINES, FACTIONS, ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, SUBLINES, CONDITIONS,
   SERIES_MAP, COND_MAP, GROUP_MAP, DEFAULT_TITLE,
-  ln, normalize, esc, isSelecting, _clone, getThemeTitles,
+  ln, normalize, esc, jsArg, isSelecting, _clone, getThemeTitles,
 } from './state.js';
 import {
   MAX_PHOTOS, photoStore, photoURLs, photoCopyOf,
@@ -55,7 +55,17 @@ import { renderSheet } from './ui-sheets.js';
 const MAX_TOASTS = 3;
 function getToastContainer() {
   let c = document.getElementById('toastContainer');
-  if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+  if (!c) {
+    c = document.createElement('div');
+    c.id = 'toastContainer';
+    c.className = 'toast-container';
+    // v6.27: a11y — toasts are status messages, announce politely to screen
+    // readers without stealing focus.
+    c.setAttribute('role', 'status');
+    c.setAttribute('aria-live', 'polite');
+    c.setAttribute('aria-atomic', 'false');
+    document.body.appendChild(c);
+  }
   // Trim oldest until we're below the cap (caller is about to append one more).
   while (c.children.length >= MAX_TOASTS) {
     c.removeChild(c.firstChild);
@@ -70,6 +80,9 @@ function toast(msg, opts = {}) {
   const el = document.createElement('div');
   el.className = 'toast' + (opts.large ? ' large' : '') + (opts.persist ? ' persist' : '');
   el.textContent = msg;
+  // v6.27: tap to dismiss. Plain toasts had no early-out — three rapid status
+  // changes left toasts on screen for 4s each even after the user moved on.
+  el.addEventListener('click', () => { if (el.parentNode) el.remove(); });
   container.appendChild(el);
   setTimeout(() => { if (el.parentNode) el.remove(); }, opts.duration || 4000);
 }
@@ -224,6 +237,7 @@ function patchFigRow(id) {
   const statusCls = c.status || '';
   const copyN = entryCopyCount(c);
   const eId = esc(id);
+  const jId = jsArg(id);
   // Shared bit: rebuild the name's inline ×N pill inside a parent element.
   // The name HTML is `escapedName` + optional count span. Since patchFigRow
   // can be called for either view, factor the "update the name" step out.
@@ -254,8 +268,8 @@ function patchFigRow(id) {
         (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
         (hasVar ? '<div class="fig-var-badge">VAR</div>' : '') +
         (c.status
-          ? `<button class="quick-own" onclick="cycleStatus(event,'${eId}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
-          : `<button class="quick-own" onclick="event.stopPropagation();setStatus('${eId}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
+          ? `<button class="quick-own" onclick="cycleStatus(event,${jId})" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
+          : `<button class="quick-own" onclick="event.stopPropagation();setStatus(${jId},'owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
     }
     updateNavBadge();
     return true;
@@ -273,8 +287,8 @@ function patchFigRow(id) {
     if (badge) {
       badge.className = 'status-badge ' + statusCls;
       const badgeAction = c.status
-        ? `cycleStatus(event,'${eId}')`
-        : `event.stopPropagation();setStatus('${eId}','owned')`;
+        ? `cycleStatus(event,${jId})`
+        : `event.stopPropagation();setStatus(${jId},'owned')`;
       badge.setAttribute('onclick', badgeAction);
       badge.innerHTML = c.status
         ? `<div class="fig-status-dot ${statusCls}"></div>`
@@ -399,7 +413,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.25</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.27</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -747,7 +761,7 @@ function renderKidsCoreAdminSheet() {
   </button>`;
 
   if (editing) {
-    h += `<button onclick="deleteKidsCoreAdminFig('${esc(editing)}')" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
+    h += `<button onclick="deleteKidsCoreAdminFig(${jsArg(editing)})" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
       Delete Figure
     </button>`;
   }
@@ -763,7 +777,7 @@ function renderKidsCoreAdminSheet() {
           <div class="text-sm" style="color:var(--t1);font-weight:600">${esc(f.name)}</div>
           <div class="text-sm text-dim">${esc(f.group||'')}${f.year?' · '+f.year:''}</div>
         </div>
-        <button onclick="S._kcEditId='${esc(f.id)}';S._kcForm=null;render()" style="padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px">Edit</button>
+        <button onclick="S._kcEditId=${jsArg(f.id)};S._kcForm=null;render()" style="padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px">Edit</button>
       </div>`;
     });
     h += '</div>';
@@ -1182,11 +1196,19 @@ function renderWantListViewSheet() {
   if (!figs.length) return '<div class="text-sm text-dim">Empty want list.</div>';
   const scrollHint = figs.length > 4 ? '<div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:8px">↕ Scroll to see all</div>' : '';
   let h = `<div style="font-size:13px;color:var(--t2);margin-bottom:6px">${figs.length} figure${figs.length===1?'':'s'} wanted</div>${scrollHint}`;
+  // v6.26: only allow http(s) and data: image URLs. Custom figures can carry
+  // user-controlled image fields, so reject anything else (javascript:, etc.)
+  // and HTML-escape what we keep so it can't break out of the src attribute.
+  const safeImgSrc = (u) => {
+    const s = String(u || '');
+    return /^(https?:|data:image\/)/i.test(s) ? esc(s) : '';
+  };
   figs.forEach(f => {
     const entry = S.coll[f.id];
     const owned = entry?.status === 'owned' || entry?.status === 'for-sale';
+    const imgSrc = safeImgSrc(f.image);
     h += `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border:1px solid ${owned?'var(--gn)':'var(--bd)'};border-radius:10px;margin-bottom:8px">
-      <img src="${f.image}" onerror="this.style.display='none'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd)">
+      ${imgSrc ? `<img src="${imgSrc}" alt="" onerror="this.style.display='none'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd)">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
         <div style="font-size:11px;color:var(--t3)">${esc([f.line, f.wave].filter(Boolean).join(' · '))}</div>
@@ -1385,7 +1407,8 @@ function renderFigRow(f) {
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
   const isSelected = S.selectMode && S.selected.has(f.id);
   const eId = esc(f.id);
-  const rowClick = S.selectMode ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
+  const jId = jsArg(f.id);
+  const rowClick = S.selectMode ? `toggleSelect(event,${jId})` : `openFig(${jId})`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
   // v6.03: subtle list-view loadout-complete tick. Shown only when:
   // status owned, loadout exists for the figure, and every copy is fully
@@ -1403,7 +1426,7 @@ function renderFigRow(f) {
   return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" onclick="${rowClick}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}">
-      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
+      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr(${jId})">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
@@ -1418,8 +1441,8 @@ function renderFigRow(f) {
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
-      ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,'${eId}')" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
-        `<button class="quick-own" onclick="event.stopPropagation();setStatus('${eId}','owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
+      ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,${jId})" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
+        `<button class="quick-own" onclick="event.stopPropagation();setStatus(${jId},'owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
     </div>`}
   </div>`;
 }
@@ -1434,19 +1457,20 @@ function renderFigCard(f) {
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
   const eId = esc(f.id);
+  const jId = jsArg(f.id);
   const statusIcon = c.status
     ? `<div class="fig-status-dot ${statusCls}"></div>`
     : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
   const badgeAction = c.status
-    ? `cycleStatus(event,'${eId}')`
-    : `event.stopPropagation();setStatus('${eId}','owned')`;
+    ? `cycleStatus(event,${jId})`
+    : `event.stopPropagation();setStatus(${jId},'owned')`;
 
   const isSelected = S.selectMode && S.selected.has(f.id);
-  const cardClick = S.selectMode ? `toggleSelect(event,'${eId}')` : `openFig('${eId}')`;
+  const cardClick = S.selectMode ? `toggleSelect(event,${jId})` : `openFig(${jId})`;
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
   return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}" data-fig-id="${eId}" onclick="${cardClick}">
-    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr('${eId}')">` :
+    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr(${jId})">` :
       `<div class="card-initial">${esc(f.name[0])}</div>`}
     <div class="card-overlay"></div>
     ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
@@ -1536,7 +1560,22 @@ function renderFigList() {
         </div>
       </div>`;
     } else {
-      html += `<div class="empty-state"><div class="emoji">🔍</div><div class="title">No figures found</div><div class="text-sm">Try adjusting your search or filters</div></div>`;
+      // v6.27: when filters return no figures, give the user a one-tap escape.
+      // Previously the empty state was a dead-end ("Try adjusting…" with no
+      // affordance). Now offers Clear filters / Clear search inline.
+      const showClearFilters = hf && !S.search;
+      const showClearSearch = !!S.search;
+      const showClearAll = hf && S.search;
+      html += `<div class="empty-state">
+        <div class="emoji">🔍</div>
+        <div class="title">No figures match</div>
+        <div class="text-sm" style="margin-bottom:16px">Try adjusting your search or filters.</div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          ${showClearAll ? `<button onclick="onSearch('');patchFilter('clear')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear all</button>` : ''}
+          ${showClearFilters ? `<button onclick="patchFilter('clear')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear filters</button>` : ''}
+          ${showClearSearch ? `<button onclick="onSearch('')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">Clear search</button>` : ''}
+        </div>
+      </div>`;
     }
   } else {
     // v4.87: collect pinned IDs so we can exclude them from the main list.
@@ -1612,6 +1651,7 @@ function renderFigList() {
 // screen (which would otherwise reset scroll to the top).
 function renderDetailStatusBlock(f, c) {
   const eId = esc(f.id);
+  const jId = jsArg(f.id);
   let h = `<div class="status-grid">
     <div class="label text-upper text-dim text-xs">Status</div>
     <div class="grid">`;
@@ -1626,7 +1666,7 @@ function renderDetailStatusBlock(f, c) {
       ordered: ICO.box || ICO.cart || ICO.check,
       'for-sale': ICO.tag || ICO.dollar || ICO.check,
     }[s] || ICO.check;
-    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus('${eId}','${s}');patchDetailStatus()">${icon(statIcon, 16)} ${STATUS_LABEL[s]}</button>`;
+    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus(${jId},'${s}');patchDetailStatus()">${icon(statIcon, 16)} ${STATUS_LABEL[s]}</button>`;
   });
   h += `</div></div>`;
   if (c.status) {
@@ -1645,7 +1685,7 @@ function renderDetailStatusBlock(f, c) {
       copies.forEach((cp, i) => {
         h += renderCopyCard(f, cp, i, isMulti);
       });
-      h += `<button class="add-copy-btn" onclick="addCopy('${eId}')">
+      h += `<button class="add-copy-btn" onclick="addCopy(${jId})">
         <span class="add-copy-plus">+</span> ${isMulti ? 'Add another copy' : 'Add a second copy'}
       </button>
       </div>`;
@@ -1658,15 +1698,15 @@ function renderDetailStatusBlock(f, c) {
         <div class="detail-fields copy-fields">
           <div>
             <div class="field-label text-dim text-sm">Ordered From</div>
-            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField('${eId}','orderedFrom',this.value)">
+            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField(${jId},'orderedFrom',this.value)">
           </div>
           <div>
             <div class="field-label text-dim text-sm">Expected Date</div>
-            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField('${eId}','orderedDate',this.value)">
+            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField(${jId},'orderedDate',this.value)">
           </div>
           <div>
             <div class="field-label text-dim text-sm">Price Paid</div>
-            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField('${eId}','orderedPaid',this.value)">
+            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField(${jId},'orderedPaid',this.value)">
           </div>
         </div>
       </div>`;
@@ -1685,30 +1725,31 @@ function renderCopyCard(f, cp, i, isMulti) {
   const accessories = Array.isArray(cp.accessories) ? cp.accessories : [];
   const location = cp.location || '';
   const eId = esc(f.id);
+  const jId = jsArg(f.id);
   // copyId is the stable internal id used by addCopy/removeCopy/updateCopy
   const cid = cp.id;
   let h = `<div class="copy-card" data-copy-id="${cid}">`;
   if (isMulti) {
     h += `<div class="copy-card-head">
       <div class="copy-num">Copy ${i + 1}</div>
-      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy('${eId}',${cid})">${icon(ICO.trash, 14)}</button>
+      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy(${jId},${cid})">${icon(ICO.trash, 14)}</button>
     </div>`;
   }
   h += `<div class="detail-fields copy-fields">
     <div>
       <div class="field-label text-dim text-sm">Condition</div>
-      <select onchange="updateCopy('${eId}',${cid},'condition',this.value)">
+      <select onchange="updateCopy(${jId},${cid},'condition',this.value)">
         <option value="">Select...</option>
         ${CONDITIONS.map(x => `<option value="${esc(x)}" ${cond===x?'selected':''}>${esc(x)}</option>`).join('')}
       </select>
     </div>
     <div>
       <div class="field-label text-dim text-sm">Price Paid</div>
-      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy('${eId}',${cid},'paid',this.value)">
+      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'paid',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Variant</div>
-      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy('${eId}',${cid},'variant',this.value)">
+      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy(${jId},${cid},'variant',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm" style="display:flex;align-items:center;gap:8px">
@@ -1723,9 +1764,9 @@ function renderCopyCard(f, cp, i, isMulti) {
       </div>
       <div class="acc-chips">`;
   accessories.forEach((a, idx) => {
-    h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" onclick="removeAccessory('${eId}',${cid},${idx})">×</button></span>`;
+    h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" onclick="removeAccessory(${jId},${cid},${idx})">×</button></span>`;
   });
-  h += `<button class="acc-add" onclick="openAccessoryPicker('${eId}',${cid})">+ Add</button>
+  h += `<button class="acc-add" onclick="openAccessoryPicker(${jId},${cid})">+ Add</button>
       </div>
       ${(() => {
         // v6.03: Missing-from-loadout row. Tap a missing item to add it.
@@ -1733,7 +1774,7 @@ function renderCopyCard(f, cp, i, isMulti) {
         const comp = getCopyCompleteness(f.id, cp);
         if (!comp || comp.complete || !comp.missing.length) return '';
         const items = comp.missing.map(name =>
-          `<button class="acc-missing-pill" onclick="addAccessory('${eId}',${cid},${esc(JSON.stringify(name))})" title="Mark as present">+ ${esc(name)}</button>`
+          `<button class="acc-missing-pill" onclick="addAccessory(${jId},${cid},${esc(JSON.stringify(name))})" title="Mark as present">+ ${esc(name)}</button>`
         ).join('');
         return `<div class="acc-missing-row">
           <span class="acc-missing-label text-dim">Missing:</span>
@@ -1743,11 +1784,11 @@ function renderCopyCard(f, cp, i, isMulti) {
     </div>
     <div>
       <div class="field-label text-dim text-sm">Location</div>
-      <input type="text" value="${esc(location)}" placeholder="e.g. Display shelf, Storage bin A, On loan…" list="locationSuggestions" onchange="updateCopy('${eId}',${cid},'location',this.value)">
+      <input type="text" value="${esc(location)}" placeholder="e.g. Display shelf, Storage bin A, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Notes</div>
-      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced('${eId}',${cid},'notes',this.value)" onblur="updateCopy('${eId}',${cid},'notes',this.value)">${esc(notes)}</textarea>
+      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced(${jId},${cid},'notes',this.value)" onblur="updateCopy(${jId},${cid},'notes',this.value)">${esc(notes)}</textarea>
     </div>`;
   // Per-copy photos (multi-copy only — single-copy uses the main carousel)
   if (isMulti) {
@@ -1756,14 +1797,14 @@ function renderCopyCard(f, cp, i, isMulti) {
       <div class="field-label text-dim text-sm">Photos for this copy</div>
       <div class="copy-photos-strip">`;
     copyPhotos.forEach(p => {
-      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto('${eId}',${p.n})">
+      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto(${jId},${p.n})">
         <img src="${esc(p.url)}" alt="${esc(p.label || '')}" loading="lazy">
-        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto('${eId}',${p.n})">⌫</button>
+        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto(${jId},${p.n})">⌫</button>
       </div>`;
     });
     h += `<label class="copy-photo-add" title="Add photo to this copy">
       ${icon(ICO.img, 18)}
-      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,'${eId}',${cid})">
+      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,${jId},${cid})">
     </label>
     </div></div>`;
   }
@@ -1793,6 +1834,7 @@ function renderDetail() {
   const _dsScroll = _ds ? _ds.scrollTop : 0;
   const f = S.activeFig;
   const eId = esc(f.id);
+  const jId = jsArg(f.id);
   const c = S.coll[f.id] || {};
   const userPhotos = photoStore.getAll(f.id);    // [{n, url, label}, ...]
   const hasCustom = userPhotos.length > 0;
@@ -1812,11 +1854,11 @@ function renderDetail() {
         ${slides.map((s, si) => {
           const isDef = s.n === defaultN;
           return `
-          <div class="photo-slide" onclick="openSlideViewer('${eId}',${si})">
-            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr('${eId}')"` : ''}>
+          <div class="photo-slide" onclick="openSlideViewer(${jId},${si})">
+            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr(${jId})"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
-            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto('${eId}',${s.n})">${icon(ICO.x,14)}</button>` : ''}
-            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto('${eId}',${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
+            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto(${jId},${s.n})">${icon(ICO.x,14)}</button>` : ''}
+            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto(${jId},${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
           </div>`;
         }).join('')}
       </div>
@@ -1835,27 +1877,27 @@ function renderDetail() {
           ${icon(ICO.plus,14)} Add photo${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
         </button>` : `<div class="photo-btn" style="opacity:0.5;cursor:default">Max ${MAX_PHOTOS} photos</div>`}
       </div>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,'${eId}')">
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,${jId})">
     </div>
     ${userPhotos.length > 0 ? `<div class="photo-labels">
       ${userPhotos.map(p => `
         <div class="photo-label-row">
           <span class="photo-label-num">#${userPhotos.indexOf(p)+1}</span>
           <input type="text" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
-                 onblur="setPhotoLabel('${eId}',${p.n},this.value)" maxlength="20">
+                 onblur="setPhotoLabel(${jId},${p.n},this.value)" maxlength="20">
         </div>
       `).join('')}
     </div>` : ''}
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
-      ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411('${eId}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
+      ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411(${jId})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
         ${icon(ICO.export,14)} View on AF411
       </a>` : ''}
-      <button onclick="searchCharacter('${esc(f.name)}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
+      <button onclick="searchCharacter(${jsArg(f.name)})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.search,14)} All versions
       </button>
-      <button onclick="openFigureEditor('${eId}')" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
+      <button onclick="openFigureEditor(${jId})" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.edit,14)} Edit
       </button>
     </div>

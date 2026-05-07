@@ -14,8 +14,8 @@ const refreshEditSheet = (...a) => window.refreshEditSheet?.(...a);
 import {
   S, store, ICO, icon, IMG, THEMES, LINES, FACTIONS, STATUSES,
   STATUS_LABEL, STATUS_COLOR, STATUS_HEX, ACCESSORIES, CONDITIONS,
-  SUBLINES, SERIES_MAP, GROUP_MAP,
-  ln, normalize, esc, _clone, getThemeTitles,
+  SUBLINES, SERIES_MAP, GROUP_MAP, CACHE_KEY,
+  ln, normalize, esc, jsArg, _clone, getThemeTitles,
 } from './state.js';
 import {
   MAX_PHOTOS, photoStore, photoURLs,
@@ -27,12 +27,12 @@ import {
   copyPaid, copyNotes, getAllLocations,
   renderExportSheet, renderSheetBody,
   renderAccessoryPickerSheet, SETTINGS_KEYS,
-  _derived,
+  _derived, clearOverrides,
 } from './data.js';
 import {
   renderQR, renderShareSheet, renderStatsSheet,
   renderKidsCoreAdminSheet, renderWantListViewSheet, buildShareURL,
-  renderContent, render,
+  renderContent, render, appConfirm,
 } from './render.js';
 import { pushNav } from './handlers.js';
 
@@ -112,7 +112,7 @@ function renderFilterSheet() {
   });
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Faction</div><div class="chip-group">';
   ['', ...FACTIONS].forEach(f => {
-    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="patchFilter('faction','${esc(f)}')">${f||'All'}</button>`;
+    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="patchFilter('faction',${jsArg(f)})">${f||'All'}</button>`;
   });
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Status</div><div class="chip-group">';
   const statusOpts = [
@@ -255,6 +255,7 @@ function renderEditFigureSheet() {
   const f = figById(figId);
   if (!f) return '<div class="text-sm text-dim">Figure not found.</div>';
   const eFigId = esc(figId);
+  const jFigId = jsArg(figId);
   const ov = getOverridesFor(figId);
   const has = Object.keys(ov).length > 0;
   // For each editable field, show current effective value with an "overridden" hint.
@@ -276,7 +277,7 @@ function renderEditFigureSheet() {
   // This override survives sync since applyOverrides runs after every fetch.
   const curLine = ov.line || f.line || '';
   h += row('line', 'Line',
-    `<select onchange="setOverrideField('${eFigId}','line',this.value);refreshEditSheet()">
+    `<select onchange="setOverrideField(${jFigId},'line',this.value);refreshEditSheet()">
       <option value="">— Use source —</option>
       ${LINES.map(l => `<option value="${esc(l.id)}" ${curLine===l.id?'selected':''}>${esc(l.name)}</option>`).join('')}
     </select>`,
@@ -285,7 +286,7 @@ function renderEditFigureSheet() {
 
   // Faction
   h += row('faction', 'Faction',
-    `<select onchange="setOverrideField('${eFigId}','faction',this.value);refreshEditSheet()">
+    `<select onchange="setOverrideField(${jFigId},'faction',this.value);refreshEditSheet()">
       <option value="">— Use source —</option>
       ${FACTIONS.map(opt => `<option value="${esc(opt)}" ${(ov.faction||f.faction)===opt?'selected':''}>${esc(opt)}</option>`).join('')}
     </select>`,
@@ -297,28 +298,28 @@ function renderEditFigureSheet() {
   const curGroup = ov.group || f.group || '';
   const groupInput = `
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      ${lineGroups.map(g => `<button type="button" onclick="setOverrideField('${eFigId}','group','${esc(g.replace(/'/g,"\\'"))}');refreshEditSheet()" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
+      ${lineGroups.map(g => `<button type="button" onclick="setOverrideField(${jFigId},'group',${jsArg(g)});refreshEditSheet()" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
     </div>
-    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" onchange="setOverrideField('${eFigId}','group',this.value);refreshEditSheet()">`;
+    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" onchange="setOverrideField(${jFigId},'group',this.value);refreshEditSheet()">`;
   h += row('group', 'Group', groupInput,
     f.group && !ov.group ? `Source: ${esc(f.group)}` : ''
   );
 
   // Wave
   h += row('wave', 'Wave',
-    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" onchange="setOverrideField('${eFigId}','wave',this.value);refreshEditSheet()">`,
+    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" onchange="setOverrideField(${jFigId},'wave',this.value);refreshEditSheet()">`,
     f.wave && !ov.wave ? `Source: ${esc(f.wave)}` : ''
   );
 
   // Year
   h += row('year', 'Year',
-    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" onchange="setOverrideField('${eFigId}','year',this.value?Number(this.value):'');refreshEditSheet()">`,
+    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" onchange="setOverrideField(${jFigId},'year',this.value?Number(this.value):'');refreshEditSheet()">`,
     f.year && !ov.year ? `Source: ${esc(f.year)}` : ''
   );
 
   // Retail price
   h += row('retail', 'Retail Price',
-    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" onchange="setOverrideField('${eFigId}','retail',this.value?Number(this.value):'');refreshEditSheet()">`,
+    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" onchange="setOverrideField(${jFigId},'retail',this.value?Number(this.value):'');refreshEditSheet()">`,
     f.retail && !ov.retail ? `Source: $${Number(f.retail).toFixed(2)}` : ''
   );
 
@@ -330,14 +331,14 @@ function renderEditFigureSheet() {
     if (src && src.name && src.name !== ov.name) sourceName = src.name;
   }
   h += row('name', 'Name',
-    `<input type="text" value="${esc(ov.name || f.name || '')}" onchange="setOverrideField('${eFigId}','name',this.value);refreshEditSheet()">`,
+    `<input type="text" value="${esc(ov.name || f.name || '')}" onchange="setOverrideField(${jFigId},'name',this.value);refreshEditSheet()">`,
     sourceName ? `Source: ${esc(sourceName)}` : ''
   );
 
   // Reset button — only meaningful when there's something to reset
   if (has) {
     h += `<div style="height:1px;background:var(--bd);margin:18px 0"></div>
-    <button onclick="resetFigureOverrides('${eFigId}')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
+    <button onclick="resetFigureOverrides(${jFigId})" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
       Reset all edits to source
     </button>`;
   }

@@ -77,9 +77,13 @@ async function init() {
       return [id, entry];
     }));
     // v4.42 schema migration: flat fields → copies array. Idempotent.
+    // v6.27: only persist if migration actually changed something. The previous
+    // version called saveColl() unconditionally on every cold start, bumping
+    // _collVersion and invalidating the _derived cache before the first render.
+    const before = JSON.stringify(loaded);
     loaded = migrateColl(loaded);
     S.coll = loaded;
-    saveColl();  // Persist migrated form so future loads skip the work
+    if (JSON.stringify(loaded) !== before) saveColl();
   }
   // Load persisted recent changes
   const rc = store.get('motu-recent');
