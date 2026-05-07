@@ -136,6 +136,43 @@ registerAll({
 
   // First-load fetch failure retry.
   'retry-fetch': () => window.fetchFigs?.(true, true),
+
+  // v6.31: wishlist history actions
+  'reopen-wishlist': (e, el, d) => {
+    const idx = parseInt(d.idx, 10);
+    if (!Number.isFinite(idx)) return;
+    const arr = window.getWishlistHistory?.() || [];
+    const entry = arr[idx];
+    if (!entry || !entry.nums) return;
+    // Build the share URL and load it via the share-link path so
+    // recordWishlistView() bumps the timestamp on the existing entry.
+    const payload = btoa(entry.nums.join(','))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    // Set hash WITHOUT page reload — checkShareLink reads location.hash
+    // directly, so just update it and call.
+    window.S.sheet = null;   // close the menu/history sheet first
+    history.replaceState({}, '', location.pathname + location.search + '#wl=' + payload);
+    window.checkShareLink?.();
+  },
+  'delete-wishlist-entry': (e, el, d) => {
+    const idx = parseInt(d.idx, 10);
+    if (!Number.isFinite(idx)) return;
+    window.deleteWishlistHistoryEntry?.(idx);
+    // Re-render just the sheet body
+    const body = document.querySelector('.sheet-body');
+    if (body && window.S.sheet === 'wishlistHistory') {
+      // Defer the import-cycle-free way: call the registered renderer via
+      // openSheet, which already re-renders. Or just call render() — this
+      // is a settings-level action, performance is not the concern.
+      window.render?.();
+    }
+  },
+  'clear-wishlist-history': async (e) => {
+    if (!await window.appConfirm?.('Clear all viewed-wishlist history?', { danger: true, ok: 'Clear' })) return;
+    window.clearWishlistHistory?.();
+    window.toast?.('✓ History cleared');
+    window.render?.();
+  },
 });
 
 // ── Error actions (capture phase — events don't bubble) ───────────

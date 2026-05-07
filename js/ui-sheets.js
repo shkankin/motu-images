@@ -38,7 +38,7 @@ import { pushNav } from './handlers.js';
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -54,6 +54,8 @@ function renderSheet() {
   else if (S.sheet === 'kidsCoreAdmin') body = renderKidsCoreAdminSheet();
   else if (S.sheet === 'accessoryPicker') body = renderAccessoryPickerSheet();
   else if (S.sheet === 'pricing') body = renderPricingSheet();
+  else if (S.sheet === 'wishlistHistory') body = renderWishlistHistorySheet();
+  else if (S.sheet === 'about') body = renderAboutSheet();
 
   // v6.30: Defensive fallback. If a deep link / shortcut / typo lands us on
   // an unknown sheet name, S.sheet is set but no body renders. Without this,
@@ -93,6 +95,16 @@ function renderMenuSheet() {
     {label:'Export / Backup',     icon:ICO.export,  action:"openSheet('export')"},
     {label:'Pricing Backend',     icon:ICO.tag,     action:"openSheet('pricing')"},
   ];
+  // v6.31: insert "Viewed Wishlists" only when there's at least one entry,
+  // so new users don't see an empty option that won't do anything.
+  const wlHistory = (typeof window.getWishlistHistory === 'function') ? window.getWishlistHistory() : [];
+  if (wlHistory.length) {
+    menuItems.push({
+      label: `Viewed Wishlists (${wlHistory.length})`,
+      icon: ICO.box || ICO.heart,
+      action: "openSheet('wishlistHistory')",
+    });
+  }
   let html = menuItems.map(m => `
     <button onclick="${m.action}" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc)">${icon(m.icon, 20)}</span>
@@ -122,6 +134,11 @@ function renderMenuSheet() {
     <button onclick="closeSheet();window.startTutorial && window.startTutorial()" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc);font-size:18px">🎓</span>
       <span style="flex:1">${tourLabel}</span>
+      <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
+    </button>
+    <button onclick="openSheet('about')" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+      <span style="color:var(--acc);font-size:18px">ⓘ</span>
+      <span style="flex:1">About MOTU Vault</span>
       <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
     </button>`;
   return html;
@@ -186,6 +203,190 @@ window.disconnectPricingBackend = () => {
   const body = document.querySelector('.sheet-body');
   if (body && S.sheet === 'pricing') body.innerHTML = renderPricingSheet();
 };
+
+// v6.31: About sheet. Surfaces version, repo/issues link, credits, and
+// license. Uses masters_logo.png for visual polish at the top.
+// v6.32: plays main-theme.mp3 in the background while the sheet is
+// open. <audio loop> rather than Web Audio buffer because looping a
+// 60+ second track via buffer source forces the whole file into memory
+// and offers no streaming. Mute state persisted per-user.
+const ABOUT_MUTE_KEY = 'motu-about-mute';
+let _aboutAudioEl = null;
+function _stopAboutMusic() {
+  if (_aboutAudioEl) {
+    try { _aboutAudioEl.pause(); _aboutAudioEl.currentTime = 0; } catch {}
+    try { _aboutAudioEl.remove(); } catch {}
+    _aboutAudioEl = null;
+  }
+}
+function _startAboutMusic() {
+  // Defensive: never stack multiple instances. Stop any previous one first.
+  _stopAboutMusic();
+  // Default-mute when the user has reduced-motion turned on (many people
+  // with auditory sensitivities also have this set, and this respects them
+  // without an explicit "audio" preference key).
+  const prefersReduced = (typeof matchMedia === 'function')
+    && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const userMuted = !!store.get(ABOUT_MUTE_KEY);
+  const muted = userMuted || prefersReduced;
+  const a = document.createElement('audio');
+  a.src = 'main-theme.mp3';
+  a.loop = true;
+  a.preload = 'auto';
+  a.volume = 0.4;
+  a.muted = muted;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  _aboutAudioEl = a;
+  // Autoplay can still reject (e.g. iOS lockscreen, Low Power Mode).
+  // Failure is silent — the mute button on screen lets the user try again.
+  a.play().catch(() => {});
+}
+// Toggle mute. Returns the new muted state for the UI to reflect.
+window.toggleAboutMute = () => {
+  if (!_aboutAudioEl) return true;
+  const next = !_aboutAudioEl.muted;
+  _aboutAudioEl.muted = next;
+  store.set(ABOUT_MUTE_KEY, next);
+  // Re-render the button label/icon
+  const btn = document.querySelector('[data-action="toggle-about-mute"]');
+  if (btn) btn.innerHTML = next ? '🔇 Unmute' : '🔊 Mute';
+  // If we just unmuted but autoplay was previously rejected, calling play()
+  // here from a user gesture works.
+  if (!next && _aboutAudioEl.paused) {
+    _aboutAudioEl.play().catch(() => {});
+  }
+  return next;
+};
+
+function renderAboutSheet() {
+  // Pulled from the version display string in render.js so it's the
+  // single source of truth.
+  const verMatch = document.querySelector('.logo-subtitle')?.textContent?.match(/v\d+\.\d+/);
+  const version = verMatch ? verMatch[0] : 'unknown';
+  const userMuted = !!store.get(ABOUT_MUTE_KEY);
+  // Kick off the audio element. Done from inside the renderer (which
+  // runs because openSheet → render → renderSheet → renderAboutSheet)
+  // so we have the user-gesture context autoplay needs.
+  setTimeout(() => _startAboutMusic(), 0);
+  return `<div style="text-align:center;padding:0 0 8px;position:relative">
+    <button data-action="toggle-about-mute"
+      title="${userMuted ? 'Unmute background music' : 'Mute background music'}"
+      style="position:absolute;top:0;right:0;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;z-index:1">
+      ${userMuted ? '🔇 Unmute' : '🔊 Mute'}
+    </button>
+    <img src="masters_logo.png" alt="Masters of the Universe"
+      onerror="this.style.display='none'"
+      style="max-width:240px;width:75%;height:auto;margin:0 auto 16px;display:block;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5))">
+    <div class="font-display text-gold" style="font-size:24px;letter-spacing:1.5px;margin-bottom:4px">MOTU VAULT</div>
+    <div style="font-size:12px;color:var(--t3);letter-spacing:0.5px">Version ${esc(version)}</div>
+  </div>
+
+  <div style="margin:20px 0 14px;padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;line-height:1.55;font-size:13px;color:var(--t2)">
+    A catalog and collection tracker for Masters of the Universe action figures.
+    Mark what you own, build a wishlist, share it with friends, and track copies,
+    accessories, and prices paid — all stored on your device, no account needed.
+  </div>
+
+  <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Links</div>
+  <a href="https://shkankin.github.io/motu-images/" target="_blank" rel="noopener noreferrer"
+    style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-decoration:none;color:var(--t1);font-size:14px">
+    <span style="color:var(--acc);font-size:16px">⌂</span>
+    <div style="flex:1">
+      <div style="font-weight:600">GitHub Repository</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">shkankin.github.io/motu-images</div>
+    </div>
+    <span style="color:var(--t3)">↗</span>
+  </a>
+  <a href="https://github.com/shkankin/motu-images/issues" target="_blank" rel="noopener noreferrer"
+    style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-decoration:none;color:var(--t1);font-size:14px">
+    <span style="color:var(--acc);font-size:16px">⚑</span>
+    <div style="flex:1">
+      <div style="font-weight:600">Report a Bug / Request a Feature</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">Opens GitHub Issues</div>
+    </div>
+    <span style="color:var(--t3)">↗</span>
+  </a>
+
+  <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Credits</div>
+  <div style="padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;line-height:1.7;font-size:13px;color:var(--t2)">
+    <div><span style="color:var(--t3);width:80px;display:inline-block">Built by</span> <span style="color:var(--t1);font-weight:600">Brandon R.</span></div>
+    <div><span style="color:var(--t3);width:80px;display:inline-block">Catalog</span> <a href="https://www.actionfigure411.com/masters-of-the-universe/" target="_blank" rel="noopener noreferrer" style="color:var(--acc);text-decoration:none">ActionFigure411</a></div>
+    <div><span style="color:var(--t3);width:80px;display:inline-block">With</span> <span style="color:var(--t1)">Claude (Anthropic) as a coding collaborator</span></div>
+  </div>
+
+  <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">License</div>
+  <div style="padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;font-size:12px;color:var(--t2);line-height:1.55">
+    <div style="font-weight:600;color:var(--t1);margin-bottom:6px">CC BY-NC 4.0</div>
+    Free to use, share, and modify for personal or non-commercial purposes.
+    Please credit the original work. Not for sale or commercial redistribution.
+    <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener noreferrer" style="color:var(--acc);text-decoration:none;display:block;margin-top:8px;font-size:11px">View full license terms ↗</a>
+  </div>
+
+  <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Privacy</div>
+  <div style="padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;font-size:12px;color:var(--t2);line-height:1.55">
+    Your collection lives in your browser's local storage. Nothing is sent
+    to any server unless you explicitly configure a pricing backend (see
+    Settings → Pricing Backend). Backups stay on your device.
+  </div>
+
+  <div style="text-align:center;padding:20px 0 8px;color:var(--t3);font-size:11px;letter-spacing:0.5px">
+    Masters of the Universe is a trademark of Mattel.<br>
+    This is an unofficial fan-made tool, not affiliated with Mattel.
+  </div>`;
+}
+// Stop the music whenever the About sheet leaves the screen. Two paths
+// to cover:
+//   1. User taps the X button or backdrop → window.closeSheet → history.back
+//   2. User uses the OS back gesture / hardware back → popstate directly
+// Both paths flip S.sheet, so we hook popstate (which fires for both) and
+// kill audio if the about sheet is no longer current.
+window.addEventListener('popstate', () => {
+  if (_aboutAudioEl && S.sheet !== 'about') _stopAboutMusic();
+});
+
+// v6.31: Wishlist history sheet. Lists previously-viewed shared want
+// lists with timestamps, names of the first few figures, and a
+// re-open button for each.
+function renderWishlistHistorySheet() {
+  const arr = (typeof window.getWishlistHistory === 'function') ? window.getWishlistHistory() : [];
+  if (!arr.length) {
+    return `<div style="text-align:center;padding:32px 16px">
+      <div style="font-size:32px;margin-bottom:12px">📋</div>
+      <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">No viewed wishlists</div>
+      <div style="font-size:13px;color:var(--t3);line-height:1.5">When you scan a friend's QR code or open a shared want-list link, it'll be saved here so you can revisit it.</div>
+    </div>`;
+  }
+  const fmtAge = (t) => {
+    const ms = Date.now() - t;
+    const m = Math.floor(ms / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d}d ago`;
+    const mo = Math.floor(d / 30);
+    return `${mo}mo ago`;
+  };
+  let html = `<div class="text-sm text-dim" style="margin-bottom:12px;line-height:1.5">${arr.length} previously-viewed wishlist${arr.length===1?'':'s'}. Tap to re-open.</div>`;
+  arr.forEach((entry, idx) => {
+    const namesPreview = (entry.names || []).slice(0, 3).join(', ');
+    const more = entry.figCount > 3 ? ` +${entry.figCount - 3} more` : '';
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--bg3);border:1px solid var(--bd);border-radius:10px;margin-bottom:8px">
+      <button data-action="reopen-wishlist" data-idx="${idx}" style="flex:1;background:none;border:none;text-align:left;padding:0;color:var(--t1);cursor:pointer">
+        <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">${entry.figCount} figure${entry.figCount===1?'':'s'}</div>
+        <div style="font-size:11px;color:var(--t3);line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(namesPreview)}${more}</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:4px">${fmtAge(entry.viewedAt)}</div>
+      </button>
+      <button data-action="delete-wishlist-entry" data-idx="${idx}" title="Remove from history" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--t3);font-size:18px;line-height:1;cursor:pointer">×</button>
+    </div>`;
+  });
+  if (arr.length > 1) {
+    html += `<button data-action="clear-wishlist-history" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid color-mix(in srgb,var(--rd) 30%,var(--bd));background:color-mix(in srgb,var(--rd) 6%,var(--bg3));color:var(--rd);font-size:12px;font-weight:600">Clear all history</button>`;
+  }
+  return html;
+}
 
 function renderFilterSheet() {
   // v5.01: chip clicks call patchFilter() which rewrites only the sheet body

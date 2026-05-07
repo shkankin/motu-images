@@ -420,7 +420,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.30</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.32</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -866,6 +866,88 @@ function renderStatsSheet() {
     </div>`;
   });
 
+  // v6.31: monthly activity chart. Uses the persisted event log to show
+  // when the user added figures to their collection. Skipped silently if
+  // the log is empty (new users) or all events are in the same month
+  // (chart would be a single bar — not interesting). Last 12 months only.
+  const events = (typeof window.getEvents === 'function') ? window.getEvents() : [];
+  const ownedByMonth = (typeof window.groupEventsByMonth === 'function')
+    ? window.groupEventsByMonth({ to: 'owned' })
+    : {};
+  const monthKeys = Object.keys(ownedByMonth);
+  if (monthKeys.length >= 2) {
+    // Build the last 12 months including any months with zero activity
+    // (so the chart doesn't visually compress gaps and lie about pacing).
+    const now = new Date();
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      const label = d.toLocaleString(undefined, { month: 'short' });
+      months.push({ key, label, count: ownedByMonth[key] || 0, year: d.getFullYear() });
+    }
+    const max = Math.max(1, ...months.map(m => m.count));
+    const totalAdded = months.reduce((s, m) => s + m.count, 0);
+    html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
+    <div class="label text-upper text-dim text-xs" style="margin-bottom:4px;display:flex;align-items:baseline;justify-content:space-between">
+      <span>Activity (last 12 months)</span>
+      <span style="font-weight:400;color:var(--t3);text-transform:none;letter-spacing:0">${totalAdded} added</span>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:80px;padding:8px 0 4px;background:var(--bg2);border-radius:8px;padding:10px 8px 8px">
+      ${months.map(m => {
+        const h = m.count ? Math.max(4, (m.count / max) * 60) : 2;
+        const isCurrent = m.key === months[months.length - 1].key;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="${m.label} ${m.year}: ${m.count} added">
+          <div style="width:100%;height:${h}px;background:${m.count ? (isCurrent ? 'var(--acc)' : 'var(--gold)') : 'var(--bd)'};border-radius:2px;transition:height 0.3s"></div>
+          <div style="font-size:9px;color:var(--t3);font-weight:600">${m.label[0]}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // v6.31: total spent by year. Walks owned copies grouped by year added
+  // (using the event log; figures owned before the log started are
+  // excluded since we don't know when they were acquired).
+  if (events.length > 0) {
+    const spendByYear = {};
+    for (const ev of events) {
+      if (ev.to !== 'owned') continue;
+      const c = S.coll[ev.id];
+      if (!isMigrated(c) || !c.copies) continue;
+      const year = new Date(ev.t).getFullYear();
+      // Sum all paid prices on this figure's copies. Imperfect — if a
+      // figure has multiple copies added at different times, we attribute
+      // all spend to the first acquisition. Acceptable for an at-a-glance
+      // breakdown; users with multi-copy data see the per-copy breakdown
+      // on the figure detail anyway.
+      let figSpend = 0;
+      for (const cp of c.copies) {
+        const v = parseFloat(cp.paid) || 0;
+        if (v > 0) figSpend += v;
+      }
+      if (figSpend > 0) {
+        spendByYear[year] = (spendByYear[year] || 0) + figSpend;
+      }
+    }
+    const years = Object.keys(spendByYear).sort();
+    if (years.length > 0) {
+      const yearMax = Math.max(...years.map(y => spendByYear[y]));
+      html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Spend by year</div>`;
+      for (const y of years) {
+        const v = spendByYear[y];
+        const pct = (v / yearMax) * 100;
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+          <div style="font-size:12px;color:var(--t2);font-weight:600;width:40px;flex-shrink:0">${y}</div>
+          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:3px"></div>
+          </div>
+          <div style="font-size:12px;color:var(--gold);font-weight:700;width:70px;text-align:right;flex-shrink:0">$${v.toFixed(0)}</div>
+        </div>`;
+      }
+    }
+  }
+
   return html;
 }
 
@@ -1204,6 +1286,10 @@ function checkShareLink() {
     S.figs.forEach(f => { const m = f.id.match(/(\d+)$/); if(m) byNum.set(m[1], f); });
     const figs = nums.map(n => byNum.get(n)).filter(Boolean);
     if (!figs.length) return;
+    // v6.31: record this view in the user's wishlist history so they can
+    // revisit it from Settings later. Re-opening the same link bumps the
+    // timestamp instead of duplicating.
+    try { window.recordWishlistView?.(nums, figs); } catch {}
     S.sheet = 'wantListView';
     S._sharedWantList = figs;
     pushNav();
@@ -2001,6 +2087,12 @@ function renderPhotoViewer() {
     ${multi ? `<button class="photo-viewer-nav next" onclick="event.stopPropagation();photoViewerNav(1)">${icon(ICO.chevR,28)}</button>` : ''}
   </div>`;
 }
+
+// v6.31: window mirrors so delegated handlers can call them without
+// import cycles.
+window.checkShareLink = checkShareLink;
+window.appConfirm = appConfirm;
+window.toast = toast;
 
 // ── Exports ─────────────────────────────────────────────────
 export {

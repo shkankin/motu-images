@@ -252,6 +252,101 @@ async function fetchFigs(manual = false, firstLoad = false) {
 }
 
 // § COLLECTION-OPS ── saveColl, setStatus, patchFigRow, updateColl, copy ops, overrides, stats, getSortedFigs ──
+
+// v6.31: status-change event log. Persisted to localStorage as a capped
+// ring of {t, id, from, to} tuples. Powers the monthly-activity chart on
+// the Stats sheet ("when did I add the most things"). Cap at 2000 events
+// — keeps localStorage usage to <200KB even for heavy users while giving
+// 5+ years of history at typical collection rates.
+const EVENTS_KEY  = 'motu-events';
+const EVENTS_CAP  = 2000;
+let _events = null;
+function getEvents() {
+  if (_events) return _events;
+  try {
+    const raw = store.get(EVENTS_KEY);
+    _events = Array.isArray(raw) ? raw : [];
+  } catch { _events = []; }
+  return _events;
+}
+function logStatusEvent(id, from, to) {
+  // Skip no-ops and identical writes (defensive — setStatus won't call
+  // here in those cases, but if a future caller does we don't pollute
+  // the log).
+  if (from === to) return;
+  const arr = getEvents();
+  arr.push({ t: Date.now(), id, from: from || null, to: to || null });
+  // Trim from the front when over cap
+  if (arr.length > EVENTS_CAP) arr.splice(0, arr.length - EVENTS_CAP);
+  // Use a debounced write — rapid bulk operations (batch select + status
+  // change for 50 figures) shouldn't write to localStorage 50 times.
+  if (_eventsSaveTimer) clearTimeout(_eventsSaveTimer);
+  _eventsSaveTimer = setTimeout(() => {
+    store.set(EVENTS_KEY, arr);
+    _eventsSaveTimer = null;
+  }, 200);
+}
+let _eventsSaveTimer = null;
+// Returns events grouped by YYYY-MM, optionally filtered to a transition.
+// e.g. groupEventsByMonth({to: 'owned'}) → {'2026-04': 12, '2026-05': 8, ...}
+function groupEventsByMonth(filter = {}) {
+  const out = {};
+  for (const ev of getEvents()) {
+    if (filter.to && ev.to !== filter.to) continue;
+    if (filter.from && ev.from !== filter.from) continue;
+    const d = new Date(ev.t);
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    out[key] = (out[key] || 0) + 1;
+  }
+  return out;
+}
+
+// v6.31: viewed wishlist history. When a user opens a #wl= share link
+// (from a QR scan or pasted URL), the encoded ID list and a snapshot of
+// the matched figure names are saved here so they can revisit later.
+// Capped at 50 entries — older ones evicted on save. Stored as
+// {nums, names, viewedAt, figCount}.
+const WISHLIST_HISTORY_KEY = 'motu-wl-history';
+const WISHLIST_HISTORY_CAP = 50;
+function getWishlistHistory() {
+  try {
+    const raw = store.get(WISHLIST_HISTORY_KEY);
+    return Array.isArray(raw) ? raw : [];
+  } catch { return []; }
+}
+function saveWishlistHistory(arr) {
+  store.set(WISHLIST_HISTORY_KEY, arr);
+}
+// Save (or update timestamp on) an entry. Dedupes by serialized nums list
+// so re-opening the same link bumps the timestamp instead of duplicating.
+function recordWishlistView(nums, figs) {
+  if (!Array.isArray(nums) || !nums.length) return;
+  const key = nums.slice().sort().join(',');
+  const arr = getWishlistHistory();
+  // Drop existing entry with matching nums (we'll re-prepend below)
+  const existing = arr.findIndex(e => (e.nums || []).slice().sort().join(',') === key);
+  if (existing >= 0) arr.splice(existing, 1);
+  // Cap names list at first 5 so localStorage doesn't bloat
+  const names = (figs || []).slice(0, 5).map(f => f.name).filter(Boolean);
+  arr.unshift({
+    nums: [...nums],
+    names,
+    figCount: (figs || []).length,
+    viewedAt: Date.now(),
+  });
+  if (arr.length > WISHLIST_HISTORY_CAP) arr.length = WISHLIST_HISTORY_CAP;
+  saveWishlistHistory(arr);
+}
+function clearWishlistHistory() {
+  store.set(WISHLIST_HISTORY_KEY, []);
+}
+function deleteWishlistHistoryEntry(idx) {
+  const arr = getWishlistHistory();
+  if (idx < 0 || idx >= arr.length) return;
+  arr.splice(idx, 1);
+  saveWishlistHistory(arr);
+}
+
 let _saveCollTimer = null;
 function saveColl() {
   // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
@@ -537,6 +632,10 @@ function setStatus(id, status) {
     if (wasStatus === 'ordered' && status === 'owned') migrateOrderedToOwned(id);
   }
   saveColl(); haptic();
+  // v6.31: log to the event ring for the stat-history chart. Captured
+  // after the mutation so newStatus reflects the final state (may be
+  // undefined if the change cleared the status entirely).
+  logStatusEvent(id, wasStatus, S.coll[id]?.status);
   S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   store.set('motu-recent', S._recentChanges);
   const fig = figById(id);
@@ -1879,8 +1978,13 @@ function doImportAF411(csvText, overwrite) {
 window.setStatus = setStatus;
 window.fetchFigs = fetchFigs;
 window.exportCSV = exportCSV;
+window.logStatusEvent = logStatusEvent;
+window.recordWishlistView = recordWishlistView;
+window.getWishlistHistory = getWishlistHistory;
+window.deleteWishlistHistoryEntry = deleteWishlistHistoryEntry;
+window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY
 };

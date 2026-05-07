@@ -549,6 +549,11 @@ window.batchSetStatus = status => {
       // v4.87: same ordered→owned migration setStatus/cycleStatus do.
       if (wasStatus === 'ordered' && status === 'owned') migrateOrderedToOwned(id);
     }
+    // v6.31: log event for stat history. Same logic as setStatus —
+    // captures the transition for the monthly-activity chart.
+    if (wasStatus !== (S.coll[id]?.status)) {
+      try { window.logStatusEvent?.(id, wasStatus, S.coll[id]?.status); } catch {}
+    }
     changed++;
     S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   });
