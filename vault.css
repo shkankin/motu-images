@@ -2088,6 +2088,32 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   cursor: not-allowed;
 }
 
+/* v6.30: persistent banner shown when localStorage is unavailable
+   (Safari private browsing, sandboxed iframe, etc.). Critical to
+   surface — without it users have no idea their changes aren't
+   persisting. Uses amber rather than red so it doesn't read as a
+   crash or fatal error. */
+.storage-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  padding-top: max(10px, var(--safe-top));
+  background: color-mix(in srgb, var(--gold) 18%, var(--bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--gold) 35%, var(--bd));
+  color: var(--t1);
+  font-size: 12px; line-height: 1.45;
+  position: sticky; top: 0; z-index: 49;
+}
+.storage-banner svg { color: var(--gold); margin-top: 1px; }
+.storage-banner button {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 8px; border: none;
+  background: transparent; color: var(--t2);
+  font-size: 18px; line-height: 1;
+  cursor: pointer;
+}
+.storage-banner button:active { background: rgba(255,255,255,0.08); }
+
 /* ── Toast Notifications ─────────────────────────────────────────── */
 .toast-container {
   position: fixed; bottom: 70px; left: 0; right: 0;
