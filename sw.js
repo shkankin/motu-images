@@ -1,7 +1,19 @@
-// MOTU Vault — Service Worker v6.30
+// MOTU Vault — Service Worker v6.32
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.32 changelog:
+//   • CACHE bumped to v6.32.
+//   • SHELL gains main-theme.mp3 — background music for the About sheet,
+//     pre-cached so it works offline. Also keeps the file out of the
+//     stale-while-revalidate path the catalog uses.
+//
+// v6.31 changelog:
+//   • CACHE bumped to v6.31.
+//   • No SHELL changes. Bumping CACHE forces eviction of v6.30 entries
+//     so users pick up data.js / render.js / ui-sheets.js / handlers.js /
+//     delegate-handlers.js updates (stat history, wishlist history, About).
 //
 // v6.30 changelog:
 //   • CACHE bumped to v6.30.
@@ -435,12 +447,13 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.30';
+const CACHE = 'motu-vault-v6.32';
 
 const SHELL = [
   'motu-vault.html',
   'manifest.json',
   'masters_logo.png',
+  'main-theme.mp3',
   'vault.css',
   'js/app.js',
   'js/state.js',
