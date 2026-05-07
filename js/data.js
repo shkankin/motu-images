@@ -128,15 +128,26 @@ async function fetchFigs(manual = false, firstLoad = false) {
   _fetchInFlight = (async () => {
     S.syncStatus = 'syncing'; render();
     S.fetchError = false;
+    // v6.30: bound the catalog fetch with an AbortController. Without this,
+    // a slow/stalled connection (2G, captive portal, throttled mobile) leaves
+    // the skeleton screen up indefinitely on first load — the worst-possible
+    // first-run experience. 15s is generous for a ~200KB JSON file even on
+    // bad connections; longer than that and we're better off telling the
+    // user something is wrong.
+    const ctl = new AbortController();
+    const timeoutId = setTimeout(() => ctl.abort(), 15000);
     try {
       // v6.16: kids-core.json is no longer maintained as a separate repo file.
       // Kids Core figures now live in figures.json with `line: 'kids-core'`,
       // managed by sync_af411.py like every other line. KIDS_CORE_KEY (local
       // admin entries) is still honored for back-compat — those merge in below.
       const [res, ldRes] = await Promise.all([
-        fetch(FIGS_URL + '?t=' + Date.now()),
-        fetch(LOADOUTS_URL + '?t=' + Date.now()).catch(() => null),
+        fetch(FIGS_URL + '?t=' + Date.now(), { signal: ctl.signal }),
+        // Loadouts is optional; let it share the same abort signal so we don't
+        // hold the figures fetch waiting on a stuck loadouts call.
+        fetch(LOADOUTS_URL + '?t=' + Date.now(), { signal: ctl.signal }).catch(() => null),
       ]);
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const remote = await res.json();
       if (!Array.isArray(remote) || remote.length < 100) throw new Error('Invalid data');
@@ -213,12 +224,17 @@ async function fetchFigs(manual = false, firstLoad = false) {
       render();
       setTimeout(() => { S.syncStatus = 'idle'; render(); }, 3000);
     } catch(e) {
+      clearTimeout(timeoutId);
       console.error('Fetch failed:', e);
       S.syncStatus = manual ? 'err' : 'idle';
+      // v6.30: detect timeout/abort distinctly from generic offline so we
+      // can show a more useful message ("slow connection" vs "no connection").
+      const isAbort   = e?.name === 'AbortError';
+      const isNetwork = !navigator.onLine || /network|failed to fetch/i.test(e.message);
       if (manual) {
-        // Detect offline vs other error
-        const isNetwork = !navigator.onLine || /network|failed to fetch/i.test(e.message);
-        if (isNetwork) {
+        if (isAbort) {
+          toast('✗ Connection too slow — try again in a moment');
+        } else if (isNetwork) {
           S.isOffline = !navigator.onLine;
           toast('✗ No connection — using cached data');
         } else {
@@ -1377,30 +1393,64 @@ window.exportPhotosZip = async () => {
 };
 
 async function exportJSON() {
-  const backup = {
-    version: 'motu-vault-backup-v4',  // v4: includes per-copy photo assignments + figure overrides
-    exported: new Date().toISOString(),
-    collection: S.coll,
-    photos: {},
-    photoCopy: getPhotoCopyMap(),  // {figId: {n: copyId}} — which copy each photo belongs to
-    overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
-  };
-  // Include custom photos as arrays of {label, dataUrl}
-  let totalPhotos = 0;
-  for (const id of Object.keys(S.customPhotos)) {
-    const photos = await photoStore.exportAllAsDataURLs(id);
-    if (photos.length) {
-      backup.photos[id] = photos;
-      totalPhotos += photos.length;
+  // v6.30: large backups (hundreds of photos as base64 data URLs) used to
+  // build the entire string in memory at once, then JSON.stringify it with
+  // null,2 pretty-printing — three full copies of the data resident at
+  // peak. Mobile tabs were crashing on collections > ~200 photos. Now:
+  //   - drop pretty-printing (backups are not human-read)
+  //   - show a syncing toast so the user knows we're working on it
+  //   - wrap the whole thing in try/catch so failure surfaces to the user
+  //     instead of silently producing nothing
+  // For extremely large collections (1000+ photos) this still won't be
+  // bullet-proof — true streaming would require the File System Access API
+  // which isn't broadly mobile-supported. This is the practical fix.
+  let pendingToast = false;
+  try {
+    pendingToast = true;
+    toast('Building backup…', { duration: 8000 });
+    const backup = {
+      version: 'motu-vault-backup-v4',  // v4: includes per-copy photo assignments + figure overrides
+      exported: new Date().toISOString(),
+      collection: S.coll,
+      photos: {},
+      photoCopy: getPhotoCopyMap(),  // {figId: {n: copyId}} — which copy each photo belongs to
+      overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
+    };
+    // Include custom photos as arrays of {label, dataUrl}.
+    // Yield to the event loop every 25 figures so the UI can update — without
+    // this, a 500-photo backup blocks the main thread for several seconds and
+    // the toast above never paints.
+    let totalPhotos = 0;
+    const ids = Object.keys(S.customPhotos);
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      const photos = await photoStore.exportAllAsDataURLs(id);
+      if (photos.length) {
+        backup.photos[id] = photos;
+        totalPhotos += photos.length;
+      }
+      if (i % 25 === 0) await new Promise(r => setTimeout(r, 0));
     }
+    // No pretty-printing — saves ~15% size for backups (which can be
+    // significant when photos push the file into the tens of MB range)
+    // and one less full copy of the data resident during stringify.
+    const json = JSON.stringify(backup);
+    const blob = new Blob([json], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'motu-vault-backup.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(`✓ Backup saved · ${totalPhotos} photo${totalPhotos===1?'':'s'}`);
+  } catch (e) {
+    console.error('Backup failed:', e);
+    // Disambiguate the common failure mode: device ran out of memory
+    // (manifests as a generic Error or tab crash recovery).
+    const oom = /out of memory|allocation/i.test(e?.message || '');
+    toast(oom
+      ? '✗ Backup too large for this device — try exporting fewer photos'
+      : '✗ Backup failed: ' + (e?.message || 'unknown error').slice(0, 60));
   }
-  const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'motu-vault-backup.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast(`✓ Backup saved · ${totalPhotos} photos`);
 }
 
 // v6.27: split into apply-from-parsed-object + file wrapper. handleImportFile

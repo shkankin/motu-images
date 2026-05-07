@@ -83,6 +83,15 @@ async function init() {
   // thread before we start competing for the main thread.
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+  // v6.30: probe storage at boot so the persistent banner appears
+  // immediately if we're in Safari private mode or otherwise can't write.
+  // Uses the same store.set() path so the broken-state listeners fire.
+  // The probe key is a tiny round-trip; cleaned up after.
+  try {
+    const ok = store.set('motu-storage-probe', 1);
+    if (ok) localStorage.removeItem('motu-storage-probe');
+  } catch {}
+
   // Load collection
   const c = store.get('motu-c2');
   if (c) {
@@ -195,6 +204,29 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+// v6.30: last-ditch global error handlers. The app handles its own errors
+// in dozens of places, but for anything that escapes (logic bug, browser
+// quirk, third-party tool injection), we want at least one user-visible
+// surface so the failure isn't silent. Toasts are throttled — repeated
+// errors within 10s are suppressed to avoid spam.
+let _lastUncaughtToast = 0;
+function _surfaceUncaught(label, detail) {
+  console.error('[uncaught]', label, detail);
+  const now = Date.now();
+  if (now - _lastUncaughtToast < 10000) return;
+  _lastUncaughtToast = now;
+  try { toast('⚠ Something went wrong — please try again', { duration: 5000 }); } catch {}
+}
+window.addEventListener('error', e => {
+  // Filter out resource load errors (img onerror etc.) — those bubble up
+  // here too and aren't worth toasting.
+  if (e?.target && e.target !== window && e.target.tagName) return;
+  _surfaceUncaught('error', e?.error || e?.message);
+});
+window.addEventListener('unhandledrejection', e => {
+  _surfaceUncaught('unhandledrejection', e?.reason);
+});
+
 // Online/offline detection
 window.addEventListener('online', () => {
   S.isOffline = false;

@@ -742,9 +742,27 @@ window.dismissContextMenu = dismissContextMenu;
 // the tutorial's keydown handler — that runs in capture phase only while the
 // tutorial overlay is open.
 document.addEventListener('keydown', e => {
-  // Ignore when a sheet, photo viewer, or tutorial is open — those have
-  // their own dismissal flows and we don't want to fight them.
-  if (S.sheet || S.photoViewer) return;
+  // v6.30: Photo viewer keyboard support — Esc closes, arrows navigate.
+  // Previously documented as "has its own dismissal flow" but actually had
+  // none; desktop users could only click the close button. Single-photo
+  // viewers ignore the arrow keys but Esc still works.
+  if (S.photoViewer) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      window.closePhotoViewer?.();
+    } else if (e.key === 'ArrowLeft' && S.photoViewer.photos?.length > 1) {
+      e.preventDefault();
+      window.photoViewerNav?.(-1);
+    } else if (e.key === 'ArrowRight' && S.photoViewer.photos?.length > 1) {
+      e.preventDefault();
+      window.photoViewerNav?.(1);
+    }
+    return;
+  }
+  // Ignore when a sheet or tutorial is open — those have their own dismissal
+  // flows (sheet has the close button + backdrop tap; tutorial has its own
+  // capture-phase handler).
+  if (S.sheet) return;
   const tag = (e.target && e.target.tagName) || '';
   const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
                   (e.target && e.target.isContentEditable);

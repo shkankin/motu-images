@@ -55,6 +55,17 @@ function renderSheet() {
   else if (S.sheet === 'accessoryPicker') body = renderAccessoryPickerSheet();
   else if (S.sheet === 'pricing') body = renderPricingSheet();
 
+  // v6.30: Defensive fallback. If a deep link / shortcut / typo lands us on
+  // an unknown sheet name, S.sheet is set but no body renders. Without this,
+  // the user sees a blank sheet with no way to understand what's wrong.
+  if (!body && S.sheet) {
+    body = `<div style="text-align:center;padding:32px 16px">
+      <div style="font-size:32px;margin-bottom:12px">🤔</div>
+      <div style="font-size:14px;color:var(--t2);margin-bottom:8px">Nothing to show here</div>
+      <div style="font-size:12px;color:var(--t3)">Tap outside to close.</div>
+    </div>`;
+  }
+
   return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
     <div class="sheet-backdrop"></div>
     <div class="sheet-panel">

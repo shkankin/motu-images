@@ -125,6 +125,17 @@ registerAll({
     window.openSheet?.(d.sheet);
   },
   'close-sheet': () => window.closeSheet?.(),
+
+  // v6.30: dismiss the storage-broken banner for this session. Banner
+  // reappears next session if storage is still unavailable, intentionally —
+  // we can't persist the dismissal in the same storage we're warning about.
+  'dismiss-storage-banner': () => {
+    window.S.storageDismissed = true;
+    window.render?.();
+  },
+
+  // First-load fetch failure retry.
+  'retry-fetch': () => window.fetchFigs?.(true, true),
 });
 
 // ── Error actions (capture phase — events don't bubble) ───────────

@@ -213,21 +213,53 @@ const _clone = (typeof structuredClone === 'function')
   : (v => JSON.parse(JSON.stringify(v)));
 
 // § STORAGE ── localStorage wrapper (store.get/set) ───────────────
+// v6.30: storage failure is now persistent. Safari private mode in
+// particular returns 0 quota and rejects every write. The previous
+// version showed exactly one toast on first failure, then silently
+// dropped subsequent writes — leaving a user with the impression that
+// their collection was being saved when it wasn't. Now we expose
+// `storageBroken` so render.js can show a persistent banner that the
+// user has to deliberately dismiss; once shown, every save attempt
+// re-checks (in case quota was freed up).
 let _quotaWarned = false;
+let _storageBroken = false;
+const _storageListeners = new Set();
+function _notifyStorageChange() {
+  for (const fn of _storageListeners) {
+    try { fn(_storageBroken); } catch {}
+  }
+}
 const store = {
   get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set: (k, v) => {
-    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+      // Recovery path: a previously-broken store starts working again
+      // (e.g. user freed up quota in another tab, exited private mode).
+      if (_storageBroken) {
+        _storageBroken = false;
+        _notifyStorageChange();
+      }
+      return true;
+    }
     catch(e) {
       const quota = e && (e.name === 'QuotaExceededError' || e.code === 22 || /quota/i.test(e.message||''));
+      if (!_storageBroken) {
+        _storageBroken = true;
+        _notifyStorageChange();
+      }
       if (quota && !_quotaWarned) {
         _quotaWarned = true;
         // toast is defined later; guarded in case of early failure
-        try { toast('✗ Storage full — changes may not persist'); } catch {}
+        try { toast('✗ Storage full — changes may not persist', { duration: 8000 }); } catch {}
       }
       return false;
     }
   },
+  isBroken: () => _storageBroken,
+  // Subscribe to storageBroken transitions. Used by render.js to add/remove
+  // the persistent storage banner without needing a full re-render.
+  onChange: (fn) => { _storageListeners.add(fn); return () => _storageListeners.delete(fn); },
 };
 
 // § STATE ── Global S object, DEFAULT_TITLE ────────────────────────
@@ -255,6 +287,11 @@ const S = {
   loaded: false,
   fetchError: false,
   isOffline: typeof navigator !== 'undefined' && navigator.onLine === false,
+  // v6.30: per-session dismiss for the storage-unavailable banner. Not
+  // persisted because the storage that would persist it is the same one
+  // we're warning about — and we want users to see the warning each new
+  // session if their environment still doesn't support storage.
+  storageDismissed: false,
   syncStatus: 'idle',
   syncTs: null,
   editingOrder: false,

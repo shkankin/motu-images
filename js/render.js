@@ -370,7 +370,7 @@ function renderLoading() {
           <div style="font-size:48px;margin-bottom:12px">⚡</div>
           <div style="color:var(--rd);font-size:14px;font-weight:600;margin-bottom:8px">Could not load figures</div>
           <div class="text-dim text-sm" style="margin-bottom:24px;line-height:1.6">Check your connection and try again.</div>
-          <button class="retry-btn" onclick="fetchFigs(true,true)">Retry</button>
+          <button class="retry-btn" data-action="retry-fetch">Retry</button>
         </div>
       ` : `
         <div class="skeleton-grid">${skeletonCards}</div>
@@ -408,13 +408,19 @@ function renderMain() {
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.58 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
     Offline — showing cached data
   </div>
+  ${store.isBroken && store.isBroken() && !S.storageDismissed ? `
+  <div class="storage-banner" role="alert">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    <span style="flex:1">Storage unavailable — your changes won't persist after closing the app. Common in private/incognito browsing.</span>
+    <button data-action="dismiss-storage-banner" aria-label="Dismiss">×</button>
+  </div>` : ''}
   <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.29</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.30</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1123,16 +1129,20 @@ function renderShareSheet() {
 window.copyShareURL = () => {
   const url = buildShareURL();
   if (!url) return;
+  // v6.30: navigator.clipboard is undefined on insecure (http://) origins
+  // and inside some embedded webviews. Guard the access so we don't throw
+  // a TypeError before reaching the fallback path.
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast('✓ Link copied'); } catch { toast('✗ Copy failed — long-press the URL to copy'); }
+    ta.remove();
+  };
+  if (!navigator.clipboard?.writeText) { fallback(); return; }
   navigator.clipboard.writeText(url).then(
     () => toast('✓ Link copied'),
-    () => {
-      // Fallback for older Android WebView
-      const ta = document.createElement('textarea');
-      ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); toast('✓ Link copied'); } catch { toast('✗ Copy failed'); }
-      ta.remove();
-    }
+    fallback,
   );
 };
 
