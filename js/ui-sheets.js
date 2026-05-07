@@ -38,7 +38,7 @@ import { pushNav } from './handlers.js';
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -53,6 +53,7 @@ function renderSheet() {
   else if (S.sheet === 'wantListView') body = renderWantListViewSheet();
   else if (S.sheet === 'kidsCoreAdmin') body = renderKidsCoreAdminSheet();
   else if (S.sheet === 'accessoryPicker') body = renderAccessoryPickerSheet();
+  else if (S.sheet === 'pricing') body = renderPricingSheet();
 
   return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
     <div class="sheet-backdrop"></div>
@@ -79,6 +80,7 @@ function renderMenuSheet() {
     {label:'Manage Collections',  icon:ICO.sort,    action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
     {label:'Import',              icon:ICO.import,  action:"openSheet('import')"},
     {label:'Export / Backup',     icon:ICO.export,  action:"openSheet('export')"},
+    {label:'Pricing Backend',     icon:ICO.tag,     action:"openSheet('pricing')"},
   ];
   let html = menuItems.map(m => `
     <button onclick="${m.action}" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
@@ -98,8 +100,81 @@ function renderMenuSheet() {
       </span>
       <span style="padding:5px 11px;border-radius:999px;background:${ptrOn?'var(--gn)':'var(--bg2)'};color:${ptrOn?'var(--bg)':'var(--t3)'};font-size:11px;font-weight:700">${ptrOn?'ON':'OFF'}</span>
     </button>`;
+  // v6.28: Help section — replay the tutorial. Previously the only entry
+  // point was the dismissable banner on the Lines screen, which became
+  // unreachable once dismissed. Tutorial state is read via the same
+  // window.tutorialState() helper used by renderLinesGrid.
+  const tState = (typeof window.tutorialState === 'function') ? window.tutorialState() : { seen: false };
+  const tourLabel = tState.seen ? 'Replay 1-minute tour' : 'Take the 1-minute tour';
+  html += `<div style="height:1px;background:var(--bd);margin:14px 4px"></div>
+    <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">Help</div>
+    <button onclick="closeSheet();window.startTutorial && window.startTutorial()" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+      <span style="color:var(--acc);font-size:18px">🎓</span>
+      <span style="flex:1">${tourLabel}</span>
+      <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
+    </button>`;
   return html;
 }
+
+function renderPricingSheet() {
+  // v6.28: configure the pricing backend URL + optional API key. The Worker
+  // README walks through deployment; this sheet is the client-side pairing.
+  const cfg = (typeof window.getPricingBackend === 'function') ? window.getPricingBackend() : null;
+  const configured = !!cfg;
+  return `<div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
+    Connect to a pricing backend to see recent-sold averages on each figure's detail screen.
+    The app caches results for 24 hours and refreshes in the background.
+    See the README in the <code>backend/</code> folder for deployment.
+  </div>
+  <div class="field-label text-dim text-sm">Backend URL</div>
+  <input id="pricingBackendUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off"
+    spellcheck="false" placeholder="https://motu-vault-pricing.example.workers.dev"
+    value="${esc(cfg?.url || '')}"
+    style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-family:ui-monospace,monospace;font-size:13px;margin-bottom:12px">
+  <div class="field-label text-dim text-sm">API Key (optional)</div>
+  <input id="pricingBackendKey" type="password" autocomplete="off" placeholder="${configured && cfg.hasKey ? '••••••••' : 'Leave blank if your backend is public'}"
+    style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-family:ui-monospace,monospace;font-size:13px;margin-bottom:14px">
+  <div style="display:flex;gap:8px">
+    <button onclick="savePricingBackend()" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">Save & test</button>
+    ${configured ? `<button onclick="disconnectPricingBackend()" style="padding:12px 16px;border-radius:10px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">Disconnect</button>` : ''}
+  </div>
+  ${configured ? `<button onclick="window.clearPricingCache && window.clearPricingCache();window.toast && window.toast('✓ Pricing cache cleared')" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">Clear pricing cache</button>` : ''}`;
+}
+
+window.savePricingBackend = async () => {
+  const urlInput = document.getElementById('pricingBackendUrl');
+  const keyInput = document.getElementById('pricingBackendKey');
+  const url = (urlInput?.value || '').trim();
+  const key = (keyInput?.value || '').trim();
+  if (!url) {
+    window.toast?.('✗ Backend URL is required');
+    return;
+  }
+  try {
+    window.configurePricingBackend(url, key);
+  } catch (e) {
+    window.toast?.('✗ ' + e.message);
+    return;
+  }
+  // Quick health check — hit /health and report. Don't block on it.
+  let healthOk = false;
+  try {
+    const res = await fetch(url.replace(/\/$/, '') + '/health', { headers: key ? { Authorization: 'Bearer ' + key } : {} });
+    healthOk = res.ok;
+  } catch {}
+  window.toast?.(healthOk ? '✓ Pricing backend connected' : '⚠ Saved, but health check failed');
+  // Re-render the sheet so Disconnect/Clear-cache appear
+  const body = document.querySelector('.sheet-body');
+  if (body && S.sheet === 'pricing') body.innerHTML = renderPricingSheet();
+};
+
+window.disconnectPricingBackend = () => {
+  window.configurePricingBackend('');
+  window.clearPricingCache?.();
+  window.toast?.('✓ Disconnected');
+  const body = document.querySelector('.sheet-body');
+  if (body && S.sheet === 'pricing') body.innerHTML = renderPricingSheet();
+};
 
 function renderFilterSheet() {
   // v5.01: chip clicks call patchFilter() which rewrites only the sheet body

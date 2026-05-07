@@ -48,6 +48,7 @@ import {
 } from './eggs.js';
 import { initLongPress, pushNav } from './handlers.js';
 import { renderSheet } from './ui-sheets.js';
+import { renderMarketValueBlock } from './pricing.js';
 
 // § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
 // v6.04: container caps live toasts at 3. Any new toast trims the oldest
@@ -413,7 +414,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.27</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.29</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -426,7 +427,7 @@ function renderMain() {
       <div class="search-wrap">
         <span class="search-icon">${icon(ICO.search,16)}</span>
         <input id="searchInput" value="${esc(S.search)}" placeholder="${S.activeLine ? 'Search '+ln(S.activeLine)+'…' : 'Search figures…'}" oninput="onSearch(this.value)">
-        ${S.search ? `<button class="search-clear" onclick="onSearch('')">${icon(ICO.x,14)}</button>` : ''}
+        ${S.search ? `<button class="search-clear" data-action="clear-search">${icon(ICO.x,14)}</button>` : ''}
       </div>
       <button class="filter-btn ${hf?'active':''}" onclick="openSheet('filter')">
         ${icon(ICO.filter,18)}${hf ? '<span class="filter-dot"></span>' : ''}
@@ -658,6 +659,12 @@ function renderSelectActionbar() {
     `<button class="sa-status-btn" ${dis} style="--st-c:${STATUS_HEX[s]}"
       onclick="batchSetStatus('${s}')">${STATUS_LABEL[s]}</button>`
   ).join('');
+  // v6.28: show "Photos" delete affordance only if at least one selected
+  // figure actually has user photos. Avoids cluttering the bar otherwise.
+  let anySelectedHasPhotos = false;
+  for (const id of S.selected) {
+    if ((S.customPhotos[id] || []).length) { anySelectedHasPhotos = true; break; }
+  }
   return `<div class="select-actionbar visible">
     <div class="sa-row">
       <span class="count">${n}</span>
@@ -667,6 +674,10 @@ function renderSelectActionbar() {
       <button class="primary" ${dis} onclick="openBatchEditor()" style="flex:1">
         ${icon(ICO.edit, 14)} Add Copy…
       </button>
+      ${anySelectedHasPhotos ? `<button onclick="batchDeletePhotos()" title="Remove user photos from selected"
+        style="padding:9px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--rd) 35%,var(--bd));background:color-mix(in srgb,var(--rd) 6%,var(--bg3));color:var(--rd);font-size:12px;font-weight:600;flex-shrink:0">
+        ${icon(ICO.trash,12)} Photos
+      </button>` : ''}
       <button ${dis} onclick="S.confirmClear=true;document.querySelector('.select-actionbar').outerHTML=renderSelectActionbar()"
         style="padding:9px 14px;border-radius:10px;border:2px solid color-mix(in srgb,var(--rd) 50%,var(--bd));background:color-mix(in srgb,var(--rd) 10%,var(--bg3));color:var(--rd);font-size:13px;font-weight:800;flex-shrink:0">
         Clear
@@ -683,7 +694,7 @@ function renderSelectActionbar() {
 function renderNavBtn(key, ico, label, extra='') {
   const active = (S.tab === key && !S.activeLine) || (key === 'lines' && S.activeLine && S.tab === 'all');
   const showIcon = key !== 'collection';
-  return `<button class="${active?'active':''}" onclick="navTo('${key}')">${showIcon ? icon(ico,14,active?2.5:1.5) : ''}${label}${extra}</button>`;
+  return `<button class="${active?'active':''}" data-action="nav-to" data-target="${esc(key)}">${showIcon ? icon(ico,14,active?2.5:1.5) : ''}${label}${extra}</button>`;
 }
 
 function renderBreadcrumb() {
@@ -693,9 +704,9 @@ function renderBreadcrumb() {
   // active, the line name is also made tappable (goes to the same place as
   // "Lines" — the main lines grid — matching user expectation from the
   // feedback: "clicking lines should take you back to the main lines").
-  html += `<button class="crumb-link" onclick="crumbToLines()">${icon(ICO.back,14)} Lines</button><span class="sep">›</span>`;
+  html += `<button class="crumb-link" data-action="crumb-to-lines">${icon(ICO.back,14)} Lines</button><span class="sep">›</span>`;
   if (S.activeSubline) {
-    html += `<button class="crumb-link" onclick="crumbToLine()">${esc(ln(S.activeLine))}</button><span class="sep">›</span>`;
+    html += `<button class="crumb-link" data-action="crumb-to-line">${esc(ln(S.activeLine))}</button><span class="sep">›</span>`;
     const slLabel = S.activeSubline === '__all__' ? 'All Figures' : (SUBLINES[S.activeLine]||[]).find(s=>s.key===S.activeSubline)?.label || '';
     html += `<span class="current">${esc(slLabel)}</span>`;
   } else {
@@ -1294,7 +1305,7 @@ function renderLinesGrid() {
         const newPill = newCount > 0
           ? `<span class="new-count-badge new-count-badge-subline" title="${newCount} new">${newCount} NEW</span>`
           : '';
-        html += `<button class="line-row${newCount>0?' has-new':''}" onclick="goToLine('${l.id}')">
+        html += `<button class="line-row${newCount>0?' has-new':''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
           <div class="line-row-thumb">
             <img src="${IMG}/${l.id}.jpg" alt="" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
           </div>
@@ -1323,7 +1334,7 @@ function renderLinesGrid() {
         const newBadge = newCount > 0
           ? `<div class="new-count-badge" title="${newCount} new figure${newCount===1?'':'s'} in this line">${newCount} NEW</div>`
           : '';
-        html += `<div class="line-card${newCount > 0 ? ' has-new' : ''}" onclick="goToLine('${l.id}')">
+        html += `<div class="line-card${newCount > 0 ? ' has-new' : ''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
           <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
           <div class="overlay"></div>
           ${newBadge}
@@ -1354,7 +1365,7 @@ function renderSublines() {
     : 0;
 
   let html = '<div class="subline-list">';
-  html += `<button class="subline-card all-card${newInLine > 0 ? ' has-new' : ''}" onclick="selectSubline('__all__')">
+  html += `<button class="subline-card all-card${newInLine > 0 ? ' has-new' : ''}" data-action="select-subline" data-subline="__all__">
     <div class="subline-ring">${progressRing(allPct, 48, 'var(--gold)')}</div>
     <div class="subline-info">
       <div class="subline-name">${esc(ln(S.activeLine))} — All Figures</div>
@@ -1376,7 +1387,11 @@ function renderSublines() {
     const newInSub = (!hidden && S.newFigIds.size)
       ? slFigs.filter(f => S.newFigIds.has(f.id)).length
       : 0;
-    html += `<div class="subline-card${newInSub > 0 ? ' has-new' : ''}" style="${hidden?'opacity:0.4':''}" onclick="if(!event.target.closest('.hide-btn'))selectSubline('${sl.key}')">
+    // v6.29: Hide button uses its own data-action with stopPropagation in
+    // the handler. Previously the outer card had an inline closest('.hide-btn')
+    // guard; the delegation pattern handles this naturally because the inner
+    // button matches its own data-action selector first via closest().
+    html += `<div class="subline-card${newInSub > 0 ? ' has-new' : ''}" style="${hidden?'opacity:0.4':''}" data-action="select-subline" data-subline="${esc(sl.key)}">
       <div class="subline-ring">${progressRing(pct)}</div>
       <div class="subline-info">
         <div class="subline-name">${esc(sl.label)}</div>
@@ -1384,7 +1399,7 @@ function renderSublines() {
         ${!hidden ? `<div class="subline-progress"><div class="subline-progress-fill ${pct===100?'complete':''}" style="width:${pct}%"></div></div>` : ''}
       </div>
       ${newInSub > 0 ? `<div class="new-count-badge new-count-badge-subline">${newInSub} NEW</div>` : ''}
-      <button class="hide-btn" onclick="event.stopPropagation();toggleHidden('${S.activeLine}:${sl.key}')" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
+      <button class="hide-btn" data-action="toggle-subline-hidden" data-line-id="${esc(S.activeLine)}" data-subline="${esc(sl.key)}" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
         ${hidden?'Show':'Hide'}
       </button>
     </div>`;
@@ -1407,8 +1422,11 @@ function renderFigRow(f) {
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
   const isSelected = S.selectMode && S.selected.has(f.id);
   const eId = esc(f.id);
-  const jId = jsArg(f.id);
-  const rowClick = S.selectMode ? `toggleSelect(event,${jId})` : `openFig(${jId})`;
+  // v6.29: row click goes through delegation now. The dispatcher decides
+  // open-fig vs select-toggle based on S.selectMode at click time, so we
+  // no longer need to compute the action string at render time and risk
+  // the row being stuck on whichever action mode existed at last render.
+  const rowAction = S.selectMode ? 'select-toggle' : 'open-fig';
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
   // v6.03: subtle list-view loadout-complete tick. Shown only when:
   // status owned, loadout exists for the figure, and every copy is fully
@@ -1423,10 +1441,10 @@ function renderFigRow(f) {
     return allComplete ? '<span class="fig-loadout-tick" title="Loadout complete">✓</span>' : '';
   })();
 
-  return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" onclick="${rowClick}">
+  return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}">
-      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr(${jId})">` :
+      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
@@ -1441,8 +1459,8 @@ function renderFigRow(f) {
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
-      ${c.status ? `<button class="quick-own" onclick="cycleStatus(event,${jId})" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
-        `<button class="quick-own" onclick="event.stopPropagation();setStatus(${jId},'owned')" title="Mark owned">${icon(ICO.check,16)}</button>`}
+      ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
+        `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
     </div>`}
   </div>`;
 }
@@ -1457,25 +1475,25 @@ function renderFigCard(f) {
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
   const eId = esc(f.id);
-  const jId = jsArg(f.id);
   const statusIcon = c.status
     ? `<div class="fig-status-dot ${statusCls}"></div>`
     : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
-  const badgeAction = c.status
-    ? `cycleStatus(event,${jId})`
-    : `event.stopPropagation();setStatus(${jId},'owned')`;
+  // v6.29: badgeAction is the data-action verb. The dispatcher resolves
+  // open-fig vs select-toggle from the row, and cycle-status vs
+  // set-status-owned from the badge button.
+  const badgeAction = c.status ? 'cycle-status' : 'set-status-owned';
 
   const isSelected = S.selectMode && S.selected.has(f.id);
-  const cardClick = S.selectMode ? `toggleSelect(event,${jId})` : `openFig(${jId})`;
+  const cardAction = S.selectMode ? 'select-toggle' : 'open-fig';
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
-  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}" data-fig-id="${eId}" onclick="${cardClick}">
-    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" onerror="imgErr(${jId})">` :
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
+    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
       `<div class="card-initial">${esc(f.name[0])}</div>`}
     <div class="card-overlay"></div>
     ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
-    ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" onclick="${badgeAction}">${statusIcon}</button>`}
+    ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" data-action="${badgeAction}" data-fig-id="${eId}">${statusIcon}</button>`}
     <div class="card-info">
       <div class="card-fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}</div>
       <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
@@ -1555,8 +1573,8 @@ function renderFigList() {
         <div class="title">Your collection is empty</div>
         <div class="text-sm" style="margin-bottom:16px">Start tracking figures by browsing <strong>Lines</strong> or <strong>All</strong> and tapping a status (Owned, Wishlist, Ordered, For Sale).</div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-          <button onclick="navTo('lines')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Browse Lines</button>
-          <button onclick="navTo('all')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">View All Figures</button>
+          <button data-action="nav-to" data-target="lines" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Browse Lines</button>
+          <button data-action="nav-to" data-target="all" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">View All Figures</button>
         </div>
       </div>`;
     } else {
@@ -1571,9 +1589,9 @@ function renderFigList() {
         <div class="title">No figures match</div>
         <div class="text-sm" style="margin-bottom:16px">Try adjusting your search or filters.</div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-          ${showClearAll ? `<button onclick="onSearch('');patchFilter('clear')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear all</button>` : ''}
-          ${showClearFilters ? `<button onclick="patchFilter('clear')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear filters</button>` : ''}
-          ${showClearSearch ? `<button onclick="onSearch('')" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">Clear search</button>` : ''}
+          ${showClearAll ? `<button data-action="clear-search-and-filters" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear all</button>` : ''}
+          ${showClearFilters ? `<button data-action="clear-filters" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear filters</button>` : ''}
+          ${showClearSearch ? `<button data-action="clear-search" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">Clear search</button>` : ''}
         </div>
       </div>`;
     }
@@ -1666,7 +1684,7 @@ function renderDetailStatusBlock(f, c) {
       ordered: ICO.box || ICO.cart || ICO.check,
       'for-sale': ICO.tag || ICO.dollar || ICO.check,
     }[s] || ICO.check;
-    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" onclick="setStatus(${jId},'${s}');patchDetailStatus()">${icon(statIcon, 16)} ${STATUS_LABEL[s]}</button>`;
+    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" data-action="set-status" data-fig-id="${eId}" data-status="${esc(s)}">${icon(statIcon, 16)} ${STATUS_LABEL[s]}</button>`;
   });
   h += `</div></div>`;
   if (c.status) {
@@ -1890,6 +1908,13 @@ function renderDetail() {
     </div>` : ''}
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
+    ${(() => {
+      // v6.28: market value block (eBay sold avg, etc.). Pulls all paid prices
+      // from owned/for-sale copies for the under/over-paid comparison badges.
+      const paidArr = [];
+      if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
+      return renderMarketValueBlock(f.id, paidArr);
+    })()}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
       ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411(${jId})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
         ${icon(ICO.export,14)} View on AF411
@@ -1946,6 +1971,13 @@ function renderPhotoViewer() {
   if (!v || !v.photos.length) return '';
   const p = v.photos[v.idx];
   const multi = v.photos.length > 1;
+  // v6.28: "Set as default" button shown when this photo isn't already the
+  // default thumbnail. Stock photos (n=-1) and stub-less viewers skip it.
+  const isStock = !!p.stock || p.n === -1;
+  const figId = v.figId;
+  const curDefault = (figId && S.defaultPhoto) ? S.defaultPhoto[figId] : undefined;
+  const isAlreadyDefault = !isStock && curDefault === p.n;
+  const showSetDefault = !isStock && figId && !isAlreadyDefault;
   return `<div class="photo-viewer" onclick="if(event.target===this)closePhotoViewer()">
     <button class="photo-viewer-close" onclick="closePhotoViewer()">${icon(ICO.x,28)}</button>
     ${multi ? `<button class="photo-viewer-nav prev" onclick="event.stopPropagation();photoViewerNav(-1)">${icon(ICO.back,28)}</button>` : ''}
@@ -1953,6 +1985,8 @@ function renderPhotoViewer() {
       <img src="${esc(p.url)}" alt="${esc(p.label || '')}">
       ${p.label ? `<div class="photo-viewer-label">${esc(p.label)}</div>` : ''}
       ${multi ? `<div class="photo-viewer-counter">${v.idx + 1} / ${v.photos.length}</div>` : ''}
+      ${showSetDefault ? `<button class="photo-viewer-default" onclick="event.stopPropagation();setDefaultPhoto(${jsArg(figId)},${p.n});window.toast&&window.toast('★ Set as default')" title="Use this as the list/grid thumbnail">★ Set as default</button>` : ''}
+      ${isAlreadyDefault ? `<div class="photo-viewer-default-badge">★ Default</div>` : ''}
     </div>
     ${multi ? `<button class="photo-viewer-nav next" onclick="event.stopPropagation();photoViewerNav(1)">${icon(ICO.chevR,28)}</button>` : ''}
   </div>`;

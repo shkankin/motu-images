@@ -16,7 +16,7 @@ import {
 } from './photos.js';
 import {
   loadOverrides, applyOverrides, fetchFigs, migrateColl,
-  rebuildFigIndex, saveColl,
+  rebuildFigIndex, saveColl, loadPersistedNewFigIds,
 } from './data.js';
 import {
   render, toast, haptic, showUpdateBanner,
@@ -28,6 +28,15 @@ import {
 import './handlers.js';
 import './ui-sheets.js';
 import './tutorial.js';
+// v6.28: pricing layer (eBay sold-listing market values via configurable
+// backend). The module registers window.refreshPricing on load; the rest is
+// pull-only — render.js calls renderMarketValueBlock when drawing the detail.
+import * as pricing from './pricing.js';
+// v6.29: event delegation. Replaces inline onclick="…" with data-action
+// attributes resolved through a single document-level dispatcher. See
+// delegate.js for rationale.
+import { bootDelegation } from './delegate.js';
+import './delegate-handlers.js';   // registers actions for delegated events
 
 
 // ── Window bridge ─────────────────────────────────────────────────
@@ -55,6 +64,14 @@ Object.assign(window, {
   renderSelectActionbar: renderMod.renderSelectActionbar,
   // Sound triggers used in title-tap inline handlers
   playTitleSound: eggs.playTitleSound,
+  // v6.28: pricing layer
+  configurePricingBackend: pricing.configurePricingBackend,
+  isPricingConfigured:     pricing.isPricingConfigured,
+  getPricingBackend:       pricing.getPricingBackend,
+  clearPricingCache:       pricing.clearPricingCache,
+  fetchPricing:            pricing.fetchPricing,
+  // Help is a thin re-export so tutorial.js can be triggered from Settings.
+  // tutorial.js sets window.startTutorial itself; this is a no-op safety net.
 });
 
 // § INIT ── init(), OPFS setup, cache load, splash removal ─────────
@@ -92,6 +109,9 @@ async function init() {
   if (dp && typeof dp === 'object') S.defaultPhoto = dp;
   // Load any field overrides — applied automatically inside rebuildFigIndex
   loadOverrides();
+  // v6.28: restore persisted newFigIds so NEW pills survive a reload.
+  // Auto-expires entries older than 14 days inside the loader.
+  loadPersistedNewFigIds();
   // Initialize OPFS for photo storage
   await initOPFS();
   // One-time migrations (must run BEFORE loadAll so URL cache is correct)
@@ -124,6 +144,9 @@ async function init() {
   preloadImage(IMG + '/eternia2-icon.png');
   // One-time migration: wave default → year default (v3.9)
   if (S.sortBy === 'wave') { S.sortBy = 'year'; store.set('motu-sort', 'year'); }
+  // v6.29: install the document-level event dispatcher before first render
+  // so newly-rendered data-action elements are immediately responsive.
+  bootDelegation();
   // Render the UI behind the splash so it's ready by the time splash fades.
   render();
   // Defer the figures.json network request until the splash is well past its

@@ -32,6 +32,40 @@ import {
 import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
 import { checkCompletion } from './eggs.js';
 
+// v6.28: persist S.newFigIds across reloads. Stored as { figId: timestamp }
+// so we can age-out stale entries. Default TTL: 14 days.
+const NEW_FIG_IDS_KEY = 'motu-new-figs';
+const NEW_BADGE_TTL = 14 * 24 * 60 * 60 * 1000;
+function _persistNewFigIds() {
+  try {
+    const existing = store.get(NEW_FIG_IDS_KEY) || {};
+    const now = Date.now();
+    // Drop expired
+    for (const id of Object.keys(existing)) {
+      if (now - existing[id] > NEW_BADGE_TTL) delete existing[id];
+    }
+    // Add current set members with current timestamp (or keep older if already present)
+    for (const id of S.newFigIds) {
+      if (!existing[id]) existing[id] = now;
+    }
+    store.set(NEW_FIG_IDS_KEY, existing);
+  } catch {}
+}
+function loadPersistedNewFigIds() {
+  try {
+    const map = store.get(NEW_FIG_IDS_KEY) || {};
+    const now = Date.now();
+    const set = new Set();
+    let mutated = false;
+    for (const [id, ts] of Object.entries(map)) {
+      if (now - ts > NEW_BADGE_TTL) { delete map[id]; mutated = true; }
+      else set.add(id);
+    }
+    if (mutated) store.set(NEW_FIG_IDS_KEY, map);
+    S.newFigIds = set;
+  } catch { S.newFigIds = new Set(); }
+}
+
 // § DATA-FETCH ── parseCSV, fetchFigs, newFigIds detection ─────────
 // v6.27: rewrote the CSV parser to handle RFC-4180 quoted newlines correctly.
 // Previous version did `text.split('\n')` first, which split mid-field for
@@ -153,6 +187,11 @@ async function fetchFigs(manual = false, firstLoad = false) {
       if (prevIds.size > 100) {
         hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
       }
+      // v6.28: persist newFigIds with timestamps so the NEW pill survives a
+      // refresh. Auto-expire entries older than NEW_BADGE_TTL so stale "NEW"
+      // badges from an old sync don't linger forever. The Set is rebuilt at
+      // load (in app.js) from the persisted timestamp map.
+      _persistNewFigIds();
       const kcIds = new Set(localKCFigs.map(f => f.id));
       const customIds = new Set(localCustomFigs.map(f => f.id));
       S.figs = [
@@ -1793,5 +1832,5 @@ window.exportCSV = exportCSV;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY
 };

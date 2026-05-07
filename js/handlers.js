@@ -602,6 +602,34 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
   render();
 };
 
+// v6.28: bulk-delete user photos for the selected figures. Stock images
+// are untouched. Useful when reorganizing — previously the only delete
+// path was per-figure on the detail screen.
+window.batchDeletePhotos = async () => {
+  const ids = Array.from(S.selected);
+  if (!ids.length) return;
+  let withPhotos = 0, totalPhotos = 0;
+  for (const id of ids) {
+    const arr = S.customPhotos[id] || [];
+    if (arr.length) { withPhotos++; totalPhotos += arr.length; }
+  }
+  if (totalPhotos === 0) {
+    toast('✗ Selected figures have no custom photos');
+    return;
+  }
+  const ok = await appConfirm(
+    `Delete ${totalPhotos} custom photo${totalPhotos===1?'':'s'} across ${withPhotos} figure${withPhotos===1?'':'s'}?`,
+    { danger: true, ok: 'Delete' }
+  );
+  if (!ok) return;
+  for (const id of ids) {
+    try { await photoStore.delAll(id); } catch {}
+  }
+  haptic && haptic(25);
+  toast(`✓ Removed ${totalPhotos} photos`);
+  render();
+};
+
 // Long-press status cycle: owned → wishlist → ordered → for-sale → clear
 // SPECIAL CASE: from 'ordered', next is 'owned' (not 'for-sale'). Rationale:
 // the dominant user intent when cycling a dot off 'ordered' is "I received
