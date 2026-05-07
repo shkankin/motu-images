@@ -7,6 +7,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#06060c">
 <meta name="color-scheme" content="dark light">
+<!-- v6.26: transitional Content-Security-Policy. 'unsafe-inline' for script
+     stays for now because the app uses inline onclick everywhere; once that's
+     migrated to event delegation, drop 'unsafe-inline' from script-src. The
+     other directives still provide meaningful protection: img/connect/font
+     sources are tightly scoped, frame-ancestors blocks clickjacking, base-uri
+     prevents <base href> hijacking, form-action denies submissions.
+     v6.27: no policy changes — directives remain valid. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="description" content="Track your Masters of the Universe action figure collection — works offline, no account needed.">
