@@ -13,8 +13,12 @@
      other directives still provide meaningful protection: img/connect/font
      sources are tightly scoped, frame-ancestors blocks clickjacking, base-uri
      prevents <base href> hijacking, form-action denies submissions.
-     v6.27: no policy changes — directives remain valid. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
+     v6.27: no policy changes — directives remain valid.
+     v6.28: connect-src widened to https: so the user can configure any
+     pricing backend URL (Cloudflare Worker on workers.dev, custom domain,
+     etc.) without needing to edit the CSP. The backend URL is stored
+     locally and only used for /pricing/<figId> reads. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="description" content="Track your Masters of the Universe action figure collection — works offline, no account needed.">
@@ -70,6 +74,7 @@ html,body{background:#000;margin:0}
 <link rel="modulepreload" href="./js/render.js">
 <link rel="modulepreload" href="./js/handlers.js">
 <link rel="modulepreload" href="./js/ui-sheets.js">
+<link rel="modulepreload" href="./js/pricing.js">
 <link rel="modulepreload" href="./js/app.js">
 </head>
 <body>

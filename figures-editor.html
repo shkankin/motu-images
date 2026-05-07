@@ -1020,41 +1020,41 @@ function renderCard(f) {
           <div class="fig-meta-orig">AF411 said: line=<strong>${esc(f.sourceLine || f.line)}</strong>, group=<strong>${esc(f.group || '—')}</strong>, year=${f.year ?? '—'}, wave=${esc(f.wave || '—')}</div>
         </div>
         <div class="actions" style="border:none;padding:0">
-          <button class="success" onclick="decide('${esc(f.id)}','approved')" ${dec==='approved'?'disabled':''}>Approve</button>
-          <button class="danger" onclick="decide('${esc(f.id)}','rejected')" ${dec==='rejected'?'disabled':''}>Reject</button>
-          ${dec ? `<button class="secondary" onclick="decide('${esc(f.id)}',null)">Reset</button>` : ''}
+          <button class="success" onclick="decide(${jsArg(f.id)},'approved')" ${dec==='approved'?'disabled':''}>Approve</button>
+          <button class="danger" onclick="decide(${jsArg(f.id)},'rejected')" ${dec==='rejected'?'disabled':''}>Reject</button>
+          ${dec ? `<button class="secondary" onclick="decide(${jsArg(f.id)},null)">Reset</button>` : ''}
         </div>
       </div>
       ${sourceLineWarning}
       <div class="fig-grid">
         <div class="field${e.line!==undefined?' changed':''}"><label>Line</label>
-          <select onchange="setEdit('${esc(f.id)}','line',this.value)">
+          <select onchange="setEdit(${jsArg(f.id)},'line',this.value)">
             ${LINES.map(l => `<option value="${l.id}" ${l.id===lineNow?'selected':''}>${l.name}</option>`).join('')}
           </select>
         </div>
         <div class="field${e.group!==undefined?' changed':''}"><label>Group / Subline</label>
-          ${groupOpts ? `<select onchange="setEdit('${esc(f.id)}','group',this.value)">
+          ${groupOpts ? `<select onchange="setEdit(${jsArg(f.id)},'group',this.value)">
             <option value="">—</option>
             ${groupOpts.map(g => `<option value="${esc(g.value)}" ${g.value===canonicalGroup?'selected':''}>${esc(g.label)}</option>`).join('')}
             ${groupOpts.some(g => g.value === canonicalGroup) || !canonicalGroup ? '' : `<option value="${esc(canonicalGroup)}" selected>${esc(canonicalGroup)} (custom)</option>`}
-          </select>` : `<input type="text" value="${esc(curGroup)}" oninput="setEdit('${esc(f.id)}','group',this.value)" placeholder="${esc(lineNow)} has no preset sublines">`}
+          </select>` : `<input type="text" value="${esc(curGroup)}" oninput="setEdit(${jsArg(f.id)},'group',this.value)" placeholder="${esc(lineNow)} has no preset sublines">`}
         </div>
         <div class="field${e.faction!==undefined?' changed':''}"><label>Faction</label>
-          <select onchange="setEdit('${esc(f.id)}','faction',this.value)">
+          <select onchange="setEdit(${jsArg(f.id)},'faction',this.value)">
             ${FACTIONS.map(fac => `<option value="${fac}" ${fac===eff('faction')?'selected':''}>${fac}</option>`).join('')}
           </select>
         </div>
         <div class="field${e.name!==undefined?' changed':''}"><label>Name</label>
-          <input type="text" value="${esc(eff('name'))}" oninput="setEdit('${esc(f.id)}','name',this.value)">
+          <input type="text" value="${esc(eff('name'))}" oninput="setEdit(${jsArg(f.id)},'name',this.value)">
         </div>
         <div class="field${e.year!==undefined?' changed':''}"><label>Year</label>
-          <input type="number" value="${eff('year') ?? ''}" oninput="setEdit('${esc(f.id)}','year',this.value?Number(this.value):null)">
+          <input type="number" value="${eff('year') ?? ''}" oninput="setEdit(${jsArg(f.id)},'year',this.value?Number(this.value):null)">
         </div>
         <div class="field${e.wave!==undefined?' changed':''}"><label>Wave</label>
-          <input type="text" value="${esc(eff('wave'))}" oninput="setEdit('${esc(f.id)}','wave',this.value)">
+          <input type="text" value="${esc(eff('wave'))}" oninput="setEdit(${jsArg(f.id)},'wave',this.value)">
         </div>
         <div class="field${e.retail!==undefined?' changed':''}"><label>Retail $</label>
-          <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit('${esc(f.id)}','retail',this.value?Number(this.value):0)">
+          <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit(${jsArg(f.id)},'retail',this.value?Number(this.value):0)">
         </div>
       </div>
       <details>
@@ -1069,6 +1069,14 @@ function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// v6.29: JS-string-literal-safe interpolation for inline event handlers,
+// matching the helper in the main app. Used as `onclick="fn(${jsArg(x)})"`
+// (no surrounding quotes) instead of the unsafe `${jsArg(x)}` pattern,
+// which the HTML parser decodes back to a single quote before the JS
+// engine sees it — letting any value containing a quote break out.
+function jsArg(s) {
+  return esc(JSON.stringify(s == null ? '' : String(s)));
+}
 
 // v1.7: render the whole accessories section, including:
 //   - canonical chips (white-bordered)
@@ -1076,19 +1084,19 @@ function esc(s) {
 //   - "Add custom" inline input + button at the bottom
 // Used by both renderCard (pending) and renderExistingCard (existing).
 function renderAccessoriesPanel(figId, selectedAccs) {
-  const figIdEsc = esc(figId);
+  const figIdJs = jsArg(figId);
   const canonChips = ACCESSORIES.map(a =>
-    `<span class="acc-chip${selectedAccs.includes(a)?' checked':''}" onclick="toggleAcc('${figIdEsc}','${esc(a)}',this)">${esc(a)}</span>`
+    `<span class="acc-chip${selectedAccs.includes(a)?' checked':''}" onclick="toggleAcc(${figIdJs},${jsArg(a)},this)">${esc(a)}</span>`
   ).join('');
   const customChips = customAccessories.map(a =>
-    `<span class="acc-chip custom${selectedAccs.includes(a)?' checked':''}" onclick="toggleAcc('${figIdEsc}','${esc(a)}',this)" title="Custom — click to toggle"
-        oncontextmenu="event.preventDefault();confirmRemoveCustom('${esc(a)}')">${esc(a)}<span class="acc-chip-x" onclick="event.stopPropagation();confirmRemoveCustom('${esc(a)}')" title="Remove from master custom list">×</span></span>`
+    `<span class="acc-chip custom${selectedAccs.includes(a)?' checked':''}" onclick="toggleAcc(${figIdJs},${jsArg(a)},this)" title="Custom — click to toggle"
+        oncontextmenu="event.preventDefault();confirmRemoveCustom(${jsArg(a)})">${esc(a)}<span class="acc-chip-x" onclick="event.stopPropagation();confirmRemoveCustom(${jsArg(a)})" title="Remove from master custom list">×</span></span>`
   ).join('');
   return `<div class="accessories">${canonChips}${customChips}</div>
     <div class="add-custom-row">
       <input type="text" class="add-custom-input" placeholder="Add custom accessory (e.g. Crystal Sword)…" maxlength="50"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();handleAddCustom(this,'${figIdEsc}')}">
-      <button type="button" class="add-custom-btn" onclick="handleAddCustom(this.previousElementSibling,'${figIdEsc}')">Add</button>
+             onkeydown="if(event.key==='Enter'){event.preventDefault();handleAddCustom(this,${figIdJs})}">
+      <button type="button" class="add-custom-btn" onclick="handleAddCustom(this.previousElementSibling,${figIdJs})">Add</button>
       <span class="add-custom-hint">Custom items work across all figures.</span>
     </div>`;
 }
@@ -1166,39 +1174,39 @@ function renderExistingCard(f) {
           <div class="fig-meta-orig">Currently: line=<strong>${esc(f.line || '—')}</strong>, group=<strong>${esc(f.group || '—')}</strong>, faction=<strong>${esc(f.faction || '—')}</strong></div>
         </div>
         <div class="actions" style="border:none;padding:0">
-          ${isEdited ? `<button class="reset-edit-btn" onclick="resetExistingEdit('${esc(f.id)}')">Reset</button>` : ''}
+          ${isEdited ? `<button class="reset-edit-btn" onclick="resetExistingEdit(${jsArg(f.id)})">Reset</button>` : ''}
         </div>
       </div>
       ${sourceLineWarning}
       <div class="fig-grid">
         <div class="field${e.line!==undefined?' changed':''}"><label>Line</label>
-          <select onchange="setEdit('${esc(f.id)}','line',this.value)">
+          <select onchange="setEdit(${jsArg(f.id)},'line',this.value)">
             ${LINES.map(l => `<option value="${l.id}" ${l.id===lineNow?'selected':''}>${l.name}</option>`).join('')}
           </select>
         </div>
         <div class="field${e.group!==undefined?' changed':''}"><label>Group / Subline</label>
-          ${groupOpts ? `<select onchange="setEdit('${esc(f.id)}','group',this.value)">
+          ${groupOpts ? `<select onchange="setEdit(${jsArg(f.id)},'group',this.value)">
             <option value="">—</option>
             ${groupOpts.map(g => `<option value="${esc(g.value)}" ${g.value===canonicalGroup?'selected':''}>${esc(g.label)}</option>`).join('')}
             ${groupOpts.some(g => g.value === canonicalGroup) || !canonicalGroup ? '' : `<option value="${esc(canonicalGroup)}" selected>${esc(canonicalGroup)} (custom)</option>`}
-          </select>` : `<input type="text" value="${esc(curGroup)}" oninput="setEdit('${esc(f.id)}','group',this.value)" placeholder="${esc(lineNow)} has no preset sublines">`}
+          </select>` : `<input type="text" value="${esc(curGroup)}" oninput="setEdit(${jsArg(f.id)},'group',this.value)" placeholder="${esc(lineNow)} has no preset sublines">`}
         </div>
         <div class="field${e.faction!==undefined?' changed':''}"><label>Faction</label>
-          <select onchange="setEdit('${esc(f.id)}','faction',this.value)">
+          <select onchange="setEdit(${jsArg(f.id)},'faction',this.value)">
             ${FACTIONS.map(fac => `<option value="${fac}" ${fac===eff('faction')?'selected':''}>${fac}</option>`).join('')}
           </select>
         </div>
         <div class="field${e.name!==undefined?' changed':''}"><label>Name</label>
-          <input type="text" value="${esc(eff('name'))}" oninput="setEdit('${esc(f.id)}','name',this.value)">
+          <input type="text" value="${esc(eff('name'))}" oninput="setEdit(${jsArg(f.id)},'name',this.value)">
         </div>
         <div class="field${e.year!==undefined?' changed':''}"><label>Year</label>
-          <input type="number" value="${eff('year') ?? ''}" oninput="setEdit('${esc(f.id)}','year',this.value?Number(this.value):null)">
+          <input type="number" value="${eff('year') ?? ''}" oninput="setEdit(${jsArg(f.id)},'year',this.value?Number(this.value):null)">
         </div>
         <div class="field${e.wave!==undefined?' changed':''}"><label>Wave</label>
-          <input type="text" value="${esc(eff('wave'))}" oninput="setEdit('${esc(f.id)}','wave',this.value)">
+          <input type="text" value="${esc(eff('wave'))}" oninput="setEdit(${jsArg(f.id)},'wave',this.value)">
         </div>
         <div class="field${e.retail!==undefined?' changed':''}"><label>Retail $</label>
-          <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit('${esc(f.id)}','retail',this.value?Number(this.value):0)">
+          <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit(${jsArg(f.id)},'retail',this.value?Number(this.value):0)">
         </div>
       </div>
       <details ${isEdited && hasLoadoutChange(f.id) ? 'open' : ''}>
@@ -1321,7 +1329,7 @@ function refreshChromeOnly() {
         const hasBtn = !!actions.querySelector('.reset-edit-btn');
         if (ed && !hasBtn) {
           actions.insertAdjacentHTML('beforeend',
-            `<button class="reset-edit-btn" onclick="resetExistingEdit('${esc(id)}')">Reset</button>`);
+            `<button class="reset-edit-btn" onclick="resetExistingEdit(${jsArg(id)})">Reset</button>`);
         } else if (!ed && hasBtn) {
           actions.querySelector('.reset-edit-btn').remove();
         }

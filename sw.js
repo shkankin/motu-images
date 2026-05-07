@@ -1,7 +1,26 @@
-// MOTU Vault — Service Worker v6.19
+// MOTU Vault — Service Worker v6.29
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.29 changelog:
+//   • CACHE bumped to v6.29.
+//   • SHELL gains js/delegate.js + js/delegate-handlers.js — new event
+//     delegation infrastructure that replaces inline onclick="…" handlers
+//     with data-action attributes resolved through a single document-level
+//     dispatcher. First step toward strict CSP (drop 'unsafe-inline').
+//
+// v6.28 changelog:
+//   • CACHE bumped to v6.28.
+//   • SHELL gains js/pricing.js — new client-side pricing layer that
+//     talks to a configurable backend for eBay sold-listing averages.
+//   • New pass-through rule for the pricing backend itself: any URL
+//     ending in /pricing/<id> or /health bypasses the SW entirely.
+//     pricing.js has its own 24h cache with stale-while-revalidate;
+//     a second SW layer would hide stale data and break the manual
+//     refresh button.
+//
+// v6.19 baseline below.
 //
 // v6.00 changelog:
 //   • CACHE bumped to v6.00.
@@ -410,7 +429,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.19';
+const CACHE = 'motu-vault-v6.29';
 
 const SHELL = [
   'motu-vault.html',
@@ -426,6 +445,9 @@ const SHELL = [
   'js/ui-sheets.js',
   'js/eggs.js',
   'js/tutorial.js',
+  'js/pricing.js',
+  'js/delegate.js',
+  'js/delegate-handlers.js',
 ];
 
 self.addEventListener('install', e => {
@@ -454,6 +476,15 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+
+  // v6.28: pricing backend (configurable per-user). Pass through untouched
+  // — pricing.js has its own application-level cache with stale-while-
+  // revalidate, force-refresh, and TTL eviction. A second SW cache layer
+  // here would hide stale data and confuse the refresh button. Identified
+  // by URL path so we don't need to know which host the user configured.
+  if (/\/pricing\/[^/]+$/.test(url.pathname) || url.pathname.endsWith('/health')) {
+    return;
+  }
 
   // figures.json — network first, fall back to cache.
   // The app cache-busts this URL with ?t=<timestamp>. Matching the raw

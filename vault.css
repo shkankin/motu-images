@@ -1320,6 +1320,24 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   background: rgba(0,0,0,.4); padding: 4px 10px;
   border-radius: 12px; backdrop-filter: blur(4px);
 }
+/* v6.28: photo viewer 'set as default' affordance */
+.photo-viewer-default {
+  position: absolute; top: 16px; left: 16px;
+  padding: 7px 12px; border-radius: 999px;
+  background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.18);
+  color: var(--gold); font-size: 12px; font-weight: 700;
+  backdrop-filter: blur(6px); cursor: pointer;
+  z-index: 5;
+}
+.photo-viewer-default:active { transform: scale(0.96); }
+.photo-viewer-default-badge {
+  position: absolute; top: 16px; left: 16px;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(0,0,0,.45); color: var(--gold);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  backdrop-filter: blur(6px);
+  z-index: 5;
+}
 
 .detail-pills {
   padding: 16px;
@@ -1338,6 +1356,57 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-size: 14px; color: var(--t2);
 }
 .detail-retail .price { color: var(--gold); font-weight: 600; }
+
+/* v6.28: Market Value block (eBay sold avg, etc.) */
+.market-value-block {
+  margin: 0 16px 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gold) 6%, var(--bg2));
+  border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--bd));
+  font-size: 13px;
+}
+.market-value-block.placeholder { opacity: 0.6; }
+.market-value-block.stale { opacity: 0.85; }
+.market-value-block .mv-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.market-value-block .mv-title {
+  font-weight: 700; color: var(--gold); font-size: 12px;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+.market-value-block .mv-source { font-size: 11px; flex: 1; }
+.market-value-block .mv-age { font-size: 11px; }
+.market-value-block .mv-row {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 0;
+}
+.market-value-block .mv-label {
+  width: 56px; font-size: 12px; color: var(--t3);
+  text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600;
+}
+.market-value-block .mv-value {
+  font-size: 16px; font-weight: 700; color: var(--t1);
+}
+.market-value-block .mv-meta {
+  margin-left: auto; font-size: 11px; color: var(--t3);
+}
+.market-value-block .mv-good { color: var(--gn); font-weight: 700; }
+.market-value-block .mv-warn { color: var(--rd); font-weight: 700; }
+.market-value-block .mv-flat { color: var(--t3); }
+.market-value-block .mv-note {
+  margin-top: 6px; line-height: 1.5; font-size: 11px;
+}
+.market-value-block .mv-actions {
+  margin-top: 8px; display: flex; justify-content: flex-end;
+}
+.market-value-block .mv-actions button {
+  padding: 5px 10px; border-radius: 7px;
+  border: 1px solid var(--bd); background: var(--bg3);
+  color: var(--t3); font-size: 11px; font-weight: 500;
+}
+.market-value-block .mv-actions button:active { background: var(--bg2); }
 
 .status-grid {
   padding: 0 16px 16px;
