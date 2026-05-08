@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "loadouts": {
     "beast-man-2394": [
       "Whip",
@@ -37,6 +37,130 @@
       "Harness",
       "Collar",
       "Minicomic"
+    ],
+    "battle-armor-he-man-3222": [
+      "Minicomic",
+      "Battle Axe",
+      "Sword of Power"
+    ],
+    "battle-armor-skeletor-3223": [
+      "Sword of Power",
+      "Havoc Staff"
+    ],
+    "beast-man-2436": [
+      "Minicomic",
+      "Whip",
+      "Harness"
+    ],
+    "blade-3974": [
+      "Minicomic",
+      "Two Swords"
+    ],
+    "blast-attak-3975": [
+      "Minicomic",
+      "Tech Axe",
+      "Trigger Cord"
+    ],
+    "buzz-saw-hordak-3979": [
+      "Minicomic",
+      "Crossbow",
+      "Cape",
+      "Buzz Saw Blades"
+    ],
+    "buzz-off-3224": [
+      "Axe",
+      "Helmet",
+      "Minicomic",
+      "Wings"
+    ],
+    "clamp-champ-3970": [
+      "Armor",
+      "Minicomic",
+      "Power Pincer"
+    ],
+    "clawful-3225": [
+      "Mace",
+      "Armor",
+      "Minicomic"
+    ],
+    "dragon-blaster-skeletor-3752": [
+      "Minicomic",
+      "Sword of Power",
+      "Chain & Lock",
+      "Armor"
+    ],
+    "dragstor-3785": [
+      "Crossbow",
+      "Ripcord"
+    ],
+    "evil-lyn-2837": [
+      "Minicomic",
+      "Wand"
+    ],
+    "extendar-3777": [
+      "Minicomic",
+      "Shield"
+    ],
+    "faker-2838": [
+      "Harness",
+      "Sword of Power",
+      "Minicomic"
+    ],
+    "fisto-3227": [
+      "Sword",
+      "Armor"
+    ],
+    "flying-fists-he-man-3778": [
+      "Minicomic",
+      "Mace",
+      "Shield",
+      "Red Clip"
+    ],
+    "grizzlor-3757": [
+      "Crossbow",
+      "Harness",
+      "Minicomic"
+    ],
+    "gwildor-3971": [
+      "Minicomic",
+      "Cosmic Key"
+    ],
+    "he-man-2435": [
+      "Battle Axe",
+      "Sword of Power",
+      "Minicomic",
+      "Shield"
+    ],
+    "hordak-3756": [
+      "Cape",
+      "Armor",
+      "Crossbow",
+      "Bat Shield",
+      "Minicomic"
+    ],
+    "horde-trooper-3786": [
+      "Spear",
+      "Minicomic"
     ]
-  }
+  },
+  "customAccessories": [
+    "Bat Shield",
+    "Battle Axe",
+    "Buzz Saw Blades",
+    "Claw",
+    "Collar",
+    "Cosmic Key",
+    "Effect - Muzzle Blast",
+    "Havoc Staff",
+    "Mouser",
+    "Power Pincer",
+    "Red Clip",
+    "Ripcord",
+    "Sword of Power",
+    "Tech Axe",
+    "Trigger Cord",
+    "Two Swords",
+    "Wand",
+    "Wings"
+  ]
 }
