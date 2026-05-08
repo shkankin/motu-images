@@ -646,6 +646,10 @@ function _attachSwipe() {
       // v6.33b: suppressStagger because the items are already on screen
       // (in the pre-rendered destination pane); replaying the entrance
       // animation after navTo's render() looks like a stutter.
+      // v6.34: set the sync-build flag so the next neighbor cache build
+      // runs synchronously rather than via idle. The user just used the
+      // gesture; another swipe is likely coming and we want it instant.
+      _neighborBuildSync = true;
       window.navTo?.(commitTab, { suppressStagger: true });
       // navTo calls render() which rebuilds #contentArea; the track was
       // a child, so it's gone now. Done.
@@ -685,6 +689,20 @@ function _attachSwipe() {
       // priority over vertical scroll. Otherwise lock to vertical and let
       // the scroll continue uninterrupted for the rest of this gesture.
       if (ax > ay * 1.5) {
+        // v6.34: short-circuit when there's no neighbor in the swipe
+        // direction. dx > 0 = swiping right (want previous tab); dx < 0 =
+        // swiping left (want next tab). Building the track for a no-op
+        // swipe means doing the full DOM dance just to rubber-band back —
+        // user perceives that as a delay even though nothing should be
+        // happening. Better to ignore the gesture entirely and let it
+        // pass through (e.g. native pull-to-refresh, Android back gesture).
+        const idx = TAB_ORDER.indexOf(S.tab);
+        const wantPrev = dx > 0;
+        const hasTarget = wantPrev ? (idx > 0) : (idx < TAB_ORDER.length - 1);
+        if (!hasTarget) {
+          dirLocked = 'v';   // pretend it's vertical so we stop intercepting
+          return;
+        }
         dirLocked = 'h';
         buildTrack();
       } else {
@@ -738,6 +756,14 @@ function _attachSwipe() {
   ca.addEventListener('touchcancel', _onEnd, { passive: true });
 }
 
+// v6.34: when a swipe just committed, the user has clearly demonstrated
+// they're using the gesture and another swipe is likely. Build the next
+// neighbors synchronously after the render rather than via idle —
+// ~30-50ms of extra work that's invisible because we're already mid-
+// transition, but it makes the next swipe instant. Tap-driven nav still
+// goes through idle so we don't add latency to the tap path.
+let _neighborBuildSync = false;
+
 // Re-attach after every render — the previous #contentArea is destroyed
 // when render() rewrites innerHTML. Hook into a render-complete signal.
 function _reattachSwipeAfterRender() {
@@ -749,7 +775,12 @@ function _reattachSwipeAfterRender() {
     // v6.33b: also kick off a neighbor pane pre-render during idle time
     // so the next swipe starts instantly rather than blocking on a fresh
     // render of the destination tab's full list.
-    _scheduleNeighborBuild();
+    if (_neighborBuildSync) {
+      _neighborBuildSync = false;
+      try { _buildNeighborCache(); } catch {}
+    } else {
+      _scheduleNeighborBuild();
+    }
   });
 }
 // The render path doesn't have a hook; observe DOM mutations on #app to
