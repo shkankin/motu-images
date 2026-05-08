@@ -446,7 +446,7 @@ window.onSearch = val => {
     _searchTimer = null;
   }, 120);
 };
-window.navTo = key => {
+window.navTo = (key, opts = {}) => {
   const labels = { lines: 'Lines', all: 'All Figures', collection: 'My Collection' };
   if (labels[key]) _announceRoute(labels[key]);
   S.tab = key;
@@ -463,7 +463,10 @@ window.navTo = key => {
   // Without this, scrolling halfway down the All tab and tapping Lines would
   // load Lines already scrolled halfway down (since _preservedScroll was
   // captured from the old tab's scroll container).
-  S._justNavigated = true;
+  // v6.33: opts.suppressStagger=true skips the stagger entrance animation.
+  // Used by the tab-swipe handler — items are already on screen via the
+  // pre-rendered pane, so animating them in again looks janky.
+  S._justNavigated = !opts.suppressStagger;
   pushNav();
   render();
 };
@@ -496,6 +499,65 @@ function _swipeAllowed() {
     && !S.activeLine && !S.activeSubline
     && !S.sheet && !S.photoViewer
     && !S.selectMode && !S.editingOrder;
+}
+
+// v6.33b: cache of pre-rendered neighbor pane HTML, keyed by tab name.
+// Built during idle time after each render; consumed at swipe-start so
+// touchstart→pane-on-screen is instant rather than waiting on a list
+// re-render. Invalidated on any state change that would change a tab's
+// content (collection mutation, search change, filter change).
+let _neighborCache = { sig: null, html: {} };
+
+function _neighborSig() {
+  // Cheap signature that captures everything that would affect what
+  // a tab's renderContent returns. Doesn't need to be perfect — a
+  // false-cache-miss is harmless (we just re-render at swipe time),
+  // a false-cache-hit would show stale content (unacceptable).
+  return [
+    S.tab,
+    S.search || '',
+    S.filterLine || '',
+    S.filterFaction || '',
+    S.filterStatus || '',
+    S.filterVariants ? '1' : '',
+    S.searchScope || '',
+    S.sortBy || '',
+    S.viewMode || '',
+    // Collection version bumps on any S.coll mutation via _derived
+    // invalidation; reading a fresh sortedFigs would re-derive it. Use
+    // length as a coarse proxy — gets us a fresh cache on add/remove.
+    Object.keys(S.coll || {}).length,
+  ].join('|');
+}
+
+function _buildNeighborCache() {
+  if (!_swipeAllowed()) {
+    _neighborCache = { sig: null, html: {} };
+    return;
+  }
+  const sig = _neighborSig();
+  if (sig === _neighborCache.sig) return;   // nothing changed
+  const idx = TAB_ORDER.indexOf(S.tab);
+  const prevTab = idx > 0 ? TAB_ORDER[idx - 1] : null;
+  const nextTab = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
+  const out = {};
+  if (prevTab) out[prevTab] = _renderTabSnapshot(prevTab);
+  if (nextTab) out[nextTab] = _renderTabSnapshot(nextTab);
+  _neighborCache = { sig, html: out };
+}
+
+// Schedule a neighbor-cache build for the next idle window. Cancels any
+// previous pending build so we don't stack work.
+let _neighborBuildPending = null;
+function _scheduleNeighborBuild() {
+  if (_neighborBuildPending) {
+    if (typeof cancelIdleCallback === 'function') cancelIdleCallback(_neighborBuildPending);
+    else clearTimeout(_neighborBuildPending);
+  }
+  const run = () => { _neighborBuildPending = null; try { _buildNeighborCache(); } catch {} };
+  _neighborBuildPending = (typeof requestIdleCallback === 'function')
+    ? requestIdleCallback(run, { timeout: 800 })
+    : setTimeout(run, 250);
 }
 
 function _renderTabSnapshot(tab) {
@@ -533,6 +595,11 @@ function _attachSwipe() {
     const prevTab = idx > 0 ? TAB_ORDER[idx - 1] : null;
     const nextTab = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
     activeNeighbors = { prev: prevTab, next: nextTab };
+    // v6.33b: prefer the pre-rendered neighbor cache (built during idle
+    // time after each render). Falls back to live render if the cache
+    // is stale or wasn't built — the live render is what made the
+    // first-frame delay noticeable, so we go through the cache when we can.
+    const cache = _neighborCache && _neighborCache.sig === _neighborSig() ? _neighborCache.html : null;
     // Wrap the existing children of #contentArea (topSpacer + content) into
     // a fixed-width pane, then add neighbor panes on either side.
     const cur = document.createElement('div');
@@ -540,12 +607,13 @@ function _attachSwipe() {
     while (ca.firstChild) cur.appendChild(ca.firstChild);
     trackEl = document.createElement('div');
     trackEl.className = 'tab-swipe-track';
+    const spH = document.getElementById('topBar')?.offsetHeight || 0;
     if (prevTab) {
       const p = document.createElement('div');
       p.className = 'tab-swipe-pane';
       p.dataset.tab = prevTab;
-      const spH = document.getElementById('topBar')?.offsetHeight || 0;
-      p.innerHTML = `<div style="height:${spH}px"></div>` + _renderTabSnapshot(prevTab);
+      const html = (cache && cache[prevTab]) || _renderTabSnapshot(prevTab);
+      p.innerHTML = `<div style="height:${spH}px"></div>` + html;
       trackEl.appendChild(p);
     }
     trackEl.appendChild(cur);
@@ -553,8 +621,8 @@ function _attachSwipe() {
       const p = document.createElement('div');
       p.className = 'tab-swipe-pane';
       p.dataset.tab = nextTab;
-      const spH = document.getElementById('topBar')?.offsetHeight || 0;
-      p.innerHTML = `<div style="height:${spH}px"></div>` + _renderTabSnapshot(nextTab);
+      const html = (cache && cache[nextTab]) || _renderTabSnapshot(nextTab);
+      p.innerHTML = `<div style="height:${spH}px"></div>` + html;
       trackEl.appendChild(p);
     }
     ca.appendChild(trackEl);
@@ -575,7 +643,10 @@ function _attachSwipe() {
       // call navTo so state + history update without a render-flash. The
       // committed pane already has the right HTML in the DOM, so we lift
       // it out of the track before nav fires its own render.
-      window.navTo?.(commitTab);
+      // v6.33b: suppressStagger because the items are already on screen
+      // (in the pre-rendered destination pane); replaying the entrance
+      // animation after navTo's render() looks like a stutter.
+      window.navTo?.(commitTab, { suppressStagger: true });
       // navTo calls render() which rebuilds #contentArea; the track was
       // a child, so it's gone now. Done.
     } else {
@@ -673,7 +744,13 @@ function _reattachSwipeAfterRender() {
   // requestAnimationFrame defers until after the current render's DOM
   // commit, so #contentArea exists. _attachSwipe is idempotent (uses a
   // _tabSwipeAttached flag on the element).
-  requestAnimationFrame(() => _attachSwipe());
+  requestAnimationFrame(() => {
+    _attachSwipe();
+    // v6.33b: also kick off a neighbor pane pre-render during idle time
+    // so the next swipe starts instantly rather than blocking on a fresh
+    // render of the destination tab's full list.
+    _scheduleNeighborBuild();
+  });
 }
 // The render path doesn't have a hook; observe DOM mutations on #app to
 // catch every render. ResizeObserver overkill; MutationObserver on the
