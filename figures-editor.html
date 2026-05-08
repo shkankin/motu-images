@@ -1094,7 +1094,13 @@ function jsArg(s) {
 // Used by both renderCard (pending) and renderExistingCard (existing).
 function renderAccessoriesPanel(figId, selectedAccs) {
   const figIdJs = jsArg(figId);
-  const canonChips = ACCESSORIES.map(a =>
+  // v6.37: canonical accessory list rendered in alphabetical order rather
+  // than the source-order from state.js. Easier to scan when adding
+  // accessories to many figures in succession (eye learns the alphabetical
+  // position). Custom list stays in insertion order so admin sees their
+  // most-recent additions at the bottom.
+  const canonSorted = [...ACCESSORIES].sort((a, b) => a.localeCompare(b));
+  const canonChips = canonSorted.map(a =>
     `<span class="acc-chip${selectedAccs.includes(a)?' checked':''}" onclick="toggleAcc(${figIdJs},${jsArg(a)},this)">${esc(a)}</span>`
   ).join('');
   const customChips = customAccessories.map(a =>

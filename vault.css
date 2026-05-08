@@ -2823,6 +2823,19 @@ html {
   vertical-align: middle;
   opacity: 0.75;
 }
+/* v6.37: incomplete-loadout indicator. Gold "2!" badge on the row,
+   inline with the figure name. Pulled visually slightly to differentiate
+   from the green checkmark — same position, same scan target. */
+.fig-loadout-tick.incomplete {
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  opacity: 0.95;
+}
 @media (forced-colors: active) {
   .acc-badge,
   .acc-missing-pill {
