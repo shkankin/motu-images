@@ -137,6 +137,10 @@ registerAll({
   // First-load fetch failure retry.
   'retry-fetch': () => window.fetchFigs?.(true, true),
 
+  // v6.33: about-screen mute toggle (was wired by data-action but never
+  // registered, so the button silently did nothing on Android).
+  'toggle-about-mute': () => window.toggleAboutMute?.(),
+
   // v6.31: wishlist history actions
   'reopen-wishlist': (e, el, d) => {
     const idx = parseInt(d.idx, 10);

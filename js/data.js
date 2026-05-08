@@ -162,6 +162,13 @@ async function fetchFigs(manual = false, firstLoad = false) {
           if (ld && ld.loadouts && typeof ld.loadouts === 'object') {
             S._repoLoadouts = ld.loadouts;
           }
+          // v6.33: schema v2 carries a customAccessories master list — names
+          // the editor admin added that aren't in the canonical ACCESSORIES
+          // const. We surface them to the picker as offerable options for
+          // any figure (with a per-figure loadout still taking priority).
+          if (ld && Array.isArray(ld.customAccessories)) {
+            S._repoCustomAccessories = ld.customAccessories.filter(s => typeof s === 'string');
+          }
         } catch {}
       }
 
@@ -216,7 +223,15 @@ async function fetchFigs(manual = false, firstLoad = false) {
       S.syncTs = Date.now();
       store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
       // v6.24: persist loadouts so cached cold-start renders show complete badges
-      if (Object.keys(S._repoLoadouts).length) store.set(LOADOUTS_CACHE_KEY, S._repoLoadouts);
+      // v6.33: bundle customAccessories into the same cache entry. Schema-on-demand:
+      // {loadouts: {...}, customAccessories: [...]}; legacy plain-object cache
+      // (loadouts only) still reads correctly via the migration in app.js boot.
+      if (Object.keys(S._repoLoadouts).length || (S._repoCustomAccessories || []).length) {
+        store.set(LOADOUTS_CACHE_KEY, {
+          loadouts: S._repoLoadouts,
+          customAccessories: S._repoCustomAccessories || [],
+        });
+      }
       S.syncStatus = 'ok';
       if (firstLoad) { S.loaded = true; }
       const newCount = S.newFigIds.size;
@@ -1061,14 +1076,24 @@ function renderAccessoryPickerSheet() {
     // Normal mode: show only the figure's loadout (merged local-or-repo),
     // or all accessories if no loadout is set. Custom-already-on-copy
     // entries surface at top so they can be removed.
-    const customSelected = current.filter(a => !ACCESSORIES.includes(a));
+    // v6.33: when there's no per-figure loadout, the offer list combines
+    // the canonical ACCESSORIES with the repo's customAccessories master
+    // list (admin-added names). De-duped by canonical first; customs land
+    // at the bottom so the common items stay quick to find.
+    const customSelected = current.filter(a => !ACCESSORIES.includes(a) && !(S._repoCustomAccessories || []).includes(a));
     customSelected.forEach(name => {
       h += `<button class="acc-picker-item selected" onclick="toggleAccessoryInPicker(${jsArg(name)})">
         <span>${esc(name)}</span>
         <span class="acc-picker-check">✓</span>
       </button>`;
     });
-    const offerList = (figLoadout && figLoadout.length) ? figLoadout : ACCESSORIES;
+    let offerList;
+    if (figLoadout && figLoadout.length) {
+      offerList = figLoadout;
+    } else {
+      const repoCust = (S._repoCustomAccessories || []).filter(n => !ACCESSORIES.includes(n));
+      offerList = [...ACCESSORIES, ...repoCust];
+    }
     offerList.forEach(name => {
       const on = currentSet.has(name);
       h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccessoryInPicker(${jsArg(name)})">
@@ -1280,9 +1305,11 @@ function _computeSortedFigs() {
       .toLowerCase()
       .replace(/[-'’‘`]/g, '');
     const s = fold(S.search);
+    const scope = S.searchScope || 'all';
     list = list.filter(f => {
       const name = fold(f.name);
       if (name.includes(s)) return true;
+      if (scope === 'name') return false;
       const lineName = fold(ln(f.line));
       const group = fold(f.group||'');
       return lineName.includes(s) || group.includes(s);
@@ -1978,6 +2005,9 @@ function doImportAF411(csvText, overwrite) {
 window.setStatus = setStatus;
 window.fetchFigs = fetchFigs;
 window.exportCSV = exportCSV;
+// v6.33: tab-swipe handler needs to invalidate the derived cache when
+// flipping S.tab to render a destination snapshot.
+window._derivedInvalidate = () => _derived.invalidate();
 window.logStatusEvent = logStatusEvent;
 window.recordWishlistView = recordWishlistView;
 window.getWishlistHistory = getWishlistHistory;

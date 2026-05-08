@@ -473,6 +473,222 @@ window.goHome = () => { S.tab = 'lines'; S.activeLine = null; S.activeSubline = 
 // Home/theme icon tap — always navigates home. Easter eggs are title-tap only.
 window.homeIconClick = () => { goHome(); };
 
+// § TAB-SWIPE ── horizontal swipe between top-level tabs ───────────
+// v6.33: lets users swipe between Lines / All / Collection seamlessly.
+// The destination pane is pre-rendered into a sibling of #contentArea
+// so the user actually sees the next tab's content sliding in, not a
+// fade-then-load transition.
+//
+// Constraints (intentional):
+//   - Only fires when at top level (no activeLine, no sheet, no
+//     photo viewer, no select mode, no editingOrder).
+//   - Only fires from horizontal-dominant gestures (>1.5× horizontal
+//     vs vertical) so vertical scroll wins ties.
+//   - The pre-rendered pane is thrown away after settle; we never
+//     accumulate stale DOM.
+//   - During transit, the existing scroll handler is suspended so
+//     it doesn't get confused by the horizontal motion.
+const TAB_ORDER = ['lines', 'all', 'collection'];
+let _swipe = null;   // active swipe state — null when not in a swipe
+
+function _swipeAllowed() {
+  return S.tab && TAB_ORDER.includes(S.tab)
+    && !S.activeLine && !S.activeSubline
+    && !S.sheet && !S.photoViewer
+    && !S.selectMode && !S.editingOrder;
+}
+
+function _renderTabSnapshot(tab) {
+  // Render the figure list for `tab` without mutating S permanently.
+  // renderContent reads S.tab + S.activeLine; flip just S.tab, render,
+  // restore. We never touch activeLine because top-level tabs always
+  // mean activeLine is null.
+  const prevTab = S.tab;
+  S.tab = tab;
+  // _derived caches by tab implicitly through getStats / getSortedFigs;
+  // we want the destination's filtered list, so invalidate before reading.
+  if (typeof window._derivedInvalidate === 'function') window._derivedInvalidate();
+  const html = window.renderContent ? window.renderContent() : '';
+  S.tab = prevTab;
+  if (typeof window._derivedInvalidate === 'function') window._derivedInvalidate();
+  return html;
+}
+
+function _attachSwipe() {
+  const ca = document.getElementById('contentArea');
+  if (!ca || ca._tabSwipeAttached) return;
+  ca._tabSwipeAttached = true;
+
+  let startX = 0, startY = 0;
+  let dirLocked = null;   // 'h' | 'v' | null
+  let trackEl = null;     // wrapper holding [prev?, current, next?]
+  let paneW = 0;
+  let activeNeighbors = null;  // {prev, next} both 'tab'|null
+  let baseTranslate = 0;
+  let originalScrollY = 0;
+
+  function buildTrack(touchX, touchY) {
+    paneW = ca.clientWidth;
+    const idx = TAB_ORDER.indexOf(S.tab);
+    const prevTab = idx > 0 ? TAB_ORDER[idx - 1] : null;
+    const nextTab = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
+    activeNeighbors = { prev: prevTab, next: nextTab };
+    // Wrap the existing children of #contentArea (topSpacer + content) into
+    // a fixed-width pane, then add neighbor panes on either side.
+    const cur = document.createElement('div');
+    cur.className = 'tab-swipe-pane current';
+    while (ca.firstChild) cur.appendChild(ca.firstChild);
+    trackEl = document.createElement('div');
+    trackEl.className = 'tab-swipe-track';
+    if (prevTab) {
+      const p = document.createElement('div');
+      p.className = 'tab-swipe-pane';
+      p.dataset.tab = prevTab;
+      const spH = document.getElementById('topBar')?.offsetHeight || 0;
+      p.innerHTML = `<div style="height:${spH}px"></div>` + _renderTabSnapshot(prevTab);
+      trackEl.appendChild(p);
+    }
+    trackEl.appendChild(cur);
+    if (nextTab) {
+      const p = document.createElement('div');
+      p.className = 'tab-swipe-pane';
+      p.dataset.tab = nextTab;
+      const spH = document.getElementById('topBar')?.offsetHeight || 0;
+      p.innerHTML = `<div style="height:${spH}px"></div>` + _renderTabSnapshot(nextTab);
+      trackEl.appendChild(p);
+    }
+    ca.appendChild(trackEl);
+    baseTranslate = prevTab ? -paneW : 0;
+    trackEl.style.transform = `translate3d(${baseTranslate}px,0,0)`;
+    // Suspend vertical-scroll bar-toggle during transit so it doesn't
+    // fight the gesture. Save/restore current scroll so vertical state
+    // is preserved when the gesture is cancelled.
+    originalScrollY = ca.scrollTop;
+    ca.style.overflow = 'hidden';
+  }
+
+  function teardown(commitTab) {
+    if (!trackEl) return;
+    const ca2 = ca;
+    if (commitTab && commitTab !== S.tab && TAB_ORDER.includes(commitTab)) {
+      // Commit: swap the destination pane content into #contentArea, then
+      // call navTo so state + history update without a render-flash. The
+      // committed pane already has the right HTML in the DOM, so we lift
+      // it out of the track before nav fires its own render.
+      window.navTo?.(commitTab);
+      // navTo calls render() which rebuilds #contentArea; the track was
+      // a child, so it's gone now. Done.
+    } else {
+      // Cancel: restore the original children to ca, drop the track.
+      const cur = trackEl.querySelector('.tab-swipe-pane.current');
+      if (cur) {
+        while (cur.firstChild) ca2.appendChild(cur.firstChild);
+      }
+      trackEl.remove();
+      ca2.style.overflow = '';
+      ca2.scrollTop = originalScrollY;
+    }
+    trackEl = null;
+    activeNeighbors = null;
+    dirLocked = null;
+  }
+
+  ca.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    if (!_swipeAllowed()) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dirLocked = null;
+    _swipe = { active: true };
+  }, { passive: true });
+
+  ca.addEventListener('touchmove', e => {
+    if (!_swipe?.active || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!dirLocked) {
+      const ax = Math.abs(dx), ay = Math.abs(dy);
+      // Need a few px of motion before we commit a direction. <8px is jitter.
+      if (ax < 8 && ay < 8) return;
+      // Horizontal commitment: ax must be >1.5× ay for the swipe to take
+      // priority over vertical scroll. Otherwise lock to vertical and let
+      // the scroll continue uninterrupted for the rest of this gesture.
+      if (ax > ay * 1.5) {
+        dirLocked = 'h';
+        buildTrack();
+      } else {
+        dirLocked = 'v';
+      }
+    }
+    if (dirLocked !== 'h' || !trackEl) return;
+    // Resist past-edge swipes (rubber-band damping) so the user feels they
+    // hit a wall rather than the swipe just snapping back hard.
+    let effDx = dx;
+    if (!activeNeighbors.prev && dx > 0) effDx = dx * 0.3;
+    if (!activeNeighbors.next && dx < 0) effDx = dx * 0.3;
+    trackEl.style.transform = `translate3d(${baseTranslate + effDx}px,0,0)`;
+    e.preventDefault();
+  }, { passive: false });
+
+  function _onEnd() {
+    if (!_swipe?.active) return;
+    _swipe.active = false;
+    if (dirLocked !== 'h' || !trackEl) {
+      dirLocked = null;
+      return;
+    }
+    // Read current transform delta from the inline style we set last
+    const m = (trackEl.style.transform || '').match(/translate3d\((-?[\d.]+)px/);
+    const cur = m ? parseFloat(m[1]) : baseTranslate;
+    const dx = cur - baseTranslate;
+    const threshold = paneW * 0.30;
+    let target = baseTranslate;
+    let commit = null;
+    if (dx < -threshold && activeNeighbors.next) {
+      target = baseTranslate - paneW;
+      commit = activeNeighbors.next;
+    } else if (dx > threshold && activeNeighbors.prev) {
+      target = baseTranslate + paneW;
+      commit = activeNeighbors.prev;
+    }
+    // Animate to target, then teardown.
+    trackEl.style.transition = 'transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1)';
+    trackEl.style.transform = `translate3d(${target}px,0,0)`;
+    const onDone = () => {
+      trackEl?.removeEventListener('transitionend', onDone);
+      teardown(commit);
+    };
+    trackEl.addEventListener('transitionend', onDone);
+    // Safety timer in case transitionend doesn't fire (e.g. element
+    // detaches before the transition completes).
+    setTimeout(onDone, 350);
+  }
+  ca.addEventListener('touchend', _onEnd, { passive: true });
+  ca.addEventListener('touchcancel', _onEnd, { passive: true });
+}
+
+// Re-attach after every render — the previous #contentArea is destroyed
+// when render() rewrites innerHTML. Hook into a render-complete signal.
+function _reattachSwipeAfterRender() {
+  // requestAnimationFrame defers until after the current render's DOM
+  // commit, so #contentArea exists. _attachSwipe is idempotent (uses a
+  // _tabSwipeAttached flag on the element).
+  requestAnimationFrame(() => _attachSwipe());
+}
+// The render path doesn't have a hook; observe DOM mutations on #app to
+// catch every render. ResizeObserver overkill; MutationObserver on the
+// app root is the simplest correct path.
+if (typeof MutationObserver !== 'undefined') {
+  const _appRoot = document.getElementById('app');
+  if (_appRoot) {
+    new MutationObserver(_reattachSwipeAfterRender).observe(_appRoot, {
+      childList: true, subtree: false,
+    });
+  }
+}
+// Initial attach (in case the observer misses the very first render).
+_reattachSwipeAfterRender();
+
 // § BATCH-SELECT ── enterSelectMode, toggleSelect, batchSetStatus, batchAddCopy, cycleStatus ──
 window.enterSelectMode = () => {
   S.selectMode = true;

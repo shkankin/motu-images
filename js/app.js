@@ -139,8 +139,19 @@ async function init() {
     S.syncTs = cached.ts;
     S.loaded = true;
     // v6.24: restore loadouts so complete badges render correctly before fetch
+    // v6.33: cache shape is now {loadouts, customAccessories} but legacy entries
+    // are a plain {[figId]: [...]} object — detect and migrate inline.
     const cachedLoadouts = store.get(LOADOUTS_CACHE_KEY);
-    if (cachedLoadouts && typeof cachedLoadouts === 'object') S._repoLoadouts = cachedLoadouts;
+    if (cachedLoadouts && typeof cachedLoadouts === 'object') {
+      if (cachedLoadouts.loadouts && typeof cachedLoadouts.loadouts === 'object') {
+        S._repoLoadouts = cachedLoadouts.loadouts;
+        if (Array.isArray(cachedLoadouts.customAccessories)) {
+          S._repoCustomAccessories = cachedLoadouts.customAccessories;
+        }
+      } else {
+        S._repoLoadouts = cachedLoadouts;
+      }
+    }
   }
   // Apply theme
   document.documentElement.setAttribute('data-theme', S.theme);

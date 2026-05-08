@@ -278,6 +278,11 @@ const S = {
   filterLine: '',
   filterStatus: '',
   filterVariants: false,
+  // v6.33: 'all' (name + line name + group/subline) | 'name' (name only).
+  // Setting persists via 'motu-search-scope'. Default 'all' preserves the
+  // existing behavior where "she-ra" pulls everything in the She-Ra
+  // subline; users who want strictly figure-name matches set this to 'name'.
+  searchScope: store.get('motu-search-scope') || 'all',
   sortBy: store.get('motu-sort') || 'year',
   viewMode: store.get('motu-view') || 'list',  // list | grid
   theme: store.get('motu-theme') || 'eternia',
@@ -311,6 +316,7 @@ const S = {
   selected: new Set(),      // selected figure IDs
   defaultPhoto: {},         // { figId: n } — which photo is the list/grid thumbnail (-1 = stock)
   _repoLoadouts: {},        // v6.03: shared loadouts.json from repo. {[figId]: ['Power Sword', ...]}. Local override (motu-acc-avail) beats this.
+  _repoCustomAccessories: [], // v6.33: master list of admin-added accessory names from loadouts.json schema v2. Merged into picker offer below the canonical ACCESSORIES list.
 };
 
 const DEFAULT_TITLE = 'MOTU Collector';

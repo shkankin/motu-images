@@ -420,7 +420,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.32</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.33</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -551,19 +551,29 @@ function renderMain() {
         return;
       }
       const now = Date.now();
-      if (now - _lastToggleTs < 200) {
+      // v6.33: lock raised from 200ms to 380ms to match the topBar's CSS
+      // transition duration. Previously the unlock fired before the
+      // transform finished, and any tiny upward inertia bounce
+      // (delta < -8) re-showed the bar mid-hide. Result was a visible
+      // oscillation when the user started scrolling on All / Collection.
+      // The down-threshold is also raised from 1px to 6px so the hide
+      // requires a deliberate downward gesture, not finger-jitter.
+      if (now - _lastToggleTs < 380) {
         _scheduleIdleShow();
         return;
       }
-      // Scroll down: hide immediately on any deliberate downward movement
-      if (delta > 1 && st > 0 && !S.barsHidden) {
+      // Scroll down: hide on a committed downward movement (>=6px) and
+      // only after the user has scrolled past the topBar height. Below
+      // that, the bar staying visible is the right answer anyway.
+      if (delta > 6 && st > 60 && !S.barsHidden) {
         tb.classList.add('immersive-hide');
         bn.classList.add('immersive-hide');
         if (sb) { sb.classList.add('hidden'); S.searchBarHidden = true; }
         S.barsHidden = true;
         _lastToggleTs = now;
-      // Scroll up: require 8px to filter held-finger micro-jitter
-      } else if ((delta < -8 || st < 20) && S.barsHidden) {
+      // Scroll up: require 12px to filter held-finger micro-jitter and
+      // the natural inertia bounce-back that happens right after hide.
+      } else if ((delta < -12 || st < 20) && S.barsHidden) {
         tb.classList.remove('immersive-hide');
         bn.classList.remove('immersive-hide');
         if (sb) { sb.classList.remove('hidden'); S.searchBarHidden = false; }
@@ -2093,6 +2103,9 @@ function renderPhotoViewer() {
 window.checkShareLink = checkShareLink;
 window.appConfirm = appConfirm;
 window.toast = toast;
+// v6.33: tab-swipe handler in handlers.js needs renderContent so it can
+// pre-render the destination tab into a sibling pane during a swipe.
+window.renderContent = renderContent;
 
 // ── Exports ─────────────────────────────────────────────────
 export {

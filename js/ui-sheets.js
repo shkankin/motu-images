@@ -310,7 +310,7 @@ function renderAboutSheet() {
 
   <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Credits</div>
   <div style="padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;line-height:1.7;font-size:13px;color:var(--t2)">
-    <div><span style="color:var(--t3);width:80px;display:inline-block">Built by</span> <span style="color:var(--t1);font-weight:600">Brandon R.</span></div>
+    <div><span style="color:var(--t3);width:80px;display:inline-block">Built by</span> <span style="color:var(--t1);font-weight:600">Brand-or, Defender of the Stash</span></div>
     <div><span style="color:var(--t3);width:80px;display:inline-block">Catalog</span> <a href="https://www.actionfigure411.com/masters-of-the-universe/" target="_blank" rel="noopener noreferrer" style="color:var(--acc);text-decoration:none">ActionFigure411</a></div>
     <div><span style="color:var(--t3);width:80px;display:inline-block">With</span> <span style="color:var(--t1)">Claude (Anthropic) as a coding collaborator</span></div>
   </div>
@@ -413,6 +413,16 @@ function renderFilterSheet() {
   html += `<button class="chip ${!S.filterVariants?'active':''}" onclick="patchFilter('variants',false)">All</button>`;
   html += `<button class="chip ${S.filterVariants?'active':''}" onclick="patchFilter('variants',true)">Has Variants</button>`;
   html += '</div>';
+  // v6.33: Search Scope toggle. Default 'all' matches name + line + group/subline,
+  // which is useful for finding everything in a She-Ra subline by typing
+  // "she-ra" but unintentionally pulls every figure in the subline when the
+  // user only wanted the proper She-Ra characters. 'name' restricts to the
+  // figure's own name field. Persisted via patchFilter('searchScope', ...).
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Search Scope</div><div class="chip-group">';
+  const scope = S.searchScope || 'all';
+  html += `<button class="chip ${scope==='all'?'active':''}" onclick="patchFilter('searchScope','all')">Name + Line + Subline</button>`;
+  html += `<button class="chip ${scope==='name'?'active':''}" onclick="patchFilter('searchScope','name')">Name only</button>`;
+  html += '</div>';
   if (hasFilters()) html += `<button class="clear-all-btn" onclick="patchFilter('clear')">Clear All Filters</button>`;
   return html;
 }
@@ -430,6 +440,10 @@ window.patchFilter = (key, val) => {
   else if (key === 'faction')    S.filterFaction = val;
   else if (key === 'status')     S.filterStatus = val;
   else if (key === 'variants')   S.filterVariants = val;
+  else if (key === 'searchScope') {
+    S.searchScope = val;
+    store.set('motu-search-scope', val);
+  }
   S.savedScroll = 0;
   _derived.invalidate();
   // Re-render only the sheet body — pills update without flicker.
