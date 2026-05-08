@@ -278,6 +278,13 @@ const S = {
   filterLine: '',
   filterStatus: '',
   filterVariants: false,
+  // v6.37: 'complete' | 'incomplete' | '' (off). Implicit-owned — only
+  // matters for figures with status === 'owned' AND a defined loadout.
+  filterLoadout: '',
+  // v6.37: Filter sheet keeps the long Line list collapsed by default,
+  // expanded inline by tapping the section header. UI-only state, not
+  // persisted — defaults to collapsed each session.
+  _filterLineExpanded: false,
   // v6.33: 'all' (name + line name + group/subline) | 'name' (name only).
   // Setting persists via 'motu-search-scope'. Default 'all' preserves the
   // existing behavior where "she-ra" pulls everything in the She-Ra

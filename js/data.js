@@ -1242,6 +1242,8 @@ const _derived = {
       S.tab, S.activeLine, S.activeSubline, S.search,
       S.sortBy, S.filterFaction, S.filterStatus,
       S.filterVariants ? 1 : 0, S.filterLine,
+      S.filterLoadout || '',
+      S.searchScope || '',
       S.figs.length, S._hiddenKey,
       S._collVersion,
     ].join('\x00');
@@ -1294,6 +1296,24 @@ function _computeSortedFigs() {
   if (S.filterStatus === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
   else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
   if (S.filterVariants) list = list.filter(f => /\w/.test(copyVariant(S.coll[f.id]) || ''));
+  // v6.37: loadout completeness filter. Implicit-owned and implicit-
+  // has-loadout — figures without either silently drop out, since the
+  // filter is meaningless for them.
+  if (S.filterLoadout === 'complete' || S.filterLoadout === 'incomplete') {
+    list = list.filter(f => {
+      const c = S.coll[f.id];
+      if (!c || c.status !== 'owned' || !isMigrated(c) || !c.copies?.length) return false;
+      const loadout = getLoadout(f.id);
+      if (!loadout || !loadout.length) return false;
+      // "Incomplete" = at least one copy has missing required items.
+      // "Complete" = every copy is fully complete. Mirrors the row-tick.
+      const allComplete = c.copies.every(cp => {
+        const comp = getCopyCompleteness(f.id, cp);
+        return comp && comp.complete;
+      });
+      return S.filterLoadout === 'complete' ? allComplete : !allComplete;
+    });
+  }
   if (S.search) {
     // v6.27: normalize for diacritic + punctuation insensitivity. Collectors
     // type "Sheera" and expect to match "She-Ra"; international users type
@@ -1344,7 +1364,7 @@ function getLineStats() {
   });
 }
 
-function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine; }
+function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine || S.filterLoadout; }
 
 function progressRing(pct, size=48, color='var(--acc)') {
   const r = (size/2)-4, circ = 2*Math.PI*r;

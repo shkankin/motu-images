@@ -420,7 +420,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.36</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.37</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1534,17 +1534,34 @@ function renderFigRow(f) {
   // the row being stuck on whichever action mode existed at last render.
   const rowAction = S.selectMode ? 'select-toggle' : 'open-fig';
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
-  // v6.03: subtle list-view loadout-complete tick. Shown only when:
-  // status owned, loadout exists for the figure, and every copy is fully
-  // complete against it. No partial signal in the row — that lives on detail.
+  // v6.03: subtle list-view loadout-complete tick.
+  // v6.37: extended to a 3-state indicator (was binary). Owned + has-loadout:
+  //   complete   → green ✓
+  //   incomplete → gold "N!" badge with the worst copy's missing-required count
+  //   (not owned / no loadout) → no indicator (current behavior)
+  // For multi-copy figures we report the WORST copy's deficit so collectors
+  // looking to complete a loose still see the indicator even when their MIB
+  // satisfies the loadout. Per user instruction.
   const loadoutTick = (() => {
     if (c.status !== 'owned' || !isMigrated(c) || !c.copies || !c.copies.length) return '';
     if (!getLoadout(f.id)) return '';
-    const allComplete = c.copies.every(cp => {
+    let worst = 0;
+    let allComplete = true;
+    for (const cp of c.copies) {
       const comp = getCopyCompleteness(f.id, cp);
-      return comp && comp.complete;
-    });
-    return allComplete ? '<span class="fig-loadout-tick" title="Loadout complete">✓</span>' : '';
+      if (!comp) continue;
+      if (!comp.complete) allComplete = false;
+      const miss = (comp.missingRequired || []).length;
+      if (miss > worst) worst = miss;
+    }
+    if (allComplete) {
+      return '<span class="fig-loadout-tick" title="Loadout complete">✓</span>';
+    }
+    if (worst > 0) {
+      const label = worst > 9 ? '9+' : String(worst);
+      return `<span class="fig-loadout-tick incomplete" title="${worst} missing accessor${worst===1?'y':'ies'}">${label}!</span>`;
+    }
+    return '';
   })();
 
   return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" data-action="${rowAction}">

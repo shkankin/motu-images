@@ -392,16 +392,35 @@ function renderFilterSheet() {
   // v5.01: chip clicks call patchFilter() which rewrites only the sheet body
   // and invalidates _derived, instead of full render(). Eliminates the
   // visual flicker that came from regenerating the entire app shell.
-  let html = '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Line</div><div class="chip-group">';
+  // v6.37: cleaner layout — Reset moved to top; Line list collapsed by
+  // default with a chevron expand (LINES is long and dominated the sheet);
+  // Search Scope and Variants combined into a Misc row of binary toggles
+  // to reduce vertical scrolling.
   const lineFilter = S.filterLine || '';
-  [{id:'',name:'All Lines'}, ...LINES].forEach(l => {
-    html += `<button class="chip ${lineFilter===l.id?'active':''}" onclick="patchFilter('line','${l.id}')">${esc(l.name)}</button>`;
-  });
-  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Faction</div><div class="chip-group">';
-  ['', ...FACTIONS].forEach(f => {
-    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="patchFilter('faction',${jsArg(f)})">${f||'All'}</button>`;
-  });
-  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Status</div><div class="chip-group">';
+  const lineExpanded = S._filterLineExpanded || !!lineFilter;
+  let html = '';
+  if (hasFilters()) {
+    html += `<button class="clear-all-btn" onclick="patchFilter('clear')" style="width:100%;margin-bottom:14px">Reset all filters</button>`;
+  }
+
+  // Line — collapsed by default, expand via chevron. Active line shown
+  // in the header so users can see the current state without expanding.
+  const activeLineName = lineFilter
+    ? (LINES.find(l => l.id === lineFilter)?.name || lineFilter)
+    : 'All Lines';
+  html += `<button class="filter-section-header" onclick="patchFilter('toggleLineExpand')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;background:none;border:none;color:var(--t1);text-align:left;cursor:pointer">
+    <span class="text-upper text-dim text-xs" style="letter-spacing:1.2px">Line · <span style="color:var(--t1);font-weight:600;letter-spacing:0">${esc(activeLineName)}</span></span>
+    <span style="color:var(--t3);font-size:14px;transform:rotate(${lineExpanded?'90':'0'}deg);transition:transform 0.15s">›</span>
+  </button>`;
+  if (lineExpanded) {
+    html += '<div class="chip-group" style="margin-bottom:14px">';
+    [{id:'',name:'All Lines'}, ...LINES].forEach(l => {
+      html += `<button class="chip ${lineFilter===l.id?'active':''}" onclick="patchFilter('line','${l.id}')">${esc(l.name)}</button>`;
+    });
+    html += '</div>';
+  }
+
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Status</div><div class="chip-group">';
   const statusOpts = [
     {v:'', l:'All'}, ...STATUSES.map(s => ({v:s, l:STATUS_LABEL[s]})), {v:'unowned', l:'Unowned'}
   ];
@@ -409,21 +428,28 @@ function renderFilterSheet() {
     const active = S.filterStatus === s.v;
     html += `<button class="chip ${active?'active':''}" onclick="patchFilter('status','${s.v}')">${s.l}</button>`;
   });
-  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Variants</div><div class="chip-group">';
-  html += `<button class="chip ${!S.filterVariants?'active':''}" onclick="patchFilter('variants',false)">All</button>`;
-  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="patchFilter('variants',true)">Has Variants</button>`;
-  html += '</div>';
-  // v6.33: Search Scope toggle. Default 'all' matches name + line + group/subline,
-  // which is useful for finding everything in a She-Ra subline by typing
-  // "she-ra" but unintentionally pulls every figure in the subline when the
-  // user only wanted the proper She-Ra characters. 'name' restricts to the
-  // figure's own name field. Persisted via patchFilter('searchScope', ...).
-  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Search Scope</div><div class="chip-group">';
+
+  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Faction</div><div class="chip-group">';
+  ['', ...FACTIONS].forEach(f => {
+    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="patchFilter('faction',${jsArg(f)})">${f||'All'}</button>`;
+  });
+
+  // Loadout filter — implicit-owned, only meaningful for figures with
+  // a loadout defined. v6.37.
+  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Loadout (Owned only)</div><div class="chip-group">';
+  const lo = S.filterLoadout || '';
+  html += `<button class="chip ${lo===''?'active':''}" onclick="patchFilter('loadout','')">All</button>`;
+  html += `<button class="chip ${lo==='complete'?'active':''}" onclick="patchFilter('loadout','complete')">Complete</button>`;
+  html += `<button class="chip ${lo==='incomplete'?'active':''}" onclick="patchFilter('loadout','incomplete')">Incomplete</button>`;
+
+  // Misc binary toggles in a single row — Variants + Search Scope.
+  // Reduces the section count and surfaces both as small toggles.
+  html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Misc</div><div class="chip-group">';
+  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="patchFilter('variants',${!S.filterVariants})">${S.filterVariants?'☑':'☐'} Has variants</button>`;
   const scope = S.searchScope || 'all';
-  html += `<button class="chip ${scope==='all'?'active':''}" onclick="patchFilter('searchScope','all')">Name + Line + Subline</button>`;
-  html += `<button class="chip ${scope==='name'?'active':''}" onclick="patchFilter('searchScope','name')">Name only</button>`;
+  html += `<button class="chip ${scope==='name'?'active':''}" onclick="patchFilter('searchScope',${scope==='name'?"'all'":"'name'"})">${scope==='name'?'☑':'☐'} Name-only search</button>`;
   html += '</div>';
-  if (hasFilters()) html += `<button class="clear-all-btn" onclick="patchFilter('clear')">Clear All Filters</button>`;
+
   return html;
 }
 
@@ -435,11 +461,13 @@ function renderFilterSheet() {
 // the same work that would happen on sheet-close anyway.
 window.patchFilter = (key, val) => {
   if (key === 'clear') {
-    S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search='';
+    S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search=''; S.filterLoadout='';
   } else if (key === 'line')     S.filterLine = val;
   else if (key === 'faction')    S.filterFaction = val;
   else if (key === 'status')     S.filterStatus = val;
   else if (key === 'variants')   S.filterVariants = val;
+  else if (key === 'loadout')    S.filterLoadout = val;   // v6.37: '' | 'complete' | 'incomplete'
+  else if (key === 'toggleLineExpand') S._filterLineExpanded = !S._filterLineExpanded;
   else if (key === 'searchScope') {
     S.searchScope = val;
     store.set('motu-search-scope', val);
