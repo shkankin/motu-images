@@ -495,6 +495,11 @@ const TAB_ORDER = ['lines', 'all', 'collection'];
 let _swipe = null;   // active swipe state — null when not in a swipe
 
 function _swipeAllowed() {
+  // v6.36: tab-swipe disabled. Implementation kept intact below in case
+  // we revisit; flipping this to an actual condition re-enables it.
+  return false;
+}
+function _swipeAllowed_disabled() {
   return S.tab && TAB_ORDER.includes(S.tab)
     && !S.activeLine && !S.activeSubline
     && !S.sheet && !S.photoViewer
