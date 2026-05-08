@@ -45,7 +45,8 @@
     ],
     "battle-armor-skeletor-3223": [
       "Sword of Power",
-      "Havoc Staff"
+      "Havoc Staff",
+      "Minicomic"
     ],
     "beast-man-2436": [
       "Minicomic",
@@ -91,7 +92,8 @@
     ],
     "dragstor-3785": [
       "Crossbow",
-      "Ripcord"
+      "Ripcord",
+      "Minicomic"
     ],
     "evil-lyn-2837": [
       "Minicomic",
@@ -108,7 +110,8 @@
     ],
     "fisto-3227": [
       "Sword",
-      "Armor"
+      "Armor",
+      "Minicomic"
     ],
     "flying-fists-he-man-3778": [
       "Minicomic",
@@ -141,25 +144,206 @@
     "horde-trooper-3786": [
       "Spear",
       "Minicomic"
+    ],
+    "hurricane-hordak-3784": [
+      "Minicomic",
+      "Bat Wing Propeller",
+      "Thunder Ball Mace",
+      "Four-pronged Battle Shield"
+    ],
+    "jitsu-3228": [
+      "Sword",
+      "Armor",
+      "Minicomic"
+    ],
+    "king-hiss-3788": [
+      "Armor",
+      "Minicomic",
+      "Staff",
+      "Shield"
+    ],
+    "king-randor-3972": [
+      "Spear",
+      "Cape",
+      "Armor",
+      "Minicomic",
+      "Crown"
+    ],
+    "kobra-khan-3231": [
+      "Gun/Blaster",
+      "Minicomic"
+    ],
+    "laser-light-skeletor-3986": [
+      "Minicomic",
+      "Havoc Staff",
+      "Cape"
+    ],
+    "laser-power-he-man-3985": [
+      "Backpack",
+      "Minicomic",
+      "Arm Armor",
+      "Laser Sword"
+    ],
+    "leech-3758": [
+      "Minicomic",
+      "Crossbow"
+    ],
+    "man-at-arms-2437": [
+      "Mace",
+      "Minicomic",
+      "Arm Armor",
+      "Leg Armor",
+      "Armor"
+    ],
+    "man-e-faces-2839": [
+      "Minicomic",
+      "Gun/Blaster",
+      "Sword",
+      "Shield",
+      "Mace",
+      "Axe",
+      "Rifle"
+    ],
+    "mantenna-3759": [
+      "Crossbow",
+      "Minicomic"
+    ],
+    "mekaneck-3232": [
+      "Club",
+      "Armor",
+      "Minicomic"
+    ],
+    "mer-man-2438": [
+      "Harness",
+      "Sword",
+      "Minicomic"
+    ],
+    "mosquitor-3980": [
+      "Gun/Blaster",
+      "Minicomic"
+    ],
+    "moss-man-3749": [
+      "Club",
+      "Minicomic"
+    ],
+    "ninjor-3976": [
+      "Minicomic",
+      "Nunchucks",
+      "Sword",
+      "Bow",
+      "Hood"
+    ],
+    "orko-3229": [
+      "Ripcord",
+      "Minicomic",
+      "Hat",
+      "Magic Trick Discs"
+    ],
+    "prince-adam-3230": [
+      "Sword of Power",
+      "Belt",
+      "Minicomic",
+      "Vest"
+    ],
+    "ram-man-2840": [
+      "Axe",
+      "Minicomic"
+    ],
+    "rattlor-3789": [
+      "Staff",
+      "Minicomic"
+    ],
+    "rio-blast-3779": [
+      "Minicomic",
+      "Blasterpak"
+    ],
+    "roboto-3750": [
+      "Gun/Blaster",
+      "Axe",
+      "Claw",
+      "Minicomic"
+    ],
+    "rokkon-3780": [
+      "Minicomic",
+      "Laser"
+    ],
+    "saurod-3978": [
+      "Gun/Blaster",
+      "Minicomic"
+    ],
+    "scare-glow-3977": [
+      "Cape",
+      "Staff",
+      "Minicomic"
+    ],
+    "skeletor-2439": [
+      "Harness",
+      "Belt",
+      "Havoc Staff",
+      "Sword of Power",
+      "Minicomic"
+    ],
+    "skeletor-the-original-3235": [
+      "Harness",
+      "Belt",
+      "Minicomic",
+      "Havoc Staff",
+      "Sword of Power"
+    ],
+    "snake-face-3981": [
+      "Minicomic",
+      "Staff",
+      "Shield"
+    ],
+    "snout-spout-3781": [
+      "Axe",
+      "Minicomic"
+    ],
+    "sorceress-3973": [
+      "Staff",
+      "Minicomic"
+    ],
+    "spikor-3753": [
+      "Club",
+      "Minicomic"
+    ],
+    "sssqueeze-3982": [
+      "Minicomic",
+      "Pet Snake"
     ]
   },
   "customAccessories": [
+    "Arm Armor",
     "Bat Shield",
+    "Bat Wing Propeller",
     "Battle Axe",
+    "Blasterpak",
     "Buzz Saw Blades",
     "Claw",
     "Collar",
     "Cosmic Key",
+    "Crown",
     "Effect - Muzzle Blast",
+    "Four-pronged Battle Shield",
+    "Hat",
     "Havoc Staff",
+    "Hood",
+    "Laser",
+    "Laser Sword",
+    "Leg Armor",
+    "Magic Trick Discs",
     "Mouser",
+    "Pet Snake",
     "Power Pincer",
     "Red Clip",
+    "Rifle",
     "Ripcord",
     "Sword of Power",
     "Tech Axe",
+    "Thunder Ball Mace",
     "Trigger Cord",
     "Two Swords",
+    "Vest",
     "Wand",
     "Wings"
   ]
