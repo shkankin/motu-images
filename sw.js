@@ -1,7 +1,14 @@
-// MOTU Vault — Service Worker v6.32
+// MOTU Vault — Service Worker v6.33
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.33 changelog:
+//   • CACHE bumped to v6.33.
+//   • No SHELL changes. Bumping CACHE forces eviction of v6.32 entries
+//     so users pick up loadouts.json schema v2 awareness, scroll-handler
+//     hysteresis fix, mute-button registration, search-scope filter,
+//     and tab-swipe handler.
 //
 // v6.32 changelog:
 //   • CACHE bumped to v6.32.
@@ -447,7 +454,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.32';
+const CACHE = 'motu-vault-v6.33';
 
 const SHELL = [
   'motu-vault.html',

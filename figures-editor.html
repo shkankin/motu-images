@@ -683,6 +683,15 @@ function ingestApproved(data) {
 function ingestLoadouts(data) {
   if (data && typeof data === 'object') {
     loadouts = data.loadouts || data;
+    // v6.33: schema v2 carries the editor's master list of custom accessory
+    // names. Merge into the local list (de-duped, case-insensitive) so a
+    // round-trip through commit+pull preserves names and adds any that
+    // were authored elsewhere.
+    if (Array.isArray(data.customAccessories)) {
+      for (const name of data.customAccessories) {
+        if (typeof name === 'string') addCustomAccessory(name);
+      }
+    }
     // Re-seed for both pending and approved (in case loadouts loaded last)
     for (const f of [...pendingFigs, ...approvedFigs]) {
       if (loadouts[f.id] && !figAccessories[f.id]) {
@@ -1427,7 +1436,17 @@ function downloadOutputs() {
 
   // Trigger downloads
   downloadJSON('figures.json', merged);
-  downloadJSON('loadouts.json', { version: 1, loadouts: newLoadouts });
+  // v6.33: schema v2 carries the editor's master list of custom accessory
+  // names alongside the per-figure loadouts. Older readers that only check
+  // .loadouts continue to work; newer ones (data.js) merge customAccessories
+  // into the picker's available list so users see them as offerable options.
+  // The master list is sorted by addCustomAccessory at insertion time, so
+  // the export is already in stable order.
+  downloadJSON('loadouts.json', {
+    version: 2,
+    loadouts: newLoadouts,
+    customAccessories: [...customAccessories],
+  });
   // Only re-download rejected file if it actually changed (to reduce
   // unnecessary commits on existing-edit-only sessions)
   if (rejectedNew.length > 0 || allRejected.length !== rejectedSet.size) {

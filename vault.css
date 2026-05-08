@@ -150,6 +150,26 @@ button:active { opacity: 0.7; transform: scale(0.97); }
      harmless — they just add a small invisible gap below content. */
   padding-bottom: calc(56px + var(--safe-bottom));
 }
+/* v6.33: tab-swipe horizontal pane track. Built on demand by the swipe
+   handler when the user starts a horizontal-dominant gesture. The track
+   holds the current pane plus pre-rendered prev/next siblings; touchend
+   either snaps back or commits a tab change with no render flash. The
+   panes themselves are full content-area width so each shows its own
+   tab as the user drags. */
+.content-area .tab-swipe-track {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+.content-area .tab-swipe-pane {
+  flex: 0 0 100%;
+  width: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(56px + var(--safe-bottom));
+}
 
 .bottom-nav {
   background: var(--bg2);
@@ -488,6 +508,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   transition: transform 0.2s;
 }
 .line-card:hover { transform: scale(1.02); }
+.line-card:active { transform: scale(0.98); }
 .line-card img {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
@@ -721,6 +742,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   width: 100%;
 }
 .subline-card:hover { border-color: var(--acc); }
+.subline-card:active { transform: scale(0.98); }
 .subline-card.all-card {
   background: var(--bg3);
   border-width: 2px;
