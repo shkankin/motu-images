@@ -71,7 +71,7 @@ export default {
       if (!isValidFigId(figId)) return json({ error: 'invalid figId' }, 400, cors);
       try {
         const data = await getPricing(figId, env, ctx);
-        return json(data, 200, cors);
+        return json(data, 200, { ...cors, 'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}` });
       } catch (e) {
         return json({ error: 'upstream', message: String(e.message || e) }, 502, cors);
       }

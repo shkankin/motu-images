@@ -12,6 +12,7 @@ import {
 } from './state.js';
 import {
   figById, figIsHidden, toggleHidden, clearOverrides, saveColl, rebuildFigIndex,
+  getSortedFigs,
 } from './data.js';
 import { toast, haptic, render, appConfirm } from './render.js';
 import { pushNav } from './handlers.js';
@@ -420,12 +421,112 @@ window.closeDetail = () => {
   history.back();
   setTimeout(() => {
     if (S.screen === 'figure') {
+      S._lastDetailFigId = S.activeFig?.id || null;
       S.screen = 'main';
       S.activeFig = null;
       render();
     }
   }, 350);
 };
+
+// § DETAIL SWIPE NAVIGATION ── v6.40 ────────────────────────────
+// Navigate between figures in the current sorted/filtered list via
+// horizontal swipe or keyboard arrow keys on the detail screen.
+
+function _navigateDetail(dir) {
+  // dir: +1 = next, -1 = prev
+  const list = getSortedFigs();
+  const idx = list.findIndex(f => f.id === S.activeFig?.id);
+  if (idx === -1) return;
+  const next = list[idx + dir];
+  if (!next) {
+    // Edge: rubber-band haptic — short double pulse
+    haptic(8); setTimeout(() => haptic(8), 80);
+    _rubberBand(dir);
+    return;
+  }
+  const outClass  = dir > 0 ? 'slide-out-left'  : 'slide-out-right';
+  const inClass   = dir > 0 ? 'slide-in-right'  : 'slide-in-left';
+  const app = document.getElementById('app');
+  if (!app) { S.activeFig = next; render(); return; }
+  app.classList.add(outClass);
+  haptic(12);
+  const onEnd = () => {
+    app.removeEventListener('transitionend', onEnd);
+    app.classList.remove(outClass);
+    S.activeFig = next;
+    // Don't push nav — swipes don't build a per-figure history stack.
+    // S.savedScroll stays intact for when user eventually exits detail.
+    render();
+    requestAnimationFrame(() => {
+      app.classList.add(inClass);
+      requestAnimationFrame(() => app.classList.remove(inClass));
+    });
+  };
+  app.addEventListener('transitionend', onEnd, { once: true });
+  // Safety fallback if transitionend doesn't fire (e.g. reduced-motion)
+  setTimeout(() => { if (S.activeFig?.id !== next.id) onEnd(); }, 320);
+}
+
+function _rubberBand(dir) {
+  const app = document.getElementById('app');
+  if (!app) return;
+  const cls = dir > 0 ? 'rubber-band-left' : 'rubber-band-right';
+  app.classList.add(cls);
+  setTimeout(() => app.classList.remove(cls), 350);
+}
+
+window.goNextDetail = () => _navigateDetail(+1);
+window.goPrevDetail = () => _navigateDetail(-1);
+
+// Touch handler — attached once to #app via non-passive listener.
+// Re-registers if #app is replaced (should not happen — app div is stable).
+(function initDetailSwipe() {
+  let sx = 0, sy = 0, tracking = false, locked = false;
+  function attach(el) {
+    el.addEventListener('touchstart', e => {
+      if (S.screen !== 'figure' || S.sheet || S.photoViewer) return;
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      tracking = true; locked = false;
+    }, { passive: true });
+
+    el.addEventListener('touchmove', e => {
+      if (!tracking || locked) return;
+      const dx = e.touches[0].clientX - sx;
+      const dy = e.touches[0].clientY - sy;
+      // Once we know it's a vertical scroll, stop tracking entirely
+      if (!locked && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+        tracking = false; return;
+      }
+      // Confirmed horizontal — prevent scroll takeover
+      if (Math.abs(dx) > 8) { locked = true; e.preventDefault(); }
+    }, { passive: false });
+
+    el.addEventListener('touchend', e => {
+      if (!tracking || !locked) { tracking = false; locked = false; return; }
+      const dx = e.changedTouches[0].clientX - sx;
+      tracking = false; locked = false;
+      if (Math.abs(dx) < 50) return;
+      if (dx < 0) window.goNextDetail();
+      else         window.goPrevDetail();
+    }, { passive: true });
+  }
+  // #app is created once in motu-vault.html and never replaced
+  const el = document.getElementById('app');
+  if (el) attach(el);
+  else document.addEventListener('DOMContentLoaded', () => {
+    const a = document.getElementById('app'); if (a) attach(a);
+  });
+})();
+
+// Keyboard arrow navigation on detail screen
+document.addEventListener('keydown', e => {
+  if (S.screen !== 'figure' || S.sheet || S.photoViewer) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); window.goNextDetail(); }
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); window.goPrevDetail(); }
+});
+
 window.deleteFig = async id => {
   if (!await appConfirm('Delete this figure and all its data?', {danger: true, ok: 'Delete'})) return;
   // Clean up all side-data before dropping the figure itself.

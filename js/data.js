@@ -32,6 +32,22 @@ import {
 import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
 import { checkCompletion } from './eggs.js';
 
+// v6.40: merge custom subline arrays into SUBLINES without clobbering existing
+// entries. Object.assign would replace a whole line's array (e.g. 'origins')
+// if customSublines defines any entries for it — this appends instead, deduped by key.
+function _mergeCustomSublines(target, custom) {
+  for (const [lineId, entries] of Object.entries(custom)) {
+    if (!Array.isArray(entries)) continue;
+    if (!target[lineId]) { target[lineId] = []; }
+    for (const entry of entries) {
+      if (!target[lineId].some(e => e.key === entry.key)) {
+        target[lineId].push(entry);
+      }
+    }
+  }
+}
+const mergeCustomSublines = _mergeCustomSublines;
+
 // v6.28: persist S.newFigIds across reloads. Stored as { figId: timestamp }
 // so we can age-out stale entries. Default TTL: 14 days.
 const NEW_FIG_IDS_KEY = 'motu-new-figs';
@@ -177,7 +193,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
           // Format: { "customSublines": { "my-line": [{ key, label, groups[] }] } }
           if (ld && ld.customSublines && typeof ld.customSublines === 'object') {
             S._repoCustomSublines = ld.customSublines;
-            Object.assign(SUBLINES, ld.customSublines);
+            _mergeCustomSublines(SUBLINES, ld.customSublines);
           }
         } catch {}
       }
@@ -2097,5 +2113,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
 };

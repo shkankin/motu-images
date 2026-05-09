@@ -420,7 +420,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.40</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.42</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -517,6 +517,17 @@ function renderMain() {
     if (S.savedScroll && S.screen === 'main') {
       ca.scrollTop = Math.min(S.savedScroll, maxScroll);
       S.savedScroll = 0;
+      // v6.40: after swiping through figures, scroll the list to the last
+      // viewed figure and briefly highlight it so the user knows where they are.
+      if (S._lastDetailFigId) {
+        const figEl = ca.querySelector(`[data-fig-id="${CSS.escape(S._lastDetailFigId)}"]`);
+        if (figEl) {
+          figEl.scrollIntoView({ block: 'nearest' });
+          figEl.classList.add('fig-return-highlight');
+          setTimeout(() => figEl.classList.remove('fig-return-highlight'), 800);
+        }
+        S._lastDetailFigId = null;
+      }
     } else if (_preservedScroll > 0 && !S.sheet && !S._justNavigated) {
       ca.scrollTop = Math.min(_preservedScroll, maxScroll);
     }

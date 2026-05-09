@@ -16,7 +16,7 @@ import {
 } from './photos.js';
 import {
   loadOverrides, applyOverrides, fetchFigs, migrateColl,
-  rebuildFigIndex, saveColl, loadPersistedNewFigIds,
+  rebuildFigIndex, saveColl, loadPersistedNewFigIds, mergeCustomSublines,
 } from './data.js';
 import {
   render, toast, haptic, showUpdateBanner,
@@ -151,7 +151,7 @@ async function init() {
         // v6.39: restore and re-inject custom sublines from cache
         if (cachedLoadouts.customSublines && typeof cachedLoadouts.customSublines === 'object') {
           S._repoCustomSublines = cachedLoadouts.customSublines;
-          Object.assign(SUBLINES, cachedLoadouts.customSublines);
+          mergeCustomSublines(SUBLINES, cachedLoadouts.customSublines);
         }
       } else {
         S._repoLoadouts = cachedLoadouts;

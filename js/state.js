@@ -325,6 +325,7 @@ const S = {
   _repoLoadouts: {},        // v6.03: shared loadouts.json from repo. {[figId]: ['Power Sword', ...]}. Local override (motu-acc-avail) beats this.
   _repoCustomAccessories: [], // v6.33: master list of admin-added accessory names from loadouts.json schema v2. Merged into picker offer below the canonical ACCESSORIES list.
   _repoCustomSublines: {},  // v6.40: custom subline definitions from loadouts.json. Injected into SUBLINES at runtime.
+  _lastDetailFigId: null,   // v6.40: fig id last viewed in detail — used to scroll list back to it on exit.
 };
 
 const DEFAULT_TITLE = 'MOTU Collector';
