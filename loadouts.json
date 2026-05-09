@@ -346,5 +346,16 @@
     "Vest",
     "Wand",
     "Wings"
-  ]
+  ],
+  "customSublines": {
+    "origins": [
+      {
+        "key": "cartoon-collection",
+        "label": "Cartoon Collection",
+        "groups": [
+          "Cartoon Collection"
+        ]
+      }
+    ]
+  }
 }
