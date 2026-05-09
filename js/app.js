@@ -9,7 +9,7 @@
 // Side-effect imports (order matters — state.js is the leaf, others
 // build on it; render.js exposes window.render which data.js + photos.js
 // call lazily to break circular refs).
-import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL, IMG } from './state.js';
+import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL, IMG, SUBLINES } from './state.js';
 import {
   initOPFS, loadPhotoLabels, loadPhotoCopyMap,
   photoStore, _opfsReady,
@@ -147,6 +147,11 @@ async function init() {
         S._repoLoadouts = cachedLoadouts.loadouts;
         if (Array.isArray(cachedLoadouts.customAccessories)) {
           S._repoCustomAccessories = cachedLoadouts.customAccessories;
+        }
+        // v6.39: restore and re-inject custom sublines from cache
+        if (cachedLoadouts.customSublines && typeof cachedLoadouts.customSublines === 'object') {
+          S._repoCustomSublines = cachedLoadouts.customSublines;
+          Object.assign(SUBLINES, cachedLoadouts.customSublines);
         }
       } else {
         S._repoLoadouts = cachedLoadouts;

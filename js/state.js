@@ -324,6 +324,7 @@ const S = {
   defaultPhoto: {},         // { figId: n } — which photo is the list/grid thumbnail (-1 = stock)
   _repoLoadouts: {},        // v6.03: shared loadouts.json from repo. {[figId]: ['Power Sword', ...]}. Local override (motu-acc-avail) beats this.
   _repoCustomAccessories: [], // v6.33: master list of admin-added accessory names from loadouts.json schema v2. Merged into picker offer below the canonical ACCESSORIES list.
+  _repoCustomSublines: {},  // v6.40: custom subline definitions from loadouts.json. Injected into SUBLINES at runtime.
 };
 
 const DEFAULT_TITLE = 'MOTU Collector';

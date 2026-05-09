@@ -172,6 +172,13 @@ async function fetchFigs(manual = false, firstLoad = false) {
           if (ld && Array.isArray(ld.customAccessories)) {
             S._repoCustomAccessories = ld.customAccessories.filter(s => typeof s === 'string');
           }
+          // v6.39: inject custom sublines defined in loadouts.json into the
+          // shared SUBLINES constant so the UI renders them without source edits.
+          // Format: { "customSublines": { "my-line": [{ key, label, groups[] }] } }
+          if (ld && ld.customSublines && typeof ld.customSublines === 'object') {
+            S._repoCustomSublines = ld.customSublines;
+            Object.assign(SUBLINES, ld.customSublines);
+          }
         } catch {}
       }
 
@@ -229,10 +236,14 @@ async function fetchFigs(manual = false, firstLoad = false) {
       // v6.33: bundle customAccessories into the same cache entry. Schema-on-demand:
       // {loadouts: {...}, customAccessories: [...]}; legacy plain-object cache
       // (loadouts only) still reads correctly via the migration in app.js boot.
+      // Collect custom subline keys that were injected (any key not in the
+      // original hardcoded SUBLINES snapshot would be a custom one, but the
+      // simplest approach: re-read from the parsed ld object if available).
       if (Object.keys(S._repoLoadouts).length || (S._repoCustomAccessories || []).length) {
         store.set(LOADOUTS_CACHE_KEY, {
           loadouts: S._repoLoadouts,
           customAccessories: S._repoCustomAccessories || [],
+          customSublines: S._repoCustomSublines || {},
         });
       }
       S.syncStatus = 'ok';
