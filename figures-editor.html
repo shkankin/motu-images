@@ -390,6 +390,18 @@
       <button onclick="addCustomSubline()" style="align-self:flex-end">Add</button>
     </div>
     <div id="customSublineList" style="display:flex;flex-direction:column;gap:6px"></div>
+
+    <!-- v6.43: Subline reorder section -->
+    <hr style="border:none;border-top:1px solid var(--bd);margin:18px 0 14px">
+    <strong style="display:block;margin-bottom:6px;font-size:14px">Reorder Sublines</strong>
+    <p style="color:var(--t3);margin:0 0 10px">Order applies to all lines. Hidden sublines are locked to the bottom.</p>
+    <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2);margin-bottom:10px">
+      Line
+      <select id="reorderLineSelect" onchange="renderSublineReorderList()" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:220px">
+        <option value="">— pick a line —</option>
+      </select>
+    </label>
+    <div id="sublineReorderList" style="display:flex;flex-direction:column;gap:6px"></div>
   </div>
 
   <div id="list"></div>
@@ -630,7 +642,11 @@ function removeCustomAccessory(name) {
 function toggleSublinePanel() {
   const p = document.getElementById('customSublinePanel');
   p.style.display = p.style.display === 'none' ? 'block' : 'none';
-  if (p.style.display === 'block') renderCustomSublineList();
+  if (p.style.display === 'block') {
+    renderCustomSublineList();
+    _populateReorderLineSelect();
+    renderSublineReorderList();
+  }
 }
 
 function renderCustomSublineList() {
@@ -696,14 +712,75 @@ function removeCustomSubline(lineId, key) {
   renderList();
 }
 
-// ── State ──────────────────────────────────────────────────────────
-let mode = 'pending';      // 'pending' | 'existing' — which list to show
+// ── v6.43: Subline Reorder ────────────────────────────────────────
+
+function _getEditorOrderedSublines(lineId) {
+  const subs = SUBLINES[lineId] || [];
+  const saved = sublineOrder[lineId];
+  if (!saved || !saved.length) return [...subs];
+  const keyMap = new Map(subs.map(s => [s.key, s]));
+  const ordered = saved.map(k => keyMap.get(k)).filter(Boolean);
+  const remaining = subs.filter(s => !saved.includes(s.key));
+  return [...ordered, ...remaining];
+}
+
+function _populateReorderLineSelect() {
+  const sel = document.getElementById('reorderLineSelect');
+  if (!sel) return;
+  // Gather all line IDs that have at least one subline defined
+  const lineIds = Object.keys(SUBLINES).filter(id => (SUBLINES[id] || []).length > 0);
+  // Use LINES constant for display names
+  const lineNames = {};
+  for (const l of LINES) lineNames[l.id] = l.label;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— pick a line —</option>' +
+    lineIds.map(id => `<option value="${esc(id)}"${id===current?' selected':''}>${esc(lineNames[id] || id)}</option>`).join('');
+}
+
+function renderSublineReorderList() {
+  const sel = document.getElementById('reorderLineSelect');
+  const el  = document.getElementById('sublineReorderList');
+  if (!sel || !el) return;
+  const lineId = sel.value;
+  if (!lineId) { el.innerHTML = ''; return; }
+  const subs = _getEditorOrderedSublines(lineId);
+  if (!subs.length) { el.innerHTML = '<em style="color:var(--t3)">No sublines for this line.</em>'; return; }
+  // Hidden sublines locked to bottom — detect via saved hiddenItems-equivalent
+  // Editor doesn't have hiddenItems; mark custom-subline keys visually only
+  el.innerHTML = subs.map((s, i) => {
+    const isFirst = i === 0;
+    const isLast  = i === subs.length - 1;
+    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)" id="slrow-${esc(s.key)}">
+      <span style="flex:1;font-size:13px">${esc(s.label)}</span>
+      <code style="color:var(--t3);font-size:11px">${esc(s.key)}</code>
+      <button class="secondary" style="padding:3px 8px;font-size:13px;line-height:1" title="Move up"
+        onclick="moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},-1)"
+        ${isFirst ? 'disabled style="opacity:0.3;padding:3px 8px;font-size:13px;line-height:1"' : ''}>↑</button>
+      <button class="secondary" style="padding:3px 8px;font-size:13px;line-height:1" title="Move down"
+        onclick="moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},+1)"
+        ${isLast ? 'disabled style="opacity:0.3;padding:3px 8px;font-size:13px;line-height:1"' : ''}>↓</button>
+    </div>`;
+  }).join('');
+}
+
+function moveSubline(lineId, key, dir) {
+  const subs = _getEditorOrderedSublines(lineId);
+  const idx = subs.findIndex(s => s.key === key);
+  if (idx === -1) return;
+  const target = idx + dir;
+  if (target < 0 || target >= subs.length) return;
+  // Swap
+  [subs[idx], subs[target]] = [subs[target], subs[idx]];
+  sublineOrder[lineId] = subs.map(s => s.key);
+  renderSublineReorderList();
+}
 let pendingFigs = [];      // figures awaiting review (from figures-pending.json)
 let approvedFigs = [];     // current figures.json contents
 let loadouts = {};         // {figId: ['Power Sword', ...]}
 let rejectedSet = new Set(); // slug strings that are permanently rejected
 let customAccessories = loadCustomAccessories(); // v1.7: cross-figure custom list
 let customSublines = {};   // v1.8: {lineId: [{key, label, groups:[]}]} — persisted via loadouts.json
+let sublineOrder = {};     // v6.43: {lineId: [key, ...]} — user-defined display order, persisted via loadouts.json
 // Per-figure decisions made in this session: {[id]: 'approved' | 'rejected'}
 // Only used in 'pending' mode.
 let decisions = {};
@@ -796,6 +873,9 @@ function ingestLoadouts(data) {
     if (data.customSublines && typeof data.customSublines === 'object') {
       customSublines = data.customSublines;
       _mergeCustomSublines(SUBLINES, customSublines);
+    }
+    if (data.sublineOrder && typeof data.sublineOrder === 'object') {
+      sublineOrder = data.sublineOrder;
     }
     // Re-seed for both pending and approved (in case loadouts loaded last)
     for (const f of [...pendingFigs, ...approvedFigs]) {
@@ -1570,6 +1650,7 @@ function downloadOutputs() {
     loadouts: newLoadouts,
     customAccessories: [...customAccessories],
     customSublines: Object.keys(customSublines).length ? customSublines : undefined,
+    sublineOrder: Object.keys(sublineOrder).length ? sublineOrder : undefined,
   });
   // Only re-download rejected file if it actually changed (to reduce
   // unnecessary commits on existing-edit-only sessions)
