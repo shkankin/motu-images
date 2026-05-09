@@ -107,14 +107,17 @@ function parseCSV(text) {
   if (rows.length === 0) return [];
   const headers = rows[0].map(h => (h || '').trim());
   const idx = h => headers.indexOf(h);
-  const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere,iVariation] =
-    ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased','Variation Name'].map(idx);
+  // v6.39: 'Purchase Date' added. AF411 emits it in 'MM/YYYY' format
+  // (e.g. '04/2024'). Keep as-is — that's our storage format too.
+  const [iGenre,iSeries,iGroup,iName,iWave,iPaid,iCond,iNote,iWhere,iVariation,iDate] =
+    ['Genre','Series','Group','Name','Wave','Purchase Price','Condition','Note','Where Purchased','Variation Name','Purchase Date'].map(idx);
   return rows.slice(1).map(c => {
     const csvGroup = c[iGroup]?.trim() || '';
     return { genre:c[iGenre], series:c[iSeries], name:c[iName]?.trim(),
       group:GROUP_MAP[csvGroup]||csvGroup, wave:c[iWave]?.trim()||'', paid:c[iPaid]?.trim(),
       cond:COND_MAP[c[iCond]?.trim()]||'', note:c[iNote]?.trim(), where:c[iWhere]?.trim(),
-      variation:c[iVariation]?.trim()||'' };
+      variation:c[iVariation]?.trim()||'',
+      acquired:c[iDate]?.trim()||'' };
   }).filter(r => r.genre === 'Masters of the Universe' && SERIES_MAP[r.series]);
 }
 
@@ -615,6 +618,12 @@ function migrateOrderedToOwned(id) {
 }
 
 function setStatus(id, status) {
+  // v6.39: helper for auto-stamping the 'acquired' field. MM/YYYY matches
+  // the AF411 export format and the user's preferred granularity.
+  function _todayMMYYYY() {
+    const d = new Date();
+    return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  }
   if (!S.coll[id]) S.coll[id] = {};
   // Ensure migrated shape
   if (!isMigrated(S.coll[id])) S.coll[id] = migrateEntry(S.coll[id]);
@@ -645,6 +654,19 @@ function setStatus(id, status) {
     // When transitioning from ordered → owned, migrate order details into
     // the copy fields so the data isn't lost.
     if (wasStatus === 'ordered' && status === 'owned') migrateOrderedToOwned(id);
+    // v6.39: auto-stamp 'acquired' (MM/YYYY) on every copy that doesn't
+    // already have one when the figure first becomes owned. Skips if the
+    // copy already has a date (manual edit, AF411 import, etc.) — never
+    // overwrites. Multi-copy figures: stamps copy[0] only here; new
+    // copies get their own stamp via batchAddCopy / addCopy paths.
+    if (status === 'owned' && wasStatus !== 'owned') {
+      const stamp = _todayMMYYYY();
+      const cps = S.coll[id]?.copies || [];
+      if (cps.length > 0 && !cps[0].acquired) {
+        cps[0] = { ...cps[0], acquired: stamp };
+        S.coll[id] = { ...S.coll[id], copies: [...cps] };
+      }
+    }
   }
   saveColl(); haptic();
   // v6.31: log to the event ring for the stat-history chart. Captured
@@ -672,7 +694,7 @@ function setStatus(id, status) {
 
 // Per-copy field names (write into copies[0]). The UI may submit 'variants'
 // (legacy plural) which is normalized to 'variant' (singular) in the schema.
-const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'variants']);
+const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'variants', 'acquired']);
 
 // v6.23: conditions that imply the copy contains all loadout accessories.
 // MIB/MOC/New-Sealed are packaged; Loose Complete is a user assertion.
@@ -742,7 +764,10 @@ window.addCopy = id => {
   } else {
     c = {...c, copies: [...c.copies]};
   }
-  c.copies.push({ id: nextCopyId(c) });
+  // v6.39: stamp acquired with current MM/YYYY for the new copy.
+  const d = new Date();
+  const stamp = String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  c.copies.push({ id: nextCopyId(c), acquired: stamp });
   S.coll[id] = c;
   saveColl();
   haptic();
@@ -784,7 +809,28 @@ window.updateCopy = (id, copyId, key, val, opts) => {
     return;
   }
   if (val === '' || val == null) delete cp[key];
-  else cp[key] = val;
+  else {
+    // v6.39: validate 'acquired' as MM/YYYY (or empty). Reject obviously
+    // malformed input — we use this for date-bucketing in the Stats
+    // chart, so 'maybe-a-date' strings would silently produce 'NaN/NaN'
+    // bars. Toast on invalid so the user knows we ignored it.
+    if (key === 'acquired') {
+      const m = String(val).trim().match(/^(\d{1,2})\/(\d{4})$/);
+      if (!m) {
+        toast?.('✗ Acquired must be MM/YYYY (e.g. 04/2024)');
+        return;
+      }
+      const mm = parseInt(m[1], 10);
+      const yy = parseInt(m[2], 10);
+      if (mm < 1 || mm > 12 || yy < 1900 || yy > 2100) {
+        toast?.('✗ Invalid date');
+        return;
+      }
+      cp[key] = String(mm).padStart(2, '0') + '/' + yy;
+    } else {
+      cp[key] = val;
+    }
+  }
 
   // v6.23: auto-fill accessories when the condition is set to a value that
   // implies a complete copy. MIB/MOC/New-Sealed = sealed in packaging,
@@ -2014,6 +2060,10 @@ function doImportAF411(csvText, overwrite) {
     if (row.paid) copy.paid = row.paid;
     if (importNote) copy.notes = importNote;
     if (row.variation) copy.variant = row.variation;
+    // v6.39: AF411 'Purchase Date' column comes in as 'MM/YYYY'. Stored
+    // as-is; the chart code parses both 'MM/YYYY' and full timestamps so
+    // either works as a fallback.
+    if (row.acquired && /^\d{1,2}\/\d{4}$/.test(row.acquired)) copy.acquired = row.acquired;
     S.coll[fig.id] = { status: 'owned', copies: [copy] };
     matchedIds.add(fig.id);
   });

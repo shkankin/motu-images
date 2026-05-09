@@ -855,6 +855,12 @@ window.selectAllVisible = () => {
 window.batchSetStatus = status => {
   const ids = Array.from(S.selected);
   if (!ids.length) return;
+  // v6.39: helper. Matches setStatus version.
+  function _todayMMYYYY() {
+    const d = new Date();
+    return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  }
+  const stamp = _todayMMYYYY();
   let changed = 0;
   ids.forEach(id => {
     const cur = S.coll[id];
@@ -873,6 +879,12 @@ window.batchSetStatus = status => {
       // Owned/for-sale always need at least one copy slot
       if ((status === 'owned' || status === 'for-sale') && (!next.copies || next.copies.length === 0)) {
         next.copies = [{ id: 1 }];
+      }
+      // v6.39: auto-stamp acquired on copy[0] when first becoming owned.
+      // Skips entries that already have a date (e.g. transitioning from
+      // ordered → owned where the date may have been set during ordering).
+      if (status === 'owned' && wasStatus !== 'owned' && next.copies && next.copies[0] && !next.copies[0].acquired) {
+        next.copies[0] = { ...next.copies[0], acquired: stamp };
       }
       S.coll[id] = next;
       // v4.87: same ordered→owned migration setStatus/cycleStatus do.

@@ -420,7 +420,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.38</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.39</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -876,15 +876,52 @@ function renderStatsSheet() {
     </div>`;
   });
 
-  // v6.31: monthly activity chart. Uses the persisted event log to show
-  // when the user added figures to their collection. Skipped silently if
-  // the log is empty (new users) or all events are in the same month
-  // (chart would be a single bar — not interesting). Last 12 months only.
-  const events = (typeof window.getEvents === 'function') ? window.getEvents() : [];
-  const ownedByMonth = (typeof window.groupEventsByMonth === 'function')
-    ? window.groupEventsByMonth({ to: 'owned' })
-    : {};
-  const monthKeys = Object.keys(ownedByMonth);
+  // v6.39: rebuilt activity & spend charts to walk owned copies directly
+  // and use cp.acquired (MM/YYYY). Falls back to the v6.31 event-log
+  // timestamp only for owned copies with no date set, so the chart now
+  // shows truth-in-time even for AF411-imported collections going back
+  // years (the original implementation would have grouped them all into
+  // the import month, which was misleading).
+  //
+  // _bucketsByYM walks every owned copy across S.coll, returning
+  //   {'YYYY-MM': {count, spend}, ...}
+  function _bucketsByYM() {
+    const out = {};
+    const events = (typeof window.getEvents === 'function') ? window.getEvents() : [];
+    // Build a fallback map: figId → first 'to:owned' event timestamp.
+    const evFallback = {};
+    for (const ev of events) {
+      if (ev.to !== 'owned') continue;
+      if (!evFallback[ev.id]) evFallback[ev.id] = ev.t;
+    }
+    for (const id in S.coll) {
+      const c = S.coll[id];
+      if (!c || c.status !== 'owned' || !isMigrated(c) || !c.copies) continue;
+      for (const cp of c.copies) {
+        let key = null;
+        // Prefer cp.acquired ('MM/YYYY' string)
+        if (cp.acquired && typeof cp.acquired === 'string') {
+          const m = cp.acquired.match(/^(\d{1,2})\/(\d{4})$/);
+          if (m) {
+            key = m[2] + '-' + m[1].padStart(2, '0');
+          }
+        }
+        // Fallback to event-log timestamp
+        if (!key && evFallback[id]) {
+          const d = new Date(evFallback[id]);
+          key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        }
+        if (!key) continue;   // no usable date — skip silently
+        const paid = parseFloat(cp.paid) || 0;
+        if (!out[key]) out[key] = { count: 0, spend: 0 };
+        out[key].count += 1;
+        if (paid > 0) out[key].spend += paid;
+      }
+    }
+    return out;
+  }
+  const buckets = _bucketsByYM();
+  const monthKeys = Object.keys(buckets);
   if (monthKeys.length >= 2) {
     // Build the last 12 months including any months with zero activity
     // (so the chart doesn't visually compress gaps and lie about pacing).
@@ -894,7 +931,7 @@ function renderStatsSheet() {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       const label = d.toLocaleString(undefined, { month: 'short' });
-      months.push({ key, label, count: ownedByMonth[key] || 0, year: d.getFullYear() });
+      months.push({ key, label, count: buckets[key]?.count || 0, year: d.getFullYear() });
     }
     const max = Math.max(1, ...months.map(m => m.count));
     const totalAdded = months.reduce((s, m) => s + m.count, 0);
@@ -915,46 +952,27 @@ function renderStatsSheet() {
     </div>`;
   }
 
-  // v6.31: total spent by year. Walks owned copies grouped by year added
-  // (using the event log; figures owned before the log started are
-  // excluded since we don't know when they were acquired).
-  if (events.length > 0) {
-    const spendByYear = {};
-    for (const ev of events) {
-      if (ev.to !== 'owned') continue;
-      const c = S.coll[ev.id];
-      if (!isMigrated(c) || !c.copies) continue;
-      const year = new Date(ev.t).getFullYear();
-      // Sum all paid prices on this figure's copies. Imperfect — if a
-      // figure has multiple copies added at different times, we attribute
-      // all spend to the first acquisition. Acceptable for an at-a-glance
-      // breakdown; users with multi-copy data see the per-copy breakdown
-      // on the figure detail anyway.
-      let figSpend = 0;
-      for (const cp of c.copies) {
-        const v = parseFloat(cp.paid) || 0;
-        if (v > 0) figSpend += v;
-      }
-      if (figSpend > 0) {
-        spendByYear[year] = (spendByYear[year] || 0) + figSpend;
-      }
-    }
-    const years = Object.keys(spendByYear).sort();
-    if (years.length > 0) {
-      const yearMax = Math.max(...years.map(y => spendByYear[y]));
-      html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
-      <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Spend by year</div>`;
-      for (const y of years) {
-        const v = spendByYear[y];
-        const pct = (v / yearMax) * 100;
-        html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">
-          <div style="font-size:12px;color:var(--t2);font-weight:600;width:40px;flex-shrink:0">${y}</div>
-          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:3px"></div>
-          </div>
-          <div style="font-size:12px;color:var(--gold);font-weight:700;width:70px;text-align:right;flex-shrink:0">$${v.toFixed(0)}</div>
-        </div>`;
-      }
+  // v6.39: spend by year — same buckets, summed by YYYY.
+  const yearSpend = {};
+  for (const k in buckets) {
+    const yr = k.slice(0, 4);
+    yearSpend[yr] = (yearSpend[yr] || 0) + buckets[k].spend;
+  }
+  const years = Object.keys(yearSpend).filter(y => yearSpend[y] > 0).sort();
+  if (years.length > 0) {
+    const yearMax = Math.max(...years.map(y => yearSpend[y]));
+    html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
+    <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Spend by year</div>`;
+    for (const y of years) {
+      const v = yearSpend[y];
+      const pct = (v / yearMax) * 100;
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+        <div style="font-size:12px;color:var(--t2);font-weight:600;width:40px;flex-shrink:0">${y}</div>
+        <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:3px"></div>
+        </div>
+        <div style="font-size:12px;color:var(--gold);font-weight:700;width:70px;text-align:right;flex-shrink:0">$${v.toFixed(0)}</div>
+      </div>`;
     }
   }
 
@@ -1888,6 +1906,12 @@ function renderCopyCard(f, cp, i, isMulti) {
     <div>
       <div class="field-label text-dim text-sm">Price Paid</div>
       <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'paid',this.value)">
+    </div>
+    <div>
+      <div class="field-label text-dim text-sm">Acquired</div>
+      <input type="text" inputmode="numeric" maxlength="7" value="${esc(cp.acquired || '')}"
+        placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}"
+        onchange="updateCopy(${jId},${cid},'acquired',this.value)">
     </div>
     <div>
       <div class="field-label text-dim text-sm">Variant</div>
