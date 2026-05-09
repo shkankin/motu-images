@@ -97,13 +97,17 @@ jobs:
           cd ${{ github.workspace }}
           git config user.name "MOTU Vault Bot"
           git config user.email "motu-vault-bot@users.noreply.github.com"
-          if git diff --quiet && git diff --cached --quiet; then
+          # Stage everything the scraper might have written.
+          git add figures.json
+          git add figures-pending.json 2>/dev/null || true
+          git add figures-rejected.json 2>/dev/null || true
+          git add "*.jpg" 2>/dev/null || true
+          if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git add figures.json
-          git add "*.jpg" 2>/dev/null || true
-          NEW_FIGS=$(git diff --cached --numstat figures.json | awk '{print $1}')
+          NEW_FIGS=$(git diff --cached --numstat figures.json 2>/dev/null | awk '{print $1}')
+          NEW_PENDING=$(git diff --cached --numstat figures-pending.json 2>/dev/null | awk '{print $1}')
           NEW_IMGS=$(git diff --cached --name-only -- "*.jpg" | wc -l | tr -d ' ')
           LINE_MSG=""
           if [ -n "${{ inputs.line }}" ]; then
@@ -112,7 +116,6 @@ jobs:
           TRIGGER="${{ github.event_name }}"
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
           git commit -m "sync: update catalog from AF411${LINE_MSG} — ${TIMESTAMP} [${TRIGGER}]" \
-                     -m "Figures updated: ${NEW_FIGS:-0} lines changed" \
-                     -m "Images added: ${NEW_IMGS}"
+                     -m "Figures: ${NEW_FIGS:-0} lines · Pending: ${NEW_PENDING:-0} lines · Images: ${NEW_IMGS}"
           git push
           echo "✅ Changes committed and pushed"
