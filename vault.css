@@ -3226,3 +3226,42 @@ html {
     transition: none !important;
   }
 }
+
+/* ── v6.40: Detail swipe navigation ─────────────────────────────── */
+/* Slide transitions on #app when swiping between figures in detail. */
+/* Duration must match the setTimeout safety fallback in eggs.js (300ms). */
+#app {
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity   0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#app.slide-out-left  { transform: translateX(-100%); opacity: 0; pointer-events: none; }
+#app.slide-out-right { transform: translateX( 100%); opacity: 0; pointer-events: none; }
+#app.slide-in-right  { transform: translateX( 100%); opacity: 0; }
+#app.slide-in-left   { transform: translateX(-100%); opacity: 0; }
+/* slide-in classes are removed one rAF after add, giving the browser one
+   frame to paint the off-screen position before transition kicks in. */
+#app.slide-in-right,
+#app.slide-in-left {
+  transition: none; /* snap to start position without animating */
+}
+
+/* Rubber-band: brief elastic nudge at first/last figure */
+@keyframes rubberBandLeft  { 0%,100%{transform:translateX(0)} 40%{transform:translateX(-18px)} 70%{transform:translateX(6px)} }
+@keyframes rubberBandRight { 0%,100%{transform:translateX(0)} 40%{transform:translateX( 18px)} 70%{transform:translateX(-6px)} }
+#app.rubber-band-left  { animation: rubberBandLeft  0.35s cubic-bezier(0.36,0.07,0.19,0.97); }
+#app.rubber-band-right { animation: rubberBandRight 0.35s cubic-bezier(0.36,0.07,0.19,0.97); }
+
+/* Return-highlight: brief flash on the fig card after exiting detail */
+@keyframes figReturnFlash { 0%,100%{background:transparent} 30%{background:var(--acc-dim, rgba(255,200,50,0.18))} }
+.fig-return-highlight { animation: figReturnFlash 0.8s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  #app.slide-out-left, #app.slide-out-right,
+  #app.slide-in-right, #app.slide-in-left,
+  #app.rubber-band-left, #app.rubber-band-right {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}

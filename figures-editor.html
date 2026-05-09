@@ -413,6 +413,20 @@
 // bottom of this <script> block will verify against state.js if it can
 // be fetched from the same origin.
 
+// v6.40: merge helper — appends custom subline entries into SUBLINES without
+// clobbering existing arrays for a given line key.
+function _mergeCustomSublines(target, custom) {
+  for (const [lineId, entries] of Object.entries(custom)) {
+    if (!Array.isArray(entries)) continue;
+    if (!target[lineId]) target[lineId] = [];
+    for (const entry of entries) {
+      if (!target[lineId].some(e => e.key === entry.key)) {
+        target[lineId].push(entry);
+      }
+    }
+  }
+}
+
 // Display names match state.js LINES[].name. ID order matches the array.
 const LINES = [
   {id:'origins',        name:'Origins'},
@@ -781,7 +795,7 @@ function ingestLoadouts(data) {
     // v1.8: ingest custom subline definitions and merge into local SUBLINES
     if (data.customSublines && typeof data.customSublines === 'object') {
       customSublines = data.customSublines;
-      Object.assign(SUBLINES, customSublines);
+      _mergeCustomSublines(SUBLINES, customSublines);
     }
     // Re-seed for both pending and approved (in case loadouts loaded last)
     for (const f of [...pendingFigs, ...approvedFigs]) {
