@@ -195,6 +195,10 @@ async function fetchFigs(manual = false, firstLoad = false) {
             S._repoCustomSublines = ld.customSublines;
             _mergeCustomSublines(SUBLINES, ld.customSublines);
           }
+          // v6.43: restore user-defined subline display order
+          if (ld && ld.sublineOrder && typeof ld.sublineOrder === 'object') {
+            S._sublineOrder = ld.sublineOrder;
+          }
         } catch {}
       }
 
@@ -260,6 +264,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
           loadouts: S._repoLoadouts,
           customAccessories: S._repoCustomAccessories || [],
           customSublines: S._repoCustomSublines || {},
+          sublineOrder: S._sublineOrder || {},
         });
       }
       S.syncStatus = 'ok';
@@ -590,6 +595,29 @@ function isLineFullyHidden(lineId) {
 }
 function isSublineHidden(lineId, subKey) {
   return S.hiddenItems.includes(lineId + ':' + subKey);
+}
+
+// v6.43: return sublines for a line in user-defined order, hidden ones last.
+// Falls back to SUBLINES declaration order for any keys not in the saved order.
+function getOrderedSublines(lineId) {
+  const subs = SUBLINES[lineId] || [];
+  if (!subs.length) return subs;
+  const savedOrder = S._sublineOrder[lineId];
+  if (!savedOrder || !savedOrder.length) {
+    // No saved order — still enforce hidden-last
+    const vis = subs.filter(s => !isSublineHidden(lineId, s.key));
+    const hid = subs.filter(s =>  isSublineHidden(lineId, s.key));
+    return [...vis, ...hid];
+  }
+  // Build ordered list: saved keys first (in order), then any new keys not yet ordered
+  const keyMap = new Map(subs.map(s => [s.key, s]));
+  const ordered = savedOrder.map(k => keyMap.get(k)).filter(Boolean);
+  const remaining = subs.filter(s => !savedOrder.includes(s.key));
+  const all = [...ordered, ...remaining];
+  // Hidden always at tail regardless of saved position
+  const vis = all.filter(s => !isSublineHidden(lineId, s.key));
+  const hid = all.filter(s =>  isSublineHidden(lineId, s.key));
+  return [...vis, ...hid];
 }
 // Memoized: cache keyed on current hiddenItems signature. Reset whenever
 // hiddenItems changes (via toggleHidden) or S.figs size changes.
@@ -2113,5 +2141,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
 };

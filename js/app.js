@@ -153,6 +153,10 @@ async function init() {
           S._repoCustomSublines = cachedLoadouts.customSublines;
           mergeCustomSublines(SUBLINES, cachedLoadouts.customSublines);
         }
+        // v6.43: restore subline display order from cache
+        if (cachedLoadouts.sublineOrder && typeof cachedLoadouts.sublineOrder === 'object') {
+          S._sublineOrder = cachedLoadouts.sublineOrder;
+        }
       } else {
         S._repoLoadouts = cachedLoadouts;
       }

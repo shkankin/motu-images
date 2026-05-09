@@ -37,7 +37,7 @@ import {
   figById, figIsHidden, getPrimaryCopy, copyVariant, copyCondition,
   copyPaid, copyNotes, entryCopyCount, totalCopyCount,
   getStats, getSortedFigs, getLineStats, hasFilters, progressRing,
-  isLineFullyHidden, isSublineHidden, getAllLocations,
+  isLineFullyHidden, isSublineHidden, getOrderedSublines, getAllLocations,
   PER_COPY_FIELDS, getOverrideField, getAccAvail,
   getLoadout, getCopyCompleteness,
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
@@ -420,7 +420,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.42</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.43</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -734,7 +734,7 @@ function renderBreadcrumb() {
   html += `<button class="crumb-link" data-action="crumb-to-lines">${icon(ICO.back,14)} Lines</button><span class="sep">›</span>`;
   if (S.activeSubline) {
     html += `<button class="crumb-link" data-action="crumb-to-line">${esc(ln(S.activeLine))}</button><span class="sep">›</span>`;
-    const slLabel = S.activeSubline === '__all__' ? 'All Figures' : (SUBLINES[S.activeLine]||[]).find(s=>s.key===S.activeSubline)?.label || '';
+    const slLabel = S.activeSubline === '__all__' ? 'All Figures' : getOrderedSublines(S.activeLine).find(s=>s.key===S.activeSubline)?.label || '';
     html += `<span class="current">${esc(slLabel)}</span>`;
   } else {
     html += `<span class="current">${esc(ln(S.activeLine))}</span>`;
@@ -826,7 +826,7 @@ function renderKidsCoreAdminSheet() {
 
 function renderContent() {
   if (S.tab === 'lines' && !S.activeLine) return renderLinesGrid();
-  if (!S.search && S.activeLine && !S.activeSubline && SUBLINES[S.activeLine]) return renderSublines();
+  if (!S.search && S.activeLine && !S.activeSubline && getOrderedSublines(S.activeLine).length) return renderSublines();
   return renderFigList();
 }
 
@@ -1491,7 +1491,7 @@ function renderLinesGrid() {
 }
 
 function renderSublines() {
-  const subs = SUBLINES[S.activeLine] || [];
+  const subs = getOrderedSublines(S.activeLine);
   const allFigs = S.figs.filter(f => f.line === S.activeLine && !figIsHidden(f));
   const allOwned = allFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
   const allPct = allFigs.length ? Math.round(allOwned/allFigs.length*100) : 0;
