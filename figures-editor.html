@@ -375,6 +375,21 @@
       <!-- Options injected per-mode by refreshUI() -->
     </select>
     <button id="bulkBtn" class="secondary" onclick="bulkApproveLine()" title="Approve every undecided figure in the current line filter as-is">Approve filtered</button>
+    <button class="secondary" onclick="toggleSublinePanel()" title="Manage custom sublines" id="sublinePanelBtn">Sublines ⚙</button>
+  </div>
+
+  <!-- v1.8: Custom Sublines Panel -->
+  <div id="customSublinePanel" style="display:none;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:16px;margin:12px 0;font-size:13px">
+    <strong style="display:block;margin-bottom:10px;font-size:14px">Custom Sublines</strong>
+    <p style="color:var(--t3);margin:0 0 12px">Add sublines not in the hardcoded list. These are saved into <code>loadouts.json</code> and injected at runtime.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
+      <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Line ID (e.g. <code>masterverse</code>)<input id="cslLineId" placeholder="line-id" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:140px"></label>
+      <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Subline key (e.g. <code>cosmic</code>)<input id="cslKey" placeholder="subline-key" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:140px"></label>
+      <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Display label<input id="cslLabel" placeholder="Cosmic Series" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:160px"></label>
+      <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Group name(s) — comma-separated<input id="cslGroups" placeholder="Cosmic Series" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:220px"></label>
+      <button onclick="addCustomSubline()" style="align-self:flex-end">Add</button>
+    </div>
+    <div id="customSublineList" style="display:flex;flex-direction:column;gap:6px"></div>
   </div>
 
   <div id="list"></div>
@@ -589,12 +604,82 @@ function removeCustomAccessory(name) {
     customAccessories.splice(i, 1);
     saveCustomAccessories();
     // Also remove from any selected loadouts (otherwise figures would
-    // silently retain references to a now-deleted custom accessory).
+    // silently retain references to a now-deleted custom accessory).\
     for (const id of Object.keys(figAccessories)) {
       const idx = figAccessories[id].indexOf(name);
       if (idx >= 0) figAccessories[id].splice(idx, 1);
     }
   }
+}
+
+// ── v1.8: Custom Sublines ─────────────────────────────────────────
+function toggleSublinePanel() {
+  const p = document.getElementById('customSublinePanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (p.style.display === 'block') renderCustomSublineList();
+}
+
+function renderCustomSublineList() {
+  const el = document.getElementById('customSublineList');
+  if (!el) return;
+  const entries = [];
+  for (const [lineId, subs] of Object.entries(customSublines)) {
+    for (const sub of subs) {
+      entries.push({ lineId, ...sub });
+    }
+  }
+  if (!entries.length) {
+    el.innerHTML = '<em style="color:var(--t3)">No custom sublines defined yet.</em>';
+    return;
+  }
+  el.innerHTML = entries.map((e, i) =>
+    `<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
+      <code style="color:var(--t2);font-size:12px;min-width:80px">${esc(e.lineId)}</code>
+      <code style="color:var(--accent);font-size:12px;min-width:80px">${esc(e.key)}</code>
+      <span style="flex:1">${esc(e.label)}</span>
+      <span style="color:var(--t3);font-size:11px">[${e.groups.map(esc).join(', ')}]</span>
+      <button class="secondary" style="padding:3px 8px;font-size:11px" onclick="removeCustomSubline('${esc(e.lineId)}','${esc(e.key)}')">✕</button>
+    </div>`
+  ).join('');
+}
+
+function addCustomSubline() {
+  const lineId = document.getElementById('cslLineId').value.trim();
+  const key    = document.getElementById('cslKey').value.trim();
+  const label  = document.getElementById('cslLabel').value.trim();
+  const groups = document.getElementById('cslGroups').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!lineId || !key || !label || !groups.length) {
+    alert('Fill in all fields (Line ID, Subline key, Label, Groups).'); return;
+  }
+  if (!customSublines[lineId]) customSublines[lineId] = [];
+  // Dedupe by key within the same lineId
+  if (customSublines[lineId].some(s => s.key === key)) {
+    alert(`Key "${key}" already exists for line "${lineId}".`); return;
+  }
+  customSublines[lineId].push({ key, label, groups });
+  // Also inject immediately into the live SUBLINES so cards render without a reload
+  if (!SUBLINES[lineId]) SUBLINES[lineId] = [];
+  if (!SUBLINES[lineId].some(s => s.key === key)) {
+    SUBLINES[lineId].push({ key, label, groups });
+  }
+  document.getElementById('cslKey').value = '';
+  document.getElementById('cslLabel').value = '';
+  document.getElementById('cslGroups').value = '';
+  renderCustomSublineList();
+  renderList();
+}
+
+function removeCustomSubline(lineId, key) {
+  if (!customSublines[lineId]) return;
+  customSublines[lineId] = customSublines[lineId].filter(s => s.key !== key);
+  if (!customSublines[lineId].length) delete customSublines[lineId];
+  // Also remove from live SUBLINES if it was a custom-only entry
+  if (SUBLINES[lineId]) {
+    SUBLINES[lineId] = SUBLINES[lineId].filter(s => s.key !== key);
+    if (!SUBLINES[lineId].length) delete SUBLINES[lineId];
+  }
+  renderCustomSublineList();
+  renderList();
 }
 
 // ── State ──────────────────────────────────────────────────────────
@@ -604,6 +689,7 @@ let approvedFigs = [];     // current figures.json contents
 let loadouts = {};         // {figId: ['Power Sword', ...]}
 let rejectedSet = new Set(); // slug strings that are permanently rejected
 let customAccessories = loadCustomAccessories(); // v1.7: cross-figure custom list
+let customSublines = {};   // v1.8: {lineId: [{key, label, groups:[]}]} — persisted via loadouts.json
 // Per-figure decisions made in this session: {[id]: 'approved' | 'rejected'}
 // Only used in 'pending' mode.
 let decisions = {};
@@ -691,6 +777,11 @@ function ingestLoadouts(data) {
       for (const name of data.customAccessories) {
         if (typeof name === 'string') addCustomAccessory(name);
       }
+    }
+    // v1.8: ingest custom subline definitions and merge into local SUBLINES
+    if (data.customSublines && typeof data.customSublines === 'object') {
+      customSublines = data.customSublines;
+      Object.assign(SUBLINES, customSublines);
     }
     // Re-seed for both pending and approved (in case loadouts loaded last)
     for (const f of [...pendingFigs, ...approvedFigs]) {
@@ -1464,6 +1555,7 @@ function downloadOutputs() {
     version: 2,
     loadouts: newLoadouts,
     customAccessories: [...customAccessories],
+    customSublines: Object.keys(customSublines).length ? customSublines : undefined,
   });
   // Only re-download rejected file if it actually changed (to reduce
   // unnecessary commits on existing-edit-only sessions)
@@ -1562,7 +1654,9 @@ async function auditAgainstStateJs() {
       const realKeys = [...subBlock[1].matchAll(/^\s*['"]?([\w-]+)['"]?\s*:\s*\[/gm)].map(m => m[1]);
       const ourKeys = Object.keys(SUBLINES);
       const missing = realKeys.filter(k => !ourKeys.includes(k));
-      const extra = ourKeys.filter(k => !realKeys.includes(k));
+      // v1.8: extra keys may be runtime-injected custom sublines — don't warn for those
+      const customKeys = new Set(Object.keys(customSublines));
+      const extra = ourKeys.filter(k => !realKeys.includes(k) && !customKeys.has(k));
       if (missing.length) console.warn('[editor audit] SUBLINES missing from editor:', missing);
       if (extra.length) console.warn('[editor audit] SUBLINES in editor but not state.js:', extra);
     }
