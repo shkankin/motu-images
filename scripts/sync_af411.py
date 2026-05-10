@@ -527,9 +527,23 @@ def main():
         if is_group_overridden:
             group_overrides.append((fid, e.get("group"), s["group"]))
 
-        changes = []
-        if s["name"] != e.get("name"):
+        # v1.6: detect manual name overrides. If sourceName is set and
+        # differs from the current name, the user has renamed this figure —
+        # never overwrite name on this entry.
+        is_name_overridden = (
+            "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
+        )
+        if is_name_overridden:
+            pass  # name is protected — skip name change detection
+        elif s["name"] != e.get("name"):
             changes.append(f"name: '{e.get('name')}' → '{s['name']}'")
+
+        # v1.6: backfill sourceName on entries that don't have it yet.
+        if "sourceName" not in e and s["name"]:
+            changes.append(f"sourceName: missing → '{s['name']}'")
+        elif not is_name_overridden and e.get("sourceName") != s["name"]:
+            changes.append(f"sourceName: '{e.get('sourceName')}' → '{s['name']}'")
+
         if s["wave"] and s["wave"] != e.get("wave", ""):
             changes.append(f"wave: '{e.get('wave','')}' → '{s['wave']}'")
         if s["year"] and s["year"] != e.get("year"):
@@ -605,6 +619,18 @@ def main():
             print(f"    ⊙ {fid}: group='{local_g}' (AF411 says '{af411_g}')")
         print()
 
+    name_overrides = [
+        (fid, e.get("name"), scraped_by_id[fid]["name"])
+        for fid in scraped_ids & existing_ids
+        for e in [existing_by_id[fid]]
+        if "sourceName" in e and e.get("name") != e.get("sourceName")
+    ]
+    if args.audit and name_overrides:
+        print("  ── NAME OVERRIDES (manual name != AF411 name) ──")
+        for fid, local_n, af411_n in name_overrides:
+            print(f"    ✏ {fid}: name='{local_n}' (AF411 says '{af411_n}')")
+        print()
+
     if removed_ids and args.audit:
         print("  ── IN figures.json BUT NOT ON AF411 ──")
         print("  (These may be custom/manual additions — NOT auto-removed)")
@@ -641,7 +667,11 @@ def main():
         s = scraped_by_id[fid]
         e = merged_by_id[fid]
         is_overridden = e.get("line") and e.get("line") != s["line"]
-        if s["name"]:
+        # v1.6: name override protection
+        is_name_overridden = (
+            "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
+        )
+        if s["name"] and not is_name_overridden:
             e["name"] = s["name"]
         if s["wave"]:
             e["wave"] = s["wave"]
@@ -667,6 +697,8 @@ def main():
         e["sourceLine"] = s["line"]
         # v1.5: always update sourceGroup to whatever AF411 currently says.
         e["sourceGroup"] = s["group"]
+        # v1.6: always update sourceName to whatever AF411 currently says.
+        e["sourceName"] = s["name"]
         # Always tag source — these entries DEFINITELY came from AF411 since
         # we matched them by ID. Backfills missing source on legacy entries.
         e["source"] = "af411"
@@ -676,6 +708,7 @@ def main():
         out = {
             "id": s["id"],
             "name": s["name"],
+            "sourceName": s["name"],             # v1.6: track AF411's name
             "line": s["line"],
             "sourceLine": s["line"],   # v1.3: track AF411's classification
             "group": s["group"] or "",           # v1.1: ensure string, never None
