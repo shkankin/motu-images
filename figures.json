@@ -686,7 +686,7 @@
   },
   {
     "id": "duplico-5835",
-    "name": "Duplico",
+    "name": "Duplico (Exclusive)",
     "line": "origins",
     "group": "Rulers of the Sun",
     "wave": "12",
@@ -3555,7 +3555,7 @@
   },
   {
     "id": "space-sumo-4935",
-    "name": "Space Sumo",
+    "name": "Space Sumo (Exclusive)",
     "line": "origins",
     "group": "Rulers of the Sun",
     "wave": "",
@@ -3849,7 +3849,7 @@
   },
   {
     "id": "sun-man-creations-3244",
-    "name": "Sun-Man (Creations)",
+    "name": "Sun-Man (Exclusive)",
     "line": "origins",
     "group": "Rulers of the Sun",
     "wave": "",
