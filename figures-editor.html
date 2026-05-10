@@ -445,7 +445,7 @@
     <p style="color:var(--t2);font-size:12px;margin:0">Writes straight to figures.json — no pending queue. Use for figures AF411 won't catalog.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Name *
-        <input id="afName" type="text" placeholder="He-Man" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+        <input id="afName" type="text" placeholder="He-Man" oninput="afUpdateSlugPreview()" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Line *
         <select id="afLine" onchange="afLineChange()" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
@@ -462,7 +462,10 @@
         <input id="afWave" type="text" placeholder="1" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Slug (image filename)
-        <input id="afSlug" type="text" placeholder="auto-generated" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+        <input id="afSlug" type="text" placeholder="auto-generated" oninput="afUpdateSlugPreview()" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2);grid-column:1/-1">Image filename (upload this to repo root)
+        <div id="afSlugPreview" style="font-family:monospace;font-size:12px;color:var(--acc);padding:5px 8px;background:var(--bg3);border-radius:5px;border:1px solid var(--bd);word-break:break-all">— enter name to generate —</div>
       </label>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
@@ -798,6 +801,22 @@ function _slugify(name) {
     .replace(/^-|-$/g, '');
 }
 
+function _makeManualId(name) {
+  const base = _slugify(name);
+  const suffix = Date.now().toString(36);
+  return { id: base + '-' + suffix, slug: base + '-' + suffix };
+}
+
+function afUpdateSlugPreview() {
+  const name   = document.getElementById('afName').value.trim();
+  const custom = document.getElementById('afSlug').value.trim();
+  const prev   = document.getElementById('afSlugPreview');
+  if (!prev) return;
+  if (!name && !custom) { prev.textContent = '— enter name to generate —'; return; }
+  const base = custom || _slugify(name);
+  prev.textContent = base + '-{timestamp}.jpg  (exact name shown after adding)';
+}
+
 function openAddFigModal() {
   const modal = document.getElementById('addFigModal');
   // Populate line select
@@ -829,13 +848,12 @@ function submitAddFig() {
   const group = document.getElementById('afGroup').value;
   const year  = document.getElementById('afYear').value.trim();
   const wave  = document.getElementById('afWave').value.trim();
-  const slugIn= document.getElementById('afSlug').value.trim();
-
   if (!name) { alert('Name is required.'); return; }
 
-  const slug = slugIn || _slugify(name);
-  // Generate a unique ID: manual- prefix + slug + timestamp suffix to avoid collisions
-  const id = slug + '-' + Date.now().toString(36);
+  const slugIn = document.getElementById('afSlug').value.trim();
+  const { id, slug } = slugIn
+    ? { id: slugIn + '-' + Date.now().toString(36), slug: slugIn }
+    : _makeManualId(name);
   const line = LINES.find(l => l.id === lineId);
 
   const fig = {
@@ -854,6 +872,7 @@ function submitAddFig() {
   manualFigs.push(fig);
   approvedFigs.push(fig);
   document.getElementById('addFigModal').style.display = 'none';
+  alert(`✓ Added "${fig.name}"\nImage filename: ${fig.slug}.jpg\nUpload this file to the repo root.`);
   refreshUI();
 }
 
