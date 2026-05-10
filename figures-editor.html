@@ -1806,17 +1806,29 @@ async function _doCommit(token) {
     if (!commitRes.ok) throw new Error(`Could not read commit: ${commitRes.status}`);
     const baseTreeSha = (await commitRes.json()).tree.sha;
 
-    // 3. Create blobs for each file
+    // 3. Create blobs for each file — any failure aborts the entire commit
     const treeItems = [];
     for (const [filename, data] of Object.entries(files)) {
       const content = JSON.stringify(data, null, 2);
-      const blobRes = await fetch(`${api}/git/blobs`, {
-        method: 'POST', headers,
-        body: JSON.stringify({ content, encoding: 'utf-8' }),
-      });
-      if (!blobRes.ok) throw new Error(`Blob ${filename}: ${blobRes.status}`);
+      let blobRes;
+      try {
+        blobRes = await fetch(`${api}/git/blobs`, {
+          method: 'POST', headers,
+          body: JSON.stringify({ content, encoding: 'utf-8' }),
+        });
+      } catch (networkErr) {
+        throw new Error(`Network error uploading ${filename}: ${networkErr.message}`);
+      }
+      if (!blobRes.ok) {
+        const errBody = await blobRes.text().catch(() => '');
+        throw new Error(`Blob upload failed for ${filename} (${blobRes.status}): ${errBody.slice(0, 200)}`);
+      }
       const { sha } = await blobRes.json();
+      if (!sha) throw new Error(`No sha returned for blob ${filename} — aborting`);
       treeItems.push({ path: filename, mode: '100644', type: 'blob', sha });
+    }
+    if (treeItems.length !== Object.keys(files).length) {
+      throw new Error(`Only ${treeItems.length}/${Object.keys(files).length} blobs created — aborting to prevent partial commit`);
     }
 
     // 4. Create new tree
