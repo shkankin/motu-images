@@ -383,6 +383,22 @@
         "groups": [
           "Powers of Grayskull"
         ]
+      },
+      {
+        "key": "rulers-sun",
+        "label": "Rulers of the Sun",
+        "groups": [
+          "Rulers of the Sun"
+        ]
+      }
+    ],
+    "chronicles": [
+      {
+        "key": "action-figures",
+        "label": "Action Figures",
+        "groups": [
+          "Action Figures"
+        ]
       }
     ]
   },
@@ -390,6 +406,7 @@
     "origins": [
       "movie-2026",
       "action",
+      "rulers-sun",
       "cartoon-collection",
       "deluxe",
       "exclusives",
@@ -400,6 +417,11 @@
       "sketchbook-series",
       "vehicles",
       "wwe"
+    ],
+    "chronicles": [
+      "movie",
+      "action-figures",
+      "core"
     ]
   }
 }
