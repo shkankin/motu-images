@@ -330,7 +330,7 @@
 </head>
 <body>
 <div class="container">
-  <h1>MOTU Vault — Figures Editor</h1>
+  <h1>MOTU Vault — Figures Editor <span id="editorVersionBadge" style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:8px"></span></h1>
   <div class="subtitle">Review the AF411 pending queue, or edit existing figures already in figures.json. Toggle between modes below. Download merged outputs when done.</div>
 
   <div class="toolbar">
@@ -417,14 +417,17 @@
     <strong id="dlApproved">0</strong> approved · <strong id="dlRejected">0</strong> rejected · <span id="dlPending">0</span> still undecided
   </div>
   <button class="secondary" onclick="downloadOutputs()">Download outputs</button>
-  <button onclick="commitToGitHub()" style="background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">⬆ Commit to GitHub</button>
+  <button id="commitBtn" onclick="commitToGitHub()" style="background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">⬆ Commit to GitHub</button>
 </div>
+
+<!-- Commit progress log -->
+<div id="commitLog" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--bd);padding:12px 16px;font-family:monospace;font-size:12px;z-index:9998;max-height:180px;overflow-y:auto"></div>
 
 <!-- GitHub token modal -->
 <div id="ghTokenModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:420px;width:90%;display:flex;flex-direction:column;gap:14px">
     <strong style="font-size:15px">GitHub Personal Access Token</strong>
-    <p style="color:var(--t2);font-size:13px;margin:0">Required once. Create a token at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--acc)">github.com/settings/tokens</a> with <code>repo</code> scope. Stored in localStorage, never committed.</p>
+    <p style="color:var(--t2);font-size:13px;margin:0">Required once. Create a fine-grained token at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--acc)">github.com/settings/tokens</a> scoped to <code>motu-images</code> with <code>contents: write</code>. Stored in localStorage.</p>
     <input id="ghTokenInput" type="password" placeholder="ghp_xxxxxxxxxxxx"
       style="font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:100%;box-sizing:border-box">
     <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -435,6 +438,13 @@
 </div>
 
 <script>
+// ── Editor Version ──────────────────────────────────────────────────
+const EDITOR_VERSION = 'v1.9.0';
+document.addEventListener('DOMContentLoaded', () => {
+  const b = document.getElementById('editorVersionBadge');
+  if (b) b.textContent = EDITOR_VERSION;
+});
+
 // ── Constants — MIRRORED FROM state.js ─────────────────────────────
 // These MUST stay in sync with /js/state.js. The audit harness at the
 // bottom of this <script> block will verify against state.js if it can
@@ -945,13 +955,12 @@ function flushPendingEdits() {
   document.querySelectorAll('.fig-card[data-id]').forEach(card => {
     const id = card.dataset.id;
     if (!id) return;
-    // Fire each input's oninput handler manually with its current value
-    // so setEdit() records the latest state before the DOM is destroyed.
-    card.querySelectorAll('input[type="text"], input[type="number"], select').forEach(el => {
+    // Only flush text/number inputs — selects already fired onchange when
+    // the user changed them. Flushing selects here causes recursive
+    // setEdit('line') → flushPendingEdits → setEdit('line') loops.
+    card.querySelectorAll('input[type="text"], input[type="number"]').forEach(el => {
       if (typeof el.oninput === 'function') {
         el.oninput.call(el, { target: el });
-      } else if (typeof el.onchange === 'function') {
-        el.onchange.call(el, { target: el });
       }
     });
   });
@@ -1775,11 +1784,29 @@ function commitToGitHub() {
   _doCommit(token);
 }
 
+function _commitLog(type, msg) {
+  const el = document.getElementById('commitLog');
+  if (!el) return;
+  el.style.display = 'block';
+  const colors = { ok: '#3ecf6a', err: '#e05555', inf: '#5b8dee', dim: '#55556a' };
+  const div = document.createElement('div');
+  div.style.cssText = `color:${colors[type]||colors.dim};padding:1px 0`;
+  div.textContent = msg;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function _clearCommitLog() {
+  const el = document.getElementById('commitLog');
+  if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+}
+
 async function _doCommit(token) {
   const { files, approvedNew, rejectedNew, editedExisting } = buildPayloads();
-  const btn = document.querySelector('[onclick="commitToGitHub()"]');
+  const btn = document.getElementById('commitBtn');
   const origLabel = btn?.textContent;
   if (btn) { btn.textContent = '⏳ Committing…'; btn.disabled = true; }
+  _clearCommitLog();
 
   const headers = {
     'Authorization': `Bearer ${token}`,
@@ -1796,19 +1823,22 @@ async function _doCommit(token) {
   const message = `Editor: ${parts.join(', ') || 'loadout update'}`;
 
   try {
-    // 1. Get current HEAD sha
-    const refRes = await fetch(`${api}/git/ref/heads/${GH_BRANCH}`, { headers });
-    if (!refRes.ok) throw new Error(`Could not read branch: ${refRes.status}`);
-    const headSha = (await refRes.json()).object.sha;
+    _commitLog('inf', `Connecting to ${GH_REPO}…`);
 
-    // 2. Get base tree sha from the commit
+    const refRes = await fetch(`${api}/git/ref/heads/${GH_BRANCH}`, { headers });
+    if (!refRes.ok) throw new Error(`Branch read failed: ${refRes.status}`);
+    const headSha = (await refRes.json()).object.sha;
+    _commitLog('dim', `HEAD ${headSha.slice(0,7)}`);
+
     const commitRes = await fetch(`${api}/git/commits/${headSha}`, { headers });
-    if (!commitRes.ok) throw new Error(`Could not read commit: ${commitRes.status}`);
+    if (!commitRes.ok) throw new Error(`Commit read failed: ${commitRes.status}`);
     const baseTreeSha = (await commitRes.json()).tree.sha;
 
-    // 3. Create blobs for each file — any failure aborts the entire commit
+    // Create blobs — hard abort on any failure
     const treeItems = [];
-    for (const [filename, data] of Object.entries(files)) {
+    const fileList = Object.entries(files);
+    for (const [filename, data] of fileList) {
+      _commitLog('dim', `  Uploading ${filename}…`);
       const content = JSON.stringify(data, null, 2);
       let blobRes;
       try {
@@ -1816,55 +1846,59 @@ async function _doCommit(token) {
           method: 'POST', headers,
           body: JSON.stringify({ content, encoding: 'utf-8' }),
         });
-      } catch (networkErr) {
-        throw new Error(`Network error uploading ${filename}: ${networkErr.message}`);
+      } catch (netErr) {
+        throw new Error(`Network error on ${filename}: ${netErr.message}`);
       }
       if (!blobRes.ok) {
         const errBody = await blobRes.text().catch(() => '');
-        throw new Error(`Blob upload failed for ${filename} (${blobRes.status}): ${errBody.slice(0, 200)}`);
+        throw new Error(`${filename} upload failed (${blobRes.status}): ${errBody.slice(0,200)}`);
       }
       const { sha } = await blobRes.json();
-      if (!sha) throw new Error(`No sha returned for blob ${filename} — aborting`);
+      if (!sha) throw new Error(`No sha for ${filename} — aborting`);
       treeItems.push({ path: filename, mode: '100644', type: 'blob', sha });
-    }
-    if (treeItems.length !== Object.keys(files).length) {
-      throw new Error(`Only ${treeItems.length}/${Object.keys(files).length} blobs created — aborting to prevent partial commit`);
+      _commitLog('ok', `  ✓ ${filename}`);
     }
 
-    // 4. Create new tree
+    if (treeItems.length !== fileList.length) {
+      throw new Error(`Only ${treeItems.length}/${fileList.length} blobs succeeded — commit aborted`);
+    }
+
+    _commitLog('dim', 'Building tree…');
     const treeRes = await fetch(`${api}/git/trees`, {
       method: 'POST', headers,
       body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
     });
-    if (!treeRes.ok) throw new Error(`Tree creation failed: ${treeRes.status}`);
+    if (!treeRes.ok) throw new Error(`Tree failed: ${treeRes.status}`);
     const newTreeSha = (await treeRes.json()).sha;
 
-    // 5. Create commit
     const newCommitRes = await fetch(`${api}/git/commits`, {
       method: 'POST', headers,
       body: JSON.stringify({ message, tree: newTreeSha, parents: [headSha] }),
     });
-    if (!newCommitRes.ok) throw new Error(`Commit creation failed: ${newCommitRes.status}`);
+    if (!newCommitRes.ok) throw new Error(`Commit failed: ${newCommitRes.status}`);
     const newCommitSha = (await newCommitRes.json()).sha;
 
-    // 6. Update branch ref
     const updateRes = await fetch(`${api}/git/refs/heads/${GH_BRANCH}`, {
       method: 'PATCH', headers,
       body: JSON.stringify({ sha: newCommitSha }),
     });
     if (!updateRes.ok) throw new Error(`Ref update failed: ${updateRes.status}`);
 
-    if (btn) { btn.textContent = '✓ Committed!'; setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 3000); }
-    alert(`✓ Committed ${Object.keys(files).length} file(s) to ${GH_REPO} in one commit:\n${Object.keys(files).join('\n')}`);
+    _commitLog('ok', `✓ Committed ${treeItems.length} file(s) — ${newCommitSha.slice(0,7)}`);
+    _commitLog('ok', '  Pages deploying — live in ~45s');
+    if (btn) {
+      btn.textContent = `✓ ${treeItems.length} file(s) committed`;
+      setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 4000);
+    }
+    setTimeout(() => _clearCommitLog(), 8000);
 
   } catch (err) {
     if (btn) { btn.textContent = origLabel; btn.disabled = false; }
+    _commitLog('err', `✗ ${err.message}`);
     if (err.message.includes('401') || err.message.includes('Bad credentials')) {
       localStorage.removeItem(GH_TOKEN_KEY);
-      alert('GitHub token rejected. Please re-enter your token.');
+      _commitLog('err', '  Token rejected — re-enter in the prompt');
       document.getElementById('ghTokenModal').style.display = 'flex';
-    } else {
-      alert(`Commit failed: ${err.message}`);
     }
   }
 }
