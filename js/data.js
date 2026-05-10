@@ -51,7 +51,7 @@ const mergeCustomSublines = _mergeCustomSublines;
 // v6.28: persist S.newFigIds across reloads. Stored as { figId: timestamp }
 // so we can age-out stale entries. Default TTL: 14 days.
 const NEW_FIG_IDS_KEY = 'motu-new-figs';
-const NEW_BADGE_TTL = 14 * 24 * 60 * 60 * 1000;
+const NEW_BADGE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 function _persistNewFigIds() {
   try {
     const existing = store.get(NEW_FIG_IDS_KEY) || {};
