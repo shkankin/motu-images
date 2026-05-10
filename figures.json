@@ -4690,18 +4690,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "beastman-1987-movie-8420",
-    "name": "Beastman (1987 Movie)",
-    "line": "masterverse",
-    "group": "Movie",
-    "wave": "EE",
-    "year": 2024,
-    "retail": 21.99,
-    "slug": "beastman-1987-movie-8420",
-    "faction": "Other",
-    "source": "af411"
-  },
-  {
     "id": "blade-1987-11000",
     "name": "Blade (1987)",
     "line": "masterverse",
@@ -11072,6 +11060,19 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-camo-kahn-mp0e6owj",
+    "name": "Camo Kahn (Kobra Khan Camuflado)",
+    "sourceName": "Camo Kahn",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "year": 1987,
+    "slug": "manual-camo-kahn",
+    "source": "manual",
+    "faction": "Snake Men"
+  },
+  {
     "id": "castaspella-5459",
     "name": "Castaspella",
     "line": "original",
@@ -11672,6 +11673,18 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-jungle-he-man-he-man-guerrero-mp0e83ff",
+    "name": "Jungle He-Man (He-Man Guerrero)",
+    "sourceName": "Jungle He-Man (He-Man Guerrero)",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "year": 1987,
+    "slug": "manual-jungle-he-man-he-man-guerrero",
+    "source": "manual"
   },
   {
     "id": "king-hiss-3788",
