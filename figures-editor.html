@@ -952,14 +952,20 @@ function ingestRejected(data) {
 // is mainly a safety net for the line-change path which calls refreshUI()
 // while other cards may have focused inputs.
 function flushPendingEdits() {
+  // Only flush inputs whose value actually differs from what is already
+  // stored in edits[]. Firing oninput unconditionally marks every visible
+  // card as edited and triggers setEdit on unchanged fields.
   document.querySelectorAll('.fig-card[data-id]').forEach(card => {
     const id = card.dataset.id;
     if (!id) return;
-    // Only flush text/number inputs — selects already fired onchange when
-    // the user changed them. Flushing selects here causes recursive
-    // setEdit('line') → flushPendingEdits → setEdit('line') loops.
     card.querySelectorAll('input[type="text"], input[type="number"]').forEach(el => {
-      if (typeof el.oninput === 'function') {
+      if (typeof el.oninput !== 'function') return;
+      const src = el.oninput.toString();
+      const m = src.match(/setEdit\([^,]+,\s*['"]([\w]+)['"]/);
+      if (!m) return;
+      const field = m[1];
+      const stored = String((edits[id] || {})[field] ?? '');
+      if (el.value !== stored) {
         el.oninput.call(el, { target: el });
       }
     });
@@ -981,7 +987,7 @@ function setMode(m) {
 // When the line filter changes, repopulate options from SUBLINES[lineId]
 // limited to sublines that actually have figures in the current pool.
 function onLineFilterChange() {
-  flushPendingEdits();
+  // No flush needed — the filter dropdown change doesn't endanger in-progress edits.
   document.getElementById('filterSubline').value = '';
   populateSublineFilter();
   renderList();
