@@ -3252,8 +3252,8 @@ html {
 #app.rubber-band-right { animation: rubberBandRight 0.35s cubic-bezier(0.36,0.07,0.19,0.97); }
 
 /* Return-highlight: brief flash on the fig card after exiting detail */
-@keyframes figReturnFlash { 0%,100%{background:transparent} 30%{background:var(--acc-dim, rgba(255,200,50,0.18))} }
-.fig-return-highlight { animation: figReturnFlash 0.8s ease-out; }
+@keyframes figReturnFlash { 0%{background:transparent} 20%{background:var(--acc-dim, rgba(255,200,50,0.22))} 70%{background:var(--acc-dim, rgba(255,200,50,0.12))} 100%{background:transparent} }
+.fig-return-highlight { animation: figReturnFlash 1.4s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
   #app.slide-out-left, #app.slide-out-right,
