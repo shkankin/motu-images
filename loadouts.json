@@ -405,6 +405,15 @@
           "Action Figures"
         ]
       }
+    ],
+    "new-adventures": [
+      {
+        "key": "vehicles-playset",
+        "label": "Vehicles & Playsets",
+        "groups": [
+          "Vehicles & Playsets"
+        ]
+      }
     ]
   },
   "sublineOrder": {
@@ -432,6 +441,12 @@
       "action",
       "sheera",
       "vehicles"
+    ],
+    "new-adventures": [
+      "action",
+      "vehicles",
+      "playsets",
+      "vehicles-playset"
     ]
   }
 }
