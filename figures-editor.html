@@ -762,15 +762,35 @@ function renderSublineReorderList() {
 }
 
 function moveSubline(lineId, key, dir) {
-  const subs = _getEditorOrderedSublines(lineId);
-  const idx = subs.findIndex(s => s.key === key);
-  if (idx === -1) return;
-  const target = idx + dir;
-  if (target < 0 || target >= subs.length) return;
-  // Swap
-  [subs[idx], subs[target]] = [subs[target], subs[idx]];
-  sublineOrder[lineId] = subs.map(s => s.key);
+  if (!sublineOrder[lineId]) {
+    sublineOrder[lineId] = (SUBLINES[lineId] || []).map(s => s.key);
+  }
+  const arr = sublineOrder[lineId];
+  const i = arr.indexOf(key);
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
   renderSublineReorderList();
+}
+
+function renderSublineReorderList() {
+  const lineId = document.getElementById('reorderLineSelect')?.value;
+  const el = document.getElementById('sublineReorderList');
+  if (!el || !lineId) return;
+  if (!sublineOrder[lineId]) {
+    sublineOrder[lineId] = (SUBLINES[lineId] || []).map(s => s.key);
+  }
+  const keyMap = new Map((SUBLINES[lineId] || []).map(s => [s.key, s]));
+  const subs = sublineOrder[lineId].map(k => keyMap.get(k)).filter(Boolean);
+  if (!subs.length) { el.innerHTML = '<em style="color:var(--t3)">No sublines.</em>'; return; }
+  el.innerHTML = subs.map((s, i) =>
+    `<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
+      <span style="flex:1;font-size:13px">${esc(s.label)}</span>
+      <code style="color:var(--t3);font-size:11px">${esc(s.key)}</code>
+      <button class="secondary" style="padding:3px 8px;font-size:13px" onclick="moveSubline('${lineId}','${s.key}',-1)" ${i===0?'disabled':''}>↑</button>
+      <button class="secondary" style="padding:3px 8px;font-size:13px" onclick="moveSubline('${lineId}','${s.key}',1)" ${i===subs.length-1?'disabled':''}>↓</button>
+    </div>`
+  ).join('');
 }
 let pendingFigs = [];      // figures awaiting review (from figures-pending.json)
 let approvedFigs = [];     // current figures.json contents
