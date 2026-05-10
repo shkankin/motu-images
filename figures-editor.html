@@ -417,6 +417,21 @@
     <strong id="dlApproved">0</strong> approved · <strong id="dlRejected">0</strong> rejected · <span id="dlPending">0</span> still undecided
   </div>
   <button class="secondary" onclick="downloadOutputs()">Download outputs</button>
+  <button onclick="commitToGitHub()" style="background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">⬆ Commit to GitHub</button>
+</div>
+
+<!-- GitHub token modal -->
+<div id="ghTokenModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:420px;width:90%;display:flex;flex-direction:column;gap:14px">
+    <strong style="font-size:15px">GitHub Personal Access Token</strong>
+    <p style="color:var(--t2);font-size:13px;margin:0">Required once. Create a token at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--acc)">github.com/settings/tokens</a> with <code>repo</code> scope. Stored in localStorage, never committed.</p>
+    <input id="ghTokenInput" type="password" placeholder="ghp_xxxxxxxxxxxx"
+      style="font-size:13px;padding:8px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:100%;box-sizing:border-box">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="secondary" onclick="document.getElementById('ghTokenModal').style.display='none'">Cancel</button>
+      <button onclick="saveGhToken()">Save & Commit</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1594,10 +1609,7 @@ function bulkApproveLine() {
 // ── Output generation ──────────────────────────────────────────────
 
 function downloadOutputs() {
-  const approvedNew = pendingFigs.filter(f => decisions[f.id] === 'approved').map(f => buildFinal(f));
-  const rejectedNew = pendingFigs.filter(f => decisions[f.id] === 'rejected').map(f => f.id);
-  // v1.5: existing-mode edits to figures already in figures.json
-  const editedExisting = approvedFigs.filter(f => hasEdits(f.id));
+  const { files, approvedNew, rejectedNew, editedExisting, merged, allRejected } = buildPayloads();
 
   if (approvedNew.length === 0 && rejectedNew.length === 0 && editedExisting.length === 0
       && Object.keys(customSublines).length === 0 && Object.keys(sublineOrder).length === 0) {
@@ -1605,104 +1617,17 @@ function downloadOutputs() {
     return;
   }
 
-  // 1. Start with existing figures, applying any edits made in 'existing' mode.
-  // Build merged from approvedFigs, applying per-figure edits as we go.
-  const merged = approvedFigs.map(f => {
-    if (!hasEdits(f.id)) return f;
-    return applyEditsToFig(f);
-  });
-  const existingIds = new Set(merged.map(f => f.id));
-
-  // 2. Then merge in newly-approved pending figures
-  for (const f of approvedNew) {
-    if (existingIds.has(f.id)) {
-      const i = merged.findIndex(x => x.id === f.id);
-      merged[i] = f;
-    } else {
-      merged.push(f);
-    }
-  }
-  // Sort by line then name to match scraper output
-  const lineOrder = Object.fromEntries(LINES.map((l, i) => [l.id, i]));
-  merged.sort((a, b) => {
-    const la = lineOrder[a.line] ?? 99, lb = lineOrder[b.line] ?? 99;
-    if (la !== lb) return la - lb;
-    return (a.name || '').localeCompare(b.name || '');
-  });
-
-  // 3. Merge loadouts. v1.5: also pick up loadout changes made on existing figures.
-  const newLoadouts = { ...loadouts };
-  // Approved-pending loadouts
-  for (const f of approvedNew) {
-    const accs = figAccessories[f.id];
-    if (accs && accs.length > 0) {
-      newLoadouts[f.id] = [...accs];
-    }
-  }
-  // Existing-mode loadout edits
-  for (const f of editedExisting) {
-    if (hasLoadoutChange(f.id)) {
-      const accs = figAccessories[f.id] || [];
-      if (accs.length > 0) {
-        newLoadouts[f.id] = [...accs];
-      } else {
-        delete newLoadouts[f.id];  // user cleared it
-      }
-    }
-  }
-
-  // 4. Build rejected list
-  const allRejected = Array.from(new Set([...rejectedSet, ...rejectedNew])).sort();
-
-  // 5. v6.40: build the new figures-pending.json containing only figures
-  // the user didn't decide on this session. Approved figures are now in
-  // figures.json; rejected figures are in figures-rejected.json. Anything
-  // left undecided stays in pending for next time. This means the user
-  // can simply commit all downloaded files without manually clearing the
-  // pending queue.
-  const undecidedPending = pendingFigs.filter(f => !decisions[f.id]);
-  // Only emit a new pending file if there were ANY pending decisions
-  // this session — otherwise we'd produce a no-op download every time
-  // the user does an existing-mode edit pass.
-  const pendingChanged = approvedNew.length > 0 || rejectedNew.length > 0;
-
-  // Trigger downloads
-  downloadJSON('figures.json', merged);
-  // v6.33: schema v2 carries the editor's master list of custom accessory
-  // names alongside the per-figure loadouts. Older readers that only check
-  // .loadouts continue to work; newer ones (data.js) merge customAccessories
-  // into the picker's available list so users see them as offerable options.
-  // The master list is sorted by addCustomAccessory at insertion time, so
-  // the export is already in stable order.
-  downloadJSON('loadouts.json', {
-    version: 2,
-    loadouts: newLoadouts,
-    customAccessories: [...customAccessories],
-    customSublines: Object.keys(customSublines).length ? customSublines : undefined,
-    sublineOrder: Object.keys(sublineOrder).length ? sublineOrder : undefined,
-  });
-  // Only re-download rejected file if it actually changed (to reduce
-  // unnecessary commits on existing-edit-only sessions)
-  if (rejectedNew.length > 0 || allRejected.length !== rejectedSet.size) {
-    downloadJSON('figures-rejected.json', allRejected);
-  }
-  // v6.40: emit the trimmed pending file when this session decided
-  // anything. The downloaded file replaces figures-pending.json on disk.
-  if (pendingChanged) {
-    downloadJSON('figures-pending.json', undecidedPending);
+  for (const [filename, data] of Object.entries(files)) {
+    downloadJSON(filename, data);
   }
 
   const summary = [
     `figures.json (${merged.length} entries${approvedNew.length ? `, +${approvedNew.length} new approved` : ''}${editedExisting.length ? `, ${editedExisting.length} existing edited` : ''})`,
-    `loadouts.json (${Object.keys(newLoadouts).length} loadouts)`,
-    rejectedNew.length > 0 || allRejected.length !== rejectedSet.size
-      ? `figures-rejected.json (${allRejected.length} rejected)`
-      : null,
-    pendingChanged
-      ? `figures-pending.json (${undecidedPending.length} still undecided)`
-      : null,
+    `loadouts.json`,
+    files['figures-rejected.json'] ? `figures-rejected.json (${allRejected.length} rejected)` : null,
+    files['figures-pending.json']  ? `figures-pending.json` : null,
   ].filter(Boolean).join('\n• ');
-  alert(`Downloaded:\n• ${summary}\n\nCommit all of these to the repo. Approved figures are now in figures.json; the new figures-pending.json contains only what you didn't decide on this session.`);
+  alert(`Downloaded:\n• ${summary}`);
 }
 
 // Apply per-figure edits + loadout changes to an existing figure entry,
@@ -1747,6 +1672,144 @@ function downloadJSON(filename, data) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── v6.45: GitHub Auto-Commit ─────────────────────────────────────
+const GH_REPO   = 'shkankin/motu-images';
+const GH_BRANCH = 'main';
+const GH_TOKEN_KEY = 'motu-editor-gh-token';
+
+// Shared payload builder used by both download and commit flows.
+function buildPayloads() {
+  const approvedNew     = pendingFigs.filter(f => decisions[f.id] === 'approved').map(f => buildFinal(f));
+  const rejectedNew     = pendingFigs.filter(f => decisions[f.id] === 'rejected').map(f => f.id);
+  const editedExisting  = approvedFigs.filter(f => hasEdits(f.id));
+
+  const merged = approvedFigs.map(f => hasEdits(f.id) ? applyEditsToFig(f) : f);
+  const existingIds = new Set(merged.map(f => f.id));
+  for (const f of approvedNew) {
+    if (existingIds.has(f.id)) merged[merged.findIndex(x => x.id === f.id)] = f;
+    else merged.push(f);
+  }
+  const lineOrder = Object.fromEntries(LINES.map((l, i) => [l.id, i]));
+  merged.sort((a, b) => {
+    const la = lineOrder[a.line] ?? 99, lb = lineOrder[b.line] ?? 99;
+    return la !== lb ? la - lb : (a.name || '').localeCompare(b.name || '');
+  });
+
+  const newLoadouts = { ...loadouts };
+  for (const f of approvedNew) {
+    const accs = figAccessories[f.id];
+    if (accs && accs.length) newLoadouts[f.id] = [...accs];
+  }
+  for (const f of editedExisting) {
+    if (hasLoadoutChange(f.id)) {
+      const accs = figAccessories[f.id] || [];
+      if (accs.length) newLoadouts[f.id] = [...accs];
+      else delete newLoadouts[f.id];
+    }
+  }
+
+  const allRejected     = Array.from(new Set([...rejectedSet, ...rejectedNew])).sort();
+  const undecidedPending = pendingFigs.filter(f => !decisions[f.id]);
+  const pendingChanged  = approvedNew.length > 0 || rejectedNew.length > 0;
+  const rejectedChanged = rejectedNew.length > 0 || allRejected.length !== rejectedSet.size;
+
+  const files = {
+    'figures.json': merged,
+    'loadouts.json': {
+      version: 2,
+      loadouts: newLoadouts,
+      customAccessories: [...customAccessories],
+      customSublines: Object.keys(customSublines).length ? customSublines : undefined,
+      sublineOrder: Object.keys(sublineOrder).length ? sublineOrder : undefined,
+    },
+  };
+  if (rejectedChanged)  files['figures-rejected.json'] = allRejected;
+  if (pendingChanged)   files['figures-pending.json']  = undecidedPending;
+
+  return { files, approvedNew, rejectedNew, editedExisting, merged, allRejected, pendingChanged, rejectedChanged };
+}
+
+function saveGhToken() {
+  const token = document.getElementById('ghTokenInput').value.trim();
+  if (!token) { alert('Please enter a token.'); return; }
+  localStorage.setItem(GH_TOKEN_KEY, token);
+  document.getElementById('ghTokenModal').style.display = 'none';
+  _doCommit(token);
+}
+
+function commitToGitHub() {
+  const { approvedNew, rejectedNew, editedExisting } = buildPayloads();
+  if (approvedNew.length === 0 && rejectedNew.length === 0 && editedExisting.length === 0
+      && Object.keys(customSublines).length === 0 && Object.keys(sublineOrder).length === 0) {
+    alert('No decisions or edits to commit.'); return;
+  }
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  if (!token) {
+    document.getElementById('ghTokenModal').style.display = 'flex';
+    return;
+  }
+  _doCommit(token);
+}
+
+async function _doCommit(token) {
+  const { files, approvedNew, rejectedNew, editedExisting } = buildPayloads();
+  const btn = document.querySelector('[onclick="commitToGitHub()"]');
+  const origLabel = btn?.textContent;
+  if (btn) { btn.textContent = '⏳ Committing…'; btn.disabled = true; }
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  const base = `https://api.github.com/repos/${GH_REPO}/contents/`;
+
+  const parts = [];
+  if (approvedNew.length)      parts.push(`+${approvedNew.length} figures`);
+  if (rejectedNew.length)      parts.push(`-${rejectedNew.length} rejected`);
+  if (editedExisting.length)   parts.push(`${editedExisting.length} edited`);
+  if (Object.keys(customSublines).length || Object.keys(sublineOrder).length) parts.push('subline config');
+  const message = `Editor: ${parts.join(', ') || 'loadout update'}`;
+
+  try {
+    for (const [filename, data] of Object.entries(files)) {
+      // GET current sha (required by GitHub API to update existing files)
+      const getRes = await fetch(base + filename, { headers });
+      let sha;
+      if (getRes.ok) {
+        sha = (await getRes.json()).sha;
+      } else if (getRes.status !== 404) {
+        throw new Error(`GET ${filename} failed: ${getRes.status} ${await getRes.text()}`);
+      }
+
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+      const body = { message, content, branch: GH_BRANCH };
+      if (sha) body.sha = sha;
+
+      const putRes = await fetch(base + filename, {
+        method: 'PUT', headers, body: JSON.stringify(body),
+      });
+      if (!putRes.ok) {
+        const err = await putRes.json();
+        throw new Error(`PUT ${filename}: ${err.message}`);
+      }
+    }
+
+    if (btn) { btn.textContent = '✓ Committed!'; setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 3000); }
+    alert(`✓ Committed ${Object.keys(files).length} file(s) to ${GH_REPO}:\n${Object.keys(files).join('\n')}`);
+
+  } catch (err) {
+    if (btn) { btn.textContent = origLabel; btn.disabled = false; }
+    if (err.message.includes('401') || err.message.includes('Bad credentials')) {
+      localStorage.removeItem(GH_TOKEN_KEY);
+      alert('GitHub token rejected. Please re-enter your token.');
+      document.getElementById('ghTokenModal').style.display = 'flex';
+    } else {
+      alert(`Commit failed: ${err.message}`);
+    }
+  }
 }
 
 // ── Audit harness ──────────────────────────────────────────────────
