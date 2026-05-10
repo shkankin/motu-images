@@ -124,7 +124,8 @@ function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'}
 // ─── Status Pulse Animation ──────────────────────────────────────
 function triggerPulse(id, status) {
   requestAnimationFrame(() => {
-    const badge = document.querySelector(`.fig-card[data-fig-id="${id}"] .status-badge`) ||
+    const badge = document.querySelector(`.fig-card[data-fig-id="${id}"] .card-status-btn`) ||
+                  document.querySelector(`.fig-card[data-fig-id="${id}"] .status-badge`) ||
                   document.querySelector(`.fig-row[data-fig-id="${id}"] .quick-own`);
     if (!badge) return;
     const color = status ? STATUS_HEX[status] : 'rgba(255,255,255,.3)';
@@ -281,12 +282,12 @@ function patchFigRow(id) {
   if (card) {
     let cardCls = 'fig-card ' + statusCls;
     if (copyN > 1) cardCls += ' has-stack';
-    if (copyN > 2) cardCls += ' has-stack-3plus';
+    // No has-stack-3plus on cards — all multi-copy uses standard 2-layer stack
     card.className = cardCls.trim();
     updateNameInline(card.querySelector('.card-fig-name'));
-    const badge = card.querySelector('.status-badge');
+    const badge = card.querySelector('.card-status-btn') || card.querySelector('.status-badge');
     if (badge) {
-      badge.className = 'status-badge ' + statusCls;
+      badge.className = (badge.classList.contains('card-status-btn') ? 'card-status-btn' : 'status-badge') + ' ' + statusCls;
       const badgeAction = c.status
         ? `cycleStatus(event,${jId})`
         : `event.stopPropagation();setStatus(${jId},'owned')`;
@@ -424,7 +425,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.49</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.50</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1634,28 +1635,47 @@ function renderFigCard(f) {
   const showImg = (hasCustom || f.image) && !imgErr;
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
   const eId = esc(f.id);
-  const statusIcon = c.status
-    ? `<div class="fig-status-dot ${statusCls}"></div>`
-    : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
-  // v6.29: badgeAction is the data-action verb. The dispatcher resolves
-  // open-fig vs select-toggle from the row, and cycle-status vs
-  // set-status-owned from the badge button.
   const badgeAction = c.status ? 'cycle-status' : 'set-status-owned';
-
   const isSelected = S.selectMode && S.selected.has(f.id);
   const cardAction = S.selectMode ? 'select-toggle' : 'open-fig';
   const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
 
-  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
-    ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
-      `<div class="card-initial">${esc(f.name[0])}</div>`}
-    <div class="card-overlay"></div>
-    ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
-    ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
-    ${S.selectMode ? '' : `<button class="status-badge ${statusCls}" data-action="${badgeAction}" data-fig-id="${eId}">${statusIcon}</button>`}
-    <div class="card-info">
-      <div class="card-fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}</div>
-      <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
+  // Missing accessories indicator — orange to distinguish from gold copy-count
+  const missingAcc = (() => {
+    if (c.status !== 'owned' || !isMigrated(c) || !c.copies?.length) return '';
+    if (!getLoadout(f.id)) return '';
+    let worst = 0, allComplete = true;
+    for (const cp of c.copies) {
+      const comp = getCopyCompleteness(f.id, cp);
+      if (!comp) continue;
+      if (!comp.complete) allComplete = false;
+      const miss = (comp.missingRequired || []).length;
+      if (miss > worst) worst = miss;
+    }
+    if (allComplete || worst === 0) return '';
+    return `<span class="card-missing-acc" title="${worst} missing accessor${worst===1?'y':'ies'}">-${worst > 9 ? '9+' : worst}</span>`;
+  })();
+
+  const statusDot = c.status
+    ? `<div class="fig-status-dot ${statusCls}"></div>`
+    : `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
+
+  // All multi-copy: standard 2-layer stack only (no 3plus variant on cards)
+  const stackCls = copyN > 1 ? ' has-stack' : '';
+
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}" data-fig-id="${eId}" data-action="${cardAction}">
+    <div class="card-image-wrap">
+      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
+        `<div class="card-initial">${esc(f.name[0])}</div>`}
+      ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+      ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
+    </div>
+    <div class="card-strip">
+      <div class="card-strip-info">
+        <div class="card-fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${missingAcc}</div>
+        <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
+      </div>
+      ${S.selectMode ? '' : `<button class="card-status-btn ${statusCls}" data-action="${badgeAction}" data-fig-id="${eId}" title="Cycle status">${statusDot}</button>`}
     </div>
   </div>`;
 }
