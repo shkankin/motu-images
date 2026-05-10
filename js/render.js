@@ -527,8 +527,13 @@ function renderMain() {
         const figEl = ca.querySelector(`[data-fig-id="${CSS.escape(S._lastDetailFigId)}"]`);
         if (figEl) {
           figEl.scrollIntoView({ block: 'nearest' });
-          figEl.classList.add('fig-return-highlight');
-          setTimeout(() => figEl.classList.remove('fig-return-highlight'), 800);
+          // Defer highlight until scroll has painted
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              figEl.classList.add('fig-return-highlight');
+              setTimeout(() => figEl.classList.remove('fig-return-highlight'), 1400);
+            });
+          });
         }
         S._lastDetailFigId = null;
       }
