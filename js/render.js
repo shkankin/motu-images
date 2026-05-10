@@ -384,8 +384,12 @@ function renderLoading() {
 function renderMain() {
   // Capture scroll before wiping DOM — but NOT while a sheet is open
   // (content behind sheet may have changed due to filter, causing stale scroll)
+  // and NOT when returning from detail screen (its scrollTop is the figure
+  // detail's scroll position, not the list's — savedScroll handles that case).
   const _prevCa = document.getElementById('contentArea');
-  const _preservedScroll = (!S.sheet && _prevCa) ? _prevCa.scrollTop : 0;
+  const _returningFromDetail = !!S._returningFromDetail;
+  if (_returningFromDetail) S._returningFromDetail = false;
+  const _preservedScroll = (!S.sheet && _prevCa && !_returningFromDetail) ? _prevCa.scrollTop : 0;
 
   const stats = getStats();
   const sortLabel = S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
@@ -420,7 +424,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.46</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.48</span></div>
         </div>
       </div>
       <div class="header-actions">

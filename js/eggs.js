@@ -422,6 +422,7 @@ window.closeDetail = () => {
   setTimeout(() => {
     if (S.screen === 'figure') {
       S._lastDetailFigId = S.activeFig?.id || null;
+      S._returningFromDetail = true;
       S.screen = 'main';
       S.activeFig = null;
       render();

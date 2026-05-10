@@ -341,6 +341,7 @@ window.addEventListener('popstate', e => {
     // If on figure detail, go back to list
     if (S.screen === 'figure') {
       S._lastDetailFigId = S.activeFig?.id || null;
+      S._returningFromDetail = true;
       S.screen = 'main';
       S.activeFig = null;
       render();
