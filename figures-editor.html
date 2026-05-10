@@ -376,6 +376,7 @@
     </select>
     <button id="bulkBtn" class="secondary" onclick="bulkApproveLine()" title="Approve every undecided figure in the current line filter as-is">Approve filtered</button>
     <button class="secondary" onclick="toggleSublinePanel()" title="Manage custom sublines" id="sublinePanelBtn">Sublines ⚙</button>
+    <button onclick="openAddFigModal()" title="Add a figure directly to figures.json" style="background:var(--acc);color:var(--bg);border:none;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">+ Add Figure</button>
   </div>
 
   <!-- v1.8: Custom Sublines Panel -->
@@ -437,9 +438,56 @@
   </div>
 </div>
 
+<!-- v1.9: Add Figure Modal -->
+<div id="addFigModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 0">
+  <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:500px;width:90%;display:flex;flex-direction:column;gap:14px;margin:auto">
+    <strong style="font-size:15px">Add Figure Directly</strong>
+    <p style="color:var(--t2);font-size:12px;margin:0">Writes straight to figures.json — no pending queue. Use for figures AF411 won't catalog.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Name *
+        <input id="afName" type="text" placeholder="He-Man" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Line *
+        <select id="afLine" onchange="afLineChange()" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+          ${'' /* populated by openAddFigModal */}
+        </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Group / Subline
+        <select id="afGroup" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)"></select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Year
+        <input id="afYear" type="number" placeholder="2024" min="1980" max="2040" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Wave
+        <input id="afWave" type="text" placeholder="1" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Slug (image filename)
+        <input id="afSlug" type="text" placeholder="auto-generated" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="secondary" onclick="document.getElementById('addFigModal').style.display='none'">Cancel</button>
+      <button onclick="submitAddFig()">Add Figure</button>
+    </div>
+  </div>
+</div>
+
+<!-- v1.9: Delete Confirm Modal -->
+<div id="deleteFigModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:380px;width:90%;display:flex;flex-direction:column;gap:14px">
+    <strong style="font-size:15px">Delete Figure?</strong>
+    <p id="deleteFigMsg" style="color:var(--t2);font-size:13px;margin:0"></p>
+    <p style="color:var(--t3);font-size:12px;margin:0">The ID will be added to <code>figures-rejected.json</code> so the AF411 sync never re-adds it.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="secondary" onclick="document.getElementById('deleteFigModal').style.display='none'">Cancel</button>
+      <button id="deleteFigConfirmBtn" style="background:var(--rd,#e05555);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">Delete</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.9.0';
+const EDITOR_VERSION = 'v1.10.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -742,7 +790,91 @@ function removeCustomSubline(lineId, key) {
   renderList();
 }
 
-// ── v6.43: Subline Reorder ────────────────────────────────────────
+// ── v1.9: Add / Delete Figures ────────────────────────────────────
+
+function _slugify(name) {
+  return 'manual-' + name.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function openAddFigModal() {
+  const modal = document.getElementById('addFigModal');
+  // Populate line select
+  const lineSel = document.getElementById('afLine');
+  lineSel.innerHTML = LINES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+  afLineChange();
+  // Clear fields
+  ['afName','afYear','afWave','afSlug'].forEach(id => document.getElementById(id).value = '');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('afName').focus(), 50);
+}
+
+function afLineChange() {
+  const lineId = document.getElementById('afLine').value;
+  const grpSel = document.getElementById('afGroup');
+  const subs = SUBLINES[lineId] || [];
+  if (subs.length) {
+    grpSel.innerHTML = '<option value="">— none —</option>' +
+      subs.map(s => `<option value="${esc(s.groups[0])}">${esc(s.label)}</option>`).join('');
+    grpSel.style.display = '';
+  } else {
+    grpSel.innerHTML = '<option value="">— no sublines —</option>';
+  }
+}
+
+function submitAddFig() {
+  const name  = document.getElementById('afName').value.trim();
+  const lineId= document.getElementById('afLine').value;
+  const group = document.getElementById('afGroup').value;
+  const year  = document.getElementById('afYear').value.trim();
+  const wave  = document.getElementById('afWave').value.trim();
+  const slugIn= document.getElementById('afSlug').value.trim();
+
+  if (!name) { alert('Name is required.'); return; }
+
+  const slug = slugIn || _slugify(name);
+  // Generate a unique ID: manual- prefix + slug + timestamp suffix to avoid collisions
+  const id = slug + '-' + Date.now().toString(36);
+  const line = LINES.find(l => l.id === lineId);
+
+  const fig = {
+    id,
+    name,
+    sourceName: name,
+    line: lineId,
+    sourceLine: lineId,
+    ...(group   ? { group, sourceGroup: group } : {}),
+    ...(wave    ? { wave } : {}),
+    ...(year    ? { year: parseInt(year) } : {}),
+    slug,
+    source: 'manual',
+  };
+
+  manualFigs.push(fig);
+  approvedFigs.push(fig);
+  document.getElementById('addFigModal').style.display = 'none';
+  refreshUI();
+}
+
+function promptDeleteFig(id) {
+  const f = approvedFigs.find(x => x.id === id) || manualFigs.find(x => x.id === id);
+  if (!f) return;
+  const msg = document.getElementById('deleteFigMsg');
+  msg.textContent = `"${f.name}" (${f.id}) will be removed from figures.json.`;
+  const btn = document.getElementById('deleteFigConfirmBtn');
+  btn.onclick = () => confirmDeleteFig(id);
+  document.getElementById('deleteFigModal').style.display = 'flex';
+}
+
+function confirmDeleteFig(id) {
+  deletedFigs.add(id);
+  approvedFigs = approvedFigs.filter(f => f.id !== id);
+  manualFigs   = manualFigs.filter(f => f.id !== id);
+  delete edits[id];
+  document.getElementById('deleteFigModal').style.display = 'none';
+  refreshUI();
+}
 
 function _getEditorOrderedSublines(lineId) {
   const subs = SUBLINES[lineId] || [];
@@ -834,6 +966,8 @@ let rejectedSet = new Set(); // slug strings that are permanently rejected
 let customAccessories = loadCustomAccessories(); // v1.7: cross-figure custom list
 let customSublines = {};   // v1.8: {lineId: [{key, label, groups:[]}]} — persisted via loadouts.json
 let sublineOrder = {};     // v6.43: {lineId: [key, ...]} — user-defined display order, persisted via loadouts.json
+let deletedFigs = new Set(); // v1.9: IDs removed from figures.json this session
+let manualFigs = [];         // v1.9: figures added directly (not via pending queue)
 // Per-figure decisions made in this session: {[id]: 'approved' | 'rejected'}
 // Only used in 'pending' mode.
 let decisions = {};
@@ -1120,7 +1254,7 @@ function refreshUI() {
   // Download bar — show if either mode has actionable changes
   const hasPendingDecisions = approved > 0 || rejected > 0;
   const dl = document.getElementById('downloadBar');
-  dl.style.display = (haveAny && (hasPendingDecisions || editedExistingCount > 0)) ? 'flex' : 'none';
+  dl.style.display = (haveAny && (hasPendingDecisions || editedExistingCount > 0 || deletedFigs.size > 0 || manualFigs.length > 0)) ? 'flex' : 'none';
   document.getElementById('dlApproved').textContent = approved;
   document.getElementById('dlRejected').textContent = rejected;
   document.getElementById('dlPending').textContent = undecided;
@@ -1453,6 +1587,7 @@ function renderExistingCard(f) {
         </div>
         <div class="actions" style="border:none;padding:0">
           ${isEdited ? `<button class="reset-edit-btn" onclick="resetExistingEdit(${jsArg(f.id)})">Reset</button>` : ''}
+          <button onclick="promptDeleteFig(${jsArg(f.id)})" style="background:none;border:1px solid var(--rd,#e05555);color:var(--rd,#e05555);padding:4px 10px;border-radius:5px;font-size:12px;cursor:pointer;margin-left:4px" title="Remove this figure">Delete</button>
         </div>
       </div>
       ${sourceLineWarning}
@@ -1579,7 +1714,7 @@ function refreshChromeOnly() {
   const undecidedN = pendingFigs.filter(f => !decisions[f.id]).length;
   const haveAny = pendingFigs.length || approvedFigs.length;
   const dl = document.getElementById('downloadBar');
-  dl.style.display = (haveAny && (approvedN > 0 || rejectedN > 0 || editedExistingCount > 0)) ? 'flex' : 'none';
+  dl.style.display = (haveAny && (approvedN > 0 || rejectedN > 0 || editedExistingCount > 0 || deletedFigs.size > 0 || manualFigs.length > 0)) ? 'flex' : 'none';
   const dlSummary = document.querySelector('.download-summary');
   if (dlSummary) {
     dlSummary.innerHTML = mode === 'existing' && editedExistingCount > 0
@@ -1720,14 +1855,23 @@ const GH_TOKEN_KEY = 'motu-editor-gh-token';
 function buildPayloads() {
   const approvedNew     = pendingFigs.filter(f => decisions[f.id] === 'approved').map(f => buildFinal(f));
   const rejectedNew     = pendingFigs.filter(f => decisions[f.id] === 'rejected').map(f => f.id);
-  const editedExisting  = approvedFigs.filter(f => hasEdits(f.id));
+  const editedExisting  = approvedFigs.filter(f => hasEdits(f.id) && !deletedFigs.has(f.id));
 
-  const merged = approvedFigs.map(f => hasEdits(f.id) ? applyEditsToFig(f) : f);
+  // Build merged: start from approvedFigs minus deleted, apply edits, merge in approved pending and manual adds
+  const merged = approvedFigs
+    .filter(f => !deletedFigs.has(f.id))
+    .map(f => hasEdits(f.id) ? applyEditsToFig(f) : f);
+
   const existingIds = new Set(merged.map(f => f.id));
   for (const f of approvedNew) {
     if (existingIds.has(f.id)) merged[merged.findIndex(x => x.id === f.id)] = f;
     else merged.push(f);
   }
+  // Manual adds (not already in merged)
+  for (const f of manualFigs) {
+    if (!existingIds.has(f.id)) merged.push(f);
+  }
+
   const lineOrder = Object.fromEntries(LINES.map((l, i) => [l.id, i]));
   merged.sort((a, b) => {
     const la = lineOrder[a.line] ?? 99, lb = lineOrder[b.line] ?? 99;
@@ -1735,6 +1879,7 @@ function buildPayloads() {
   });
 
   const newLoadouts = { ...loadouts };
+  for (const id of deletedFigs) delete newLoadouts[id];
   for (const f of approvedNew) {
     const accs = figAccessories[f.id];
     if (accs && accs.length) newLoadouts[f.id] = [...accs];
@@ -1747,10 +1892,10 @@ function buildPayloads() {
     }
   }
 
-  const allRejected     = Array.from(new Set([...rejectedSet, ...rejectedNew])).sort();
+  const allRejected     = Array.from(new Set([...rejectedSet, ...rejectedNew, ...deletedFigs])).sort();
   const undecidedPending = pendingFigs.filter(f => !decisions[f.id]);
   const pendingChanged  = approvedNew.length > 0 || rejectedNew.length > 0;
-  const rejectedChanged = rejectedNew.length > 0 || allRejected.length !== rejectedSet.size;
+  const rejectedChanged = rejectedNew.length > 0 || deletedFigs.size > 0 || allRejected.length !== rejectedSet.size;
 
   const files = {
     'figures.json': merged,
@@ -1779,7 +1924,8 @@ function saveGhToken() {
 function commitToGitHub() {
   const { approvedNew, rejectedNew, editedExisting } = buildPayloads();
   if (approvedNew.length === 0 && rejectedNew.length === 0 && editedExisting.length === 0
-      && Object.keys(customSublines).length === 0 && Object.keys(sublineOrder).length === 0) {
+      && Object.keys(customSublines).length === 0 && Object.keys(sublineOrder).length === 0
+      && deletedFigs.size === 0 && manualFigs.length === 0) {
     alert('No decisions or edits to commit.'); return;
   }
   const token = localStorage.getItem(GH_TOKEN_KEY);
