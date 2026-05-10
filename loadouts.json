@@ -355,7 +355,51 @@
         "groups": [
           "Cartoon Collection"
         ]
+      },
+      {
+        "key": "thundercats",
+        "label": "MOTU x Thundercats",
+        "groups": [
+          "MOTU x Thundercats"
+        ]
+      },
+      {
+        "key": "sketchbook-series",
+        "label": "Sketchbook Series",
+        "groups": [
+          "Sketchbook Series"
+        ]
+      },
+      {
+        "key": "movie-2026",
+        "label": "Movie (2026)",
+        "groups": [
+          "Movie (2026)"
+        ]
+      },
+      {
+        "key": "powers-grayskull",
+        "label": "Powers of Grayskull",
+        "groups": [
+          "Powers of Grayskull"
+        ]
       }
+    ]
+  },
+  "sublineOrder": {
+    "origins": [
+      "movie-2026",
+      "action",
+      "cartoon-collection",
+      "deluxe",
+      "exclusives",
+      "powers-grayskull",
+      "turtles",
+      "thundercats",
+      "crossovers",
+      "sketchbook-series",
+      "vehicles",
+      "wwe"
     ]
   }
 }
