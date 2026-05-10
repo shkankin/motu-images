@@ -937,8 +937,29 @@ function ingestRejected(data) {
 // ── UI rendering ───────────────────────────────────────────────────
 
 // v1.5: switch between pending review queue and existing-figure editor.
+// v6.46: flush any in-progress input values into edits[] before a
+// renderList() destroys the DOM. Since oninput fires per-keystroke this
+// is mainly a safety net for the line-change path which calls refreshUI()
+// while other cards may have focused inputs.
+function flushPendingEdits() {
+  document.querySelectorAll('.fig-card[data-id]').forEach(card => {
+    const id = card.dataset.id;
+    if (!id) return;
+    // Fire each input's oninput handler manually with its current value
+    // so setEdit() records the latest state before the DOM is destroyed.
+    card.querySelectorAll('input[type="text"], input[type="number"], select').forEach(el => {
+      if (typeof el.oninput === 'function') {
+        el.oninput.call(el, { target: el });
+      } else if (typeof el.onchange === 'function') {
+        el.onchange.call(el, { target: el });
+      }
+    });
+  });
+}
+
 function setMode(m) {
   if (m !== 'pending' && m !== 'existing') return;
+  flushPendingEdits();
   mode = m;
   document.getElementById('modePending').classList.toggle('active', m === 'pending');
   document.getElementById('modeExisting').classList.toggle('active', m === 'existing');
@@ -951,8 +972,7 @@ function setMode(m) {
 // When the line filter changes, repopulate options from SUBLINES[lineId]
 // limited to sublines that actually have figures in the current pool.
 function onLineFilterChange() {
-  // Reset subline value when line changes — prior subline may not exist
-  // in the new line's SUBLINES.
+  flushPendingEdits();
   document.getElementById('filterSubline').value = '';
   populateSublineFilter();
   renderList();
@@ -1495,6 +1515,8 @@ function setEdit(id, field, val) {
   // wouldn't show up. The download button vanishing was the most-reported
   // confusion.
   if (field === 'line') {
+    // Flush other cards' in-progress inputs before re-rendering
+    flushPendingEdits();
     // Line change wipes the group (different sublines per line)
     edits[id].group = '';
     refreshUI(); // full UI refresh — group dropdown options also depend on line
@@ -1650,7 +1672,7 @@ function buildFinal(f) {
   const e = edits[f.id] || {};
   const out = {};
   // Preserve original key order roughly; produce a clean object
-  for (const k of ['id','name','line','sourceLine','group','wave','year','retail','slug','faction','source']) {
+  for (const k of ['id','name','sourceName','line','sourceLine','group','sourceGroup','wave','year','retail','slug','faction','source']) {
     if (e[k] !== undefined) out[k] = e[k];
     else if (f[k] !== undefined) out[k] = f[k];
   }
