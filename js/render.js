@@ -258,7 +258,6 @@ function patchFigRow(id) {
       // v4.92: preserve the stacked-thumbnail classes when re-applying status.
       let cls = 'fig-thumb ' + statusCls;
       if (copyN > 1) cls += ' has-stack';
-      if (copyN > 2) cls += ' has-stack-3plus';
       thumb.className = cls.trim();
     }
     updateNameInline(row.querySelector('.fig-name'));
@@ -425,7 +424,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.50</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.51</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1603,7 +1602,7 @@ function renderFigRow(f) {
 
   return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
-    <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}${copyN > 2 ? ' has-stack-3plus' : ''}">
+    <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>

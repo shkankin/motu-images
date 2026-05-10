@@ -961,13 +961,10 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .fig-card {
   position: relative; border-radius: var(--radius);
-  overflow: hidden; border: none;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.06),
-    0 8px 24px -8px rgba(0,0,0,0.5),
-    0 4px 8px -2px rgba(0,0,0,0.3);
+  overflow: hidden; border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 4px 16px -4px rgba(0,0,0,0.4);
   background: var(--bg3);
-  cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+  cursor: pointer; transition: transform 0.15s;
   contain: content;
   display: flex; flex-direction: column;
 }
@@ -977,6 +974,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   flex-shrink: 0;
   overflow: hidden;
   background: var(--bg3);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
 .card-image-wrap img {
   position: absolute; inset: 0;
@@ -999,9 +997,13 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   gap: 8px;
   padding: 8px 10px;
   background: var(--bg2);
-  border-top: 1px solid var(--bd);
+  border-top: 2px solid var(--bd);
   min-height: 0;
 }
+.fig-card.owned   .card-strip { border-top-color: var(--gn); }
+.fig-card.wishlist .card-strip { border-top-color: var(--bl); }
+.fig-card.ordered  .card-strip { border-top-color: var(--or); }
+.fig-card.for-sale .card-strip { border-top-color: var(--rd); }
 .card-strip-info {
   flex: 1;
   min-width: 0;
@@ -1040,119 +1042,15 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   flex-shrink: 0;
 }
 .fig-card:active { transform: scale(0.97); }
-.fig-card.owned {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--gn) 30%, rgba(255,255,255,0.08)),
-    0 0 0 2px var(--gn),
-    0 8px 24px -8px color-mix(in srgb, var(--gn) 20%, rgba(0,0,0,0.5));
-}
-.fig-card.wishlist {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--bl) 30%, rgba(255,255,255,0.08)),
-    0 0 0 2px var(--bl),
-    0 8px 24px -8px color-mix(in srgb, var(--bl) 20%, rgba(0,0,0,0.5));
-}
-.fig-card.ordered {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--or) 30%, rgba(255,255,255,0.08)),
-    0 0 0 2px var(--or),
-    0 8px 24px -8px color-mix(in srgb, var(--or) 20%, rgba(0,0,0,0.5));
-}
-.fig-card.for-sale {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--rd) 30%, rgba(255,255,255,0.08)),
-    0 0 0 2px var(--rd),
-    0 8px 24px -8px color-mix(in srgb, var(--rd) 20%, rgba(0,0,0,0.5));
-}
+/* Status color lives on the card-strip border, not the card border */
+.fig-card.owned {}
+.fig-card.wishlist {}
+.fig-card.ordered {}
+.fig-card.for-sale {}
 
-/* v4.95: Grid stack — bigger offsets (8/16px instead of 5/10) + a gap between
-   the card's status ring and the stack (using transparent layer at +2px) so
-   the trailing card reads as a separate object, not a thick border. The
-   status-tinted slivers are 2px wide (matching the card's status ring). */
-.fig-card.has-stack {
-  box-shadow:
-    0 4px 12px rgba(0,0,0,0.25),
-    8px 8px 0 -1px var(--bd),
-    8px 8px 0 0 var(--bg2),
-    8px 8px 8px -2px rgba(0,0,0,0.4);
-}
-.fig-card.has-stack.has-stack-3plus {
-  box-shadow:
-    0 4px 12px rgba(0,0,0,0.25),
-    8px 8px 0 -1px var(--bd),
-    8px 8px 0 0 var(--bg2),
-    16px 16px 0 -1px var(--bd),
-    16px 16px 0 0 var(--bg3),
-    16px 16px 12px -2px rgba(0,0,0,0.4);
-}
-/* Status-colored variants — first ring is the card's own status, then the
-   stack offsets carry the same status color so the back card peeks out
-   matching. */
-.fig-card.has-stack.owned {
-  box-shadow:
-    0 0 0 2px var(--gn),
-    8px 8px 0 1px var(--gn), 8px 8px 0 2px var(--bg2),
-    8px 8px 8px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-.fig-card.has-stack.has-stack-3plus.owned {
-  box-shadow:
-    0 0 0 2px var(--gn),
-    8px 8px 0 1px var(--gn), 8px 8px 0 2px var(--bg2),
-    16px 16px 0 1px var(--gn), 16px 16px 0 2px var(--bg3),
-    16px 16px 12px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-.fig-card.has-stack.wishlist {
-  box-shadow:
-    0 0 0 2px var(--bl),
-    8px 8px 0 1px var(--bl), 8px 8px 0 2px var(--bg2),
-    8px 8px 8px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-.fig-card.has-stack.has-stack-3plus.wishlist {
-  box-shadow:
-    0 0 0 2px var(--bl),
-    8px 8px 0 1px var(--bl), 8px 8px 0 2px var(--bg2),
-    16px 16px 0 1px var(--bl), 16px 16px 0 2px var(--bg3),
-    16px 16px 12px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-.fig-card.has-stack.ordered {
-  box-shadow:
-    0 0 0 2px var(--or),
-    8px 8px 0 1px var(--or), 8px 8px 0 2px var(--bg2),
-    8px 8px 8px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-.fig-card.has-stack.has-stack-3plus.ordered {
-  box-shadow:
-    0 0 0 2px var(--or),
-    8px 8px 0 1px var(--or), 8px 8px 0 2px var(--bg2),
-    16px 16px 0 1px var(--or), 16px 16px 0 2px var(--bg3),
-    16px 16px 12px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-.fig-card.has-stack.for-sale {
-  box-shadow:
-    0 0 0 2px var(--rd),
-    8px 8px 0 1px var(--rd), 8px 8px 0 2px var(--bg2),
-    8px 8px 8px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-.fig-card.has-stack.has-stack-3plus.for-sale {
-  box-shadow:
-    0 0 0 2px var(--rd),
-    8px 8px 0 1px var(--rd), 8px 8px 0 2px var(--bg2),
-    16px 16px 0 1px var(--rd), 16px 16px 0 2px var(--bg3),
-    16px 16px 12px -2px rgba(0,0,0,0.4),
-    0 4px 12px rgba(0,0,0,0.25);
-}
-/* Grid uses gap, but the box-shadows now extend 16px past the card on the
-   right and bottom — guarantee the grid container has enough breathing room
-   so cards in the right column / bottom row don't get clipped by the
-   container's overflow or run into neighbors. */
-.fig-grid { padding-right: 18px; padding-bottom: 18px; }
+/* Stack visual removed from grid cards — copy count shown in strip instead */
+/* Stack shadow variants removed — status shown via card-strip border instead */
+.fig-grid { padding-right: 4px; padding-bottom: 4px; }
 
 /* card-fig-name / card-fig-meta now live in .card-strip */
 .fig-card .card-fig-name {
