@@ -3253,7 +3253,7 @@ html {
 
 /* Return-highlight: brief flash on the fig card after exiting detail */
 @keyframes figReturnFlash { 0%{background:transparent} 20%{background:var(--acc-dim, rgba(255,200,50,0.22))} 70%{background:var(--acc-dim, rgba(255,200,50,0.12))} 100%{background:transparent} }
-.fig-return-highlight { animation: figReturnFlash 1.4s ease-out; }
+.fig-return-highlight { animation: figReturnFlash 1.4s ease-out 0.15s both; }
 
 @media (prefers-reduced-motion: reduce) {
   #app.slide-out-left, #app.slide-out-right,

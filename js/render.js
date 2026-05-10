@@ -524,18 +524,15 @@ function renderMain() {
       // v6.40: after swiping through figures, scroll the list to the last
       // viewed figure and briefly highlight it so the user knows where they are.
       if (S._lastDetailFigId) {
-        const figEl = ca.querySelector(`[data-fig-id="${CSS.escape(S._lastDetailFigId)}"]`);
-        if (figEl) {
-          figEl.scrollIntoView({ block: 'nearest' });
-          // Defer highlight until scroll has painted
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              figEl.classList.add('fig-return-highlight');
-              setTimeout(() => figEl.classList.remove('fig-return-highlight'), 1400);
-            });
-          });
-        }
+        const figId = S._lastDetailFigId;
         S._lastDetailFigId = null;
+        requestAnimationFrame(() => {
+          const figEl = ca.querySelector(`[data-fig-id="${CSS.escape(figId)}"]`);
+          if (!figEl) return;
+          figEl.scrollIntoView({ block: 'nearest' });
+          figEl.classList.add('fig-return-highlight');
+          setTimeout(() => figEl.classList.remove('fig-return-highlight'), 1600);
+        });
       }
     } else if (_preservedScroll > 0 && !S.sheet && !S._justNavigated) {
       ca.scrollTop = Math.min(_preservedScroll, maxScroll);
