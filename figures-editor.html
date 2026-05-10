@@ -748,15 +748,15 @@ function renderSublineReorderList() {
   el.innerHTML = subs.map((s, i) => {
     const isFirst = i === 0;
     const isLast  = i === subs.length - 1;
-    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)" id="slrow-${esc(s.key)}">
+    const upStyle  = `padding:3px 8px;font-size:13px;line-height:1${isFirst ? ';opacity:0.3;cursor:default' : ''}`;
+    const dnStyle  = `padding:3px 8px;font-size:13px;line-height:1${isLast  ? ';opacity:0.3;cursor:default' : ''}`;
+    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
       <span style="flex:1;font-size:13px">${esc(s.label)}</span>
       <code style="color:var(--t3);font-size:11px">${esc(s.key)}</code>
-      <button class="secondary" style="padding:3px 8px;font-size:13px;line-height:1" title="Move up"
-        onclick="moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},-1)"
-        ${isFirst ? 'disabled style="opacity:0.3;padding:3px 8px;font-size:13px;line-height:1"' : ''}>↑</button>
-      <button class="secondary" style="padding:3px 8px;font-size:13px;line-height:1" title="Move down"
-        onclick="moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},+1)"
-        ${isLast ? 'disabled style="opacity:0.3;padding:3px 8px;font-size:13px;line-height:1"' : ''}>↓</button>
+      <button class="secondary" style="${upStyle}" title="Move up"
+        onclick="if(!${isFirst})moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},-1)">↑</button>
+      <button class="secondary" style="${dnStyle}" title="Move down"
+        onclick="if(!${isLast})moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},+1)">↓</button>
     </div>`;
   }).join('');
 }
