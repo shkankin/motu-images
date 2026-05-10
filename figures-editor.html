@@ -727,11 +727,9 @@ function _getEditorOrderedSublines(lineId) {
 function _populateReorderLineSelect() {
   const sel = document.getElementById('reorderLineSelect');
   if (!sel) return;
-  // Gather all line IDs that have at least one subline defined
   const lineIds = Object.keys(SUBLINES).filter(id => (SUBLINES[id] || []).length > 0);
-  // Use LINES constant for display names
   const lineNames = {};
-  for (const l of LINES) lineNames[l.id] = l.label;
+  for (const l of LINES) lineNames[l.id] = l.name;
   const current = sel.value;
   sel.innerHTML = '<option value="">— pick a line —</option>' +
     lineIds.map(id => `<option value="${esc(id)}"${id===current?' selected':''}>${esc(lineNames[id] || id)}</option>`).join('');
