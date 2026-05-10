@@ -696,6 +696,7 @@ function addCustomSubline() {
   document.getElementById('cslLabel').value = '';
   document.getElementById('cslGroups').value = '';
   renderCustomSublineList();
+  renderSublineReorderList();
   renderList();
 }
 
@@ -703,12 +704,16 @@ function removeCustomSubline(lineId, key) {
   if (!customSublines[lineId]) return;
   customSublines[lineId] = customSublines[lineId].filter(s => s.key !== key);
   if (!customSublines[lineId].length) delete customSublines[lineId];
-  // Also remove from live SUBLINES if it was a custom-only entry
   if (SUBLINES[lineId]) {
     SUBLINES[lineId] = SUBLINES[lineId].filter(s => s.key !== key);
     if (!SUBLINES[lineId].length) delete SUBLINES[lineId];
   }
+  if (sublineOrder[lineId]) {
+    sublineOrder[lineId] = sublineOrder[lineId].filter(k => k !== key);
+    if (!sublineOrder[lineId].length) delete sublineOrder[lineId];
+  }
   renderCustomSublineList();
+  renderSublineReorderList();
   renderList();
 }
 
@@ -777,12 +782,17 @@ function renderSublineReorderList() {
   const lineId = document.getElementById('reorderLineSelect')?.value;
   const el = document.getElementById('sublineReorderList');
   if (!el || !lineId) return;
-  if (!sublineOrder[lineId]) {
-    sublineOrder[lineId] = (SUBLINES[lineId] || []).map(s => s.key);
-  }
-  const keyMap = new Map((SUBLINES[lineId] || []).map(s => [s.key, s]));
-  const subs = sublineOrder[lineId].map(k => keyMap.get(k)).filter(Boolean);
-  if (!subs.length) { el.innerHTML = '<em style="color:var(--t3)">No sublines.</em>'; return; }
+  const allSubs = SUBLINES[lineId] || [];
+  if (!allSubs.length) { el.innerHTML = '<em style="color:var(--t3)">No sublines.</em>'; return; }
+  // Build ordered list: saved order first, then any new keys not yet in order
+  if (!sublineOrder[lineId]) sublineOrder[lineId] = allSubs.map(s => s.key);
+  const saved = sublineOrder[lineId];
+  const keyMap = new Map(allSubs.map(s => [s.key, s]));
+  const ordered = saved.map(k => keyMap.get(k)).filter(Boolean);
+  const unseen = allSubs.filter(s => !saved.includes(s.key));
+  const subs = [...ordered, ...unseen];
+  // Keep sublineOrder in sync with any new additions
+  sublineOrder[lineId] = subs.map(s => s.key);
   el.innerHTML = subs.map((s, i) =>
     `<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
       <span style="flex:1;font-size:13px">${esc(s.label)}</span>
@@ -1589,7 +1599,8 @@ function downloadOutputs() {
   // v1.5: existing-mode edits to figures already in figures.json
   const editedExisting = approvedFigs.filter(f => hasEdits(f.id));
 
-  if (approvedNew.length === 0 && rejectedNew.length === 0 && editedExisting.length === 0) {
+  if (approvedNew.length === 0 && rejectedNew.length === 0 && editedExisting.length === 0
+      && Object.keys(customSublines).length === 0 && Object.keys(sublineOrder).length === 0) {
     alert('No decisions or edits to export.');
     return;
   }
