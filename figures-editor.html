@@ -1764,41 +1764,64 @@ async function _doCommit(token) {
     'Content-Type': 'application/json',
     'X-GitHub-Api-Version': '2022-11-28',
   };
-  const base = `https://api.github.com/repos/${GH_REPO}/contents/`;
+  const api = `https://api.github.com/repos/${GH_REPO}`;
 
   const parts = [];
-  if (approvedNew.length)      parts.push(`+${approvedNew.length} figures`);
-  if (rejectedNew.length)      parts.push(`-${rejectedNew.length} rejected`);
-  if (editedExisting.length)   parts.push(`${editedExisting.length} edited`);
+  if (approvedNew.length)    parts.push(`+${approvedNew.length} figures`);
+  if (rejectedNew.length)    parts.push(`-${rejectedNew.length} rejected`);
+  if (editedExisting.length) parts.push(`${editedExisting.length} edited`);
   if (Object.keys(customSublines).length || Object.keys(sublineOrder).length) parts.push('subline config');
   const message = `Editor: ${parts.join(', ') || 'loadout update'}`;
 
   try {
+    // 1. Get current HEAD sha
+    const refRes = await fetch(`${api}/git/ref/heads/${GH_BRANCH}`, { headers });
+    if (!refRes.ok) throw new Error(`Could not read branch: ${refRes.status}`);
+    const headSha = (await refRes.json()).object.sha;
+
+    // 2. Get base tree sha from the commit
+    const commitRes = await fetch(`${api}/git/commits/${headSha}`, { headers });
+    if (!commitRes.ok) throw new Error(`Could not read commit: ${commitRes.status}`);
+    const baseTreeSha = (await commitRes.json()).tree.sha;
+
+    // 3. Create blobs for each file
+    const treeItems = [];
     for (const [filename, data] of Object.entries(files)) {
-      // GET current sha (required by GitHub API to update existing files)
-      const getRes = await fetch(base + filename, { headers });
-      let sha;
-      if (getRes.ok) {
-        sha = (await getRes.json()).sha;
-      } else if (getRes.status !== 404) {
-        throw new Error(`GET ${filename} failed: ${getRes.status} ${await getRes.text()}`);
-      }
-
-      const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-      const body = { message, content, branch: GH_BRANCH };
-      if (sha) body.sha = sha;
-
-      const putRes = await fetch(base + filename, {
-        method: 'PUT', headers, body: JSON.stringify(body),
+      const content = JSON.stringify(data, null, 2);
+      const blobRes = await fetch(`${api}/git/blobs`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ content, encoding: 'utf-8' }),
       });
-      if (!putRes.ok) {
-        const err = await putRes.json();
-        throw new Error(`PUT ${filename}: ${err.message}`);
-      }
+      if (!blobRes.ok) throw new Error(`Blob ${filename}: ${blobRes.status}`);
+      const { sha } = await blobRes.json();
+      treeItems.push({ path: filename, mode: '100644', type: 'blob', sha });
     }
 
+    // 4. Create new tree
+    const treeRes = await fetch(`${api}/git/trees`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
+    });
+    if (!treeRes.ok) throw new Error(`Tree creation failed: ${treeRes.status}`);
+    const newTreeSha = (await treeRes.json()).sha;
+
+    // 5. Create commit
+    const newCommitRes = await fetch(`${api}/git/commits`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ message, tree: newTreeSha, parents: [headSha] }),
+    });
+    if (!newCommitRes.ok) throw new Error(`Commit creation failed: ${newCommitRes.status}`);
+    const newCommitSha = (await newCommitRes.json()).sha;
+
+    // 6. Update branch ref
+    const updateRes = await fetch(`${api}/git/refs/heads/${GH_BRANCH}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ sha: newCommitSha }),
+    });
+    if (!updateRes.ok) throw new Error(`Ref update failed: ${updateRes.status}`);
+
     if (btn) { btn.textContent = '✓ Committed!'; setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 3000); }
-    alert(`✓ Committed ${Object.keys(files).length} file(s) to ${GH_REPO}:\n${Object.keys(files).join('\n')}`);
+    alert(`✓ Committed ${Object.keys(files).length} file(s) to ${GH_REPO} in one commit:\n${Object.keys(files).join('\n')}`);
 
   } catch (err) {
     if (btn) { btn.textContent = origLabel; btn.disabled = false; }
