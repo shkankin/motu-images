@@ -11070,7 +11070,8 @@
     "year": 1987,
     "slug": "manual-camo-kahn",
     "source": "manual",
-    "faction": "Snake Men"
+    "faction": "Snake Men",
+    "wave": "Deposito"
   },
   {
     "id": "castaspella-5459",
@@ -12035,6 +12036,19 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-oo-lar-mp0enu3h",
+    "name": "Oolar (Savage He-Man)",
+    "sourceName": "Oo-lar",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "year": 1987,
+    "slug": "manual-oo-lar",
+    "source": "manual",
+    "wave": "Deposito"
   },
   {
     "id": "orko-3229",
