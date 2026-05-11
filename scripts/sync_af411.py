@@ -641,21 +641,6 @@ def main():
             img_failed += 1
         time.sleep(0.5)
 
-    # v1.5: Apply manual patches unconditionally before write.
-    # These override whatever AF411 scraped, matching the CI verify assertions.
-    merged_by_id_final = {f["id"]: f for f in merged}
-    patched_count = 0
-    for fid, fields in MANUAL_PATCHES.items():
-        e = merged_by_id_final.get(fid)
-        if not e:
-            continue
-        for field, val in fields.items():
-            if e.get(field) != val:
-                e[field] = val
-                patched_count += 1
-    if patched_count:
-        print(f"  🔒 Applied {patched_count} manual patch field(s) from MANUAL_PATCHES")
-
     # Sort by line then name for clean diffs
     line_order = {l[0]: i for i, l in enumerate(LINES)}
     merged.sort(key=lambda f: (line_order.get(f.get("line", ""), 99), f.get("name", "")))
