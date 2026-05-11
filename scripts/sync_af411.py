@@ -519,9 +519,11 @@ def main():
             line_overrides.append((fid, e.get("line"), s["line"]))
 
         # v1.5: detect manual group overrides.
+        # v1.8: also protect group when sourceGroup is absent.
         is_group_overridden = (
             "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
         )
+        sourcegroup_missing = "sourceGroup" not in e
         if is_group_overridden:
             group_overrides.append((fid, e.get("group"), s["group"]))
 
@@ -557,10 +559,10 @@ def main():
         # Also skip if this figure has a MANUAL_PATCHES group entry — it will
         # be re-applied unconditionally at write time, no need to surface as a change.
         _has_manual_group = fid in MANUAL_PATCHES and "group" in MANUAL_PATCHES[fid]
-        if s["group"] and s["group"] != e.get("group", "") and not is_group_overridden and not _has_manual_group:
+        if s["group"] and s["group"] != e.get("group", "") and not is_group_overridden and not sourcegroup_missing and not _has_manual_group:
             changes.append(f"group: '{e.get('group','')}' → '{s['group']}'")
         # v1.5: backfill sourceGroup on entries that don't have it yet.
-        if "sourceGroup" not in e and s["group"]:
+        if sourcegroup_missing and s["group"]:
             changes.append(f"sourceGroup: missing → '{s['group']}'")
         elif not is_group_overridden and e.get("sourceGroup") != s["group"]:
             # AF411 changed its group label — update sourceGroup to track it.
@@ -669,11 +671,12 @@ def main():
         s = scraped_by_id[fid]
         e = merged_by_id[fid]
         is_overridden = e.get("line") and e.get("line") != s["line"]
-        # v1.6: name override protection
+        # v1.6/v1.8: name override protection — also protect when sourceName absent
         is_name_overridden = (
             "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
         )
-        if s["name"] and not is_name_overridden:
+        sourcename_missing_write = "sourceName" not in e
+        if s["name"] and not is_name_overridden and not sourcename_missing_write:
             e["name"] = s["name"]
         if s["wave"]:
             e["wave"] = s["wave"]
@@ -686,12 +689,10 @@ def main():
         # keep the group the user set. On non-overridden entries, take
         # AF411's value.
         if s["group"] and not is_overridden:
-            # v1.5: also gate on group override — user may have moved figure
-            # to a different subline independently of the line override.
             is_group_overridden = (
                 "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
             )
-            if not is_group_overridden:
+            if not is_group_overridden and "sourceGroup" in e:
                 e["group"] = s["group"]
         # v1.3: always update sourceLine to whatever AF411 currently says.
         # This is bookkeeping — the active `line` field is preserved on
