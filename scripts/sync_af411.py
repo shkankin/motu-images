@@ -526,18 +526,22 @@ def main():
             group_overrides.append((fid, e.get("group"), s["group"]))
 
         # v1.6: detect manual name overrides.
+        # v1.7: also protect name when sourceName is absent — the name may have
+        # been edited before sourceName tracking existed. Don't overwrite it;
+        # just backfill sourceName from AF411 so future syncs can track properly.
         is_name_overridden = (
             "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
         )
+        sourcename_missing = "sourceName" not in e
 
         changes = []
-        if is_name_overridden:
+        if is_name_overridden or sourcename_missing:
             pass  # name is protected — skip name change detection
         elif s["name"] != e.get("name"):
             changes.append(f"name: '{e.get('name')}' → '{s['name']}'")
 
         # v1.6: backfill sourceName on entries that don't have it yet.
-        if "sourceName" not in e and s["name"]:
+        if sourcename_missing and s["name"]:
             changes.append(f"sourceName: missing → '{s['name']}'")
         elif not is_name_overridden and e.get("sourceName") != s["name"]:
             changes.append(f"sourceName: '{e.get('sourceName')}' → '{s['name']}'")
