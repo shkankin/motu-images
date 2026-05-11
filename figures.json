@@ -13633,6 +13633,21 @@
     "sourceGroup": ""
   },
   {
+    "id": "buzz-off-motubi-13633",
+    "name": "Buzz-Off (MOTUbi)",
+    "sourceName": "Buzz-Off (MOTUbi)",
+    "line": "mondo",
+    "sourceLine": "mondo",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 265,
+    "slug": "buzz-off-motubi-13633",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
     "id": "buzz-off-timed-edition-10466",
     "name": "Buzz-Off (Timed Edition)",
     "line": "mondo",
@@ -13745,6 +13760,21 @@
     "sourceGroup": ""
   },
   {
+    "id": "he-man-deluxe-2-0-timed-edition-13630",
+    "name": "He-Man (Deluxe 2.0 - Timed Edition)",
+    "sourceName": "He-Man (Deluxe 2.0 - Timed Edition)",
+    "line": "mondo",
+    "sourceLine": "mondo",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 285,
+    "slug": "he-man-deluxe-2-0-timed-edition-13630",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
     "id": "he-man-deluxe-10471",
     "name": "He-Man (Deluxe)",
     "line": "mondo",
@@ -13813,6 +13843,21 @@
     "source": "af411",
     "sourceLine": "mondo",
     "sourceGroup": ""
+  },
+  {
+    "id": "man-at-arms-200x-timed-edition-13631",
+    "name": "Man-At-Arms (200x - Timed Edition)",
+    "sourceName": "Man-At-Arms (200x - Timed Edition)",
+    "line": "mondo",
+    "sourceLine": "mondo",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 120,
+    "slug": "man-at-arms-200x-timed-edition-13631",
+    "faction": "Heroic Warriors",
+    "source": "af411"
   },
   {
     "id": "man-at-arms-exclusive-10476",
@@ -14053,6 +14098,36 @@
     "sourceGroup": ""
   },
   {
+    "id": "skeletor-200x-timed-edition-13632",
+    "name": "Skeletor (200x - Timed Edition)",
+    "sourceName": "Skeletor (200x - Timed Edition)",
+    "line": "mondo",
+    "sourceLine": "mondo",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 115,
+    "slug": "skeletor-200x-timed-edition-13632",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
+    "id": "skeletor-200x-13629",
+    "name": "Skeletor (200x)",
+    "sourceName": "Skeletor (200x)",
+    "line": "mondo",
+    "sourceLine": "mondo",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 95,
+    "slug": "skeletor-200x-13629",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
     "id": "skeletor-deluxe-timed-edition-10491",
     "name": "Skeletor (Deluxe - Timed Edition)",
     "line": "mondo",
@@ -14247,6 +14322,21 @@
     "source": "af411",
     "sourceLine": "mondo",
     "sourceGroup": ""
+  },
+  {
+    "id": "tri-klops-limited-edition-13628",
+    "name": "Tri-Klops (Limited Edition)",
+    "sourceName": "Tri-Klops (Limited Edition)",
+    "line": "mondo",
+    "sourceLine": "mondo",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 255,
+    "slug": "tri-klops-limited-edition-13628",
+    "faction": "Evil Warriors",
+    "source": "af411"
   },
   {
     "id": "beast-man-2786",
