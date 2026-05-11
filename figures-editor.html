@@ -490,7 +490,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.10.0';
+const EDITOR_VERSION = 'v1.10.1';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -999,10 +999,11 @@ let figAccessories = {};
 // ── File loading ───────────────────────────────────────────────────
 
 async function loadFromFetch() {
-  // Try fetching from same-origin paths
+  // Try fetching from same-origin paths. Cache-bust with timestamp so the
+  // browser always fetches the latest JSON rather than a stale cached copy.
   const tryFetch = async (path) => {
     try {
-      const r = await fetch(path);
+      const r = await fetch(path + '?v=' + Date.now(), { cache: 'no-store' });
       if (r.ok) return await r.json();
     } catch {}
     return null;
@@ -1044,7 +1045,17 @@ function loadFile(ev, kind) {
 
 function ingestPending(data) {
   if (!Array.isArray(data)) { alert('figures-pending.json must be an array'); return; }
-  pendingFigs = data;
+  // Strip the AF411-injected "Action Figures" group from lines that have no
+  // sublines (e.g. Mondo). AF411 tags every figure with a default group even
+  // when the line is flat — keep the field empty so the editor shows a blank
+  // free-text input rather than a misleading "Action Figures" value.
+  pendingFigs = data.map(f => {
+    if (!SUBLINES[f.line] && f.group === 'Action Figures') {
+      const { group, sourceGroup, ...rest } = f;
+      return rest;
+    }
+    return f;
+  });
   // Initialize per-figure accessories from any existing loadout entry
   for (const f of pendingFigs) {
     if (loadouts[f.id]) figAccessories[f.id] = [...loadouts[f.id]];
