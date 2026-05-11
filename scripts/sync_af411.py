@@ -501,87 +501,11 @@ def main():
 
     new_ids = new_for_existing  # legacy alias used in commit block below
     removed_ids = existing_ids - scraped_ids if not args.line else set()  # Only flag removals on full sync
+    # v1.9: existing figures are NEVER modified. Once a figure is in
+    # figures.json it belongs to the user. AF411 data for new figures only.
     updated = []
-    line_overrides = []   # v1.3: entries where user has manually re-tagged the line
-    group_overrides = []  # v1.5: entries where user has manually re-tagged the group/subline
-
-    # Check for data changes in existing figures
-    for fid in scraped_ids & existing_ids:
-        s = scraped_by_id[fid]
-        e = existing_by_id[fid]
-        # v1.3: detect manual line overrides. If existing line differs from
-        # what AF411 says (sourceLine), the user has reclassified — never
-        # touch the line field on this entry. Track it so the audit report
-        # can show it.
-        existing_source_line = e.get("sourceLine") or e.get("line")
-        is_overridden = e.get("line") and e.get("line") != s["line"]
-        if is_overridden:
-            line_overrides.append((fid, e.get("line"), s["line"]))
-
-        # v1.5: detect manual group overrides.
-        # v1.8: also protect group when sourceGroup is absent.
-        is_group_overridden = (
-            "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
-        )
-        sourcegroup_missing = not e.get("sourceGroup")  # absent or empty string
-        if is_group_overridden:
-            group_overrides.append((fid, e.get("group"), s["group"]))
-
-        # v1.6: detect manual name overrides.
-        # v1.7: also protect name when sourceName is absent — the name may have
-        # been edited before sourceName tracking existed. Don't overwrite it;
-        # just backfill sourceName from AF411 so future syncs can track properly.
-        is_name_overridden = (
-            "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
-        )
-        sourcename_missing = not e.get("sourceName")  # absent or empty string
-
-        changes = []
-        if is_name_overridden or sourcename_missing:
-            pass  # name is protected — skip name change detection
-        elif s["name"] != e.get("name"):
-            changes.append(f"name: '{e.get('name')}' → '{s['name']}'")
-
-        # v1.6: backfill sourceName on entries that don't have it yet.
-        if sourcename_missing and s["name"]:
-            changes.append(f"sourceName: missing → '{s['name']}'")
-        elif not is_name_overridden and e.get("sourceName") != s["name"]:
-            changes.append(f"sourceName: '{e.get('sourceName')}' → '{s['name']}'")
-
-        if s["wave"] and s["wave"] != e.get("wave", ""):
-            changes.append(f"wave: '{e.get('wave','')}' → '{s['wave']}'")
-        if s["year"] and s["year"] != e.get("year"):
-            changes.append(f"year: {e.get('year')} → {s['year']}")
-        if s["retail"] and s["retail"] != e.get("retail"):
-            changes.append(f"retail: {e.get('retail')} → {s['retail']}")
-        # v1.5: only flag group change when there's no manual override AND
-        # AF411's value actually differs from what we have.
-        # Also skip if this figure has a MANUAL_PATCHES group entry — it will
-        # be re-applied unconditionally at write time, no need to surface as a change.
-        _has_manual_group = fid in MANUAL_PATCHES and "group" in MANUAL_PATCHES[fid]
-        if s["group"] and s["group"] != e.get("group", "") and not is_group_overridden and not sourcegroup_missing and not _has_manual_group:
-            changes.append(f"group: '{e.get('group','')}' → '{s['group']}'")
-        # v1.5: backfill sourceGroup on entries that don't have it yet.
-        if sourcegroup_missing and s["group"]:
-            changes.append(f"sourceGroup: missing → '{s['group']}'")
-        elif not is_group_overridden and e.get("sourceGroup") != s["group"]:
-            # AF411 changed its group label — update sourceGroup to track it.
-            changes.append(f"sourceGroup: '{e.get('sourceGroup')}' → '{s['group']}'")
-        # v1.3: backfill sourceLine on legacy entries that don't have it.
-        # Without this field, the override-detection above can't work on
-        # future syncs. Backfill = whatever AF411 currently says.
-        if e.get("sourceLine") != s["line"]:
-            if "sourceLine" not in e:
-                changes.append(f"sourceLine: missing → '{s['line']}'")
-            elif not is_overridden:
-                # AF411 changed its categorization of this figure (uncommon
-                # but possible). Update sourceLine to match.
-                changes.append(f"sourceLine: '{e.get('sourceLine')}' → '{s['line']}'")
-        # v1.1: flag entries missing source (we'll fix on commit)
-        if not e.get("source"):
-            changes.append("source: missing → 'af411'")
-        if changes:
-            updated.append((fid, changes))
+    line_overrides = []
+    group_overrides = []
 
     # ── Report ────────────────────────────────────────────────────
     print(f"\n{'═' * 60}")
@@ -658,55 +582,6 @@ def main():
     merged = list(existing)
     merged_by_id = {f["id"]: f for f in merged}
 
-    # Update existing figures with new data.
-    # v1.1: source='af411' is now ALWAYS set on AF411-sourced entries — this
-    # backfills the ~10 figures that were imported before source-tagging existed.
-    # v1.3: never overwrite the `line` or `group` fields on entries with a
-    # manual line override (line != AF411's classification). The user has
-    # decided this figure belongs somewhere AF411 doesn't agree with;
-    # respect that on every field that depends on classification.
-    # v1.4: also write `sourceLine` so the override-detection works on
-    # future syncs.
-    for fid, _ in updated:
-        s = scraped_by_id[fid]
-        e = merged_by_id[fid]
-        is_overridden = e.get("line") and e.get("line") != s["line"]
-        # v1.6/v1.8: name override protection — also protect when sourceName absent
-        is_name_overridden = (
-            "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
-        )
-        sourcename_missing_write = not e.get("sourceName")  # absent or empty string
-        if s["name"] and not is_name_overridden and not sourcename_missing_write:
-            e["name"] = s["name"]
-        if s["wave"]:
-            e["wave"] = s["wave"]
-        if s["year"]:
-            e["year"] = s["year"]
-        if s["retail"]:
-            e["retail"] = s["retail"]
-        # v1.3: group is line-dependent (e.g. "Movie (2026)" only makes
-        # sense under kids-core, not chronicles). On overridden entries,
-        # keep the group the user set. On non-overridden entries, take
-        # AF411's value.
-        if s["group"] and not is_overridden:
-            is_group_overridden = (
-                "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
-            )
-            if not is_group_overridden and e.get("sourceGroup"):
-                e["group"] = s["group"]
-        # v1.3: always update sourceLine to whatever AF411 currently says.
-        # This is bookkeeping — the active `line` field is preserved on
-        # overrides above.
-        e["sourceLine"] = s["line"]
-        # v1.5: always update sourceGroup to whatever AF411 currently says.
-        e["sourceGroup"] = s["group"]
-        # v1.6: always update sourceName to whatever AF411 currently says.
-        e["sourceName"] = s["name"]
-        # Always tag source — these entries DEFINITELY came from AF411 since
-        # we matched them by ID. Backfills missing source on legacy entries.
-        e["source"] = "af411"
-
-    # v1.4: helper — build a fresh figure dict for new entries.
     def build_new_fig(s, for_pending):
         out = {
             "id": s["id"],
