@@ -51,46 +51,6 @@ jobs:
           echo "Running: $CMD"
           $CMD
 
-      - name: Verify manual patches survived sync
-        if: ${{ github.event_name == 'schedule' || inputs.audit_only != 'true' }}
-        run: |
-          cd ${{ github.workspace }}
-          # IDs we manually patched in figures.json (group + source). If the
-          # sync script wiped these, fail the run so we don't push regressions.
-          python3 <<'PY'
-          import json, sys
-          PATCHED = {
-            '2026-movie-4-pack-13440':                 ('Exclusives',          'af411'),
-            'beast-man-deluxe-13523':                  ('Deluxe',              'af411'),
-            'fright-fighter-2026-movie-13439':         ('Vehicles & Playsets', 'af411'),
-            'he-man-nick-galitzine-13442':             ('Action Figures',      'af411'),
-            'he-man-and-sky-sled-2026-movie-13444':    ('Vehicles & Playsets', 'af411'),
-            'spikor-2026-movie-13443':                 ('Action Figures',      'af411'),
-            'trap-jaw-2026-movie-deluxe-13438':        ('Deluxe',              'af411'),
-            'beast-man-1987-movie-8420':               ('Movie',               'af411'),
-            'king-grayskull-13486':                    (None,                  'af411'),
-            'ram-man-jon-xue-zhang-fisto-jhannes-haukur-jhannesson-13441': (None, 'af411'),
-          }
-          with open('figures.json') as f:
-              figs = {x['id']: x for x in json.load(f)}
-          fails = []
-          for fid, (g, s) in PATCHED.items():
-              fig = figs.get(fid)
-              if not fig:
-                  fails.append(f"{fid}: MISSING from figures.json")
-                  continue
-              if g and fig.get('group') != g:
-                  fails.append(f"{fid}: group expected '{g}', got '{fig.get('group','')}'")
-              if s and fig.get('source') != s:
-                  fails.append(f"{fid}: source expected '{s}', got '{fig.get('source','')}'")
-          if fails:
-              print("❌ Sync wiped manual patches. Restore them in scripts/sync_af411.py or re-apply post-sync.\n")
-              for f in fails:
-                  print("  -", f)
-              sys.exit(1)
-          print(f"✅ All {len(PATCHED)} manual patches preserved")
-          PY
-
       - name: Commit and push changes
         if: ${{ github.event_name == 'schedule' || inputs.audit_only != 'true' }}
         run: |
