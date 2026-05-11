@@ -52,22 +52,6 @@ CHANGELOG
       in figures.json like every other line. App was updated in v6.16 to
       stop fetching the separate file.
 
-  v1.9 (2026-05-11)
-    - Fix group protection for entries missing sourceGroup (e.g. a manually
-      restored figures.json that predates sourceGroup tracking). Previously,
-      missing sourceGroup caused is_group_overridden=False, so the sync would
-      overwrite the user's custom group value AND set sourceGroup to AF411's
-      value — silently destroying the customization. Now treats missing
-      sourceGroup the same as missing sourceName: assume the current value is
-      intentional, backfill sourceGroup for future tracking, leave group alone.
-      Affects both the detection pass (audit reporting) and the write pass.
-
-  v1.8 (2026-05-11)
-    - Remove spikor-2026-movie-13443 from MANUAL_PATCHES. The sourceGroup
-      override mechanism already protects custom group values; the hardcoded
-      patch was unconditionally overwriting the user's "Movie (2026)" group
-      with "Action Figures" after every sync.
-
   v1.5 (2026-05-01)
     - sourceGroup field. Parallel to sourceLine — tracks what AF411 says the
       group/subline is. If `group != sourceGroup` on an existing entry, the
@@ -215,6 +199,7 @@ MANUAL_PATCHES = {
     "fright-fighter-2026-movie-13439":                   {"group": "Vehicles & Playsets"},
     "he-man-nick-galitzine-13442":                       {"group": "Action Figures"},
     "he-man-and-sky-sled-2026-movie-13444":              {"group": "Vehicles & Playsets"},
+    "spikor-2026-movie-13443":                           {"group": "Action Figures"},
     "trap-jaw-2026-movie-deluxe-13438":                  {"group": "Deluxe"},
     "beast-man-1987-movie-8420":                         {"group": "Movie"},
     # king-grayskull-13486 and ram-man-*-13441 only assert source in CI, no group patch needed
@@ -534,12 +519,8 @@ def main():
             line_overrides.append((fid, e.get("line"), s["line"]))
 
         # v1.5: detect manual group overrides.
-        # v1.9: also protect group when sourceGroup is absent — same logic as
-        # sourcename_missing. The entry predates sourceGroup tracking; treat
-        # the current group value as intentional.
-        sourcegroup_missing = "sourceGroup" not in e
         is_group_overridden = (
-            sourcegroup_missing or (e.get("group") and e.get("group") != e.get("sourceGroup"))
+            "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
         )
         if is_group_overridden:
             group_overrides.append((fid, e.get("group"), s["group"]))
@@ -707,14 +688,10 @@ def main():
         if s["group"] and not is_overridden:
             # v1.5: also gate on group override — user may have moved figure
             # to a different subline independently of the line override.
-            # v1.9: treat missing sourceGroup the same as a name override —
-            # the entry predates sourceGroup tracking, so assume the current
-            # group value is intentional and do not overwrite it.
-            sourcegroup_missing = "sourceGroup" not in e
             is_group_overridden = (
-                not sourcegroup_missing and e.get("group") and e.get("group") != e.get("sourceGroup")
+                "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
             )
-            if not is_group_overridden and not sourcegroup_missing:
+            if not is_group_overridden:
                 e["group"] = s["group"]
         # v1.3: always update sourceLine to whatever AF411 currently says.
         # This is bookkeeping — the active `line` field is preserved on
