@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOTU Vault — Deploy</title>
+<style>
+  :root {
+    --bg:  #0f0f13;
+    --bg2: #18181f;
+    --bg3: #22222c;
+    --bd:  #2e2e3a;
+    --t1:  #f0f0f5;
+    --t2:  #9090a8;
+    --t3:  #55556a;
+    --acc: #f5c842;
+    --acc2:#e0a820;
+    --green: #3ecf6a;
+    --red:   #e05555;
+    --blue:  #5b8dee;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--t1);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--acc);
+    text-transform: uppercase;
+  }
+  header p {
+    color: var(--t2);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--bd);
+    border-radius: var(--radius);
+    padding: 20px;
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--t2);
+    margin-bottom: 14px;
+  }
+
+  /* Token */
+  .token-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .token-row input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--bd);
+    border-radius: 6px;
+    color: var(--t1);
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .token-row input:focus { border-color: var(--acc); }
+  .token-status {
+    font-size: 12px;
+    margin-top: 8px;
+    color: var(--t3);
+  }
+  .token-status.ok  { color: var(--green); }
+  .token-status.bad { color: var(--red); }
+
+  /* Drop zone */
+  #dropZone {
+    border: 2px dashed var(--bd);
+    border-radius: var(--radius);
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+  #dropZone.drag-over {
+    border-color: var(--acc);
+    background: rgba(245,200,66,0.05);
+  }
+  #dropZone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  #dropZone .drop-icon { font-size: 32px; margin-bottom: 10px; }
+  #dropZone .drop-label { color: var(--t2); font-size: 13px; }
+  #dropZone .drop-sub   { color: var(--t3); font-size: 11px; margin-top: 6px; }
+
+  /* File list */
+  #fileList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg3);
+    border-radius: 6px;
+    border: 1px solid var(--bd);
+    font-size: 13px;
+  }
+  .file-row .file-name { flex: 1; font-family: monospace; color: var(--t1); }
+  .file-row .file-dest { font-size: 11px; color: var(--t3); font-family: monospace; }
+  .file-row .file-status { font-size: 16px; min-width: 20px; text-align: center; }
+  .file-row.ok     { border-color: #2a4a2a; }
+  .file-row.err    { border-color: #4a2a2a; }
+  .file-row.unknown { opacity: 0.5; }
+
+  /* Buttons */
+  button {
+    background: var(--bg3);
+    color: var(--t1);
+    border: 1px solid var(--bd);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  button:hover { background: var(--bd); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary {
+    background: var(--acc);
+    color: #111;
+    border-color: var(--acc2);
+    font-size: 14px;
+    padding: 10px 24px;
+    width: 100%;
+    max-width: 640px;
+    margin-top: 4px;
+  }
+  button.primary:hover:not(:disabled) { background: var(--acc2); }
+  button.danger { color: var(--red); border-color: var(--red); }
+  button.danger:hover { background: rgba(224,85,85,0.12); }
+
+  /* Log */
+  #log {
+    width: 100%;
+    max-width: 640px;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .log-entry {
+    font-size: 12px;
+    font-family: monospace;
+    padding: 5px 10px;
+    border-radius: 5px;
+    background: var(--bg2);
+    border-left: 3px solid var(--bd);
+  }
+  .log-entry.ok  { border-color: var(--green); color: var(--green); }
+  .log-entry.err { border-color: var(--red);   color: var(--red); }
+  .log-entry.inf { border-color: var(--blue);  color: var(--blue); }
+  .log-entry.dim { color: var(--t3); }
+
+  /* Progress bar */
+  #progressWrap {
+    width: 100%;
+    max-width: 640px;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+    display: none;
+  }
+  #progressBar {
+    height: 100%;
+    background: var(--acc);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.2s;
+  }
+
+  .row { display: flex; gap: 8px; }
+  .spacer { flex: 1; }
+  a { color: var(--acc); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚔ MOTU Vault — Deploy</h1>
+  <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code></p>
+</header>
+
+<!-- Token -->
+<div class="card">
+  <h2>GitHub Token</h2>
+  <div class="token-row">
+    <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx" oninput="onTokenInput()">
+    <button onclick="saveToken()">Save</button>
+    <button class="danger" onclick="clearToken()">Clear</button>
+  </div>
+  <div class="token-status" id="tokenStatus">No token saved</div>
+</div>
+
+<!-- Drop zone -->
+<div class="card">
+  <h2>Files to Deploy</h2>
+  <div id="dropZone">
+    <input type="file" multiple accept=".js,.html,.css,.py,.json,.yml,.yaml" onchange="onFilePick(this.files)">
+    <div class="drop-icon">📂</div>
+    <div class="drop-label">Drop files here or tap to browse</div>
+    <div class="drop-sub">Accepts .js .html .css .py .json .yml — paths are auto-resolved</div>
+  </div>
+  <div id="fileList"></div>
+  <div style="display:flex;gap:8px;margin-top:12px" id="listActions" style="display:none">
+    <button onclick="clearFiles()">Clear all</button>
+    <div class="spacer"></div>
+    <span id="fileCount" style="color:var(--t2);font-size:12px;align-self:center"></span>
+  </div>
+</div>
+
+<!-- Commit message -->
+<div class="card">
+  <h2>Commit Message</h2>
+  <input type="text" id="commitMsg" value="Deploy: update app files"
+    style="width:100%;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font-size:13px;padding:8px 12px;outline:none">
+</div>
+
+<button class="primary" id="deployBtn" onclick="deploy()" disabled>⬆ Commit to GitHub</button>
+
+<div id="progressWrap"><div id="progressBar"></div></div>
+<div id="log"></div>
+
+<script>
+const REPO   = 'shkankin/motu-images';
+const BRANCH = 'main';
+const TOKEN_KEY = 'motu-deploy-gh-token';
+
+// ── File → repo path mapping ──────────────────────────────────────
+const PATH_MAP = {
+  // /js
+  'app.js':               'js/app.js',
+  'data.js':              'js/data.js',
+  'render.js':            'js/render.js',
+  'state.js':             'js/state.js',
+  'handlers.js':          'js/handlers.js',
+  'eggs.js':              'js/eggs.js',
+  'delegate.js':          'js/delegate.js',
+  'delegate-handlers.js': 'js/delegate-handlers.js',
+  'ui-sheets.js':         'js/ui-sheets.js',
+  'photos.js':            'js/photos.js',
+  'pricing.js':           'js/pricing.js',
+  'tutorial.js':          'js/tutorial.js',
+  'pricing-worker.js':    'js/pricing-worker.js',
+  // root
+  'vault.css':            'vault.css',
+  'motu-vault.html':      'motu-vault.html',
+  'figures-editor.html':  'figures-editor.html',
+  'sw.js':                'sw.js',
+  'manifest.json':        'manifest.json',
+  'deploy.html':          'deploy.html',
+  // figures data (root)
+  'figures.json':         'figures.json',
+  'figures-pending.json': 'figures-pending.json',
+  'figures-rejected.json':'figures-rejected.json',
+  'loadouts.json':        'loadouts.json',
+  // /scripts
+  'sync_af411.py':        'scripts/sync_af411.py',
+  // /.github/workflows
+  'sync-af411.yml':       '.github/workflows/sync-af411.yml',
+};
+
+// ── State ──────────────────────────────────────────────────────────
+let files = new Map(); // filename → { file, repoPath, status }
+
+// ── Token ──────────────────────────────────────────────────────────
+function loadToken() {
+  const t = localStorage.getItem(TOKEN_KEY);
+  if (t) {
+    document.getElementById('tokenInput').value = t;
+    setTokenStatus('ok', '✓ Token saved');
+  }
+  updateDeployBtn();
+}
+
+function onTokenInput() { updateDeployBtn(); }
+
+function saveToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { alert('Enter a token first.'); return; }
+  localStorage.setItem(TOKEN_KEY, t);
+  setTokenStatus('ok', '✓ Token saved');
+  updateDeployBtn();
+}
+
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  document.getElementById('tokenInput').value = '';
+  setTokenStatus('', 'No token saved');
+  updateDeployBtn();
+}
+
+function setTokenStatus(cls, msg) {
+  const el = document.getElementById('tokenStatus');
+  el.className = 'token-status ' + cls;
+  el.textContent = msg;
+}
+
+function getToken() {
+  return document.getElementById('tokenInput').value.trim() || localStorage.getItem(TOKEN_KEY) || '';
+}
+
+// ── Drop zone ──────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  onFilePick(e.dataTransfer.files);
+});
+
+function onFilePick(fileList) {
+  for (const f of fileList) {
+    const repoPath = PATH_MAP[f.name]
+      || (f.name.match(/\.jpe?g$/i) ? f.name : null);
+    files.set(f.name, { file: f, repoPath, status: 'pending' });
+  }
+  renderFileList();
+  updateDeployBtn();
+}
+
+function clearFiles() {
+  files.clear();
+  renderFileList();
+  updateDeployBtn();
+  clearLog();
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  const actions = document.getElementById('listActions');
+  const count = document.getElementById('fileCount');
+  if (files.size === 0) { el.innerHTML = ''; actions.style.display = 'none'; return; }
+  actions.style.display = 'flex';
+  count.textContent = `${files.size} file${files.size !== 1 ? 's' : ''}`;
+  el.innerHTML = [...files.values()].map(({file, repoPath, status}) => {
+    const icon = status === 'ok' ? '✓' : status === 'err' ? '✗' : status === 'uploading' ? '⏳' : '·';
+    const cls  = status === 'ok' ? 'ok' : status === 'err' ? 'err' : repoPath ? '' : 'unknown';
+    const dest = repoPath || '⚠ unknown file — will be skipped';
+    return `<div class="file-row ${cls}">
+      <span class="file-status">${icon}</span>
+      <span class="file-name">${esc(file.name)}</span>
+      <span class="file-dest">${esc(dest)}</span>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function updateDeployBtn() {
+  const btn = document.getElementById('deployBtn');
+  const hasToken = !!getToken();
+  const hasFiles = [...files.values()].some(f => f.repoPath);
+  btn.disabled = !hasToken || !hasFiles;
+}
+
+// ── Deploy ─────────────────────────────────────────────────────────
+async function deploy() {
+  const token = getToken();
+  if (!token) { alert('No GitHub token.'); return; }
+
+  const eligible = [...files.values()].filter(f => f.repoPath);
+  if (!eligible.length) { alert('No recognised files to deploy.'); return; }
+
+  const message = document.getElementById('commitMsg').value.trim() || 'Deploy: update app files';
+  const btn = document.getElementById('deployBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Deploying…';
+  clearLog();
+  setProgress(0, true);
+
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  const api = `https://api.github.com/repos/${REPO}`;
+
+  try {
+    log('inf', `Connecting to ${REPO}…`);
+
+    // 1. Get HEAD sha
+    const refRes = await fetch(`${api}/git/ref/heads/${BRANCH}`, { headers });
+    if (!refRes.ok) throw new Error(`Branch read failed: ${refRes.status}`);
+    const headSha = (await refRes.json()).object.sha;
+    log('dim', `HEAD: ${headSha.slice(0,7)}`);
+
+    // 2. Get base tree
+    const commitRes = await fetch(`${api}/git/commits/${headSha}`, { headers });
+    if (!commitRes.ok) throw new Error(`Commit read failed: ${commitRes.status}`);
+    const baseTreeSha = (await commitRes.json()).tree.sha;
+
+    // 3. Create blobs
+    const treeItems = [];
+    let done = 0;
+    for (const { file, repoPath } of eligible) {
+      setFileStatus(file.name, 'uploading');
+      renderFileList();
+      log('dim', `  Uploading ${repoPath}…`);
+      try {
+        const content = await readFileAsText(file);
+        const blobRes = await fetch(`${api}/git/blobs`, {
+          method: 'POST', headers,
+          body: JSON.stringify({ content, encoding: 'utf-8' }),
+        });
+        if (!blobRes.ok) throw new Error(`${blobRes.status}`);
+        const { sha } = await blobRes.json();
+        treeItems.push({ path: repoPath, mode: '100644', type: 'blob', sha });
+        setFileStatus(file.name, 'ok');
+        done++;
+        setProgress(Math.round(done / eligible.length * 80));
+      } catch (e) {
+        setFileStatus(file.name, 'err');
+        log('err', `  ✗ ${file.name}: ${e.message}`);
+      }
+      renderFileList();
+    }
+
+    if (!treeItems.length) throw new Error('All files failed to upload.');
+
+    // 4. Create tree
+    log('dim', 'Building commit tree…');
+    const treeRes = await fetch(`${api}/git/trees`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
+    });
+    if (!treeRes.ok) throw new Error(`Tree failed: ${treeRes.status}`);
+    const newTreeSha = (await treeRes.json()).sha;
+    setProgress(88);
+
+    // 5. Create commit
+    const newCommitRes = await fetch(`${api}/git/commits`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ message, tree: newTreeSha, parents: [headSha] }),
+    });
+    if (!newCommitRes.ok) throw new Error(`Commit failed: ${newCommitRes.status}`);
+    const newCommitSha = (await newCommitRes.json()).sha;
+    setProgress(94);
+
+    // 6. Update ref
+    const updateRes = await fetch(`${api}/git/refs/heads/${BRANCH}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ sha: newCommitSha }),
+    });
+    if (!updateRes.ok) throw new Error(`Ref update failed: ${updateRes.status}`);
+    setProgress(100);
+
+    log('ok', `✓ Committed ${treeItems.length} file(s): ${newCommitSha.slice(0,7)}`);
+    log('ok', `  Pages deployment triggered — live in ~45s`);
+    btn.textContent = `✓ Deployed ${treeItems.length} file(s)`;
+    setTimeout(() => { btn.textContent = '⬆ Commit to GitHub'; btn.disabled = false; updateDeployBtn(); }, 4000);
+
+  } catch (err) {
+    setProgress(0, false);
+    log('err', `✗ ${err.message}`);
+    btn.textContent = '⬆ Commit to GitHub';
+    btn.disabled = false;
+    updateDeployBtn();
+    if (err.message.includes('401') || err.message.includes('Bad credentials')) {
+      localStorage.removeItem(TOKEN_KEY);
+      setTokenStatus('bad', '✗ Token rejected — please re-enter');
+    }
+  }
+}
+
+function setFileStatus(name, status) {
+  if (files.has(name)) files.get(name).status = status;
+}
+
+function readFileAsText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = () => rej(new Error('File read failed'));
+    r.readAsText(file, 'utf-8');
+  });
+}
+
+// ── Log / progress ─────────────────────────────────────────────────
+function log(type, msg) {
+  const el = document.getElementById('log');
+  const div = document.createElement('div');
+  div.className = `log-entry ${type}`;
+  div.textContent = msg;
+  el.appendChild(div);
+  div.scrollIntoView({ block: 'nearest' });
+}
+
+function clearLog() {
+  document.getElementById('log').innerHTML = '';
+}
+
+function setProgress(pct, show = true) {
+  const wrap = document.getElementById('progressWrap');
+  const bar  = document.getElementById('progressBar');
+  wrap.style.display = show ? 'block' : 'none';
+  bar.style.width = pct + '%';
+}
+
+// ── Init ───────────────────────────────────────────────────────────
+loadToken();
+</script>
+</body>
+</html>
