@@ -523,7 +523,7 @@ def main():
         is_group_overridden = (
             "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
         )
-        sourcegroup_missing = "sourceGroup" not in e
+        sourcegroup_missing = not e.get("sourceGroup")  # absent or empty string
         if is_group_overridden:
             group_overrides.append((fid, e.get("group"), s["group"]))
 
@@ -534,7 +534,7 @@ def main():
         is_name_overridden = (
             "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
         )
-        sourcename_missing = "sourceName" not in e
+        sourcename_missing = not e.get("sourceName")  # absent or empty string
 
         changes = []
         if is_name_overridden or sourcename_missing:
@@ -675,7 +675,7 @@ def main():
         is_name_overridden = (
             "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
         )
-        sourcename_missing_write = "sourceName" not in e
+        sourcename_missing_write = not e.get("sourceName")  # absent or empty string
         if s["name"] and not is_name_overridden and not sourcename_missing_write:
             e["name"] = s["name"]
         if s["wave"]:
@@ -692,7 +692,7 @@ def main():
             is_group_overridden = (
                 "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
             )
-            if not is_group_overridden and "sourceGroup" in e:
+            if not is_group_overridden and e.get("sourceGroup"):
                 e["group"] = s["group"]
         # v1.3: always update sourceLine to whatever AF411 currently says.
         # This is bookkeeping — the active `line` field is preserved on
