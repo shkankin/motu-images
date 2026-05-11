@@ -518,21 +518,19 @@ def main():
         if is_overridden:
             line_overrides.append((fid, e.get("line"), s["line"]))
 
-        # v1.5: detect manual group overrides. If sourceGroup is set and
-        # differs from the current group, the user has reclassified — never
-        # overwrite group on this entry.
+        # v1.5: detect manual group overrides.
         is_group_overridden = (
             "sourceGroup" in e and e.get("group") and e.get("group") != e.get("sourceGroup")
         )
         if is_group_overridden:
             group_overrides.append((fid, e.get("group"), s["group"]))
 
-        # v1.6: detect manual name overrides. If sourceName is set and
-        # differs from the current name, the user has renamed this figure —
-        # never overwrite name on this entry.
+        # v1.6: detect manual name overrides.
         is_name_overridden = (
             "sourceName" in e and e.get("name") and e.get("name") != e.get("sourceName")
         )
+
+        changes = []
         if is_name_overridden:
             pass  # name is protected — skip name change detection
         elif s["name"] != e.get("name"):
