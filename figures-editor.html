@@ -490,7 +490,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.10.1';
+const EDITOR_VERSION = 'v1.10.2';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -804,7 +804,7 @@ function _slugify(name) {
 function _makeManualId(name) {
   const base = _slugify(name);
   const suffix = Date.now().toString(36);
-  return { id: base + '-' + suffix, slug: base + '-' + suffix };
+  return { id: base + '-' + suffix, slug: base };
 }
 
 function afUpdateSlugPreview() {
@@ -814,7 +814,7 @@ function afUpdateSlugPreview() {
   if (!prev) return;
   if (!name && !custom) { prev.textContent = '— enter name to generate —'; return; }
   const base = custom || _slugify(name);
-  prev.textContent = base + '-{timestamp}.jpg  (exact name shown after adding)';
+  prev.textContent = base + '.jpg';
 }
 
 function openAddFigModal() {
@@ -854,6 +854,7 @@ function submitAddFig() {
   const { id, slug } = slugIn
     ? { id: slugIn + '-' + Date.now().toString(36), slug: slugIn }
     : _makeManualId(name);
+  // id carries the timestamp suffix for uniqueness; slug is always clean (no timestamp)
   const line = LINES.find(l => l.id === lineId);
 
   const fig = {
