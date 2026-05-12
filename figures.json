@@ -11884,6 +11884,18 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-megator-mp1wzry5",
+    "name": "Megator",
+    "sourceName": "Megator",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "year": 1988,
+    "slug": "manual-megator-mp1wzry5",
+    "source": "manual"
+  },
+  {
     "id": "mekaneck-3232",
     "name": "Mekaneck",
     "line": "original",
@@ -12945,6 +12957,18 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-tytus-mp1wyxhd",
+    "name": "Tytus",
+    "sourceName": "Tytus",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "year": 1988,
+    "slug": "manual-tytus-mp1wyxhd",
+    "source": "manual"
   },
   {
     "id": "webstor-3226",
