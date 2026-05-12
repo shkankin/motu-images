@@ -221,7 +221,7 @@
 
 <header>
   <h1>⚔ MOTU Vault — Deploy</h1>
-  <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code></p>
+  <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>.</p>
 </header>
 
 <!-- Token -->
@@ -284,7 +284,8 @@ const PATH_MAP = {
   'photos.js':            'js/photos.js',
   'pricing.js':           'js/pricing.js',
   'tutorial.js':          'js/tutorial.js',
-  'pricing-worker.js':    'js/pricing-worker.js',
+  'pricing-worker.js':    'backend/pricing-worker.js',
+  'wrangler.toml':        'backend/wrangler.toml',
   // root
   'vault.css':            'vault.css',
   'motu-vault.html':      'motu-vault.html',
