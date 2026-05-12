@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.28)
+// MOTU Vault — pricing.js (v6.53)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -118,7 +118,12 @@ export async function fetchPricing(figId, opts = {}) {
       const headers = { 'Accept': 'application/json' };
       if (backend.apiKey) headers['Authorization'] = 'Bearer ' + backend.apiKey;
       // Path encoding — figId can contain hyphens but never slashes; still safer to encodeURIComponent.
-      const url = backend.url + '/pricing/' + encodeURIComponent(figId);
+      // Pass fig metadata as query params so the worker can build a precise eBay search query.
+      const urlObj = new URL(backend.url + '/pricing/' + encodeURIComponent(figId));
+      if (opts.line) urlObj.searchParams.set('line', opts.line);
+      if (opts.wave) urlObj.searchParams.set('wave', opts.wave);
+      if (opts.year) urlObj.searchParams.set('year', String(opts.year));
+      const url = urlObj.toString();
       const res = await fetch(url, { headers, signal: ctl.signal });
       clearTimeout(timer);
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -177,14 +182,14 @@ function _sanitize(d) {
 // Render a compact market-value block. Returns '' when there's no data
 // to show (no backend, no cache, etc.) so callers can drop it inline
 // without conditional wrappers.
-export function renderMarketValueBlock(figId, paidArr) {
+export function renderMarketValueBlock(figId, paidArr, condition) {
   if (!figId) return '';
   const cached = getCachedPricing(figId);
   if (!cached || !cached.data) {
     if (!isPricingConfigured()) return '';   // silent when no backend
     // Backend configured but no data yet — render a placeholder + auto-fetch.
     // The detail screen will refresh when fetchPricing resolves.
-    queueMicrotask(() => fetchPricing(figId).then(r => {
+    queueMicrotask(() => fetchPricing(figId, { line: renderMarketValueBlock._meta?.line, wave: renderMarketValueBlock._meta?.wave, year: renderMarketValueBlock._meta?.year }).then(r => {
       if (r && typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
     }));
     return `<div class="market-value-block placeholder">
@@ -211,14 +216,24 @@ export function renderMarketValueBlock(figId, paidArr) {
     if (diff > 0) return ` <span class="mv-good" title="${Math.round(diff*100)}% under avg sold">↓</span>`;
     return ` <span class="mv-warn" title="${Math.round(-diff*100)}% over avg sold">↑</span>`;
   };
+  // Determine which bucket matches the user's copy condition.
+  const SEALED_CONDS = new Set(['Mint in Box','Mint on Card','New/Sealed']);
+  const LOOSE_CONDS  = new Set(['Loose Complete','Loose Incomplete','Damaged']);
+  const condIsSealed = condition && SEALED_CONDS.has(condition);
+  const condIsLoose  = condition && LOOSE_CONDS.has(condition);
+  const sealedActive = condIsSealed;
+  const looseActive  = condIsLoose;
+  const sealedDim    = condition && !condIsSealed;
+  const looseDim     = condition && !condIsLoose;
+
   const sealedRow = d.sealed ? `
-    <div class="mv-row">
+    <div class="mv-row${sealedActive ? ' mv-active' : sealedDim ? ' mv-dim' : ''}">
       <span class="mv-label">Sealed</span>
       <span class="mv-value">${fmtMoney(d.sealed.avg)}${compare(d.sealed.avg)}</span>
       <span class="mv-meta">avg of ${d.sealed.n}</span>
     </div>` : '';
   const looseRow = d.loose ? `
-    <div class="mv-row">
+    <div class="mv-row${looseActive ? ' mv-active' : looseDim ? ' mv-dim' : ''}">
       <span class="mv-label">Loose</span>
       <span class="mv-value">${fmtMoney(d.loose.avg)}${compare(d.loose.avg)}</span>
       <span class="mv-meta">avg of ${d.loose.n}</span>

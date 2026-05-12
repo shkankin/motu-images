@@ -69,8 +69,14 @@ export default {
     if (m && request.method === 'GET') {
       const figId = decodeURIComponent(m[1]);
       if (!isValidFigId(figId)) return json({ error: 'invalid figId' }, 400, cors);
+      // Optional fig metadata passed as query params to improve search accuracy.
+      const meta = {
+        line: url.searchParams.get('line') || undefined,
+        wave: url.searchParams.get('wave') || undefined,
+        year: url.searchParams.get('year') || undefined,
+      };
       try {
-        const data = await getPricing(figId, env, ctx);
+        const data = await getPricing(figId, env, ctx, meta);
         return json(data, 200, cors);
       } catch (e) {
         return json({ error: 'upstream', message: String(e.message || e) }, 502, cors);
@@ -100,7 +106,7 @@ export default {
 
 // ── Pricing dispatch ────────────────────────────────────────────────
 
-async function getPricing(figId, env, ctx) {
+async function getPricing(figId, env, ctx, meta = {}) {
   // 1. Cache hit
   const cached = await env.PRICING_CACHE.get(figId, { type: 'json' });
   if (cached) return cached;
@@ -110,8 +116,8 @@ async function getPricing(figId, env, ctx) {
   let result;
   switch (provider) {
     case 'community':    result = await communityProvider(figId, env); break;
-    case 'ebay-finding': result = await ebayFindingProvider(figId, env); break;
-    case 'ebay-browse':  result = await ebayBrowseProvider(figId, env); break;
+    case 'ebay-finding': result = await ebayFindingProvider(figId, env, meta); break;
+    case 'ebay-browse':  result = await ebayBrowseProvider(figId, env, meta); break;
     case 'stub':         result = stubProvider(figId); break;
     default: throw new Error('Unknown provider: ' + provider);
   }
@@ -165,12 +171,12 @@ function stubProvider(figId) {
 // Note: requires partner approval for full Marketplace Insights access. The basic
 // Finding API (findCompletedItems) was deprecated in favor of the modern Browse/Marketplace
 // Insights APIs but still works; treat this as a starting point.
-async function ebayFindingProvider(figId, env) {
+async function ebayFindingProvider(figId, env, meta = {}) {
   if (!env.EBAY_APP_ID) throw new Error('EBAY_APP_ID not configured');
   // figId → query string. For real use you'd want a curated mapping table
   // (kept in KV or in figures.json). Here we fall back to a reasonable
   // synthesis, but accuracy depends on the search term being good.
-  const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId);
+  const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
   const params = new URLSearchParams({
     'OPERATION-NAME': 'findCompletedItems',
     'SERVICE-VERSION': '1.13.0',
@@ -211,9 +217,9 @@ async function ebayFindingProvider(figId, env) {
 }
 
 // eBay Browse API — returns active listings; we use it as a soft proxy.
-async function ebayBrowseProvider(figId, env) {
+async function ebayBrowseProvider(figId, env, meta = {}) {
   if (!env.EBAY_OAUTH_TOKEN) throw new Error('EBAY_OAUTH_TOKEN not configured');
-  const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId);
+  const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
   const url = 'https://api.ebay.com/buy/browse/v1/item_summary/search?' + new URLSearchParams({
     q: queryName,
     category_ids: '49019',
@@ -289,12 +295,29 @@ async function getQueryMapping(figId, env) {
   return await env.QUERY_MAP.get(figId);
 }
 
-function figIdToQuery(figId) {
-  // "he-man-40th-anniversary-4220" → "he-man 40th anniversary"
-  // Strip trailing AF411 numeric suffix and normalize hyphens to spaces.
-  return figId.replace(/-\d{2,6}$/, '').replace(/-/g, ' ').trim();
-}
+// Search term modifiers per line ID — narrows eBay results to the right
+// toy line so e.g. "Tung Lashor" doesn't mix vintage and Origins prices.
+const LINE_SEARCH_TERMS = {
+  'original':       'vintage Masters of the Universe MOTU',
+  'new-adventures': 'He-Man New Adventures MOTU',
+  '200x':           'Masters of the Universe 200x MOTU',
+  'classics':       'Masters of the Universe Classics MOTUC',
+  'origins':        'Masters of the Universe Origins MOTU',
+  'masterverse':    'Masterverse Masters of the Universe',
+  'kids-core':      'Masters of the Universe Kids Core',
+  'super7':         'Super7 Masters of the Universe',
+  'mondo':          'Mondo Masters of the Universe 1/6',
+  'eternia-minis':  'Masters of the Universe Minis',
+};
 
+function figIdToQuery(figId, meta = {}) {
+  // Strip trailing AF411 numeric suffix, normalize hyphens to spaces.
+  const name = figId.replace(/-\d{2,6}$/, '').replace(/-/g, ' ').trim();
+  const lineTerm = (meta.line && LINE_SEARCH_TERMS[meta.line]) || 'Masters of the Universe';
+  // Wave helps narrow further when available.
+  const wavePart = meta.wave ? ' ' + meta.wave : '';
+  return name + ' ' + lineTerm + wavePart;
+}
 function isValidFigId(s) {
   // figIds are alphanumeric + hyphens in this catalog. Reject anything else
   // to keep the KV key namespace clean and avoid traversal-style trickery.

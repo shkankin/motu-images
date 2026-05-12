@@ -2,14 +2,20 @@
   "name": "MOTU Vault",
   "short_name": "MOTU Vault",
   "description": "Masters of the Universe figure catalog and collection tracker",
-  "start_url": "./motu-vault.html",
-  "scope": "./",
+  "start_url": "https://shkankin.github.io/motu-images/motu-vault.html",
+  "scope": "https://shkankin.github.io/motu-images/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "background_color": "#06060c",
   "theme_color": "#06060c",
   "orientation": "portrait",
-  "categories": ["entertainment", "lifestyle"],
+  "categories": [
+    "entertainment",
+    "lifestyle"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
@@ -29,37 +35,54 @@
       "name": "Share Want List",
       "short_name": "Want List",
       "description": "Open the share sheet for your want list",
-      "url": "./motu-vault.html?action=share-wantlist",
+      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=share-wantlist",
       "icons": [
-        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
       ]
     },
     {
       "name": "Collection Stats",
       "short_name": "Stats",
       "description": "View collection stats",
-      "url": "./motu-vault.html?action=stats",
+      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=stats",
       "icons": [
-        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
       ]
     },
     {
       "name": "Quick Sync",
       "short_name": "Sync",
       "description": "Force-sync the catalog from AF411",
-      "url": "./motu-vault.html?action=sync",
+      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=sync",
       "icons": [
-        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
       ]
     },
     {
       "name": "Settings",
       "short_name": "Settings",
       "description": "Open app settings",
-      "url": "./motu-vault.html?action=menu",
+      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=menu",
       "icons": [
-        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
       ]
     }
-  ]
+  ],
+  "id": "https://shkankin.github.io/motu-images/motu-vault.html"
 }

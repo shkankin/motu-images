@@ -424,7 +424,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.52</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.53</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2095,9 +2095,14 @@ function renderDetail() {
     ${(() => {
       // v6.28: market value block (eBay sold avg, etc.). Pulls all paid prices
       // from owned/for-sale copies for the under/over-paid comparison badges.
+      // v6.53: pass fig metadata for precise eBay queries + condition for row highlight.
       const paidArr = [];
+      const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
       if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
-      return renderMarketValueBlock(f.id, paidArr);
+      const condition = primaryCp?.condition || undefined;
+      // Stash metadata on the function so the deferred fetch (cache miss path) can use it too.
+      renderMarketValueBlock._meta = { line: f.line, wave: f.wave, year: f.year };
+      return renderMarketValueBlock(f.id, paidArr, condition);
     })()}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
       ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411(${jId})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">

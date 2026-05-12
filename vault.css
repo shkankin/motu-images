@@ -1352,6 +1352,10 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .market-value-block .mv-good { color: var(--gn); font-weight: 700; }
 .market-value-block .mv-warn { color: var(--rd); font-weight: 700; }
 .market-value-block .mv-flat { color: var(--t3); }
+.market-value-block .mv-row.mv-active { background: var(--bg3); border-radius: 8px; margin: 0 -8px; padding: 4px 8px; }
+.market-value-block .mv-row.mv-active .mv-label { color: var(--t1); font-weight: 600; }
+.market-value-block .mv-row.mv-active .mv-value { color: var(--t1); }
+.market-value-block .mv-row.mv-dim { opacity: 0.4; }
 .market-value-block .mv-note {
   margin-top: 6px; line-height: 1.5; font-size: 11px;
 }
