@@ -1,0 +1,33 @@
+name = "motu-vault-pricing"
+main = "pricing-worker.js"
+compatibility_date = "2026-01-01"
+
+# ─── KV namespaces ──────────────────────────────────────────────────
+# Create these once with:  npx wrangler kv:namespace create PRICING_CACHE
+# and paste the IDs in here.
+
+[[kv_namespaces]]
+binding = "PRICING_CACHE"
+id = "0d20600af7f74e4588319166d8a56e31"
+
+[[kv_namespaces]]
+binding = "COMMUNITY_PRICES"
+id = "46a2c6e99cd64215863dc3000391f471"
+
+# Optional — for hand-curated figId → eBay search query mappings.
+# Skip the binding entirely if you don't want it (figIdToQuery() will be used).
+# [[kv_namespaces]]
+# binding = "QUERY_MAP"
+# id = "REPLACE_ME"
+
+# ─── Vars (non-secret) ──────────────────────────────────────────────
+[vars]
+PROVIDER = "community"           # "community" | "ebay-finding" | "ebay-browse" | "stub"
+ALLOWED_ORIGINS = ""             # comma-separated, e.g. "https://your-app.example.com"
+MIN_SAMPLES = "3"
+
+# ─── Secrets ────────────────────────────────────────────────────────
+# Set with `wrangler secret put EBAY_APP_ID` etc.; do NOT commit them here.
+#   EBAY_APP_ID         (required for ebay-finding)
+#   EBAY_OAUTH_TOKEN    (required for ebay-browse)
+#   ADMIN_TOKEN         (required for /admin/community/* writes)
