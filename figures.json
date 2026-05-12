@@ -3160,7 +3160,9 @@
     "wave": "3",
     "year": 2021,
     "slug": "manual-shogun-masters-faker",
-    "source": "manual"
+    "source": "manual",
+    "faction": "Evil Warriors",
+    "retail": 300
   },
   {
     "id": "manual-shogun-masters-he-man-mp201u2x",
@@ -3172,7 +3174,9 @@
     "sourceGroup": "Exclusives",
     "year": 2021,
     "slug": "manual-shogun-masters-he-man",
-    "source": "manual"
+    "source": "manual",
+    "wave": "3",
+    "retail": 300
   },
   {
     "id": "shogun-masters-skeletor-3247",

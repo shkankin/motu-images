@@ -321,15 +321,32 @@
     ],
     "manual-megator-mp1wzry5": [
       "Spiked Ball & Chain"
+    ],
+    "manual-shogun-masters-faker-mp207hu0": [
+      "Power Sword",
+      "Certificate of Authenticity",
+      "8 Missiles"
+    ],
+    "manual-shogun-masters-he-man-mp201u2x": [
+      "Power Sword",
+      "Certificate of Authenticity",
+      "Launching Fists"
+    ],
+    "shogun-masters-skeletor-3247": [
+      "Certificate of Authenticity",
+      "Power Sword",
+      "Launching Fists"
     ]
   },
   "customAccessories": [
+    "8 Missiles",
     "Arm Armor",
     "Bat Shield",
     "Bat Wing Propeller",
     "Battle Axe",
     "Blasterpak",
     "Buzz Saw Blades",
+    "Certificate of Authenticity",
     "Claw",
     "Collar",
     "Cosmic Key",
@@ -342,6 +359,7 @@
     "Hood",
     "Laser",
     "Laser Sword",
+    "Launching Fists",
     "Leg Armor",
     "Magic Trick Discs",
     "Mouser",
