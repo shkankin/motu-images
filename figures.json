@@ -3150,6 +3150,31 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-shogun-masters-faker-mp207hu0",
+    "name": "Shogun Masters Faker",
+    "sourceName": "Shogun Masters Faker",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Exclusives",
+    "sourceGroup": "Exclusives",
+    "wave": "3",
+    "year": 2021,
+    "slug": "manual-shogun-masters-faker",
+    "source": "manual"
+  },
+  {
+    "id": "manual-shogun-masters-he-man-mp201u2x",
+    "name": "Shogun Masters He-Man",
+    "sourceName": "Shogun Masters He-Man",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Exclusives",
+    "sourceGroup": "Exclusives",
+    "year": 2021,
+    "slug": "manual-shogun-masters-he-man",
+    "source": "manual"
+  },
+  {
     "id": "shogun-masters-skeletor-3247",
     "name": "Shogun Masters Skeletor",
     "line": "origins",
