@@ -23,7 +23,7 @@ id = "46a2c6e99cd64215863dc3000391f471"
 # ─── Vars (non-secret) ──────────────────────────────────────────────
 [vars]
 PROVIDER = "community"           # "community" | "ebay-finding" | "ebay-browse" | "stub"
-ALLOWED_ORIGINS = ""             # comma-separated, e.g. "https://your-app.example.com"
+ALLOWED_ORIGINS = "https://shkankin.github.io"             # comma-separated, e.g. "https://your-app.example.com"
 MIN_SAMPLES = "3"
 
 # ─── Secrets ────────────────────────────────────────────────────────
