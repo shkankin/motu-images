@@ -444,10 +444,11 @@ async function deploy() {
       renderFileList();
       log('dim', `  Uploading ${repoPath}…`);
       try {
-        const content = await readFileAsText(file);
+        const binary = isBinaryFile(file);
+        const content = binary ? await readFileAsBase64(file) : await readFileAsText(file);
         const blobRes = await fetch(`${api}/git/blobs`, {
           method: 'POST', headers,
-          body: JSON.stringify({ content, encoding: 'utf-8' }),
+          body: JSON.stringify({ content, encoding: binary ? 'base64' : 'utf-8' }),
         });
         if (!blobRes.ok) throw new Error(`${blobRes.status}`);
         const { sha } = await blobRes.json();
@@ -520,6 +521,19 @@ function readFileAsText(file) {
     r.onerror = () => rej(new Error('File read failed'));
     r.readAsText(file, 'utf-8');
   });
+}
+
+function readFileAsBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]); // strip data:...;base64, prefix
+    r.onerror = () => rej(new Error('File read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+function isBinaryFile(file) {
+  return /\.(jpg|jpeg|png|gif|webp|svg|ico|bmp|tiff?)$/i.test(file.name);
 }
 
 // ── Log / progress ─────────────────────────────────────────────────
