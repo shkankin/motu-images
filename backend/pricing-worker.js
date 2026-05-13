@@ -237,6 +237,7 @@ async function ebayFindingProvider(figId, env, meta = {}) {
     loose:  bucketStats(looseBucket),
     source: 'ebay-browse',
     note:   `Active Buy-It-Now listings for "${queryName}"`,
+    _debug: { total: items.length, firstTitles: items.slice(0,3).map(i => i.title), sealedN: sealedBucket.length, looseN: looseBucket.length },
   };
 }
 
