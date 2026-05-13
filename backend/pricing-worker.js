@@ -221,7 +221,7 @@ async function ebayFindingProvider(figId, env, meta = {}) {
   const items = data.itemSummaries || [];
   const sealedBucket = [];
   const looseBucket  = [];
-  const SEALED_RE = /\bmib\b|\bmoc\b|\bnib\b|\bsealed\b|\bunopened\b|new in (box|package)/i;
+  const SEALED_RE = /\bmib\b|\bmoc\b|\bnib\b|\bsealed\b|\bunopened\b|new in (box|package)|\bnew\b/i;
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
     if (!Number.isFinite(price) || price <= 0) continue;
