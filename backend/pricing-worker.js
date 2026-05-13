@@ -169,92 +169,80 @@ function stubProvider(figId) {
 
 // eBay Finding API — the only official API surface that returns "completed/sold" items.
 // Note: requires partner approval for full Marketplace Insights access. The basic
-// Finding API (findCompletedItems) was deprecated in favor of the modern Browse/Marketplace
-// Insights APIs but still works; treat this as a starting point.
+// eBay client-credentials OAuth token — fetched fresh and cached in KV for 2h.
+async function getEbayToken(env) {
+  // Check KV cache first
+  const cached = await env.PRICING_CACHE.get('__ebay_token__', 'json').catch(() => null);
+  if (cached && cached.expires > Date.now()) return cached.token;
+
+  if (!env.EBAY_APP_ID || !env.EBAY_CERT_ID) throw new Error('EBAY_APP_ID / EBAY_CERT_ID not configured');
+  const creds = btoa(encodeURIComponent(env.EBAY_APP_ID) + ':' + encodeURIComponent(env.EBAY_CERT_ID));
+  const res = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Basic ' + creds,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials&scope=' + encodeURIComponent('https://api.ebay.com/oauth/api_scope'),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error('eBay token HTTP ' + res.status + ' — ' + body.slice(0, 200));
+  }
+  const data = await res.json();
+  const token = data.access_token;
+  const expires = Date.now() + (data.expires_in - 300) * 1000; // 5-min buffer
+  await env.PRICING_CACHE.put('__ebay_token__', JSON.stringify({ token, expires }), { expirationTtl: 7200 }).catch(() => {});
+  return token;
+}
+
+// eBay Browse API with auto client-credentials OAuth.
+// Uses active listings as a price proxy (completed-sold requires Marketplace Insights API,
+// a paid add-on). Active Buy-It-Now prices are a reasonable real-world signal.
 async function ebayFindingProvider(figId, env, meta = {}) {
-  if (!env.EBAY_APP_ID) throw new Error('EBAY_APP_ID not configured');
-  // figId → query string. For real use you'd want a curated mapping table
-  // (kept in KV or in figures.json). Here we fall back to a reasonable
-  // synthesis, but accuracy depends on the search term being good.
+  const token = await getEbayToken(env);
   const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
-  // Build query string manually — URLSearchParams percent-encodes parentheses
-  // which breaks eBay's Finding API bracket notation for itemFilter params.
-  const qParts = [
-    'OPERATION-NAME=findCompletedItems',
-    'SERVICE-VERSION=1.13.0',
-    'SECURITY-APPNAME=' + encodeURIComponent(env.EBAY_APP_ID),
-    'RESPONSE-DATA-FORMAT=JSON',
-    'REST-PAYLOAD=',
-    'keywords=' + encodeURIComponent(queryName),
-    'categoryId=49019',
-    'itemFilter(0).name=SoldItemsOnly',
-    'itemFilter(0).value=true',
-    'itemFilter(1).name=Currency',
-    'itemFilter(1).value=USD',
-    'sortOrder=EndTimeSoonest',
-    'paginationInput.entriesPerPage=50',
-  ];
-  const ebayURL = 'https://svcs.ebay.com/services/search/FindingService/v1?' + qParts.join('&');
-  const res = await fetch(ebayURL);
+  const url = 'https://api.ebay.com/buy/browse/v1/item_summary/search?' + new URLSearchParams({
+    q: queryName,
+    category_ids: '49019',
+    filter: 'buyingOptions:{FIXED_PRICE},conditions:{USED|VERY_GOOD|GOOD|ACCEPTABLE}',
+    limit: '50',
+    sort: 'price',
+  });
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+      'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DUS',
+    },
+  });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error('eBay HTTP ' + res.status + ' — ' + body.slice(0, 300));
   }
   const data = await res.json();
-  const items = data?.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item || [];
-  const sealedBucket = [];
-  const looseBucket  = [];
-  for (const it of items) {
-    const price = parseFloat(it?.sellingStatus?.[0]?.currentPrice?.[0]?.__value__);
-    if (!Number.isFinite(price) || price <= 0) continue;
-    const title = (it?.title?.[0] || '').toLowerCase();
-    // Crude classifier — sealed/MOC/MIB vs everything else
-    const sealedHit = /(\bmib\b|\bmoc\b|\bnib\b|\bsealed\b|\bunopened\b|new in (box|package))/i.test(title);
-    if (sealedHit) sealedBucket.push(price);
-    else looseBucket.push(price);
-  }
-  return {
-    sealed: bucketStats(sealedBucket),
-    loose:  bucketStats(looseBucket),
-    source: 'ebay-finding',
-    note:   `30-day completed-sold listings for "${queryName}"`,
-  };
-}
-
-// eBay Browse API — returns active listings; we use it as a soft proxy.
-async function ebayBrowseProvider(figId, env, meta = {}) {
-  if (!env.EBAY_OAUTH_TOKEN) throw new Error('EBAY_OAUTH_TOKEN not configured');
-  const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
-  const url = 'https://api.ebay.com/buy/browse/v1/item_summary/search?' + new URLSearchParams({
-    q: queryName,
-    category_ids: '49019',
-    filter: 'buyingOptions:{FIXED_PRICE}',
-    limit: '50',
-  });
-  const res = await fetch(url, {
-    headers: {
-      'Authorization': 'Bearer ' + env.EBAY_OAUTH_TOKEN,
-      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-    },
-  });
-  if (!res.ok) throw new Error('eBay HTTP ' + res.status);
-  const data = await res.json();
   const items = data.itemSummaries || [];
   const sealedBucket = [];
   const looseBucket  = [];
+  const SEALED_RE = /\bmib\b|\bmoc\b|\bnib\b|\bsealed\b|\bunopened\b|new in (box|package)/i;
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
     if (!Number.isFinite(price) || price <= 0) continue;
     const title = (it.title || '').toLowerCase();
-    if (/(\bmib\b|\bmoc\b|\bnib\b|\bsealed\b|\bunopened\b|new in (box|package))/i.test(title)) sealedBucket.push(price);
+    if (SEALED_RE.test(title)) sealedBucket.push(price);
     else looseBucket.push(price);
   }
   return {
     sealed: bucketStats(sealedBucket),
     loose:  bucketStats(looseBucket),
     source: 'ebay-browse',
-    note:   `Active listings for "${queryName}"`,
+    note:   `Active Buy-It-Now listings for "${queryName}"`,
   };
+}
+
+// eBay Browse API — alias kept for wrangler.toml PROVIDER=ebay-browse compatibility.
+async function ebayBrowseProvider(figId, env, meta = {}) {
+  return ebayFindingProvider(figId, env, meta);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
