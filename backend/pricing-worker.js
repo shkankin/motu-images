@@ -205,10 +205,8 @@ async function ebayFindingProvider(figId, env, meta = {}) {
   const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
   const url = 'https://api.ebay.com/buy/browse/v1/item_summary/search?' + new URLSearchParams({
     q: queryName,
-    category_ids: '49019',
     filter: 'buyingOptions:{FIXED_PRICE}',
     limit: '50',
-    sort: 'price',
   });
   const res = await fetch(url, {
     headers: {
