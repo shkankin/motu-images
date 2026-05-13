@@ -293,25 +293,23 @@ async function getQueryMapping(figId, env) {
 // Search term modifiers per line ID — narrows eBay results to the right
 // toy line so e.g. "Tung Lashor" doesn't mix vintage and Origins prices.
 const LINE_SEARCH_TERMS = {
-  'original':       'vintage Masters of the Universe MOTU',
-  'new-adventures': 'He-Man New Adventures MOTU',
-  '200x':           'Masters of the Universe 200x MOTU',
-  'classics':       'Masters of the Universe Classics MOTUC',
-  'origins':        'Masters of the Universe Origins MOTU',
-  'masterverse':    'Masterverse Masters of the Universe',
-  'kids-core':      'Masters of the Universe Kids Core',
-  'super7':         'Super7 Masters of the Universe',
-  'mondo':          'Mondo Masters of the Universe 1/6',
-  'eternia-minis':  'Masters of the Universe Minis',
+  'original':       'MOTU vintage',
+  'new-adventures': 'He-Man New Adventures',
+  '200x':           'MOTU 200x',
+  'classics':       'MOTUC Classics',
+  'origins':        'MOTU Origins',
+  'masterverse':    'Masterverse MOTU',
+  'kids-core':      'MOTU Kids Core',
+  'super7':         'Super7 MOTU',
+  'mondo':          'Mondo MOTU',
+  'eternia-minis':  'MOTU Minis',
 };
 
 function figIdToQuery(figId, meta = {}) {
   // Strip trailing AF411 numeric suffix, normalize hyphens to spaces.
   const name = figId.replace(/-\d{2,6}$/, '').replace(/-/g, ' ').trim();
   const lineTerm = (meta.line && LINE_SEARCH_TERMS[meta.line]) || 'Masters of the Universe';
-  // Wave helps narrow further when available.
-  const wavePart = meta.wave ? ' ' + meta.wave : '';
-  return name + ' ' + lineTerm + wavePart;
+  return name + ' ' + lineTerm;
 }
 function isValidFigId(s) {
   // figIds are alphanumeric + hyphens in this catalog. Reject anything else
