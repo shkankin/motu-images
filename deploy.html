@@ -156,6 +156,9 @@
   }
   button:hover { background: var(--bd); }
   button:disabled { opacity: 0.45; cursor: default; }
+  button.secondary { background: var(--bg3); color: var(--t1); border: 1px solid var(--bd); border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  button.secondary:hover { background: var(--bd); }
+  button.secondary:disabled { opacity: 0.45; cursor: default; }
   button.primary {
     background: var(--acc);
     color: #111;
@@ -581,6 +584,7 @@ async function downloadFromRepo() {
   const zip = new JSZip();
   const paths = Object.values(PATH_MAP).filter(p => !isBinaryFile({ name: p.split('/').pop() }));
   let done = 0;
+  setProgress(0, true);
 
   for (const repoPath of paths) {
     try {
@@ -588,9 +592,10 @@ async function downloadFromRepo() {
       if (!res.ok) { log('err', `✗ ${repoPath}: ${res.status}`); done++; continue; }
       const meta = await res.json();
       // GitHub returns base64 content for files
-      const content = atob(meta.content.replace(/
-/g, ''));
-      zip.file(repoPath, content, { binary: true });
+      const byteChars = atob(meta.content.replace(/\n/g, ''));
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+      zip.file(repoPath, byteArray, { binary: true });
       log('dim', `✓ ${repoPath}`);
     } catch (e) {
       log('err', `✗ ${repoPath}: ${e.message}`);
