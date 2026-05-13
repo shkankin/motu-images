@@ -22,12 +22,15 @@ id = "46a2c6e99cd64215863dc3000391f471"
 
 # ─── Vars (non-secret) ──────────────────────────────────────────────
 [vars]
-PROVIDER = "ebay-finding"           # "community" | "ebay-finding" | "ebay-browse" | "stub"
-ALLOWED_ORIGINS = "https://shkankin.github.io"             # comma-separated, e.g. "https://your-app.example.com"
-MIN_SAMPLES = "3"
+# v6.56: comma-separated provider chain, tried in order until one returns data.
+# Available: community | ebay-sold | ebay-active | stub
+# (Legacy single-provider PROVIDER env still works as fallback.)
+PROVIDER_CHAIN = "community,ebay-active"
+ALLOWED_ORIGINS = "https://shkankin.github.io"
+MIN_SAMPLES = "1"                   # v6.56: keep low-sample data, flag confidence client-side
 
 # ─── Secrets ────────────────────────────────────────────────────────
 # Set with `wrangler secret put EBAY_APP_ID` etc.; do NOT commit them here.
-#   EBAY_APP_ID         (required for ebay-finding)
-#   EBAY_OAUTH_TOKEN    (required for ebay-browse)
-#   ADMIN_TOKEN         (required for /admin/community/* writes)
+#   EBAY_APP_ID    (required for ebay-active and ebay-sold)
+#   EBAY_CERT_ID   (required for ebay-active and ebay-sold — OAuth client secret)
+#   ADMIN_TOKEN    (required for /admin/community/* writes)

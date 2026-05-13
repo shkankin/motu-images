@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.55)
+// MOTU Vault — pricing.js (v6.56)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -10,16 +10,17 @@
 // Wire format the backend MUST return for GET <base>/pricing/<figId>:
 //   {
 //     "figId": "he-man-1234",
-//     "sealed":  { "avg": 84.20, "median": 79.99, "n": 12, "samples": [80, 90, ...] } | null,
-//     "loose":   { "avg": 32.10, "median": 30.00, "n": 23, "samples": [...] }       | null,
+//     "sealed":  { "avg": 84.20, "median": 79.99, "n": 12, "low": 60, "high": 110,
+//                  "confidence": "high"|"medium"|"low", "samples": [80, 90, ...] } | null,
+//     "loose":   { ... same shape ... } | null,
 //     "asof":    "2026-05-01T12:00:00Z",
-//     "source":  "ebay-finding" | "pricecharting" | "community" | string,
+//     "source":  "community" | "ebay-sold" | "ebay-active" | "unavailable" | string,
 //     "currency": "USD",
 //     "note":    "30-day window" (optional)
 //   }
-// Either sealed or loose may be null when the sample size is too small
-// (< MIN_SAMPLES) to be meaningful — the client renders only the side
-// that has data.
+// v6.56: buckets now carry a `confidence` flag instead of being nulled
+// for low sample size. The client renders the value with a "Low sample"
+// badge so users can see the data exists but treat it as an estimate.
 //
 // Storage:
 //   localStorage motu-pricing-backend = { url: string, apiKey?: string }
@@ -35,7 +36,7 @@ const BACKEND_KEY = 'motu-pricing-backend';
 const CACHE_KEY   = 'motu-pricing-cache';
 const CACHE_TTL   = 24 * 60 * 60 * 1000;        // 24h
 const STALE_TTL   = 7  * 24 * 60 * 60 * 1000;   // 7d — beyond this, treat as expired
-const MIN_SAMPLES = 3;                           // below this, treat as no-signal
+const MIN_SAMPLES = 1;                           // v6.56: keep low-sample, flag confidence
 const REQUEST_TIMEOUT = 8000;                    // 8s — backend SLO
 
 let _cache = null;
@@ -165,7 +166,11 @@ function _sanitizeBucket(b) {
   const low    = Number.isFinite(+b.low)    ? +b.low    : null;
   const high   = Number.isFinite(+b.high)   ? +b.high   : null;
   if (avg == null || n < MIN_SAMPLES) return null;
-  return { avg, median, n, low, high };
+  // v6.56: preserve confidence flag from backend; default by sample size.
+  const confidence = (b.confidence === 'high' || b.confidence === 'medium' || b.confidence === 'low')
+    ? b.confidence
+    : (n < 5 ? 'low' : n < 15 ? 'medium' : 'high');
+  return { avg, median, n, low, high, confidence };
 }
 function _sanitize(d) {
   return {
@@ -238,23 +243,32 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
   const sealedDim    = condition && !condIsSealed;
   const looseDim     = condition && !condIsLoose;
 
+  // v6.56: confidence badge — buckets with <5 samples carry confidence:'low'
+  const confBadge = (b) => {
+    if (!b || b.confidence === 'high') return '';
+    const txt = b.confidence === 'low' ? 'Low sample' : 'Limited data';
+    return ` <span class="mv-confidence mv-conf-${b.confidence}" title="${esc(txt)} (n=${b.n})">${txt}</span>`;
+  };
   const sealedRow = d.sealed ? `
     <div class="mv-row${sealedActive ? ' mv-active' : sealedDim ? ' mv-dim' : ''}">
       <span class="mv-label">Sealed</span>
       <span class="mv-value">${fmtMoney(d.sealed.avg)}${compare(d.sealed.avg)}</span>
-      <span class="mv-meta">avg of ${d.sealed.n}${d.sealed.low != null && d.sealed.high != null ? ` · ${fmtMoney(d.sealed.low)}–${fmtMoney(d.sealed.high)}` : ''}</span>
+      <span class="mv-meta">avg of ${d.sealed.n}${d.sealed.low != null && d.sealed.high != null ? ` · ${fmtMoney(d.sealed.low)}–${fmtMoney(d.sealed.high)}` : ''}${confBadge(d.sealed)}</span>
     </div>` : '';
   const looseRow = d.loose ? `
     <div class="mv-row${looseActive ? ' mv-active' : looseDim ? ' mv-dim' : ''}">
       <span class="mv-label">Loose</span>
       <span class="mv-value">${fmtMoney(d.loose.avg)}${compare(d.loose.avg)}</span>
-      <span class="mv-meta">avg of ${d.loose.n}${d.loose.low != null && d.loose.high != null ? ` · ${fmtMoney(d.loose.low)}–${fmtMoney(d.loose.high)}` : ''}</span>
+      <span class="mv-meta">avg of ${d.loose.n}${d.loose.low != null && d.loose.high != null ? ` · ${fmtMoney(d.loose.low)}–${fmtMoney(d.loose.high)}` : ''}${confBadge(d.loose)}</span>
     </div>` : '';
   const sourceLabel = {
-    'ebay-finding':   'eBay sold (last 30d)',
-    'ebay-browse':    'eBay listings',
+    'ebay-sold':      'eBay sold (last 30d)',
+    'ebay-active':    'eBay asking prices',
+    'ebay-finding':   'eBay sold (last 30d)',   // legacy
+    'ebay-browse':    'eBay listings',          // legacy
     'pricecharting':  'PriceCharting',
     'community':      'Community-curated',
+    'unavailable':    'Unavailable',
   }[d.source] || esc(d.source);
   return `<div class="market-value-block${stale ? ' stale' : ''}">
     <div class="mv-header">

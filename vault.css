@@ -1359,6 +1359,21 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .market-value-block .mv-note {
   margin-top: 6px; line-height: 1.5; font-size: 11px;
 }
+/* v6.56: confidence badge — pill rendered inline in .mv-meta */
+.market-value-block .mv-confidence {
+  display: inline-block; margin-left: 6px; padding: 1px 6px;
+  border-radius: 6px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.3px; text-transform: uppercase;
+  vertical-align: 1px;
+}
+.market-value-block .mv-conf-low {
+  background: color-mix(in srgb, var(--rd) 18%, transparent);
+  color: var(--rd);
+}
+.market-value-block .mv-conf-medium {
+  background: color-mix(in srgb, var(--gold, #d4a017) 18%, transparent);
+  color: var(--gold, #d4a017);
+}
 .market-value-block .mv-actions {
   margin-top: 8px; display: flex; justify-content: flex-end;
 }
