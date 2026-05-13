@@ -177,7 +177,7 @@ async function getEbayToken(env) {
   if (cached && cached.expires > Date.now()) return cached.token;
 
   if (!env.EBAY_APP_ID || !env.EBAY_CERT_ID) throw new Error('EBAY_APP_ID / EBAY_CERT_ID not configured');
-  const creds = btoa(encodeURIComponent(env.EBAY_APP_ID) + ':' + encodeURIComponent(env.EBAY_CERT_ID));
+  const creds = btoa(env.EBAY_APP_ID + ':' + env.EBAY_CERT_ID);
   const res = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
     method: 'POST',
     headers: {
@@ -217,12 +217,12 @@ async function ebayFindingProvider(figId, env, meta = {}) {
       'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DUS',
     },
   });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error('eBay HTTP ' + res.status + ' — ' + body.slice(0, 300));
-  }
-  const data = await res.json();
+  const rawBody = await res.text();
+  if (!res.ok) throw new Error('eBay HTTP ' + res.status + ' — ' + rawBody.slice(0, 300));
+  const data = JSON.parse(rawBody);
   const items = data.itemSummaries || [];
+  // Surface full eBay response summary for debugging
+  const _ebayDebug = { total: data.total, itemCount: items.length, warnings: data.warnings || null, rawSnippet: rawBody.slice(0, 200) };
   const sealedBucket = [];
   const looseBucket  = [];
   const SEALED_RE = /\bmib\b|\bmoc\b|\bnib\b|\bsealed\b|\bunopened\b|new in (box|package)/i;
@@ -238,7 +238,7 @@ async function ebayFindingProvider(figId, env, meta = {}) {
     loose:  bucketStats(looseBucket),
     source: 'ebay-browse',
     note:   `Active Buy-It-Now listings for "${queryName}"`,
-    _debug: { total: items.length, firstTitles: items.slice(0,3).map(i => i.title), sealedN: sealedBucket.length, looseN: looseBucket.length },
+    _debug: { total: items.length, firstTitles: items.slice(0,3).map(i => i.title), sealedN: sealedBucket.length, looseN: looseBucket.length, ebay: _ebayDebug },
   };
 }
 
@@ -287,7 +287,7 @@ function cleanCommunityEntry(body) {
 
 async function getQueryMapping(figId, env) {
   if (!env.QUERY_MAP) return null;
-  return await env.QUERY_MAP.get(figId);
+  return await env.QUERY_MAP.get(figId).catch(() => null);
 }
 
 // Search term modifiers per line ID — narrows eBay results to the right
