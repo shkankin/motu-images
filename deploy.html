@@ -566,7 +566,7 @@ loadToken();
 // ── Download from repo ─────────────────────────────────────────────
 // Fetches every file in PATH_MAP from GitHub and zips them client-side.
 async function downloadFromRepo() {
-  const token = loadToken();
+  const token = getToken();
   if (!token) { alert('Enter your GitHub token first.'); return; }
   const btn = document.getElementById('downloadBtn');
   btn.disabled = true;
