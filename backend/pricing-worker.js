@@ -131,7 +131,7 @@ async function getPricing(figId, env, ctx, meta = {}) {
     source: result.source || provider,
     currency: result.currency || 'USD',
     note:   result.note  || null,
-    _debug: result._debug || null,
+
   };
   // 3. Cache positive results only — don't cache empty/failed lookups long
   if (out.sealed || out.loose) {
@@ -219,8 +219,6 @@ async function ebayFindingProvider(figId, env, meta = {}) {
   if (!res.ok) throw new Error('eBay HTTP ' + res.status + ' — ' + rawBody.slice(0, 300));
   const data = JSON.parse(rawBody);
   const items = data.itemSummaries || [];
-  // Surface full eBay response summary for debugging
-  const _ebayDebug = { total: data.total, itemCount: items.length, warnings: data.warnings || null, rawSnippet: rawBody.slice(0, 200) };
   const sealedBucket = [];
   const looseBucket  = [];
   const SEALED_RE = /\bmib\b|\bmoc\b|\bnib\b|\bsealed\b|\bunopened\b|new in (box|package)/i;
@@ -236,7 +234,7 @@ async function ebayFindingProvider(figId, env, meta = {}) {
     loose:  bucketStats(looseBucket),
     source: 'ebay-browse',
     note:   `Active Buy-It-Now listings for "${queryName}"`,
-    _debug: { total: items.length, firstTitles: items.slice(0,3).map(i => i.title), sealedN: sealedBucket.length, looseN: looseBucket.length, ebay: _ebayDebug },
+
   };
 }
 
