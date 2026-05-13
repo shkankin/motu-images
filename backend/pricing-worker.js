@@ -196,7 +196,10 @@ async function ebayFindingProvider(figId, env, meta = {}) {
   ];
   const ebayURL = 'https://svcs.ebay.com/services/search/FindingService/v1?' + qParts.join('&');
   const res = await fetch(ebayURL);
-  if (!res.ok) throw new Error('eBay HTTP ' + res.status);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error('eBay HTTP ' + res.status + ' — ' + body.slice(0, 300));
+  }
   const data = await res.json();
   const items = data?.findCompletedItemsResponse?.[0]?.searchResult?.[0]?.item || [];
   const sealedBucket = [];
