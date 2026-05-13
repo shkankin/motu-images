@@ -162,8 +162,10 @@ function _sanitizeBucket(b) {
   const avg    = Number.isFinite(+b.avg)    ? +b.avg    : null;
   const median = Number.isFinite(+b.median) ? +b.median : null;
   const n      = Number.isInteger(+b.n) && +b.n >= 0 ? +b.n : 0;
+  const low    = Number.isFinite(+b.low)    ? +b.low    : null;
+  const high   = Number.isFinite(+b.high)   ? +b.high   : null;
   if (avg == null || n < MIN_SAMPLES) return null;
-  return { avg, median, n };
+  return { avg, median, n, low, high };
 }
 function _sanitize(d) {
   return {
