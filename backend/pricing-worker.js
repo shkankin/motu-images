@@ -177,22 +177,24 @@ async function ebayFindingProvider(figId, env, meta = {}) {
   // (kept in KV or in figures.json). Here we fall back to a reasonable
   // synthesis, but accuracy depends on the search term being good.
   const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
-  const params = new URLSearchParams({
-    'OPERATION-NAME': 'findCompletedItems',
-    'SERVICE-VERSION': '1.13.0',
-    'SECURITY-APPNAME': env.EBAY_APP_ID,
-    'RESPONSE-DATA-FORMAT': 'JSON',
-    'REST-PAYLOAD': '',
-    'keywords': queryName,
-    'categoryId': '49019',  // Action Figures
-    'itemFilter(0).name': 'SoldItemsOnly',
-    'itemFilter(0).value': 'true',
-    'itemFilter(1).name': 'Currency',
-    'itemFilter(1).value': 'USD',
-    'sortOrder': 'EndTimeSoonest',
-    'paginationInput.entriesPerPage': '50',
-  });
-  const ebayURL = 'https://svcs.ebay.com/services/search/FindingService/v1?' + params.toString();
+  // Build query string manually — URLSearchParams percent-encodes parentheses
+  // which breaks eBay's Finding API bracket notation for itemFilter params.
+  const qParts = [
+    'OPERATION-NAME=findCompletedItems',
+    'SERVICE-VERSION=1.13.0',
+    'SECURITY-APPNAME=' + encodeURIComponent(env.EBAY_APP_ID),
+    'RESPONSE-DATA-FORMAT=JSON',
+    'REST-PAYLOAD=',
+    'keywords=' + encodeURIComponent(queryName),
+    'categoryId=49019',
+    'itemFilter(0).name=SoldItemsOnly',
+    'itemFilter(0).value=true',
+    'itemFilter(1).name=Currency',
+    'itemFilter(1).value=USD',
+    'sortOrder=EndTimeSoonest',
+    'paginationInput.entriesPerPage=50',
+  ];
+  const ebayURL = 'https://svcs.ebay.com/services/search/FindingService/v1?' + qParts.join('&');
   const res = await fetch(ebayURL);
   if (!res.ok) throw new Error('eBay HTTP ' + res.status);
   const data = await res.json();
