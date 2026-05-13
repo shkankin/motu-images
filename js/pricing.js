@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.53)
+// MOTU Vault — pricing.js (v6.54)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -188,16 +188,23 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
   if (!cached || !cached.data) {
     if (!isPricingConfigured()) return '';   // silent when no backend
     // Backend configured but no data yet — render a placeholder + auto-fetch.
-    // The detail screen will refresh when fetchPricing resolves.
-    queueMicrotask(() => fetchPricing(figId, { line: renderMarketValueBlock._meta?.line, wave: renderMarketValueBlock._meta?.wave, year: renderMarketValueBlock._meta?.year }).then(r => {
-      if (r && typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
-    }));
+    // Guard against re-triggering on every re-render by checking inflight state.
+    if (!_inflight.has(figId)) {
+      const meta = renderMarketValueBlock._meta || {};
+      fetchPricing(figId, { line: meta.line, wave: meta.wave, year: meta.year }).then(r => {
+        if (r && typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
+      });
+    }
     return `<div class="market-value-block placeholder">
       <div class="text-sm text-dim" style="text-align:center;padding:10px 0">Looking up market value…</div>
     </div>`;
   }
   const d = cached.data;
-  if (!d.sealed && !d.loose) return '';
+  if (!d.sealed && !d.loose) return `<div class="market-value-block">
+    <div class="mv-header"><span class="mv-title">Market Value</span></div>
+    <div class="text-sm text-dim" style="text-align:center;padding:8px 0">No pricing data found</div>
+    <div class="mv-actions"><button onclick="window.refreshPricing && window.refreshPricing(${JSON.stringify(figId)})">↻ Refresh</button></div>
+  </div>`;
   const stale = !cached.fresh;
   const fmtMoney = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
   const ageText = (() => {
@@ -261,9 +268,10 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
 // Inline action — exposed to inline-onclick. Forces a fresh fetch.
 window.refreshPricing = async (figId) => {
   if (!figId) return;
-  const r = await fetchPricing(figId, { force: true });
+  const meta = renderMarketValueBlock._meta || {};
+  const r = await fetchPricing(figId, { force: true, line: meta.line, wave: meta.wave, year: meta.year });
   if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
   if (typeof window.toast === 'function') {
-    window.toast(r ? '✓ Pricing refreshed' : '✗ Pricing fetch failed');
+    window.toast(r?.data?.loose || r?.data?.sealed ? '✓ Pricing refreshed' : '✗ No pricing data found');
   }
 };
