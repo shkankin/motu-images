@@ -305,7 +305,8 @@ function figIdToQuery(figId, meta = {}) {
   // Strip trailing AF411 numeric suffix, normalize hyphens to spaces.
   const name = figId.replace(/-\d{2,6}$/, '').replace(/-/g, ' ').trim();
   const lineTerm = (meta.line && LINE_SEARCH_TERMS[meta.line]) || 'Masters of the Universe';
-  return name + ' ' + lineTerm;
+  // Quote both parts so eBay treats them as required phrases, not loose keywords.
+  return '"' + name + '" "' + lineTerm + '"';
 }
 function isValidFigId(s) {
   // figIds are alphanumeric + hyphens in this catalog. Reject anything else
