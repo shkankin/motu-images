@@ -131,6 +131,7 @@ async function getPricing(figId, env, ctx, meta = {}) {
     source: result.source || provider,
     currency: result.currency || 'USD',
     note:   result.note  || null,
+    _debug: result._debug || null,
   };
   // 3. Cache positive results only — don't cache empty/failed lookups long
   if (out.sealed || out.loose) {
