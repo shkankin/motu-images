@@ -270,7 +270,9 @@ function validateBucket(b, minN) {
   const n      = parseInt(b.n, 10);
   if (!Number.isFinite(avg) || !Number.isFinite(median)) return null;
   if (!Number.isInteger(n) || n < minN) return null;
-  return { avg: round2(avg), median: round2(median), n };
+  const low  = Number.isFinite(Number(b.low))  ? round2(Number(b.low))  : null;
+  const high = Number.isFinite(Number(b.high)) ? round2(Number(b.high)) : null;
+  return { avg: round2(avg), median: round2(median), n, low, high };
 }
 
 function cleanCommunityEntry(body) {
