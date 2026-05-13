@@ -259,7 +259,7 @@ function bucketStats(arr) {
   const sum = filtered.reduce((a, b) => a + b, 0);
   const avg = sum / filtered.length;
   const median = filtered[Math.floor(filtered.length / 2)];
-  return { avg: round2(avg), median: round2(median), n: filtered.length, samples: filtered.slice(0, 10).map(round2) };
+  return { avg: round2(avg), median: round2(median), n: filtered.length, low: round2(filtered[0]), high: round2(filtered[filtered.length - 1]), samples: filtered.slice(0, 10).map(round2) };
 }
 function round2(n) { return Math.round(n * 100) / 100; }
 

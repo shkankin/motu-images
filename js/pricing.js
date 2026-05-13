@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.54)
+// MOTU Vault — pricing.js (v6.55)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -182,17 +182,20 @@ function _sanitize(d) {
 // Render a compact market-value block. Returns '' when there's no data
 // to show (no backend, no cache, etc.) so callers can drop it inline
 // without conditional wrappers.
+const _fetched = new Set(); // figIds fetched this session — prevents re-fetch on re-render
+
 export function renderMarketValueBlock(figId, paidArr, condition) {
   if (!figId) return '';
   const cached = getCachedPricing(figId);
   if (!cached || !cached.data) {
     if (!isPricingConfigured()) return '';   // silent when no backend
-    // Backend configured but no data yet — render a placeholder + auto-fetch.
-    // Guard against re-triggering on every re-render by checking inflight state.
-    if (!_inflight.has(figId)) {
+    // Only fetch once per session per figId — re-renders after patchDetailStatus
+    // would otherwise re-trigger indefinitely.
+    if (!_fetched.has(figId) && !_inflight.has(figId)) {
+      _fetched.add(figId);
       const meta = renderMarketValueBlock._meta || {};
       fetchPricing(figId, { line: meta.line, wave: meta.wave, year: meta.year }).then(r => {
-        if (r && typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
+        if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
       });
     }
     return `<div class="market-value-block placeholder">
@@ -237,13 +240,13 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
     <div class="mv-row${sealedActive ? ' mv-active' : sealedDim ? ' mv-dim' : ''}">
       <span class="mv-label">Sealed</span>
       <span class="mv-value">${fmtMoney(d.sealed.avg)}${compare(d.sealed.avg)}</span>
-      <span class="mv-meta">avg of ${d.sealed.n}</span>
+      <span class="mv-meta">avg of ${d.sealed.n}${d.sealed.low != null && d.sealed.high != null ? ` · ${fmtMoney(d.sealed.low)}–${fmtMoney(d.sealed.high)}` : ''}</span>
     </div>` : '';
   const looseRow = d.loose ? `
     <div class="mv-row${looseActive ? ' mv-active' : looseDim ? ' mv-dim' : ''}">
       <span class="mv-label">Loose</span>
       <span class="mv-value">${fmtMoney(d.loose.avg)}${compare(d.loose.avg)}</span>
-      <span class="mv-meta">avg of ${d.loose.n}</span>
+      <span class="mv-meta">avg of ${d.loose.n}${d.loose.low != null && d.loose.high != null ? ` · ${fmtMoney(d.loose.low)}–${fmtMoney(d.loose.high)}` : ''}</span>
     </div>` : '';
   const sourceLabel = {
     'ebay-finding':   'eBay sold (last 30d)',
@@ -268,6 +271,7 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
 // Inline action — exposed to inline-onclick. Forces a fresh fetch.
 window.refreshPricing = async (figId) => {
   if (!figId) return;
+  _fetched.delete(figId); // allow re-fetch
   const meta = renderMarketValueBlock._meta || {};
   const r = await fetchPricing(figId, { force: true, line: meta.line, wave: meta.wave, year: meta.year });
   if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();

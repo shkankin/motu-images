@@ -424,7 +424,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.54</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.55</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2095,7 +2095,7 @@ function renderDetail() {
     ${(() => {
       // v6.28: market value block (eBay sold avg, etc.). Pulls all paid prices
       // from owned/for-sale copies for the under/over-paid comparison badges.
-      // v6.54: pass fig metadata for precise eBay queries + condition for row highlight.
+      // v6.55: pass fig metadata for precise eBay queries + condition for row highlight.
       const paidArr = [];
       const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
       if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
