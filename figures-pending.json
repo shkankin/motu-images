@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "gray-13693",
+    "name": "Gray",
+    "sourceName": "Gray",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 22.0,
+    "slug": "gray-13693",
+    "faction": "Other",
+    "source": "af411",
+    "_addedToPending": 1778661699
+  }
+]
