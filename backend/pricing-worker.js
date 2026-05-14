@@ -147,7 +147,13 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
       const raw = await fn(figId, env, meta);
       const out = shapeResult(figId, raw, name, env);
       if (out.sealed || out.loose) {
-        ctx.waitUntil(env.PRICING_CACHE.put(figId, JSON.stringify(out), { expirationTtl: CACHE_TTL_SECONDS }));
+        // v6.60-fix2: don't cache debug responses, and strip the _debug field
+        // before write so a non-debug call later doesn't get a debug-shaped
+        // hit (defensive — debug responses aren't supposed to be cached at all).
+        if (!meta._debug) {
+          const { _debug, ...cacheable } = out;
+          ctx.waitUntil(env.PRICING_CACHE.put(figId, JSON.stringify(cacheable), { expirationTtl: CACHE_TTL_SECONDS }));
+        }
         return out;
       }
       // empty — try next provider
@@ -177,7 +183,7 @@ function shapeResult(figId, raw, providerName, env) {
   const lowConf = (sealed?.confidence === 'low') || (loose?.confidence === 'low');
   if (lowConf) note = (note ? note + ' · ' : '') + 'Low sample size — estimate only';
 
-  return {
+  const out = {
     figId,
     sealed,
     loose,
@@ -186,6 +192,9 @@ function shapeResult(figId, raw, providerName, env) {
     currency: raw?.currency || 'USD',
     note,
   };
+  // v6.60-fix2: pass _debug through when present so ?debug=1 actually works.
+  if (raw?._debug) out._debug = raw._debug;
+  return out;
 }
 
 // ── Providers ───────────────────────────────────────────────────────
