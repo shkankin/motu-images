@@ -256,7 +256,17 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   const items = data.itemSummaries || [];
 
   // v6.58: sealed markers — strict, no bare \bnew\b.
-  const SEALED_RE = /\b(mib|moc|nib|nip|sealed|unopened|new in (?:box|package|card)|brand new in (?:box|package)|mint in (?:box|package|card)|carded|factory sealed)\b/i;
+  // v6.60-fix4: expanded with real-world phrasings seen in eBay listings:
+  // mosc (Mint On Sealed Card), still sealed, in (the) package, in (the) box,
+  // in (the) card, never opened, complete in card. Origins MOC listings often
+  // use these instead of bare MOC/MIB.
+  const SEALED_RE = /\b(mib|moc|mosc|nib|nip|sealed|unopened|never opened|new in (?:box|package|card)|brand new in (?:box|package)|mint in (?:box|package|card)|in (?:the )?(?:box|package|card)|complete in card|carded|factory sealed|still sealed)\b/i;
+
+  // v6.60-fix4: loose markers — explicit signals that a listing is NOT sealed.
+  // Used to break the tie when a title has neither a sealed marker nor a loose
+  // marker. For Origins specifically, untagged listings are far more likely to
+  // be MOC than loose, so we default ambiguous-but-line-tagged to sealed.
+  const LOOSE_RE = /\b(loose|opened|out of (?:box|package)|complete loose|no (?:box|package|card)|figure only|displayed|used|preowned|pre-owned|played with)\b/i;
 
   // v6.58: junk filter — drop listings that aren't a single complete figure.
   // These contaminate both buckets:
@@ -281,6 +291,14 @@ async function ebayActiveProvider(figId, env, meta = {}) {
 
   const sealed = [], loose = [];
   let rejJunk = 0, rejLine = 0, rejAmbig = 0;
+  // v6.60-fix4: capture a few kept titles per bucket so we can see what's
+  // actually being classified as sealed vs loose. Until now the debug only
+  // showed rejected items, but the loose bucket's $99 high suggested
+  // sealed-but-untagged listings were leaking into loose.
+  const keptSealed = [], keptLoose = [];
+  // For Origins (and other modern carded lines), untagged listings default to
+  // sealed since modern figures are mostly sold MOC. For vintage, the opposite.
+  const isModernLine = ['origins', 'masterverse', 'classics', 'super7', 'mondo', 'kids-core', 'eternia-minis'].includes(meta.line);
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
     const rawTitle = it?.title || '';
@@ -297,8 +315,15 @@ async function ebayActiveProvider(figId, env, meta = {}) {
     // Only listings missing the line keyword get tested for off-line signals.
     const hasRequired = !lineRequired || lineRequired.test(title);
     if (hasRequired) {
-      if (SEALED_RE.test(title)) sealed.push(price);
-      else loose.push(price);
+      const hasSealed = SEALED_RE.test(title);
+      const hasLoose  = LOOSE_RE.test(title);
+      let bucket;
+      if (hasSealed && !hasLoose) bucket = 'sealed';
+      else if (hasLoose && !hasSealed) bucket = 'loose';
+      else if (hasSealed && hasLoose) bucket = 'loose';  // "loose figure, no box" + "MOC" mention → loose wins
+      else bucket = isModernLine ? 'sealed' : 'loose';   // ambiguous: default by era
+      if (bucket === 'sealed') { sealed.push(price); if (debug && keptSealed.length < 8) keptSealed.push(`$${price} ${rawTitle.slice(0, 70)}`); }
+      else                     { loose.push(price);  if (debug && keptLoose.length  < 8) keptLoose.push(`$${price} ${rawTitle.slice(0, 70)}`); }
       continue;
     }
     // No line keyword — try negative filter to distinguish "probably wrong line"
@@ -316,7 +341,7 @@ async function ebayActiveProvider(figId, env, meta = {}) {
     source: 'ebay-active',
     note:   `Active listings (asking prices) for "${queryName}" — not sold prices${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
   };
-  if (debug) out._debug = { query: queryName, total: items.length, kept: sealed.length + loose.length, rejected: dbg };
+  if (debug) out._debug = { query: queryName, total: items.length, kept: sealed.length + loose.length, rejected: dbg, keptSealed, keptLoose };
   return out;
 }
 
