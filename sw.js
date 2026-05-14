@@ -1,7 +1,16 @@
-// MOTU Vault — Service Worker v6.57
+// MOTU Vault — Service Worker v6.58
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.58 changelog:
+//   • CACHE bumped to v6.58.
+//   • No SHELL changes. Bumping CACHE forces eviction of v6.57 entries
+//     so users pick up: median-based headline pricing (was avg, easily
+//     skewed), trimmed-mean stats, junk-listing filter (lots, customs,
+//     repros, parts-only), per-line negative-keyword filter to reject
+//     cross-line contamination (Origins query no longer pulls vintage),
+//     and $5 price floor on eBay results.
 //
 // v6.57 changelog:
 //   • CACHE bumped to v6.57.
@@ -468,7 +477,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.57';
+const CACHE = 'motu-vault-v6.58';
 
 const SHELL = [
   'motu-vault.html',

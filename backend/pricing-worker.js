@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.56
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.58
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -218,10 +218,12 @@ async function ebaySoldProvider(figId, env, meta) {
 async function ebayActiveProvider(figId, env, meta = {}) {
   const token = await getEbayToken(env);
   const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
+  // v6.58: fetch the full 100-item page so trimmed mean / median have more
+  // to chew on. eBay caps Browse at 200; 100 is plenty without a second call.
   const url = 'https://api.ebay.com/buy/browse/v1/item_summary/search?' + new URLSearchParams({
     q: queryName,
-    filter: 'buyingOptions:{FIXED_PRICE}',
-    limit: '50',
+    filter: 'buyingOptions:{FIXED_PRICE},price:[5..]',  // price floor: kill $0.99 shipping bait
+    limit: '100',
   });
   const res = await fetch(url, {
     headers: {
@@ -235,15 +237,30 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   const data = JSON.parse(rawBody);
   const items = data.itemSummaries || [];
 
-  // v6.56: removed bare \bnew\b — too noisy ("like new", "new listing", "new photos").
-  // Keep specific sealed markers only.
-  const SEALED_RE = /\b(mib|moc|nib|nip|sealed|unopened|new in (?:box|package|card)|brand new in box|carded)\b/i;
+  // v6.58: sealed markers — strict, no bare \bnew\b.
+  const SEALED_RE = /\b(mib|moc|nib|nip|sealed|unopened|new in (?:box|package|card)|brand new in (?:box|package)|mint in (?:box|package|card)|carded|factory sealed)\b/i;
+
+  // v6.58: junk filter — drop listings that aren't a single complete figure.
+  // These contaminate both buckets:
+  //  - "lot of 5 figures" → wrong unit price
+  //  - "custom Tung Lashor" / "repro card" → not the official product
+  //  - "broken / parts only / missing head" → not market value
+  //  - "art print / poster / sticker / magnet" → merch, not figure
+  const JUNK_RE = /\b(lot of|bundle|joblot|job lot|x ?\d+ figures?|custom (?:painted|head|made)|reproduction|repro card|repro bubble|bootleg|knockoff|ko[ -]?figure|broken|damaged|incomplete|missing|parts only|for parts|read description|art print|poster|sticker|magnet|t-?shirt|button pin|keychain|fan art|3d print(?:ed)?)\b/i;
+
+  // v6.58: line mismatch — if the user is asking about Origins, reject titles
+  // that strongly signal a different line. Origins-specific because that's
+  // the most contaminated query (vintage Tung Lashor sells for 10× Origins).
+  const lineNegative = LINE_NEGATIVE_TERMS[meta.line];
 
   const sealed = [], loose = [];
+  let rejected = 0;
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
-    if (!Number.isFinite(price) || price <= 0) continue;
+    if (!Number.isFinite(price) || price < 5) { rejected++; continue; }
     const title = (it.title || '').toLowerCase();
+    if (JUNK_RE.test(title)) { rejected++; continue; }
+    if (lineNegative && lineNegative.test(title)) { rejected++; continue; }
     if (SEALED_RE.test(title)) sealed.push(price);
     else loose.push(price);
   }
@@ -251,7 +268,7 @@ async function ebayActiveProvider(figId, env, meta = {}) {
     sealed: bucketStats(sealed),
     loose:  bucketStats(loose),
     source: 'ebay-active',
-    note:   `Active listings (asking prices) for "${queryName}" — not sold prices`,
+    note:   `Active listings (asking prices) for "${queryName}" — not sold prices${rejected ? ` · filtered ${rejected} junk/off-line` : ''}`,
   };
 }
 
@@ -288,24 +305,39 @@ function bucketStats(arr) {
   if (!arr.length) return null;
   const sorted = [...arr].sort((a, b) => a - b);
   const n = sorted.length;
-  // 1.5×IQR outlier filter so single auction spikes don't move the avg.
-  const q1 = sorted[Math.floor(n * 0.25)];
-  const q3 = sorted[Math.floor(n * 0.75)];
-  const iqr = q3 - q1;
-  const filtered = sorted.filter(v => v >= q1 - 1.5 * iqr && v <= q3 + 1.5 * iqr);
-  const use = filtered.length ? filtered : sorted;   // never return empty when we have data
+
+  // v6.58: trimmed mean — drop the bottom 20% and top 20% before averaging.
+  // For collectibles markets where listings span "parts" to "graded perfect",
+  // trimmed mean is FAR more representative than a plain avg, and more robust
+  // than IQR for skewed distributions. Floor of 1 trim either side so even
+  // small samples benefit.
+  let use;
+  if (n >= 5) {
+    const trim = Math.max(1, Math.floor(n * 0.2));
+    use = sorted.slice(trim, n - trim);
+  } else {
+    use = sorted; // too small to trim meaningfully
+  }
+  if (!use.length) use = sorted;
+
   const sum = use.reduce((a, b) => a + b, 0);
   const avg = sum / use.length;
-  const median = use[Math.floor(use.length / 2)];
-  // v6.56: confidence flag — keep low-sample data but mark it.
+  // True median across the FULL sorted set (not the trimmed slice) — median is
+  // already outlier-resistant by definition.
+  const median = n % 2
+    ? sorted[(n - 1) / 2]
+    : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+
+  // Confidence: keep low/medium/high but base on FULL n, not trimmed length.
   let confidence = 'high';
   if (n < 5) confidence = 'low';
   else if (n < 15) confidence = 'medium';
+
   return {
-    avg: round2(avg),
-    median: round2(median),
+    avg:    round2(avg),       // trimmed mean — shown in raw data, not headline
+    median: round2(median),    // CLIENT renders this as the headline price
     n,
-    low: round2(use[0]),
+    low:  round2(use[0]),                // low/high of the trimmed range, not raw
     high: round2(use[use.length - 1]),
     confidence,
     samples: use.slice(0, 10).map(round2),
@@ -354,6 +386,24 @@ const LINE_SEARCH_TERMS = {
   'super7':         'Super7 Masters of the Universe',
   'mondo':          'Mondo Masters of the Universe',
   'eternia-minis':  'Masters of the Universe Minis',
+};
+
+// v6.58: per-line negative title regex — applied to eBay results to reject
+// cross-line contamination. Origins is the worst offender because the
+// generic toy name (e.g. "Tung Lashor") matches vintage listings that sell
+// for 10× the Origins price. Each regex rejects titles signalling the
+// WRONG line for the requested figure.
+const LINE_NEGATIVE_TERMS = {
+  'origins':        /\b(vintage|1980s?|1990s?|198[0-9]|199[0-9]|filmation|classics|masterverse|super ?7|mondo|200x|new adventures|2002|movie)\b/i,
+  'classics':       /\b(vintage|1980s?|filmation|origins|masterverse|super ?7|mondo|200x|new adventures|kids core)\b/i,
+  'masterverse':    /\b(vintage|1980s?|filmation|origins|classics|super ?7|mondo|200x|new adventures|kids core)\b/i,
+  'original':       /\b(origins|classics|masterverse|super ?7|mondo|200x|new adventures|kids core|movie 2025)\b/i,
+  '200x':           /\b(vintage|1980s?|filmation|origins|classics|masterverse|super ?7|mondo|new adventures|kids core)\b/i,
+  'new-adventures': /\b(vintage|1980s?|filmation|origins|classics|masterverse|super ?7|mondo|200x|kids core)\b/i,
+  'super7':         /\b(vintage|1980s?|origins|classics|masterverse|mondo|200x|new adventures|kids core)\b/i,
+  'mondo':          /\b(vintage|1980s?|origins|classics|masterverse|super ?7|200x|new adventures|kids core)\b/i,
+  'kids-core':      /\b(vintage|1980s?|origins|classics|masterverse|super ?7|mondo|200x|new adventures)\b/i,
+  'eternia-minis':  /\b(vintage|1980s?|origins|classics|masterverse|super ?7|mondo|200x)\b/i,
 };
 
 function figIdToQuery(figId, meta = {}) {

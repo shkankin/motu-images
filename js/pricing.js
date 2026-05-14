@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.57)
+// MOTU Vault — pricing.js (v6.58)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -265,17 +265,22 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
     if (lo === hi) return '';
     return ` · ${fmtMoney(lo)}–${fmtMoney(hi)}`;
   };
+  // v6.58: use median (not avg) as the displayed headline price. Median is
+  // far more representative than mean for skewed collectibles distributions
+  // — one $400 outlier listing on a $40 figure barely moves the median.
+  // Fallback to avg if backend hasn't populated median (older responses).
+  const headlinePrice = b => (b && Number.isFinite(b.median)) ? b.median : (b ? b.avg : 0);
   const sealedRow = d.sealed ? `
     <div class="mv-row${sealedActive ? ' mv-active' : sealedDim ? ' mv-dim' : ''}">
       <span class="mv-label">Sealed</span>
-      <span class="mv-value">${fmtMoney(d.sealed.avg)}${compare(d.sealed.avg)}</span>
-      <span class="mv-meta">avg of ${d.sealed.n}${rangePart(d.sealed)}${confBadge(d.sealed)}</span>
+      <span class="mv-value">${fmtMoney(headlinePrice(d.sealed))}${compare(headlinePrice(d.sealed))}</span>
+      <span class="mv-meta">median of ${d.sealed.n}${rangePart(d.sealed)}${confBadge(d.sealed)}</span>
     </div>` : '';
   const looseRow = d.loose ? `
     <div class="mv-row${looseActive ? ' mv-active' : looseDim ? ' mv-dim' : ''}">
       <span class="mv-label">Loose</span>
-      <span class="mv-value">${fmtMoney(d.loose.avg)}${compare(d.loose.avg)}</span>
-      <span class="mv-meta">avg of ${d.loose.n}${rangePart(d.loose)}${confBadge(d.loose)}</span>
+      <span class="mv-value">${fmtMoney(headlinePrice(d.loose))}${compare(headlinePrice(d.loose))}</span>
+      <span class="mv-meta">median of ${d.loose.n}${rangePart(d.loose)}${confBadge(d.loose)}</span>
     </div>` : '';
   const sourceLabel = {
     'ebay-sold':      'eBay sold (last 30d)',
