@@ -249,17 +249,27 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
     const txt = b.confidence === 'low' ? 'Low sample' : 'Limited data';
     return ` <span class="mv-confidence mv-conf-${b.confidence}" title="${esc(txt)} (n=${b.n})">${txt}</span>`;
   };
+  // v6.56-fix: only render range when low/high are present, non-zero, and not identical.
+  // Community-curated entries often lack low/high; we used to render "$0.00–$0.00".
+  const rangePart = (b) => {
+    if (!b) return '';
+    const lo = b.low, hi = b.high;
+    if (lo == null || hi == null) return '';
+    if (lo === 0 && hi === 0) return '';
+    if (lo === hi) return '';
+    return ` · ${fmtMoney(lo)}–${fmtMoney(hi)}`;
+  };
   const sealedRow = d.sealed ? `
     <div class="mv-row${sealedActive ? ' mv-active' : sealedDim ? ' mv-dim' : ''}">
       <span class="mv-label">Sealed</span>
       <span class="mv-value">${fmtMoney(d.sealed.avg)}${compare(d.sealed.avg)}</span>
-      <span class="mv-meta">avg of ${d.sealed.n}${d.sealed.low != null && d.sealed.high != null ? ` · ${fmtMoney(d.sealed.low)}–${fmtMoney(d.sealed.high)}` : ''}${confBadge(d.sealed)}</span>
+      <span class="mv-meta">avg of ${d.sealed.n}${rangePart(d.sealed)}${confBadge(d.sealed)}</span>
     </div>` : '';
   const looseRow = d.loose ? `
     <div class="mv-row${looseActive ? ' mv-active' : looseDim ? ' mv-dim' : ''}">
       <span class="mv-label">Loose</span>
       <span class="mv-value">${fmtMoney(d.loose.avg)}${compare(d.loose.avg)}</span>
-      <span class="mv-meta">avg of ${d.loose.n}${d.loose.low != null && d.loose.high != null ? ` · ${fmtMoney(d.loose.low)}–${fmtMoney(d.loose.high)}` : ''}${confBadge(d.loose)}</span>
+      <span class="mv-meta">avg of ${d.loose.n}${rangePart(d.loose)}${confBadge(d.loose)}</span>
     </div>` : '';
   const sourceLabel = {
     'ebay-sold':      'eBay sold (last 30d)',

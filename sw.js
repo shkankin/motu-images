@@ -460,7 +460,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.56';
+const CACHE = 'motu-vault-v6.56-fix';
 
 const SHELL = [
   'motu-vault.html',
