@@ -1,7 +1,23 @@
-// MOTU Vault — Service Worker v6.59
+// MOTU Vault — Service Worker v6.60
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.60 changelog:
+//   • CACHE bumped to v6.60. SHELL: vault.css updated.
+//   • Search bar: suppressed native browser clear-X (the input type="search"
+//     added in v6.57 caused two X's). Custom .search-clear remains.
+//   • Worker: substantial accuracy work consolidated through fix1..fix6 —
+//     filter order swapped (required-line check runs before negative so
+//     reissues mentioning vintage years are still accepted); expanded
+//     SEALED_RE with MOSC / "in package" / "complete in card" / "still
+//     sealed"; new LOOSE_RE with explicit loose markers; SEALED_HINT_RE
+//     (bare "new" / "unpunched") only counts for modern lines; untagged
+//     listings now rejected as ambig instead of force-bucketed; multi-
+//     figure bundle detector via MOTU character names with separator-
+//     context regex; "retro play" added to Origins required terms; ?debug=1
+//     returns sample kept/rejected titles for tuning; ?fresh=1 bypasses
+//     worker KV cache.
 //
 // v6.59 changelog:
 //   • CACHE bumped to v6.59.
@@ -485,7 +501,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.59';
+const CACHE = 'motu-vault-v6.60';
 
 const SHELL = [
   'motu-vault.html',

@@ -334,6 +334,16 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   border-radius: 12px;
   font-size: 15px;
 }
+/* v6.60: type="search" (added in v6.57 for Android keyboard) brings the
+   browser's native clear-X. We render our own .search-clear button, so
+   suppress the native one across browsers to avoid two X's. */
+.search-wrap input::-webkit-search-cancel-button,
+.search-wrap input::-webkit-search-decoration,
+.search-wrap input::-webkit-search-results-button,
+.search-wrap input::-webkit-search-results-decoration { display: none; -webkit-appearance: none; }
+.search-wrap input::-ms-clear,
+.search-wrap input::-ms-reveal { display: none; width: 0; height: 0; }
+.search-wrap input { appearance: none; -webkit-appearance: none; }
 .search-clear {
   position: absolute; right: 12px; top: 50%;
   transform: translateY(-50%);

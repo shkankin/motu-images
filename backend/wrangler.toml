@@ -25,6 +25,9 @@ id = "46a2c6e99cd64215863dc3000391f471"
 # v6.56: comma-separated provider chain, tried in order until one returns data.
 # Available: community | ebay-sold | ebay-active | stub
 # (Legacy single-provider PROVIDER env still works as fallback.)
+# v6.60: defaulted to ebay-active only — community-curated path is not being
+# maintained. Re-add "community," at the front of the chain if you ever
+# decide to crowdsource curated prices.
 PROVIDER_CHAIN = "ebay-active"
 ALLOWED_ORIGINS = "https://shkankin.github.io"
 MIN_SAMPLES = "1"                   # v6.56: keep low-sample data, flag confidence client-side

@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.59)
+// MOTU Vault — pricing.js (v6.60)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
