@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.58
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.59
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -61,8 +61,9 @@ export default {
       const invalid = ids.filter(id => !isValidFigId(id));
       if (invalid.length) return json({ error: 'invalid figIds', invalid }, 400, cors);
       const meta = (body.meta && typeof body.meta === 'object') ? body.meta : {};
+      const fresh = body.fresh === true;
       const results = await Promise.all(
-        ids.map(id => getPricing(id, env, ctx, meta).catch(e => ({
+        ids.map(id => getPricing(id, env, ctx, meta, { fresh }).catch(e => ({
           figId: id, sealed: null, loose: null, source: 'error',
           error: String(e.message || e), asof: new Date().toISOString(),
         })))
@@ -80,8 +81,11 @@ export default {
         wave: url.searchParams.get('wave') || undefined,
         year: url.searchParams.get('year') || undefined,
       };
+      // v6.59: ?fresh=1 bypasses the worker KV cache so the in-app refresh
+      // button can re-query eBay through the new filters without manual KV deletes.
+      const fresh = url.searchParams.get('fresh') === '1';
       try {
-        const data = await getPricing(figId, env, ctx, meta);
+        const data = await getPricing(figId, env, ctx, meta, { fresh });
         return json(data, 200, cors);
       } catch (e) {
         return json({ error: 'upstream', message: String(e.message || e) }, 502, cors);
@@ -123,10 +127,12 @@ function getChain(env) {
   return raw.split(',').map(s => s.trim()).filter(Boolean);
 }
 
-async function getPricing(figId, env, ctx, meta = {}) {
-  // 1. Cache
-  const cached = await env.PRICING_CACHE.get(figId, { type: 'json' });
-  if (cached) return cached;
+async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
+  // 1. Cache (skipped when opts.fresh — used by the in-app Refresh button via ?fresh=1)
+  if (!opts.fresh) {
+    const cached = await env.PRICING_CACHE.get(figId, { type: 'json' });
+    if (cached) return cached;
+  }
 
   // 2. Try each provider in chain until one returns positive data
   const chain = getChain(env);
@@ -252,23 +258,32 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   // that strongly signal a different line. Origins-specific because that's
   // the most contaminated query (vintage Tung Lashor sells for 10× Origins).
   const lineNegative = LINE_NEGATIVE_TERMS[meta.line];
+  // v6.59: line REQUIRED — title must explicitly mention the line. Unlabeled
+  // ambiguous listings are tossed rather than guessed. Far less contamination,
+  // smaller but more honest samples.
+  const lineRequired = LINE_REQUIRED_TERMS[meta.line];
 
   const sealed = [], loose = [];
-  let rejected = 0;
+  let rejJunk = 0, rejLine = 0, rejAmbig = 0;
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
-    if (!Number.isFinite(price) || price < 5) { rejected++; continue; }
+    if (!Number.isFinite(price) || price < 5) { rejJunk++; continue; }
     const title = (it.title || '').toLowerCase();
-    if (JUNK_RE.test(title)) { rejected++; continue; }
-    if (lineNegative && lineNegative.test(title)) { rejected++; continue; }
+    if (JUNK_RE.test(title))                            { rejJunk++; continue; }
+    if (lineNegative && lineNegative.test(title))       { rejLine++; continue; }
+    if (lineRequired && !lineRequired.test(title))      { rejAmbig++; continue; }
     if (SEALED_RE.test(title)) sealed.push(price);
     else loose.push(price);
   }
+  const filterParts = [];
+  if (rejJunk)  filterParts.push(`${rejJunk} junk`);
+  if (rejLine)  filterParts.push(`${rejLine} off-line`);
+  if (rejAmbig) filterParts.push(`${rejAmbig} unlabeled`);
   return {
     sealed: bucketStats(sealed),
     loose:  bucketStats(loose),
     source: 'ebay-active',
-    note:   `Active listings (asking prices) for "${queryName}" — not sold prices${rejected ? ` · filtered ${rejected} junk/off-line` : ''}`,
+    note:   `Active listings (asking prices) for "${queryName}" — not sold prices${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
   };
 }
 
@@ -404,6 +419,26 @@ const LINE_NEGATIVE_TERMS = {
   'mondo':          /\b(vintage|1980s?|origins|classics|masterverse|super ?7|200x|new adventures|kids core)\b/i,
   'kids-core':      /\b(vintage|1980s?|origins|classics|masterverse|super ?7|mondo|200x|new adventures)\b/i,
   'eternia-minis':  /\b(vintage|1980s?|origins|classics|masterverse|super ?7|mondo|200x)\b/i,
+};
+
+// v6.59: per-line REQUIRED title regex — listing must match at least one of
+// these to count. Listings that don't mention any line keyword are ambiguous
+// wildcards and historically polluted the buckets (an unlabeled "Tung Lashor
+// MOC" listing could be vintage at $300 or Origins at $30). Better to be
+// strict and discard than guess wrong. Multiple acceptable phrasings per
+// line — "new adventures of he-man" or "he-man new adventures" both match;
+// "kids core" or "kids-core" or bare "core" all match; etc.
+const LINE_REQUIRED_TERMS = {
+  'origins':        /\b(origins)\b/i,
+  'classics':       /\b(classics|motuc)\b/i,
+  'masterverse':    /\b(masterverse|masters ?verse)\b/i,
+  'original':       /\b(vintage|198[0-9]|199[0-9]|1980s?|1990s?|filmation|original)\b/i,
+  '200x':           /\b(200x|2002|mike young|mya|modern series)\b/i,
+  'new-adventures': /\b(new adventures|nahm|new[- ]?adv|na he[- ]?man)\b/i,
+  'super7':         /\b(super ?7|club grayskull|filmation collection)\b/i,
+  'mondo':          /\b(mondo)\b/i,
+  'kids-core':      /\b(kids[- ]?core|core power|core(?:[- ]eternia)?)\b/i,
+  'eternia-minis':  /\b(minis?|eternia minis|micro)\b/i,
 };
 
 function figIdToQuery(figId, meta = {}) {

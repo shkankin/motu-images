@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.58)
+// MOTU Vault — pricing.js (v6.59)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -124,6 +124,10 @@ export async function fetchPricing(figId, opts = {}) {
       if (opts.line) urlObj.searchParams.set('line', opts.line);
       if (opts.wave) urlObj.searchParams.set('wave', opts.wave);
       if (opts.year) urlObj.searchParams.set('year', String(opts.year));
+      // v6.59: force=true also bypasses the WORKER's KV cache, not just the
+      // client cache. Without this the refresh button just re-reads the same
+      // cached eBay result the worker stored 24h ago.
+      if (force) urlObj.searchParams.set('fresh', '1');
       const url = urlObj.toString();
       const res = await fetch(url, { headers, signal: ctl.signal });
       clearTimeout(timer);
