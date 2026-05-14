@@ -279,13 +279,26 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   // bundles priced for multiple figures. JUNK_RE catches "lot of" / "bundle"
   // but not these. We detect bundles by counting MOTU character names in the
   // title — 2+ distinct names = bundle.
-  const MOTU_CHARACTERS = ['he-man','heman','skeletor','tung lashor','slamurai','mer-man','merman','beast man','beastman','man-at-arms','teela','evil-lyn','evillyn','trap jaw','trapjaw','tri-klops','triklops','stratos','zodac','mosquitor','two bad','twobad','clamp champ','rio blast','sy-klone','ram man','ramman','fisto','snout spout','roboto','mekaneck','stinkor','spikor','buzz-off','buzzoff','grizzlor','leech','mantenna','modulok','multi-bot','hordak','king hiss','rattlor','kobra khan','snake face','snakeface','sssqueeze','orko','prince adam','battle cat','battlecat','panthor','cringer','horde trooper','faker','sorceress','queen marlena','king randor','prahvus','flogg','optikk','hoove','nocturna','crita','slush head','butthead','skeleton warrior','blade','saurod','blast attak','dragon blaster','clawful','mosquitor','jitsu','whiplash','dragstor','extendar','rotar','twistoid','mantenna','flogg','karatti','staghorn','draego-man','geldor','demo-man','demogorgon','mighty spector','procrustus','keldor','strobo','marzo'];
+  // v6.60-fix6: tightened. The previous version flagged ANY occurrence of a
+  // second character name, which caught false positives:
+  //   "...MOTU He-Man Masters of the Universe"  ("He-Man" as franchise word)
+  //   "...MOC, carded, He-Man, sealed"          (keyword-spam, not a bundle)
+  // Now we require the OTHER character name to appear in a separator context
+  // (preceded or followed by + & | "and" "with" "feat" comma-then-name) OR be
+  // a less-ambiguous character name. "He-Man", "Skeletor", and "MOTU" are
+  // dropped from the list entirely since they double as franchise words.
+  const MOTU_CHARACTERS = ['tung lashor','slamurai','mer-man','merman','beast man','beastman','man-at-arms','teela','evil-lyn','evillyn','trap jaw','trapjaw','tri-klops','triklops','stratos','zodac','mosquitor','two bad','twobad','clamp champ','rio blast','sy-klone','ram man','ramman','fisto','snout spout','roboto','mekaneck','stinkor','spikor','buzz-off','buzzoff','grizzlor','leech','mantenna','modulok','multi-bot','hordak','king hiss','rattlor','kobra khan','snake face','snakeface','sssqueeze','orko','prince adam','battle cat','battlecat','panthor','cringer','horde trooper','faker','sorceress','queen marlena','king randor','prahvus','flogg','optikk','hoove','nocturna','crita','slush head','butthead','blade','saurod','blast attak','dragon blaster','clawful','jitsu','whiplash','dragstor','extendar','rotar','twistoid','karatti','staghorn','draego-man','geldor','demo-man','demogorgon','mighty spector','procrustus','keldor','strobo','marzo','hypno','reptilax','huntara','ninjor','spinwit'];
   const figName = (figId || '').replace(/-\d{2,6}$/, '').replace(/-/g, ' ').toLowerCase();
+  const SEP_CTX = '(?:^|[\\s,+&|/\\\\]|\\band\\b|\\bwith\\b|\\bfeat(?:uring)?\\b)';
   const countOtherCharacters = (title) => {
     let count = 0;
     for (const c of MOTU_CHARACTERS) {
-      if (c === figName) continue;  // don't count the requested figure
-      if (title.includes(c)) count++;
+      if (c === figName) continue;
+      // Require the character name to appear in a separator context — this
+      // distinguishes "Tung Lashor + Slamurai" (bundle) from "He-Man brand
+      // figure" (franchise word). Build per-character regex.
+      const re = new RegExp(SEP_CTX + c.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '(?=[\\s,+&|/\\\\]|$|\\bwith\\b)', 'i');
+      if (re.test(title)) count++;
     }
     return count;
   };
