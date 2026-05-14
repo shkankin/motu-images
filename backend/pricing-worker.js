@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.59
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.60
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -84,6 +84,9 @@ export default {
       // v6.59: ?fresh=1 bypasses the worker KV cache so the in-app refresh
       // button can re-query eBay through the new filters without manual KV deletes.
       const fresh = url.searchParams.get('fresh') === '1';
+      // v6.60: ?debug=1 returns up to 8 sample rejected titles per bucket so
+      // we can see exactly what the filters caught.
+      if (url.searchParams.get('debug') === '1') meta._debug = true;
       try {
         const data = await getPricing(figId, env, ctx, meta, { fresh });
         return json(data, 200, cors);
@@ -262,16 +265,24 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   // ambiguous listings are tossed rather than guessed. Far less contamination,
   // smaller but more honest samples.
   const lineRequired = LINE_REQUIRED_TERMS[meta.line];
+  // v6.60: collect a few rejected titles for diagnostics so we can tune the
+  // filters against real eBay traffic. Only kept when meta._debug truthy.
+  const debug = !!meta._debug;
+  const dbg = { junk: [], line: [], ambig: [] };
 
   const sealed = [], loose = [];
   let rejJunk = 0, rejLine = 0, rejAmbig = 0;
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
-    if (!Number.isFinite(price) || price < 5) { rejJunk++; continue; }
-    const title = (it.title || '').toLowerCase();
-    if (JUNK_RE.test(title))                            { rejJunk++; continue; }
-    if (lineNegative && lineNegative.test(title))       { rejLine++; continue; }
-    if (lineRequired && !lineRequired.test(title))      { rejAmbig++; continue; }
+    const rawTitle = it?.title || '';
+    if (!Number.isFinite(price) || price < 5) {
+      rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(`$${price} ${rawTitle.slice(0, 80)}`);
+      continue;
+    }
+    const title = rawTitle.toLowerCase();
+    if (JUNK_RE.test(title))                       { rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(rawTitle.slice(0, 80)); continue; }
+    if (lineNegative && lineNegative.test(title))  { rejLine++; if (debug && dbg.line.length < 8) dbg.line.push(rawTitle.slice(0, 80)); continue; }
+    if (lineRequired && !lineRequired.test(title)) { rejAmbig++; if (debug && dbg.ambig.length < 8) dbg.ambig.push(rawTitle.slice(0, 80)); continue; }
     if (SEALED_RE.test(title)) sealed.push(price);
     else loose.push(price);
   }
@@ -279,12 +290,14 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   if (rejJunk)  filterParts.push(`${rejJunk} junk`);
   if (rejLine)  filterParts.push(`${rejLine} off-line`);
   if (rejAmbig) filterParts.push(`${rejAmbig} unlabeled`);
-  return {
+  const out = {
     sealed: bucketStats(sealed),
     loose:  bucketStats(loose),
     source: 'ebay-active',
     note:   `Active listings (asking prices) for "${queryName}" — not sold prices${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
   };
+  if (debug) out._debug = { query: queryName, total: items.length, kept: sealed.length + loose.length, rejected: dbg };
+  return out;
 }
 
 // ── eBay OAuth token (client-credentials, KV-cached 2h) ─────────────
@@ -408,17 +421,25 @@ const LINE_SEARCH_TERMS = {
 // generic toy name (e.g. "Tung Lashor") matches vintage listings that sell
 // for 10× the Origins price. Each regex rejects titles signalling the
 // WRONG line for the requested figure.
+// v6.60: loosened. Previous version matched bare year numbers ("198[0-9]")
+// which caught Origins reissues that mentioned the original character year
+// in the title (sellers commonly say "Tung Lashor 1985 character, 2023
+// Origins reissue MOC" — that's an Origins listing, but the bare 1985
+// killed it). Now we only reject when the line keyword stands alone
+// AS THE LISTED LINE, not as a passing reference. We also drop bare
+// "vintage" since eBay sellers use "vintage style", "vintage-inspired",
+// and "looks vintage" for new repros.
 const LINE_NEGATIVE_TERMS = {
-  'origins':        /\b(vintage|1980s?|1990s?|198[0-9]|199[0-9]|filmation|classics|masterverse|super ?7|mondo|200x|new adventures|2002|movie)\b/i,
-  'classics':       /\b(vintage|1980s?|filmation|origins|masterverse|super ?7|mondo|200x|new adventures|kids core)\b/i,
-  'masterverse':    /\b(vintage|1980s?|filmation|origins|classics|super ?7|mondo|200x|new adventures|kids core)\b/i,
-  'original':       /\b(origins|classics|masterverse|super ?7|mondo|200x|new adventures|kids core|movie 2025)\b/i,
-  '200x':           /\b(vintage|1980s?|filmation|origins|classics|masterverse|super ?7|mondo|new adventures|kids core)\b/i,
-  'new-adventures': /\b(vintage|1980s?|filmation|origins|classics|masterverse|super ?7|mondo|200x|kids core)\b/i,
-  'super7':         /\b(vintage|1980s?|origins|classics|masterverse|mondo|200x|new adventures|kids core)\b/i,
-  'mondo':          /\b(vintage|1980s?|origins|classics|masterverse|super ?7|200x|new adventures|kids core)\b/i,
-  'kids-core':      /\b(vintage|1980s?|origins|classics|masterverse|super ?7|mondo|200x|new adventures)\b/i,
-  'eternia-minis':  /\b(vintage|1980s?|origins|classics|masterverse|super ?7|mondo|200x)\b/i,
+  'origins':        /\b(motuc|masterverse|super ?7|club grayskull|mondo|200x toy line|new adventures of he[- ]?man|filmation collection)\b/i,
+  'classics':       /\b(origins|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
+  'masterverse':    /\b(origins|motuc|classics|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
+  'original':       /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x|kids[- ]?core|movie 2025|2023 reissue)\b/i,
+  '200x':           /\b(origins|motuc|classics|masterverse|super ?7|mondo|new adventures|kids[- ]?core)\b/i,
+  'new-adventures': /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x|kids[- ]?core)\b/i,
+  'super7':         /\b(origins|motuc|classics|masterverse|mondo|200x|new adventures|kids[- ]?core)\b/i,
+  'mondo':          /\b(origins|motuc|classics|masterverse|super ?7|200x|new adventures|kids[- ]?core)\b/i,
+  'kids-core':      /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures)\b/i,
+  'eternia-minis':  /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x)\b/i,
 };
 
 // v6.59: per-line REQUIRED title regex — listing must match at least one of
