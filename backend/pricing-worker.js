@@ -289,11 +289,22 @@ async function ebayActiveProvider(figId, env, meta = {}) {
       continue;
     }
     const title = rawTitle.toLowerCase();
-    if (JUNK_RE.test(title))                       { rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(rawTitle.slice(0, 80)); continue; }
-    if (lineNegative && lineNegative.test(title))  { rejLine++; if (debug && dbg.line.length < 8) dbg.line.push(rawTitle.slice(0, 80)); continue; }
-    if (lineRequired && !lineRequired.test(title)) { rejAmbig++; if (debug && dbg.ambig.length < 8) dbg.ambig.push(rawTitle.slice(0, 80)); continue; }
-    if (SEALED_RE.test(title)) sealed.push(price);
-    else loose.push(price);
+    if (JUNK_RE.test(title)) { rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(rawTitle.slice(0, 80)); continue; }
+    // v6.60-fix3: check REQUIRED first, then NEGATIVE. Previous order let the
+    // negative filter kill reissue listings that mentioned both their line
+    // AND the original vintage year ("Tung Lashor 1985 character — 2023
+    // Origins MOC"). Now: if the title positively names the line, accept it.
+    // Only listings missing the line keyword get tested for off-line signals.
+    const hasRequired = !lineRequired || lineRequired.test(title);
+    if (hasRequired) {
+      if (SEALED_RE.test(title)) sealed.push(price);
+      else loose.push(price);
+      continue;
+    }
+    // No line keyword — try negative filter to distinguish "probably wrong line"
+    // (kill it) from "ambiguous/unlabeled" (kill it but for different reason).
+    if (lineNegative && lineNegative.test(title)) { rejLine++; if (debug && dbg.line.length < 8) dbg.line.push(rawTitle.slice(0, 80)); continue; }
+    rejAmbig++; if (debug && dbg.ambig.length < 8) dbg.ambig.push(rawTitle.slice(0, 80));
   }
   const filterParts = [];
   if (rejJunk)  filterParts.push(`${rejJunk} junk`);
@@ -430,25 +441,23 @@ const LINE_SEARCH_TERMS = {
 // generic toy name (e.g. "Tung Lashor") matches vintage listings that sell
 // for 10× the Origins price. Each regex rejects titles signalling the
 // WRONG line for the requested figure.
-// v6.60: loosened. Previous version matched bare year numbers ("198[0-9]")
-// which caught Origins reissues that mentioned the original character year
-// in the title (sellers commonly say "Tung Lashor 1985 character, 2023
-// Origins reissue MOC" — that's an Origins listing, but the bare 1985
-// killed it). Now we only reject when the line keyword stands alone
-// AS THE LISTED LINE, not as a passing reference. We also drop bare
-// "vintage" since eBay sellers use "vintage style", "vintage-inspired",
-// and "looks vintage" for new repros.
+// v6.60-fix3: Restored vintage/198[0-9]/filmation markers — now safe because
+// the filter order changed (required check runs first). Reissue listings that
+// contain "origins" or "retro play" are accepted regardless of what else they
+// say. Only listings missing the line keyword reach this negative filter, so
+// flagging "vintage" and "1985" here correctly catches vintage listings that
+// snuck through ambiguity.
 const LINE_NEGATIVE_TERMS = {
-  'origins':        /\b(motuc|masterverse|super ?7|club grayskull|mondo|200x toy line|new adventures of he[- ]?man|filmation collection)\b/i,
-  'classics':       /\b(origins|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
-  'masterverse':    /\b(origins|motuc|classics|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
-  'original':       /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x|kids[- ]?core|movie 2025|2023 reissue)\b/i,
-  '200x':           /\b(origins|motuc|classics|masterverse|super ?7|mondo|new adventures|kids[- ]?core)\b/i,
-  'new-adventures': /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x|kids[- ]?core)\b/i,
-  'super7':         /\b(origins|motuc|classics|masterverse|mondo|200x|new adventures|kids[- ]?core)\b/i,
-  'mondo':          /\b(origins|motuc|classics|masterverse|super ?7|200x|new adventures|kids[- ]?core)\b/i,
-  'kids-core':      /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures)\b/i,
-  'eternia-minis':  /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x)\b/i,
+  'origins':        /\b(vintage|vtg|198[0-9]|199[0-9]|1980s?|1990s?|filmation|motuc|classics|masterverse|super ?7|club grayskull|mondo|200x toy line|new adventures of he[- ]?man)\b/i,
+  'classics':       /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
+  'masterverse':    /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
+  'original':       /\b(origins|motuc|classics|masterverse|super ?7|mondo|200x|kids[- ]?core|movie 2025|2023 reissue|retro play)\b/i,
+  '200x':           /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|masterverse|super ?7|mondo|new adventures|kids[- ]?core)\b/i,
+  'new-adventures': /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|masterverse|super ?7|mondo|200x|kids[- ]?core)\b/i,
+  'super7':         /\b(vintage|vtg|198[0-9]|1980s?|origins|motuc|classics|masterverse|mondo|200x|new adventures|kids[- ]?core)\b/i,
+  'mondo':          /\b(vintage|vtg|198[0-9]|1980s?|origins|motuc|classics|masterverse|super ?7|200x|new adventures|kids[- ]?core)\b/i,
+  'kids-core':      /\b(vintage|vtg|198[0-9]|1980s?|origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures)\b/i,
+  'eternia-minis':  /\b(vintage|vtg|198[0-9]|1980s?|origins|motuc|classics|masterverse|super ?7|mondo|200x)\b/i,
 };
 
 // v6.59: per-line REQUIRED title regex — listing must match at least one of
@@ -458,8 +467,10 @@ const LINE_NEGATIVE_TERMS = {
 // strict and discard than guess wrong. Multiple acceptable phrasings per
 // line — "new adventures of he-man" or "he-man new adventures" both match;
 // "kids core" or "kids-core" or bare "core" all match; etc.
+// v6.60-fix3: Origins also accepts "retro play" — Mattel's actual carded
+// marketing phrase. Lots of Origins listings use it instead of "origins".
 const LINE_REQUIRED_TERMS = {
-  'origins':        /\b(origins)\b/i,
+  'origins':        /\b(origins|retro play)\b/i,
   'classics':       /\b(classics|motuc)\b/i,
   'masterverse':    /\b(masterverse|masters ?verse)\b/i,
   'original':       /\b(vintage|198[0-9]|199[0-9]|1980s?|1990s?|filmation|original)\b/i,
