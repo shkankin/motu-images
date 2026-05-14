@@ -256,16 +256,14 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   const items = data.itemSummaries || [];
 
   // v6.58: sealed markers — strict, no bare \bnew\b.
-  // v6.60-fix4: expanded with real-world phrasings seen in eBay listings:
-  // mosc (Mint On Sealed Card), still sealed, in (the) package, in (the) box,
-  // in (the) card, never opened, complete in card. Origins MOC listings often
-  // use these instead of bare MOC/MIB.
+  // v6.60-fix4: expanded with real-world phrasings seen in eBay listings.
+  // v6.60-fix5: split into STRICT (always sealed) and HINT (sealed only for
+  // modern lines — bare "new" or "unp(unched)" is ambiguous on vintage but
+  // strongly indicates MOC on modern carded lines).
   const SEALED_RE = /\b(mib|moc|mosc|nib|nip|sealed|unopened|never opened|new in (?:box|package|card)|brand new in (?:box|package)|mint in (?:box|package|card)|in (?:the )?(?:box|package|card)|complete in card|carded|factory sealed|still sealed)\b/i;
+  const SEALED_HINT_RE = /\b(new|unp|unpunched|brand new)\b/i;
 
   // v6.60-fix4: loose markers — explicit signals that a listing is NOT sealed.
-  // Used to break the tie when a title has neither a sealed marker nor a loose
-  // marker. For Origins specifically, untagged listings are far more likely to
-  // be MOC than loose, so we default ambiguous-but-line-tagged to sealed.
   const LOOSE_RE = /\b(loose|opened|out of (?:box|package)|complete loose|no (?:box|package|card)|figure only|displayed|used|preowned|pre-owned|played with)\b/i;
 
   // v6.58: junk filter — drop listings that aren't a single complete figure.
@@ -275,6 +273,22 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   //  - "broken / parts only / missing head" → not market value
   //  - "art print / poster / sticker / magnet" → merch, not figure
   const JUNK_RE = /\b(lot of|bundle|joblot|job lot|x ?\d+ figures?|custom (?:painted|head|made)|reproduction|repro card|repro bubble|bootleg|knockoff|ko[ -]?figure|broken|damaged|incomplete|missing|parts only|for parts|read description|art print|poster|sticker|magnet|t-?shirt|button pin|keychain|fan art|3d print(?:ed)?)\b/i;
+
+  // v6.60-fix5: multi-figure bundle detector. Titles like "Tung Lashor | Slamurai"
+  // or "Tung Lashor + He-Man" or "Tung Lashor and Mer-Man Wave 12 & 13" are
+  // bundles priced for multiple figures. JUNK_RE catches "lot of" / "bundle"
+  // but not these. We detect bundles by counting MOTU character names in the
+  // title — 2+ distinct names = bundle.
+  const MOTU_CHARACTERS = ['he-man','heman','skeletor','tung lashor','slamurai','mer-man','merman','beast man','beastman','man-at-arms','teela','evil-lyn','evillyn','trap jaw','trapjaw','tri-klops','triklops','stratos','zodac','mosquitor','two bad','twobad','clamp champ','rio blast','sy-klone','ram man','ramman','fisto','snout spout','roboto','mekaneck','stinkor','spikor','buzz-off','buzzoff','grizzlor','leech','mantenna','modulok','multi-bot','hordak','king hiss','rattlor','kobra khan','snake face','snakeface','sssqueeze','orko','prince adam','battle cat','battlecat','panthor','cringer','horde trooper','faker','sorceress','queen marlena','king randor','prahvus','flogg','optikk','hoove','nocturna','crita','slush head','butthead','skeleton warrior','blade','saurod','blast attak','dragon blaster','clawful','mosquitor','jitsu','whiplash','dragstor','extendar','rotar','twistoid','mantenna','flogg','karatti','staghorn','draego-man','geldor','demo-man','demogorgon','mighty spector','procrustus','keldor','strobo','marzo'];
+  const figName = (figId || '').replace(/-\d{2,6}$/, '').replace(/-/g, ' ').toLowerCase();
+  const countOtherCharacters = (title) => {
+    let count = 0;
+    for (const c of MOTU_CHARACTERS) {
+      if (c === figName) continue;  // don't count the requested figure
+      if (title.includes(c)) count++;
+    }
+    return count;
+  };
 
   // v6.58: line mismatch — if the user is asking about Origins, reject titles
   // that strongly signal a different line. Origins-specific because that's
@@ -291,13 +305,7 @@ async function ebayActiveProvider(figId, env, meta = {}) {
 
   const sealed = [], loose = [];
   let rejJunk = 0, rejLine = 0, rejAmbig = 0;
-  // v6.60-fix4: capture a few kept titles per bucket so we can see what's
-  // actually being classified as sealed vs loose. Until now the debug only
-  // showed rejected items, but the loose bucket's $99 high suggested
-  // sealed-but-untagged listings were leaking into loose.
   const keptSealed = [], keptLoose = [];
-  // For Origins (and other modern carded lines), untagged listings default to
-  // sealed since modern figures are mostly sold MOC. For vintage, the opposite.
   const isModernLine = ['origins', 'masterverse', 'classics', 'super7', 'mondo', 'kids-core', 'eternia-minis'].includes(meta.line);
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
@@ -308,26 +316,32 @@ async function ebayActiveProvider(figId, env, meta = {}) {
     }
     const title = rawTitle.toLowerCase();
     if (JUNK_RE.test(title)) { rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(rawTitle.slice(0, 80)); continue; }
-    // v6.60-fix3: check REQUIRED first, then NEGATIVE. Previous order let the
-    // negative filter kill reissue listings that mentioned both their line
-    // AND the original vintage year ("Tung Lashor 1985 character — 2023
-    // Origins MOC"). Now: if the title positively names the line, accept it.
-    // Only listings missing the line keyword get tested for off-line signals.
-    const hasRequired = !lineRequired || lineRequired.test(title);
-    if (hasRequired) {
-      const hasSealed = SEALED_RE.test(title);
-      const hasLoose  = LOOSE_RE.test(title);
-      let bucket;
-      if (hasSealed && !hasLoose) bucket = 'sealed';
-      else if (hasLoose && !hasSealed) bucket = 'loose';
-      else if (hasSealed && hasLoose) bucket = 'loose';  // "loose figure, no box" + "MOC" mention → loose wins
-      else bucket = isModernLine ? 'sealed' : 'loose';   // ambiguous: default by era
-      if (bucket === 'sealed') { sealed.push(price); if (debug && keptSealed.length < 8) keptSealed.push(`$${price} ${rawTitle.slice(0, 70)}`); }
-      else                     { loose.push(price);  if (debug && keptLoose.length  < 8) keptLoose.push(`$${price} ${rawTitle.slice(0, 70)}`); }
+    // v6.60-fix5: multi-figure bundle rejection. If the title names another
+    // MOTU character, it's almost certainly priced as a multi-figure bundle.
+    if (countOtherCharacters(title) >= 1) {
+      rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(`[bundle] ${rawTitle.slice(0, 80)}`);
       continue;
     }
-    // No line keyword — try negative filter to distinguish "probably wrong line"
-    // (kill it) from "ambiguous/unlabeled" (kill it but for different reason).
+    const hasRequired = !lineRequired || lineRequired.test(title);
+    if (hasRequired) {
+      // v6.60-fix5: classify with STRICT sealed/loose first; if neither, try
+      // the HINT marker (which only counts for modern lines); if STILL neither,
+      // reject as ambiguous rather than guess. This stops untagged listings
+      // from defaulting into either bucket and polluting the stats.
+      const hasSealed = SEALED_RE.test(title);
+      const hasLoose  = LOOSE_RE.test(title);
+      const hasHint   = !hasSealed && !hasLoose && SEALED_HINT_RE.test(title);
+      let bucket = null;
+      if (hasSealed && !hasLoose) bucket = 'sealed';
+      else if (hasLoose && !hasSealed) bucket = 'loose';
+      else if (hasSealed && hasLoose) bucket = 'loose';  // mixed: loose wins
+      else if (hasHint && isModernLine) bucket = 'sealed';
+      // else: no marker at all — too ambiguous, reject
+      if (bucket === 'sealed') { sealed.push(price); if (debug && keptSealed.length < 8) keptSealed.push(`$${price} ${rawTitle.slice(0, 70)}`); }
+      else if (bucket === 'loose') { loose.push(price); if (debug && keptLoose.length < 8) keptLoose.push(`$${price} ${rawTitle.slice(0, 70)}`); }
+      else { rejAmbig++; if (debug && dbg.ambig.length < 8) dbg.ambig.push(`[no-cond] ${rawTitle.slice(0, 80)}`); }
+      continue;
+    }
     if (lineNegative && lineNegative.test(title)) { rejLine++; if (debug && dbg.line.length < 8) dbg.line.push(rawTitle.slice(0, 80)); continue; }
     rejAmbig++; if (debug && dbg.ambig.length < 8) dbg.ambig.push(rawTitle.slice(0, 80));
   }
