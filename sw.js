@@ -1,7 +1,15 @@
-// MOTU Vault — Service Worker v6.56
+// MOTU Vault — Service Worker v6.57
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.57 changelog:
+//   • CACHE bumped to v6.57.
+//   • No SHELL changes. Bumping CACHE forces eviction of v6.56 entries
+//     so users pick up: live MV-block re-render after pricing fetch,
+//     refresh button on the loading placeholder, search Enter-dismisses
+//     keyboard, scope-aware scroll preservation (no more line-list scroll
+//     bleed from subline screens), and the $0/$0 range render fix.
 //
 // v6.56 changelog:
 //   • CACHE bumped to v6.56.
@@ -460,7 +468,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.56-fix';
+const CACHE = 'motu-vault-v6.57';
 
 const SHELL = [
   'motu-vault.html',

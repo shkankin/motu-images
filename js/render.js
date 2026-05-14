@@ -389,7 +389,17 @@ function renderMain() {
   const _prevCa = document.getElementById('contentArea');
   const _returningFromDetail = !!S._returningFromDetail;
   if (_returningFromDetail) S._returningFromDetail = false;
-  const _preservedScroll = (!S.sheet && _prevCa && !_returningFromDetail) ? _prevCa.scrollTop : 0;
+  // v6.57: scope-aware scroll preservation. The old logic preserved scrollTop
+  // across ANY re-render that wasn't sheet-open or detail-return. But when the
+  // list scope changes (lines → subline → all → collection, or activeLine
+  // switches), the contentArea is showing different items even though the DOM
+  // element is the same — restoring the previous scrollTop dumps the user
+  // somewhere unrelated. We only preserve scroll when the scope key matches.
+  const _listKey = S.screen + '|' + (S.tab || '') + '|' + (S.activeLine || '') + '|' + (S.activeSubline || '');
+  const _prevListKey = S._lastListKey || '';
+  const _scopeMatches = _listKey === _prevListKey;
+  S._lastListKey = _listKey;
+  const _preservedScroll = (!S.sheet && _prevCa && !_returningFromDetail && _scopeMatches) ? _prevCa.scrollTop : 0;
 
   const stats = getStats();
   const sortLabel = S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
@@ -424,7 +434,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.56</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.57</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -436,7 +446,7 @@ function renderMain() {
     <div class="search-row">
       <div class="search-wrap">
         <span class="search-icon">${icon(ICO.search,16)}</span>
-        <input id="searchInput" value="${esc(S.search)}" placeholder="${S.activeLine ? 'Search '+ln(S.activeLine)+'…' : 'Search figures…'}" oninput="onSearch(this.value)">
+        <input id="searchInput" value="${esc(S.search)}" placeholder="${S.activeLine ? 'Search '+ln(S.activeLine)+'…' : 'Search figures…'}" oninput="onSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         ${S.search ? `<button class="search-clear" data-action="clear-search">${icon(ICO.x,14)}</button>` : ''}
       </div>
       <button class="filter-btn ${hf?'active':''}" onclick="openSheet('filter')">
@@ -2031,6 +2041,24 @@ function patchDetailStatus() {
 }
 window.patchDetailStatus = patchDetailStatus;
 
+// v6.57: re-render only the market-value block in place. Called by pricing.js
+// when a deferred fetch completes, so the "Looking up market value…" placeholder
+// updates live instead of lingering until the user navigates away and back.
+function rerenderMVBlock(figId) {
+  if (!figId) return;
+  const el = document.getElementById('mvBlock_' + figId);
+  if (!el) return;
+  let paidArr = [];
+  try { paidArr = JSON.parse(el.dataset.paid || '[]'); } catch {}
+  const condition = el.dataset.condition || undefined;
+  // Make sure pricing.js has fresh meta if the user opened this detail then re-navigated.
+  if (S.activeFig && S.activeFig.id === figId) {
+    renderMarketValueBlock._meta = { line: S.activeFig.line, wave: S.activeFig.wave, year: S.activeFig.year };
+  }
+  el.innerHTML = renderMarketValueBlock(figId, paidArr, condition);
+}
+window.rerenderMVBlock = rerenderMVBlock;
+
 function renderDetail() {
   const _ds = document.querySelector('.detail-scroll');
   const _dsScroll = _ds ? _ds.scrollTop : 0;
@@ -2093,16 +2121,18 @@ function renderDetail() {
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     ${(() => {
-      // v6.28: market value block (eBay sold avg, etc.). Pulls all paid prices
-      // from owned/for-sale copies for the under/over-paid comparison badges.
-      // v6.55: pass fig metadata for precise eBay queries + condition for row highlight.
+      // v6.28: market value block. v6.55: passes fig metadata. v6.57: wrapped
+      // in a stable container so pricing.js can re-render in place when the
+      // deferred fetch completes (previously the loading placeholder lingered
+      // until the user navigated away and back).
       const paidArr = [];
       const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
       if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
       const condition = primaryCp?.condition || undefined;
-      // Stash metadata on the function so the deferred fetch (cache miss path) can use it too.
       renderMarketValueBlock._meta = { line: f.line, wave: f.wave, year: f.year };
-      return renderMarketValueBlock(f.id, paidArr, condition);
+      const inner = renderMarketValueBlock(f.id, paidArr, condition);
+      if (!inner) return '';
+      return `<div id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${inner}</div>`;
     })()}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
       ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411(${jId})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">

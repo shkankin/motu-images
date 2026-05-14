@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.56)
+// MOTU Vault — pricing.js (v6.57)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -202,11 +202,17 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
       _fetched.add(figId);
       const meta = renderMarketValueBlock._meta || {};
       fetchPricing(figId, { line: meta.line, wave: meta.wave, year: meta.year }).then(r => {
-        if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
+        // v6.57: re-render the MV block in place so users don't have to leave
+        // the detail screen and come back to see the result.
+        if (typeof window.rerenderMVBlock === 'function') window.rerenderMVBlock(figId);
+        else if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
       });
     }
+    // v6.57: refresh button — covers slow networks and the case where the
+    // initial fetch fails silently. Tapping it forces a new attempt.
     return `<div class="market-value-block placeholder">
       <div class="text-sm text-dim" style="text-align:center;padding:10px 0">Looking up market value…</div>
+      <div class="mv-actions"><button onclick="window.refreshPricing && window.refreshPricing(${esc(JSON.stringify(figId))})">↻ Refresh</button></div>
     </div>`;
   }
   const d = cached.data;
@@ -300,7 +306,9 @@ window.refreshPricing = async (figId) => {
   _fetched.delete(figId); // allow re-fetch
   const meta = renderMarketValueBlock._meta || {};
   const r = await fetchPricing(figId, { force: true, line: meta.line, wave: meta.wave, year: meta.year });
-  if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
+  // v6.57: prefer in-place MV re-render; fall back to patchDetailStatus.
+  if (typeof window.rerenderMVBlock === 'function') window.rerenderMVBlock(figId);
+  else if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
   if (typeof window.toast === 'function') {
     window.toast(r?.data?.loose || r?.data?.sealed ? '✓ Pricing refreshed' : '✗ No pricing data found');
   }
