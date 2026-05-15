@@ -1,7 +1,19 @@
-// MOTU Vault — Service Worker v6.60
+// MOTU Vault — Service Worker v6.61
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.61 changelog:
+//   • CACHE bumped to v6.61. SHELL: state.js updated.
+//   • New main line "Cross-Brand & Collabs" with four sublines: Designer &
+//     Artist Collaborations, Fashion & Collector Dolls, Hot Wheels & Die-
+//     Cast, Mini Figures/Building Sets/Games. Inserted in LINES between
+//     Chronicles and Classics so the modern-Mattel cluster stays together.
+//   • Worker: cross-brand and chronicles added to isModernLine list so
+//     untagged listings classify as sealed (correct for modern packaging).
+//     No required/negative line filters defined for cross-brand — the
+//     category is too heterogeneous for keyword filtering; rely on per-
+//     figure naming and manual community entries instead.
 //
 // v6.60 changelog:
 //   • CACHE bumped to v6.60. SHELL: vault.css updated.
@@ -501,7 +513,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.60';
+const CACHE = 'motu-vault-v6.61';
 
 const SHELL = [
   'motu-vault.html',

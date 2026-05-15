@@ -58,6 +58,13 @@ const LINES = [
   {id:'masterverse',name:'Masterverse',     yr:'2021–2026', mfr:'Mattel',  sc:'7"'},
   {id:'kids-core',  name:'Kids Core',        yr:'2026–',     mfr:'Mattel',  sc:'5.5"'},
   {id:'chronicles', name:'Chronicles',      yr:'2026',      mfr:'Mattel',  sc:'7"'},
+  // v6.61: Cross-Brand & Collabs — designer collabs (Mondo, Super7-style art toys
+  // when not housed under their own line), fashion/collector dolls (Barbie x MOTU,
+  // Monster High crossover), Hot Wheels & die-cast (Hot Wheels Character Cars,
+  // Hot Wheels Wheelos, etc.), and mini/build/games (Mega Construx, Monopoly,
+  // Clue, Operation, Loyal Subjects minis, etc.). Manufacturer "Various" since
+  // these span Mattel, Hasbro partnerships, Hot Wheels, Mega, USAopoly, etc.
+  {id:'cross-brand',name:'Cross-Brand & Collabs', yr:'2020–', mfr:'Various', sc:'Various'},
   {id:'classics',   name:'Mattel Classics', yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
   {id:'200x',       name:'Mattel 200x',     yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
   {id:'original',   name:'Original',        yr:'1981–1988', mfr:'Mattel',  sc:'5.5"'},
@@ -173,6 +180,19 @@ const SUBLINES = {
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
   ],
+  // v6.61: Cross-Brand & Collabs sublines.
+  //  - designer:    artist/designer collabs and limited-run art toys (e.g. Mondo
+  //                 one-offs not housed in the main Mondo line, KAWS-style, etc.)
+  //  - dolls:       Barbie x MOTU, Monster High crossover dolls, Integrity Toys
+  //  - hot-wheels:  Hot Wheels Character Cars, Hot Wheels Premium, die-cast tie-ins
+  //  - minis-games: Mega Construx sets, Monopoly/Clue/Operation MOTU editions,
+  //                 Loyal Subjects minis, blind-bag minis, board games
+  'cross-brand': [
+    {key:'designer',label:'Designer & Artist Collaborations',groups:['Designer & Artist Collaborations']},
+    {key:'dolls',label:'Fashion & Collector Dolls',groups:['Fashion & Collector Dolls']},
+    {key:'hot-wheels',label:'Hot Wheels & Die-Cast',groups:['Hot Wheels & Die-Cast']},
+    {key:'minis-games',label:'Mini Figures, Building Sets, & Games',groups:['Mini Figures, Building Sets, & Games']},
+  ],
 };
 
 const SERIES_MAP = {
@@ -180,6 +200,8 @@ const SERIES_MAP = {
   'Mattel 200x':'200x','Eternia Minis':'eternia-minis','Mondo':'mondo',
   'Super7':'super7','The New Adventures of He-Man':'new-adventures','Original':'original',
   'Kids Core':'kids-core',
+  // v6.61: cross-brand accepts a couple of common spellings from imports.
+  'Cross-Brand & Collabs':'cross-brand','Cross-Brand':'cross-brand',
 };
 const COND_MAP = {'Boxed':'Mint in Box','Loose':'Loose Complete','Incomplete':'Loose Incomplete','Damaged':'Damaged','':''};
 const GROUP_MAP = {

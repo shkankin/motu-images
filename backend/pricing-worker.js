@@ -319,7 +319,7 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   const sealed = [], loose = [];
   let rejJunk = 0, rejLine = 0, rejAmbig = 0;
   const keptSealed = [], keptLoose = [];
-  const isModernLine = ['origins', 'masterverse', 'classics', 'super7', 'mondo', 'kids-core', 'eternia-minis'].includes(meta.line);
+  const isModernLine = ['origins', 'masterverse', 'classics', 'super7', 'mondo', 'kids-core', 'eternia-minis', 'chronicles', 'cross-brand'].includes(meta.line);
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
     const rawTitle = it?.title || '';

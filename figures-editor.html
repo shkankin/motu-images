@@ -490,7 +490,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.10.2';
+const EDITOR_VERSION = 'v1.10.3';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -521,6 +521,7 @@ const LINES = [
   {id:'masterverse',    name:'Masterverse'},
   {id:'kids-core',      name:'Kids Core'},
   {id:'chronicles',     name:'Chronicles'},
+  {id:'cross-brand',    name:'Cross-Brand & Collabs'},
   {id:'classics',       name:'Mattel Classics'},
   {id:'200x',           name:'Mattel 200x'},
   {id:'original',       name:'Original'},
@@ -608,6 +609,15 @@ const SUBLINES = {
   'eternia-minis': [
     {key:'action',   label:'Action Figures',         groups:['Action Figures']},
     {key:'vehicles', label:'Vehicles & Playsets',    groups:['Vehicles & Playsets']},
+  ],
+  // v1.10.3: Cross-Brand & Collabs — multi-brand catch-all for crossovers,
+  // dolls, die-cast, mini sets, and games. Manufacturer "Various" since
+  // these span Mattel, Mega, Hot Wheels, USAopoly, etc.
+  'cross-brand': [
+    {key:'designer',    label:'Designer & Artist Collaborations',     groups:['Designer & Artist Collaborations']},
+    {key:'dolls',       label:'Fashion & Collector Dolls',            groups:['Fashion & Collector Dolls']},
+    {key:'hot-wheels',  label:'Hot Wheels & Die-Cast',                groups:['Hot Wheels & Die-Cast']},
+    {key:'minis-games', label:'Mini Figures, Building Sets, & Games', groups:['Mini Figures, Building Sets, & Games']},
   ],
   // mondo: no sublines — flat free-text group field
 };
