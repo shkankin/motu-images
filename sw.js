@@ -1,7 +1,18 @@
-// MOTU Vault — Service Worker v6.61
+// MOTU Vault — Service Worker v6.62
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.62 changelog:
+//   • CACHE bumped to v6.62. SHELL: state.js + ui-sheets.js updated.
+//   • Manage Collection: newly-added lines (e.g. cross-brand from v6.61)
+//     are now mergeable into the stored line-order array on load, so the
+//     up/down arrows can actually move them. Also strips stale ids from
+//     the stored order (renamed/removed lines).
+//   • Edit Figure Info: Group pills now use the EFFECTIVE line (override-
+//     aware) instead of the source line, and fall back to canonical
+//     SUBLINES groups when no figures yet exist in the target line.
+//     Previously, moving a figure into a new/empty line showed zero pills.
 //
 // v6.61 changelog:
 //   • CACHE bumped to v6.61. SHELL: state.js updated.
@@ -513,7 +524,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.61';
+const CACHE = 'motu-vault-v6.62';
 
 const SHELL = [
   'motu-vault.html',

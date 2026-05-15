@@ -315,7 +315,22 @@ const S = {
   sortBy: store.get('motu-sort') || 'year',
   viewMode: store.get('motu-view') || 'list',  // list | grid
   theme: store.get('motu-theme') || 'eternia',
-  lineOrder: store.get('motu-line-order') || LINES.map(l => l.id),
+  // v6.62: merge any line ids from LINES that are missing from the stored
+  // order. Previously, when a new line was added (e.g. cross-brand in v6.61),
+  // users with an existing stored lineOrder array got the new line appended
+  // by the render fallback but it wasn't actually IN lineOrder, so the
+  // up/down arrows in Manage Collection couldn't move it. New ids are pushed
+  // to the end so existing user ordering is preserved.
+  lineOrder: (() => {
+    const stored = store.get('motu-line-order');
+    const allIds = LINES.map(l => l.id);
+    if (!Array.isArray(stored)) return allIds;
+    const known = new Set(stored);
+    const missing = allIds.filter(id => !known.has(id));
+    // Also strip any stored ids that no longer exist in LINES (line renames/removals).
+    const validStored = stored.filter(id => allIds.includes(id));
+    return missing.length ? [...validStored, ...missing] : validStored;
+  })(),
   hiddenItems: store.get('motu-hidden') || [],
   sheet: null,
   loaded: false,

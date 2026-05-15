@@ -623,7 +623,15 @@ function renderEditFigureSheet() {
   );
 
   // Group (pills from existing groups in this line, plus free text)
-  const lineGroups = [...new Set(S.figs.filter(g => g.line === f.line && g.group).map(g => g.group))].sort();
+  // v6.62: use the EFFECTIVE line (override-aware) so moving a figure to a
+  // new line shows that line's groups, not the source line's. Also fall back
+  // to canonical groups from SUBLINES when no figures yet exist in the
+  // effective line (otherwise a freshly-added line with no entries would
+  // show zero pills and force users to type the group manually).
+  const effectiveLine = curLine || f.line || '';
+  const fromFigs = [...new Set(S.figs.filter(g => g.line === effectiveLine && g.group).map(g => g.group))];
+  const fromSublines = (SUBLINES[effectiveLine] || []).flatMap(s => s.groups || []);
+  const lineGroups = [...new Set([...fromFigs, ...fromSublines])].sort();
   const curGroup = ov.group || f.group || '';
   const groupInput = `
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
