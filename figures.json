@@ -6509,6 +6509,18 @@
     "source": "manual"
   },
   {
+    "id": "manual-battle-cat-virgil-abloh-war-mp7illh3",
+    "name": "Battle-Cat Virgil Abloh \"War\"",
+    "sourceName": "Battle-Cat Virgil Abloh \"War\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-battle-cat-virgil-abloh-war",
+    "source": "manual"
+  },
+  {
     "id": "manual-he-man-madsaki-mp7g7q9q",
     "name": "He-Man Madsaki",
     "sourceName": "He-Man Madsaki",
@@ -6519,6 +6531,18 @@
     "wave": "1",
     "year": 2020,
     "slug": "manual-he-man-madsaki",
+    "source": "manual"
+  },
+  {
+    "id": "manual-he-man-motu-x-barbie-signature-collection-mp7iowyf",
+    "name": "He-Man MOTU x Barbie Signature Collection",
+    "sourceName": "He-Man MOTU x Barbie Signature Collection",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Fashion & Collector Dolls",
+    "sourceGroup": "Fashion & Collector Dolls",
+    "year": 2026,
+    "slug": "manual-he-man-motu-x-barbie-signature-collection",
     "source": "manual"
   },
   {
@@ -6657,6 +6681,18 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-skelegod-virgil-abloh-she-mp7ikhp8",
+    "name": "Skelegod Virgil Abloh \"She\"",
+    "sourceName": "Skelegod Virgil Abloh \"She\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-skelegod-virgil-abloh-she",
+    "source": "manual"
+  },
+  {
     "id": "manual-skeletor-madsaki-mp7g8inw",
     "name": "Skeletor Madsaki",
     "sourceName": "Skeletor Madsaki",
@@ -6667,6 +6703,18 @@
     "wave": "2",
     "year": 2020,
     "slug": "manual-skeletor-madsaki",
+    "source": "manual"
+  },
+  {
+    "id": "manual-skeletor-virgil-abloh-her-mp7iinq4",
+    "name": "Skeletor Virgil Abloh \"Her\"",
+    "sourceName": "Skeletor Virgil Abloh \"Her\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-skeletor-virgil-abloh-her",
     "source": "manual"
   },
   {
@@ -6682,6 +6730,18 @@
     "source": "af411",
     "sourceLine": "origins",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-teela-motu-x-barbie-signature-collection-mp7inn62",
+    "name": "Teela MOTU x Barbie Signature Collection",
+    "sourceName": "Teela MOTU x Barbie Signature Collection",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Fashion & Collector Dolls",
+    "sourceGroup": "Fashion & Collector Dolls",
+    "year": 2026,
+    "slug": "manual-teela-motu-x-barbie-signature-collection",
+    "source": "manual"
   },
   {
     "id": "adora-4010",
