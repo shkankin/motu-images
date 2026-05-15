@@ -6509,6 +6509,31 @@
     "source": "manual"
   },
   {
+    "id": "manual-he-man-madsaki-mp7g7q9q",
+    "name": "He-Man Madsaki",
+    "sourceName": "He-Man Madsaki",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "wave": "1",
+    "year": 2020,
+    "slug": "manual-he-man-madsaki",
+    "source": "manual"
+  },
+  {
+    "id": "manual-he-man-virgil-abloh-woman-mp7gbwek",
+    "name": "He-Man Virgil Abloh \"Woman\"",
+    "sourceName": "He-Man Virgil Abloh \"Woman\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-he-man-virgil-abloh-woman",
+    "source": "manual"
+  },
+  {
     "id": "james-jean-coral-skeletor-and-panthor-13312",
     "name": "James Jean Coral Skeletor and Panthor",
     "line": "cross-brand",
@@ -6535,6 +6560,18 @@
     "source": "af411",
     "sourceLine": "origins",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-she-ra-barbie-40th-anniversary-doll-mp7gdrnp",
+    "name": "She-ra Barbie 40th Anniversary Doll",
+    "sourceName": "She-ra Barbie 40th Anniversary Doll",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Fashion & Collector Dolls",
+    "sourceGroup": "Fashion & Collector Dolls",
+    "year": 2025,
+    "slug": "manual-she-ra-barbie-40th-anniversary-doll",
+    "source": "manual"
   },
   {
     "id": "manual-shogun-masters-faker-mp207hu0",
@@ -6606,6 +6643,19 @@
     "source": "af411",
     "sourceLine": "origins",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-skeletor-madsaki-mp7g8inw",
+    "name": "Skeletor Madsaki",
+    "sourceName": "Skeletor Madsaki",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "wave": "2",
+    "year": 2020,
+    "slug": "manual-skeletor-madsaki",
+    "source": "manual"
   },
   {
     "id": "skeletor-x-veefriends-skilled-skeleton-2-pack-7346",
