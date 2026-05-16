@@ -6546,6 +6546,18 @@
     "source": "manual"
   },
   {
+    "id": "manual-he-man-motu-x-katun-mp821ksg",
+    "name": "He-Man MOTU x Katun",
+    "sourceName": "He-Man MOTU x Katun",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2026,
+    "slug": "manual-he-man-motu-x-katun",
+    "source": "manual"
+  },
+  {
     "id": "manual-he-man-virgil-abloh-woman-mp7gbwek",
     "name": "He-Man Virgil Abloh \"Woman\"",
     "sourceName": "He-Man Virgil Abloh \"Woman\"",
@@ -6595,6 +6607,18 @@
     "sourceGroup": "Fashion & Collector Dolls",
     "year": 2026,
     "slug": "manual-monster-high-skullector-skeletor-doll",
+    "source": "manual"
+  },
+  {
+    "id": "manual-orko-motu-x-katun-mp823snu",
+    "name": "Orko MOTU x Katun",
+    "sourceName": "Orko MOTU x Katun",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2026,
+    "slug": "manual-orko-motu-x-katun",
     "source": "manual"
   },
   {
@@ -6703,6 +6727,18 @@
     "wave": "2",
     "year": 2020,
     "slug": "manual-skeletor-madsaki",
+    "source": "manual"
+  },
+  {
+    "id": "manual-skeletor-motu-x-katun-mp822edl",
+    "name": "Skeletor MOTU x Katun",
+    "sourceName": "Skeletor MOTU x Katun",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2026,
+    "slug": "manual-skeletor-motu-x-katun",
     "source": "manual"
   },
   {
