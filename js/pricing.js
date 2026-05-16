@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing.js (v6.60)
+// MOTU Vault — pricing.js (v6.64)
 // ────────────────────────────────────────────────────────────────────
 // Client-side market-value layer. Talks to a configurable backend that
 // returns recent-sold averages per figure. The backend is intentionally
@@ -195,118 +195,51 @@ function _sanitize(d) {
 // without conditional wrappers.
 const _fetched = new Set(); // figIds fetched this session — prevents re-fetch on re-render
 
+// Modern lines use sealed-bucket median (figures sold mostly MOC); vintage lines
+// use loose-bucket median (figures sold mostly out-of-package). Determined by
+// line id; any line not in this set is treated as modern by default.
+const VINTAGE_LINES = new Set(['original', 'new-adventures']);
+
+// v6.64: inline "Asking" price renderer. Returns a small fragment meant to
+// sit next to Retail (e.g. "Original Retail: $17.99 · Asking: $55"), not a
+// full block. Drops the old condition rows, source labels, confidence
+// badges, refresh button, and stale indicator — everything that made the
+// market-value block a "production." Just one number.
+//
+// Returns:
+//   ""        — when no backend is configured, or no data yet (silent fail)
+//   "loading" sentinel HTML on first fetch so the caller can lay it out
+//   "<span>…</span>" when data is available
 export function renderMarketValueBlock(figId, paidArr, condition) {
   if (!figId) return '';
   const cached = getCachedPricing(figId);
   if (!cached || !cached.data) {
-    if (!isPricingConfigured()) return '';   // silent when no backend
-    // Only fetch once per session per figId — re-renders after patchDetailStatus
-    // would otherwise re-trigger indefinitely.
+    if (!isPricingConfigured()) return '';
     if (!_fetched.has(figId) && !_inflight.has(figId)) {
       _fetched.add(figId);
       const meta = renderMarketValueBlock._meta || {};
-      fetchPricing(figId, { line: meta.line, wave: meta.wave, year: meta.year }).then(r => {
-        // v6.57: re-render the MV block in place so users don't have to leave
-        // the detail screen and come back to see the result.
+      fetchPricing(figId, { line: meta.line, wave: meta.wave, year: meta.year }).then(() => {
         if (typeof window.rerenderMVBlock === 'function') window.rerenderMVBlock(figId);
-        else if (typeof window.patchDetailStatus === 'function') window.patchDetailStatus();
       });
     }
-    // v6.57: refresh button — covers slow networks and the case where the
-    // initial fetch fails silently. Tapping it forces a new attempt.
-    return `<div class="market-value-block placeholder">
-      <div class="text-sm text-dim" style="text-align:center;padding:10px 0">Looking up market value…</div>
-      <div class="mv-actions"><button onclick="window.refreshPricing && window.refreshPricing(${esc(JSON.stringify(figId))})">↻ Refresh</button></div>
-    </div>`;
+    return `<span class="mv-inline mv-loading text-dim">Asking: …</span>`;
   }
   const d = cached.data;
-  if (!d.sealed && !d.loose) return `<div class="market-value-block">
-    <div class="mv-header"><span class="mv-title">Market Value</span></div>
-    <div class="text-sm text-dim" style="text-align:center;padding:8px 0">No pricing data found</div>
-    <div class="mv-actions"><button onclick="window.refreshPricing && window.refreshPricing(${JSON.stringify(figId)})">↻ Refresh</button></div>
-  </div>`;
-  const stale = !cached.fresh;
+  if (!d.sealed && !d.loose) return '';
+  const meta = renderMarketValueBlock._meta || {};
+  // v6.64: pick the bucket that matches the era. Modern → sealed; vintage → loose.
+  // Fall back to whichever bucket is populated if the preferred one is empty.
+  const prefersSealed = !VINTAGE_LINES.has(meta.line);
+  const primary   = prefersSealed ? d.sealed : d.loose;
+  const fallback  = prefersSealed ? d.loose  : d.sealed;
+  const bucket = primary || fallback;
+  if (!bucket) return '';
+  const price = Number.isFinite(bucket.median) ? bucket.median : bucket.avg;
+  if (!Number.isFinite(price) || price <= 0) return '';
   const fmtMoney = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
-  const ageText = (() => {
-    const days = Math.floor(cached.age / (24 * 60 * 60 * 1000));
-    if (days < 1) return 'today';
-    if (days === 1) return 'yesterday';
-    return days + 'd ago';
-  })();
-  // If we have a paid value, show a small comparison badge.
-  const paidNums = (paidArr || []).map(v => parseFloat(v)).filter(v => Number.isFinite(v) && v > 0);
-  const avgPaid = paidNums.length ? paidNums.reduce((a,b) => a+b, 0) / paidNums.length : 0;
-  const compare = (avg) => {
-    if (!avgPaid || !avg) return '';
-    const diff = (avg - avgPaid) / avgPaid;
-    if (Math.abs(diff) < 0.05) return ` <span class="mv-flat" title="Within 5% of avg sold">≈</span>`;
-    if (diff > 0) return ` <span class="mv-good" title="${Math.round(diff*100)}% under avg sold">↓</span>`;
-    return ` <span class="mv-warn" title="${Math.round(-diff*100)}% over avg sold">↑</span>`;
-  };
-  // Determine which bucket matches the user's copy condition.
-  const SEALED_CONDS = new Set(['Mint in Box','Mint on Card','New/Sealed']);
-  const LOOSE_CONDS  = new Set(['Loose Complete','Loose Incomplete','Damaged']);
-  const condIsSealed = condition && SEALED_CONDS.has(condition);
-  const condIsLoose  = condition && LOOSE_CONDS.has(condition);
-  const sealedActive = condIsSealed;
-  const looseActive  = condIsLoose;
-  const sealedDim    = condition && !condIsSealed;
-  const looseDim     = condition && !condIsLoose;
-
-  // v6.56: confidence badge — buckets with <5 samples carry confidence:'low'
-  const confBadge = (b) => {
-    if (!b || b.confidence === 'high') return '';
-    const txt = b.confidence === 'low' ? 'Low sample' : 'Limited data';
-    return ` <span class="mv-confidence mv-conf-${b.confidence}" title="${esc(txt)} (n=${b.n})">${txt}</span>`;
-  };
-  // v6.56-fix: only render range when low/high are present, non-zero, and not identical.
-  // Community-curated entries often lack low/high; we used to render "$0.00–$0.00".
-  const rangePart = (b) => {
-    if (!b) return '';
-    const lo = b.low, hi = b.high;
-    if (lo == null || hi == null) return '';
-    if (lo === 0 && hi === 0) return '';
-    if (lo === hi) return '';
-    return ` · ${fmtMoney(lo)}–${fmtMoney(hi)}`;
-  };
-  // v6.58: use median (not avg) as the displayed headline price. Median is
-  // far more representative than mean for skewed collectibles distributions
-  // — one $400 outlier listing on a $40 figure barely moves the median.
-  // Fallback to avg if backend hasn't populated median (older responses).
-  const headlinePrice = b => (b && Number.isFinite(b.median)) ? b.median : (b ? b.avg : 0);
-  const sealedRow = d.sealed ? `
-    <div class="mv-row${sealedActive ? ' mv-active' : sealedDim ? ' mv-dim' : ''}">
-      <span class="mv-label">Sealed</span>
-      <span class="mv-value">${fmtMoney(headlinePrice(d.sealed))}${compare(headlinePrice(d.sealed))}</span>
-      <span class="mv-meta">median of ${d.sealed.n}${rangePart(d.sealed)}${confBadge(d.sealed)}</span>
-    </div>` : '';
-  const looseRow = d.loose ? `
-    <div class="mv-row${looseActive ? ' mv-active' : looseDim ? ' mv-dim' : ''}">
-      <span class="mv-label">Loose</span>
-      <span class="mv-value">${fmtMoney(headlinePrice(d.loose))}${compare(headlinePrice(d.loose))}</span>
-      <span class="mv-meta">median of ${d.loose.n}${rangePart(d.loose)}${confBadge(d.loose)}</span>
-    </div>` : '';
-  const sourceLabel = {
-    'ebay-sold':      'eBay sold (last 30d)',
-    'ebay-active':    'eBay asking prices',
-    'ebay-finding':   'eBay sold (last 30d)',   // legacy
-    'ebay-browse':    'eBay listings',          // legacy
-    'pricecharting':  'PriceCharting',
-    'community':      'Community-curated',
-    'unavailable':    'Unavailable',
-  }[d.source] || esc(d.source);
-  return `<div class="market-value-block${stale ? ' stale' : ''}">
-    <div class="mv-header">
-      <span class="mv-title">Market Value</span>
-      <span class="mv-source text-dim">${sourceLabel}</span>
-      <span class="mv-age text-dim" title="Cached ${ageText}">${stale ? '⟳ ' : ''}${ageText}</span>
-    </div>
-    ${sealedRow}${looseRow}
-    ${d.note ? `<div class="mv-note text-dim text-sm">${esc(d.note)}</div>` : ''}
-    <div class="mv-actions">
-      <button onclick="window.refreshPricing && window.refreshPricing(${esc(JSON.stringify(figId))})">↻ Refresh</button>
-    </div>
-  </div>`;
+  // Show low-sample as dim so users can tell it's an estimate without a badge.
+  const dimClass = (bucket.confidence === 'low') ? ' mv-inline-dim' : '';
+  return `<span class="mv-inline${dimClass}" title="Median of ${bucket.n} eBay BIN listings">Asking: <span class="price">${fmtMoney(price)}</span></span>`;
 }
 
 // Inline action — exposed to inline-onclick. Forces a fresh fetch.

@@ -434,7 +434,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.63</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.64</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2043,8 +2043,10 @@ function patchDetailStatus() {
 window.patchDetailStatus = patchDetailStatus;
 
 // v6.57: re-render only the market-value block in place. Called by pricing.js
-// when a deferred fetch completes, so the "Looking up market value…" placeholder
-// updates live instead of lingering until the user navigates away and back.
+// when a deferred fetch completes, so the loading placeholder updates live
+// instead of lingering until the user navigates away and back.
+// v6.64: the container now holds "Original Retail · Asking" inline rather
+// than a standalone block, so we rebuild that whole line.
 function rerenderMVBlock(figId) {
   if (!figId) return;
   const el = document.getElementById('mvBlock_' + figId);
@@ -2052,11 +2054,14 @@ function rerenderMVBlock(figId) {
   let paidArr = [];
   try { paidArr = JSON.parse(el.dataset.paid || '[]'); } catch {}
   const condition = el.dataset.condition || undefined;
-  // Make sure pricing.js has fresh meta if the user opened this detail then re-navigated.
   if (S.activeFig && S.activeFig.id === figId) {
     renderMarketValueBlock._meta = { line: S.activeFig.line, wave: S.activeFig.wave, year: S.activeFig.year };
   }
-  el.innerHTML = renderMarketValueBlock(figId, paidArr, condition);
+  const f = S.activeFig;
+  const retailPart = (f && f.retail) ? `Original Retail: <span class="price">$${f.retail.toFixed(2)}</span>` : '';
+  const asking = renderMarketValueBlock(figId, paidArr, condition);
+  const sep = (retailPart && asking) ? ' <span class="text-dim" style="margin:0 4px">·</span> ' : '';
+  el.innerHTML = retailPart + sep + asking;
 }
 window.rerenderMVBlock = rerenderMVBlock;
 
@@ -2120,20 +2125,24 @@ function renderDetail() {
       `).join('')}
     </div>` : ''}
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
-    ${f.retail ? `<div class="detail-retail">Retail: <span class="price">$${f.retail.toFixed(2)}</span></div>` : ''}
     ${(() => {
-      // v6.28: market value block. v6.55: passes fig metadata. v6.57: wrapped
-      // in a stable container so pricing.js can re-render in place when the
-      // deferred fetch completes (previously the loading placeholder lingered
-      // until the user navigated away and back).
+      // v6.64: inline retail + asking price. Replaces the previous big
+      // Market Value block. "Original Retail" is the launch price; "Asking"
+      // is the current eBay BIN median (single number, no min/max, no
+      // condition split). Sealed bucket for modern lines, loose for vintage
+      // (decided inside renderMarketValueBlock by line id). Both sit on one
+      // line; either may be missing.
       const paidArr = [];
-      const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
       if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
+      const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
       const condition = primaryCp?.condition || undefined;
       renderMarketValueBlock._meta = { line: f.line, wave: f.wave, year: f.year };
-      const inner = renderMarketValueBlock(f.id, paidArr, condition);
-      if (!inner) return '';
-      return `<div id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${inner}</div>`;
+      const asking = renderMarketValueBlock(f.id, paidArr, condition);
+      if (!f.retail && !asking) return '';
+      const retailPart = f.retail ? `Original Retail: <span class="price">$${f.retail.toFixed(2)}</span>` : '';
+      const sep = (f.retail && asking) ? ' <span class="text-dim" style="margin:0 4px">·</span> ' : '';
+      // Wrap in mvBlock_<id> so rerenderMVBlock() can swap the asking part in place.
+      return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${retailPart}${sep}${asking}</div>`;
     })()}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
       ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411(${jId})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">

@@ -1,7 +1,18 @@
-// MOTU Vault — Service Worker v6.63
+// MOTU Vault — Service Worker v6.64
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.64 changelog:
+//   • CACHE bumped to v6.64. SHELL: pricing.js + render.js + vault.css updated.
+//   • Market Value: replaced the big condition-split block with a single
+//     inline "Asking" number rendered next to "Original Retail". Modern
+//     lines use the sealed-bucket median; vintage (Original, New Adventures)
+//     use loose. Low-sample data renders dimmed. No condition rows, no
+//     source labels, no refresh button, no stale indicator — the worker's
+//     keyword/junk/line filtering still runs underneath; we just stopped
+//     showing the kitchen sink in the UI.
+//   • Retail label renamed to "Original Retail".
 //
 // v6.63 changelog:
 //   • CACHE bumped to v6.63. SHELL: handlers.js + render.js updated.
@@ -531,7 +542,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.63';
+const CACHE = 'motu-vault-v6.64';
 
 const SHELL = [
   'motu-vault.html',

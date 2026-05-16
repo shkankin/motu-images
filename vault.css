@@ -1324,6 +1324,15 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .detail-retail .price { color: var(--gold); font-weight: 600; }
 
+/* v6.64: inline asking-price next to Original Retail. The .price color is
+   inherited from .detail-retail .price above (gold). Low-sample data renders
+   dimmed so users can tell at a glance it's an estimate. The .mv-loading
+   variant uses the same dimming for the placeholder text. */
+.detail-retail .mv-inline { display: inline; }
+.detail-retail .mv-inline.mv-inline-dim,
+.detail-retail .mv-inline.mv-loading { color: var(--t3); }
+.detail-retail .mv-inline.mv-inline-dim .price { opacity: 0.6; }
+
 /* v6.28: Market Value block (eBay sold avg, etc.) */
 .market-value-block {
   margin: 0 16px 14px;
