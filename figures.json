@@ -6518,7 +6518,8 @@
     "sourceGroup": "Designer & Artist Collaborations",
     "year": 2021,
     "slug": "manual-battle-cat-virgil-abloh-war",
-    "source": "manual"
+    "source": "manual",
+    "retail": 80
   },
   {
     "id": "manual-he-man-madsaki-mp7g7q9q",
@@ -6531,7 +6532,8 @@
     "wave": "1",
     "year": 2020,
     "slug": "manual-he-man-madsaki",
-    "source": "manual"
+    "source": "manual",
+    "retail": 400
   },
   {
     "id": "manual-he-man-motu-x-barbie-signature-collection-mp7iowyf",
@@ -6543,7 +6545,8 @@
     "sourceGroup": "Fashion & Collector Dolls",
     "year": 2026,
     "slug": "manual-he-man-motu-x-barbie-signature-collection",
-    "source": "manual"
+    "source": "manual",
+    "retail": 60
   },
   {
     "id": "manual-he-man-motu-x-katun-mp821ksg",
@@ -6567,7 +6570,8 @@
     "sourceGroup": "Designer & Artist Collaborations",
     "year": 2021,
     "slug": "manual-he-man-virgil-abloh-woman",
-    "source": "manual"
+    "source": "manual",
+    "retail": 50
   },
   {
     "id": "james-jean-coral-skeletor-and-panthor-13312",
@@ -6607,7 +6611,8 @@
     "sourceGroup": "Fashion & Collector Dolls",
     "year": 2026,
     "slug": "manual-monster-high-skullector-skeletor-doll",
-    "source": "manual"
+    "source": "manual",
+    "retail": 70
   },
   {
     "id": "manual-orko-motu-x-katun-mp823snu",
@@ -6631,7 +6636,8 @@
     "sourceGroup": "Fashion & Collector Dolls",
     "year": 2025,
     "slug": "manual-she-ra-barbie-40th-anniversary-doll",
-    "source": "manual"
+    "source": "manual",
+    "retail": 55
   },
   {
     "id": "manual-shogun-masters-faker-mp207hu0",
@@ -6714,7 +6720,8 @@
     "sourceGroup": "Designer & Artist Collaborations",
     "year": 2021,
     "slug": "manual-skelegod-virgil-abloh-she",
-    "source": "manual"
+    "source": "manual",
+    "retail": 60
   },
   {
     "id": "manual-skeletor-madsaki-mp7g8inw",
@@ -6727,7 +6734,8 @@
     "wave": "2",
     "year": 2020,
     "slug": "manual-skeletor-madsaki",
-    "source": "manual"
+    "source": "manual",
+    "retail": 400
   },
   {
     "id": "manual-skeletor-motu-x-katun-mp822edl",
@@ -6751,7 +6759,8 @@
     "sourceGroup": "Designer & Artist Collaborations",
     "year": 2021,
     "slug": "manual-skeletor-virgil-abloh-her",
-    "source": "manual"
+    "source": "manual",
+    "retail": 50
   },
   {
     "id": "skeletor-x-veefriends-skilled-skeleton-2-pack-7346",
@@ -6777,7 +6786,8 @@
     "sourceGroup": "Fashion & Collector Dolls",
     "year": 2026,
     "slug": "manual-teela-motu-x-barbie-signature-collection",
-    "source": "manual"
+    "source": "manual",
+    "retail": 60
   },
   {
     "id": "adora-4010",
