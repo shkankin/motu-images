@@ -498,7 +498,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.11.0';
+const EDITOR_VERSION = 'v1.11.1';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1415,9 +1415,13 @@ function refreshUI() {
   document.getElementById('dlApproved').textContent = approved;
   document.getElementById('dlRejected').textContent = rejected;
   document.getElementById('dlPending').textContent = undecided;
-  // v1.11: count staged images that match a manualFig still in approved
-  const approvedManualIds = new Set(manualFigs.filter(f => decisions[f.id] !== 'rejected').map(f => f.id));
-  const stagedImageCount = Object.keys(pendingImages).filter(id => approvedManualIds.has(id)).length;
+  // v1.11: count staged images whose fig will actually land in figures.json.
+  // Uses the same logic as _doCommit (final merged figures list) so the
+  // badge can't lie. Calling buildPayloads here is cheap — it's the same
+  // function the commit and download flows already call.
+  const { merged: mergedForBadge } = buildPayloads();
+  const finalFigIdsForBadge = new Set(mergedForBadge.map(f => f.id));
+  const stagedImageCount = Object.keys(pendingImages).filter(id => finalFigIdsForBadge.has(id)).length;
   const imageBadge = stagedImageCount > 0 ? `<strong>${stagedImageCount}</strong> image(s) staged` : '';
   // Reuse pending element for "edited count" hint when in existing mode
   const dlSummary = document.querySelector('.download-summary');
@@ -2115,7 +2119,7 @@ function _clearCommitLog() {
 }
 
 async function _doCommit(token) {
-  const { files, approvedNew, rejectedNew, editedExisting } = buildPayloads();
+  const { files, approvedNew, rejectedNew, editedExisting, merged } = buildPayloads();
   const btn = document.getElementById('commitBtn');
   const origLabel = btn?.textContent;
   if (btn) { btn.textContent = '⏳ Committing…'; btn.disabled = true; }
@@ -2174,11 +2178,12 @@ async function _doCommit(token) {
 
     // v1.11: upload staged images for new figures as binary blobs. Each pending
     // image is committed alongside the JSON in this same atomic commit, so
-    // figures.json never references a missing image. Images keyed by fig.id
-    // are only relevant if that fig made it into approvedNew (and thus into
-    // figures.json) — orphans are skipped silently and remain staged.
-    const approvedIds = new Set(approvedNew.map(f => f.id));
-    const imagesToUpload = Object.entries(pendingImages).filter(([id]) => approvedIds.has(id));
+    // figures.json never references a missing image. v1.11.1: previous version
+    // only included images whose fig id was in approvedNew (synced+approved),
+    // which silently skipped manualFigs entirely. Now we use the final merged
+    // figures list — covers both AF411-approved AND manually-added figures.
+    const finalFigIds = new Set(merged.map(f => f.id));
+    const imagesToUpload = Object.entries(pendingImages).filter(([id]) => finalFigIds.has(id));
     const uploadedImageIds = [];
     for (const [id, img] of imagesToUpload) {
       _commitLog('dim', `  Uploading image ${img.filename}…`);
