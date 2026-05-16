@@ -415,7 +415,7 @@
 
 <div id="downloadBar" class="download-bar" style="display:none">
   <div class="download-summary">
-    <strong id="dlApproved">0</strong> approved · <strong id="dlRejected">0</strong> rejected · <span id="dlPending">0</span> still undecided
+    <strong id="dlApproved">0</strong> approved · <strong id="dlRejected">0</strong> rejected · <span id="dlPending">0</span> still undecided · <span id="dlImages" style="color:var(--acc)"></span>
   </div>
   <button class="secondary" onclick="downloadOutputs()">Download outputs</button>
   <button id="commitBtn" onclick="commitToGitHub()" style="background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">⬆ Commit to GitHub</button>
@@ -464,8 +464,16 @@
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Slug (image filename)
         <input id="afSlug" type="text" placeholder="auto-generated" oninput="afUpdateSlugPreview()" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
-      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2);grid-column:1/-1">Image filename (upload this to repo root)
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2);grid-column:1/-1">Image filename (uploaded to repo root)
         <div id="afSlugPreview" style="font-family:monospace;font-size:12px;color:var(--acc);padding:5px 8px;background:var(--bg3);border-radius:5px;border:1px solid var(--bd);word-break:break-all">— enter name to generate —</div>
+      </label>
+      <!-- v1.11: image upload — picked file is staged in memory and committed
+           alongside figures.json in the same atomic commit. Filename derives
+           from the slug; the file extension comes from the source image. -->
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2);grid-column:1/-1">Image (optional)
+        <input id="afImage" type="file" accept="image/*" onchange="afImageChange(event)" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+        <div id="afImageInfo" style="font-size:11px;color:var(--t3);min-height:14px"></div>
+        <div id="afImagePreviewWrap" style="display:none;margin-top:6px"><img id="afImagePreview" style="max-width:140px;max-height:140px;border-radius:6px;border:1px solid var(--bd)"></div>
       </label>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
@@ -490,7 +498,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.10.3';
+const EDITOR_VERSION = 'v1.11.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -817,6 +825,90 @@ function _makeManualId(name) {
   return { id: base + '-' + suffix, slug: base };
 }
 
+// v1.11: in-memory store of pending images for new figures. Keyed by fig.id
+// so manualFigs can survive Apply/refreshUI cycles. Each entry:
+//   { dataUrl, mime, ext, size, name }
+// Cleared at commit success.
+const pendingImages = {};
+
+function afImageChange(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  const info = document.getElementById('afImageInfo');
+  const wrap = document.getElementById('afImagePreviewWrap');
+  const img  = document.getElementById('afImagePreview');
+  if (!file) {
+    if (info) info.textContent = '';
+    if (wrap) wrap.style.display = 'none';
+    afUpdateSlugPreview();
+    return;
+  }
+  if (!file.type.startsWith('image/')) {
+    if (info) { info.textContent = 'Not an image file.'; info.style.color = 'var(--rd,#e05555)'; }
+    ev.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const sourceDataUrl = e.target.result;
+    const m = /^data:([^;]+);base64,/.exec(sourceDataUrl);
+    const sourceMime = m ? m[1] : (file.type || 'image/jpeg');
+    // v1.11: app/data.js hardcodes `${slug}.jpg` for figure image URLs. To keep
+    // that contract simple and avoid a state.js/data.js change, convert any
+    // non-jpg image to jpg in-browser before staging. Canvas re-encode handles
+    // png/webp/avif transparently; for already-jpg images we stash the source
+    // bytes unchanged (no quality loss from a re-encode).
+    if (sourceMime === 'image/jpeg' || sourceMime === 'image/jpg') {
+      _stageImage(sourceDataUrl, 'image/jpeg', 'jpg', file.size, file.name);
+      return;
+    }
+    const tmp = new Image();
+    tmp.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = tmp.naturalWidth || tmp.width;
+      c.height = tmp.naturalHeight || tmp.height;
+      const ctx = c.getContext('2d');
+      // White background for transparent PNGs — JPEG has no alpha.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(tmp, 0, 0);
+      // Quality 0.9 is a good visual/size tradeoff for collection photos.
+      const jpgDataUrl = c.toDataURL('image/jpeg', 0.9);
+      // Approx size from the base64 length.
+      const approxBytes = Math.floor((jpgDataUrl.length - 'data:image/jpeg;base64,'.length) * 3/4);
+      _stageImage(jpgDataUrl, 'image/jpeg', 'jpg', approxBytes, file.name + ' → .jpg');
+    };
+    tmp.onerror = () => {
+      if (info) { info.textContent = 'Could not decode image for conversion.'; info.style.color = 'var(--rd,#e05555)'; }
+    };
+    tmp.src = sourceDataUrl;
+  };
+  reader.onerror = () => {
+    if (info) { info.textContent = 'Failed to read file.'; info.style.color = 'var(--rd,#e05555)'; }
+  };
+  reader.readAsDataURL(file);
+}
+
+// v1.11: helper that updates the UI and stashes the staged image on the input.
+function _stageImage(dataUrl, mime, ext, size, name) {
+  const info = document.getElementById('afImageInfo');
+  const wrap = document.getElementById('afImagePreviewWrap');
+  const img  = document.getElementById('afImagePreview');
+  document.getElementById('afImage')._stagedImage = { dataUrl, mime, ext, size, name };
+  if (img) img.src = dataUrl;
+  if (wrap) wrap.style.display = '';
+  if (info) {
+    info.style.color = size > 2 * 1024 * 1024 ? 'var(--gold)' : 'var(--t3)';
+    info.textContent = `${name} · ${_fmtSize(size)} · .${ext}` +
+                       (size > 2 * 1024 * 1024 ? ' (large — consider resizing before commit)' : '');
+  }
+  afUpdateSlugPreview();
+}
+function _fmtSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+  return (n/1024/1024).toFixed(2) + ' MB';
+}
+
 function afUpdateSlugPreview() {
   const name   = document.getElementById('afName').value.trim();
   const custom = document.getElementById('afSlug').value.trim();
@@ -824,17 +916,24 @@ function afUpdateSlugPreview() {
   if (!prev) return;
   if (!name && !custom) { prev.textContent = '— enter name to generate —'; return; }
   const base = custom || _slugify(name);
-  prev.textContent = base + '.jpg';
+  // v1.11: use the actual extension of the staged image if one is loaded;
+  // otherwise default to .jpg as before (consistent with prior behavior).
+  const staged = document.getElementById('afImage')?._stagedImage;
+  const ext = staged ? staged.ext : 'jpg';
+  prev.textContent = base + '.' + ext;
 }
 
 function openAddFigModal() {
   const modal = document.getElementById('addFigModal');
-  // Populate line select
   const lineSel = document.getElementById('afLine');
   lineSel.innerHTML = LINES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
   afLineChange();
-  // Clear fields
   ['afName','afYear','afWave','afSlug'].forEach(id => document.getElementById(id).value = '');
+  // v1.11: clear staged image
+  const imgEl = document.getElementById('afImage');
+  if (imgEl) { imgEl.value = ''; imgEl._stagedImage = null; }
+  document.getElementById('afImageInfo').textContent = '';
+  document.getElementById('afImagePreviewWrap').style.display = 'none';
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('afName').focus(), 50);
 }
@@ -867,6 +966,19 @@ function submitAddFig() {
   // id carries the timestamp suffix for uniqueness; slug is always clean (no timestamp)
   const line = LINES.find(l => l.id === lineId);
 
+  // v1.11: capture staged image (if any). The slug+extension becomes the filename;
+  // committed as a binary blob in the same atomic commit as figures.json.
+  const staged = document.getElementById('afImage')?._stagedImage;
+  const imageFilename = staged ? (slug + '.' + staged.ext) : null;
+  if (staged) {
+    pendingImages[id] = {
+      filename: imageFilename,
+      dataUrl:  staged.dataUrl,
+      mime:     staged.mime,
+      size:     staged.size,
+    };
+  }
+
   const fig = {
     id,
     name,
@@ -883,7 +995,10 @@ function submitAddFig() {
   manualFigs.push(fig);
   approvedFigs.push(fig);
   document.getElementById('addFigModal').style.display = 'none';
-  alert(`✓ Added "${fig.name}"\nImage filename: ${fig.slug}.jpg\nUpload this file to the repo root.`);
+  const msg = imageFilename
+    ? `✓ Added "${fig.name}"\nImage staged: ${imageFilename}\nWill be committed with the next push.`
+    : `✓ Added "${fig.name}"\nImage filename: ${fig.slug}.jpg\nUpload this file to the repo root.`;
+  alert(msg);
   refreshUI();
 }
 
@@ -902,6 +1017,7 @@ function confirmDeleteFig(id) {
   approvedFigs = approvedFigs.filter(f => f.id !== id);
   manualFigs   = manualFigs.filter(f => f.id !== id);
   delete edits[id];
+  delete pendingImages[id];  // v1.11: drop any staged image for this figure
   document.getElementById('deleteFigModal').style.display = 'none';
   refreshUI();
 }
@@ -1299,12 +1415,16 @@ function refreshUI() {
   document.getElementById('dlApproved').textContent = approved;
   document.getElementById('dlRejected').textContent = rejected;
   document.getElementById('dlPending').textContent = undecided;
+  // v1.11: count staged images that match a manualFig still in approved
+  const approvedManualIds = new Set(manualFigs.filter(f => decisions[f.id] !== 'rejected').map(f => f.id));
+  const stagedImageCount = Object.keys(pendingImages).filter(id => approvedManualIds.has(id)).length;
+  const imageBadge = stagedImageCount > 0 ? `<strong>${stagedImageCount}</strong> image(s) staged` : '';
   // Reuse pending element for "edited count" hint when in existing mode
   const dlSummary = document.querySelector('.download-summary');
   if (dlSummary) {
     dlSummary.innerHTML = mode === 'existing' && editedExistingCount > 0
-      ? `<strong>${editedExistingCount}</strong> existing figure(s) edited · <strong id="dlApproved">${approved}</strong> pending approved · <strong id="dlRejected">${rejected}</strong> pending rejected`
-      : `<strong id="dlApproved">${approved}</strong> approved · <strong id="dlRejected">${rejected}</strong> rejected · <span id="dlPending">${undecided}</span> still undecided`;
+      ? `<strong>${editedExistingCount}</strong> existing figure(s) edited · <strong id="dlApproved">${approved}</strong> pending approved · <strong id="dlRejected">${rejected}</strong> pending rejected${imageBadge ? ' · <span id="dlImages" style="color:var(--acc)">' + imageBadge + '</span>' : ''}`
+      : `<strong id="dlApproved">${approved}</strong> approved · <strong id="dlRejected">${rejected}</strong> rejected · <span id="dlPending">${undecided}</span> still undecided${imageBadge ? ' · <span id="dlImages" style="color:var(--acc)">' + imageBadge + '</span>' : ''}`;
   }
 
   document.getElementById('emptyState').style.display = haveAny ? 'none' : 'block';
@@ -2052,8 +2172,40 @@ async function _doCommit(token) {
       _commitLog('ok', `  ✓ ${filename}`);
     }
 
-    if (treeItems.length !== fileList.length) {
-      throw new Error(`Only ${treeItems.length}/${fileList.length} blobs succeeded — commit aborted`);
+    // v1.11: upload staged images for new figures as binary blobs. Each pending
+    // image is committed alongside the JSON in this same atomic commit, so
+    // figures.json never references a missing image. Images keyed by fig.id
+    // are only relevant if that fig made it into approvedNew (and thus into
+    // figures.json) — orphans are skipped silently and remain staged.
+    const approvedIds = new Set(approvedNew.map(f => f.id));
+    const imagesToUpload = Object.entries(pendingImages).filter(([id]) => approvedIds.has(id));
+    const uploadedImageIds = [];
+    for (const [id, img] of imagesToUpload) {
+      _commitLog('dim', `  Uploading image ${img.filename}…`);
+      // Strip the "data:<mime>;base64," prefix — the API wants raw base64.
+      const base64 = img.dataUrl.includes(',') ? img.dataUrl.split(',', 2)[1] : img.dataUrl;
+      let blobRes;
+      try {
+        blobRes = await fetch(`${api}/git/blobs`, {
+          method: 'POST', headers,
+          body: JSON.stringify({ content: base64, encoding: 'base64' }),
+        });
+      } catch (netErr) {
+        throw new Error(`Network error on ${img.filename}: ${netErr.message}`);
+      }
+      if (!blobRes.ok) {
+        const errBody = await blobRes.text().catch(() => '');
+        throw new Error(`Image ${img.filename} upload failed (${blobRes.status}): ${errBody.slice(0,200)}`);
+      }
+      const { sha } = await blobRes.json();
+      if (!sha) throw new Error(`No sha for image ${img.filename} — aborting`);
+      treeItems.push({ path: img.filename, mode: '100644', type: 'blob', sha });
+      uploadedImageIds.push(id);
+      _commitLog('ok', `  ✓ ${img.filename} (${_fmtSize(img.size)})`);
+    }
+
+    if (treeItems.length !== fileList.length + imagesToUpload.length) {
+      throw new Error(`Only ${treeItems.length}/${fileList.length + imagesToUpload.length} blobs succeeded — commit aborted`);
     }
 
     _commitLog('dim', 'Building tree…');
@@ -2076,6 +2228,11 @@ async function _doCommit(token) {
       body: JSON.stringify({ sha: newCommitSha }),
     });
     if (!updateRes.ok) throw new Error(`Ref update failed: ${updateRes.status}`);
+
+    // v1.11: commit succeeded — release the staged images we just uploaded
+    // so future commits don't re-send them (and so they stop sitting in
+    // memory).
+    for (const id of uploadedImageIds) delete pendingImages[id];
 
     _commitLog('ok', `✓ Committed ${treeItems.length} file(s) — ${newCommitSha.slice(0,7)}`);
     _commitLog('ok', '  Pages deploying — live in ~45s');
