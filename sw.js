@@ -1,7 +1,14 @@
-// MOTU Vault — Service Worker v6.62
+// MOTU Vault — Service Worker v6.63
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.63 changelog:
+//   • CACHE bumped to v6.63. SHELL: handlers.js + render.js updated.
+//   • Acquired date field (figure detail) auto-formats MM/YYYY as the user
+//     types. The mobile numeric keyboard has no slash key, so typing
+//     "042026" now becomes "04/2026" live. Backspace, paste, and existing
+//     dates all behave naturally.
 //
 // v6.62 changelog:
 //   • CACHE bumped to v6.62. SHELL: state.js + ui-sheets.js updated.
@@ -524,7 +531,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.62';
+const CACHE = 'motu-vault-v6.63';
 
 const SHELL = [
   'motu-vault.html',

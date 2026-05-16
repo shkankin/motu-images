@@ -1122,6 +1122,30 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// v6.63: auto-format MM/YYYY date inputs for the Acquired field on figure
+// detail. The mobile numeric keyboard doesn't expose the slash, so users
+// would type "042026" and get a validation failure. This lifts that pain:
+// digits are stripped to MM and YYYY components and reformatted live as
+// the user types, with backspace behaving naturally because deleting a
+// digit just shifts the partial date one place left.
+window.formatAcquired = (el) => {
+  if (!el) return;
+  // Strip everything except digits.
+  const digits = (el.value || '').replace(/\D/g, '').slice(0, 6);
+  let next;
+  if (digits.length === 0) next = '';
+  else if (digits.length <= 2) next = digits;                                // "0", "04"
+  else next = digits.slice(0, 2) + '/' + digits.slice(2);                    // "04/", "04/2", … "04/2026"
+  if (next === el.value) return;
+  // Preserve caret position roughly — after a digit was typed, caret moves
+  // forward; after backspace, it stays where deletion put it.
+  const wasAtEnd = el.selectionStart === el.value.length;
+  el.value = next;
+  if (wasAtEnd) {
+    try { el.setSelectionRange(next.length, next.length); } catch {}
+  }
+};
+
 // ── Exports ─────────────────────────────────────────────────
 export {
   initLongPress, showContextMenu, dismissContextMenu, navState, pushNav, restoreNav

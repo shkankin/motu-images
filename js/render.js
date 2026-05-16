@@ -434,7 +434,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.62</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.63</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1957,6 +1957,7 @@ function renderCopyCard(f, cp, i, isMulti) {
       <div class="field-label text-dim text-sm">Acquired</div>
       <input type="text" inputmode="numeric" maxlength="7" value="${esc(cp.acquired || '')}"
         placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}"
+        oninput="formatAcquired(this)"
         onchange="updateCopy(${jId},${cid},'acquired',this.value)">
     </div>
     <div>
