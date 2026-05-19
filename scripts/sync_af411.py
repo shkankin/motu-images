@@ -662,6 +662,35 @@ def main():
         print(f"\n  ▸ Open figures-editor.html to review {len(new_for_pending)} new figure(s)")
     print(f"{'═' * 60}\n")
 
+    # v1.5: write a sync summary for the GitHub Actions workflow to read.
+    # Used to post a Discord notification when new pending figures land.
+    # Path is fixed and machine-readable; never committed (in .gitignore /
+    # ignored by glob below). Only written on a real (--commit) run; audit
+    # runs skip this entirely.
+    if args.commit:
+        try:
+            summary_path = Path("/tmp/motu-sync-summary.json")
+            new_pending_details = []
+            for fid in sorted(new_for_pending):
+                s = scraped_by_id[fid]
+                new_pending_details.append({
+                    "id": fid,
+                    "name": s.get("name") or fid,
+                    "line": s.get("line") or "",
+                })
+            summary_path.write_text(json.dumps({
+                "new_pending_count": len(new_for_pending),
+                "new_pending":       new_pending_details,
+                "pending_total":     len(new_pending),
+                "figures_total":     len(merged),
+                "images_downloaded": img_downloaded,
+                "images_failed":     img_failed,
+                "line_filter":       args.line or "",
+            }, indent=2, ensure_ascii=False))
+        except Exception as e:
+            # Never let summary-write failure break the sync — print and move on.
+            print(f"  ⚠ Could not write sync summary: {e}")
+
 
 if __name__ == "__main__":
     main()
