@@ -89,18 +89,6 @@ import urllib.error
 from html.parser import HTMLParser
 from pathlib import Path
 
-# v1.10: accessory loadout auto-extraction. Reads each figure's AF411 detail
-# page and suggests a loadout (drawn from the app's canonical + custom
-# accessory vocabulary). Suggestions never auto-commit to loadouts.json — they
-# ride along as `_suggestedLoadout` on pending entries (for one-tap confirm in
-# figures-editor.html) or land in loadouts-suggested.json (--backfill-loadouts).
-# Import is soft so the scraper still runs if the module isn't deployed.
-try:
-    from accessory_extractor import extract_accessories
-    _HAVE_EXTRACTOR = True
-except Exception:
-    _HAVE_EXTRACTOR = False
-
 # ─── Configuration ────────────────────────────────────────────────
 
 BASE = "https://www.actionfigure411.com"
@@ -423,141 +411,6 @@ def download_image(slug, af411_url):
         return False
 
 
-# ─── Loadout extraction (v1.10) ───────────────────────────────────
-
-LOADOUTS_JSON = REPO_ROOT / "loadouts.json"
-SUGGESTED_JSON = REPO_ROOT / "loadouts-suggested.json"
-
-_TAG_RE = re.compile(r"<[^>]+>")
-_WS_RE = re.compile(r"\s+")
-_ENTITIES = {
-    "&amp;": "&", "&nbsp;": " ", "&#39;": "'", "&rsquo;": "'", "&lsquo;": "'",
-    "&quot;": '"', "&ldquo;": '"', "&rdquo;": '"', "&mdash;": "—", "&ndash;": "–",
-}
-
-
-def load_custom_accessories():
-    """Pull the customAccessories master list out of loadouts.json so the
-    extractor can match figure-specific parts (Havoc Staff, Cosmic Key, …)."""
-    try:
-        d = json.loads(LOADOUTS_JSON.read_text())
-        return [a for a in d.get("customAccessories", []) if isinstance(a, str)]
-    except Exception:
-        return []
-
-
-def load_existing_loadouts():
-    """Return {figId: [...]} of loadouts already curated, so backfill skips them."""
-    try:
-        d = json.loads(LOADOUTS_JSON.read_text())
-        lo = d.get("loadouts", d if isinstance(d, dict) else {})
-        return lo if isinstance(lo, dict) else {}
-    except Exception:
-        return {}
-
-
-def fetch_detail_text(af411_url):
-    """Fetch a figure's AF411 detail page and return readable text (tags
-    stripped, entities decoded). The extractor's own TAIL_MARKERS trim the
-    price/stat boilerplate, so we hand it the whole body."""
-    if not af411_url:
-        return ""
-    url = af411_url if af411_url.startswith("http") else f"{BASE}{af411_url}"
-    html = fetch_page(url)
-    if not html:
-        return ""
-    html = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.I | re.S)
-    text = _TAG_RE.sub(" ", html)
-    for ent, ch in _ENTITIES.items():
-        text = text.replace(ent, ch)
-    return _WS_RE.sub(" ", text).strip()
-
-
-def suggest_loadout(af411_url, custom):
-    """Fetch + extract. Returns {loadout, confidence, unmatched} or None."""
-    if not _HAVE_EXTRACTOR:
-        return None
-    text = fetch_detail_text(af411_url)
-    if not text:
-        return None
-    r = extract_accessories(text, custom)
-    if not r.accessories:
-        return None
-    return {"loadout": r.accessories, "confidence": r.confidence, "unmatched": r.unmatched}
-
-
-def run_backfill(existing, args):
-    """One-shot: suggest loadouts for every figure already in figures.json that
-    doesn't have one yet. Writes (resumable) loadouts-suggested.json — a plain
-    {figId: [...]} map plus a _meta block of confidence/unmatched. Never touches
-    figures.json or the authoritative loadouts.json. Review in the editor."""
-    if not _HAVE_EXTRACTOR:
-        print("✗ accessory_extractor.py not found next to this script — cannot backfill.")
-        sys.exit(1)
-
-    custom = load_custom_accessories()
-    have = load_existing_loadouts()
-    print(f"\n🎒 Backfilling loadouts. {len(have)} figures already have one (skipped).\n")
-
-    # Recover slug → detail-URL from the checklist pages (existing entries don't
-    # persist af411_url, but the checklist links ARE the detail URLs).
-    lines_to_scrape = LINES
-    if args.line:
-        lines_to_scrape = [t for t in LINES if t[0] == args.line]
-    url_by_slug = {}
-    for i, (line_id, checklist_slug, series_path) in enumerate(lines_to_scrape):
-        for f in scrape_line(line_id, checklist_slug, series_path):
-            url_by_slug[f["slug"]] = f.get("af411_url", "")
-        if i < len(lines_to_scrape) - 1:
-            time.sleep(args.delay)
-
-    # Resume support: merge into any prior run.
-    prior = {}
-    prior_meta = {}
-    if SUGGESTED_JSON.exists():
-        try:
-            d = json.loads(SUGGESTED_JSON.read_text())
-            prior = {k: v for k, v in d.items() if k != "_meta"}
-            prior_meta = d.get("_meta", {})
-        except Exception:
-            pass
-
-    targets = [
-        f for f in existing
-        if f["id"] not in have and f["id"] not in prior
-        and (not args.line or f.get("line") == args.line)
-        and f["slug"] in url_by_slug
-    ]
-    print(f"  {len(targets)} figures to process.\n")
-
-    out = dict(prior)
-    meta = dict(prior_meta)
-    hi = mid = none = 0
-    for n, f in enumerate(targets, 1):
-        sug = suggest_loadout(url_by_slug[f["slug"]], custom)
-        tag = "—"
-        if sug:
-            out[f["id"]] = sug["loadout"]
-            meta[f["id"]] = {"confidence": sug["confidence"], "unmatched": sug["unmatched"]}
-            tag = f"{sug['confidence']}: {sug['loadout']}"
-            if sug["confidence"] == "high":
-                hi += 1
-            else:
-                mid += 1
-        else:
-            none += 1
-        print(f"  [{n}/{len(targets)}] {f['id']}  {tag}")
-        # Checkpoint every 25 so a long run is resumable on interrupt.
-        if n % 25 == 0:
-            SUGGESTED_JSON.write_text(json.dumps({**out, "_meta": meta}, indent=2, ensure_ascii=False))
-        time.sleep(args.delay)
-
-    SUGGESTED_JSON.write_text(json.dumps({**out, "_meta": meta}, indent=2, ensure_ascii=False))
-    print(f"\n  ✓ Wrote {len(out)} suggestions to loadouts-suggested.json")
-    print(f"    high-confidence: {hi}   medium: {mid}   no match: {none}")
-    print(f"  ▸ Load it in figures-editor.html (Existing-figures mode) to review.\n")
-
-
 # ─── Main ─────────────────────────────────────────────────────────
 
 def main():
@@ -573,14 +426,6 @@ def main():
     parser.add_argument("--no-pending", action="store_true",
                         help="v1.4: write new figures directly to figures.json "
                              "instead of routing them to the review queue.")
-    parser.add_argument("--loadouts", action="store_true",
-                        help="v1.10: also fetch each NEW figure's detail page and "
-                             "attach a suggested accessory loadout (_suggestedLoadout) "
-                             "for one-tap confirmation in the editor.")
-    parser.add_argument("--backfill-loadouts", action="store_true",
-                        help="v1.10: one-shot — suggest loadouts for EXISTING figures "
-                             "that lack one. Writes loadouts-suggested.json and exits. "
-                             "Honors --line and --delay. Resumable.")
     args = parser.parse_args()
 
     print("═" * 60)
@@ -598,13 +443,6 @@ def main():
 
     existing_by_id = {f["id"]: f for f in existing}
     existing_ids = set(existing_by_id.keys())
-
-    # v1.10: backfill mode runs against the already-loaded figures.json and
-    # exits before the normal new-figure diff. It only ever writes the
-    # suggestions file — figures.json and loadouts.json are left untouched.
-    if args.backfill_loadouts:
-        run_backfill(existing, args)
-        return
 
     # v1.4: Load review queue (figures awaiting editor approval)
     pending = []
@@ -766,24 +604,6 @@ def main():
 
     img_downloaded = 0
     img_failed = 0
-    # v1.10: load the custom-accessory vocab once if we'll be extracting.
-    _custom_acc = load_custom_accessories() if (args.loadouts and _HAVE_EXTRACTOR) else []
-    _loadouts_suggested = 0
-
-    def _attach_loadout(entry, scraped):
-        """Fetch detail + attach a suggested loadout to a new entry, in place."""
-        nonlocal _loadouts_suggested
-        if not (args.loadouts and _HAVE_EXTRACTOR):
-            return
-        sug = suggest_loadout(scraped.get("af411_url", ""), _custom_acc)
-        if sug:
-            entry["_suggestedLoadout"] = sug["loadout"]
-            entry["_loadoutConfidence"] = sug["confidence"]
-            if sug["unmatched"]:
-                entry["_loadoutUnmatched"] = sug["unmatched"]
-            _loadouts_suggested += 1
-            print(f"     ✨ loadout [{sug['confidence']}]: {sug['loadout']}")
-        time.sleep(0.4)  # extra page fetch — stay polite
 
     # v1.4: refresh metadata of pending entries (in case AF411 corrected
     # something). DON'T touch line/group/faction on pending entries — the
@@ -803,26 +623,22 @@ def main():
     # to figures.json (--no-pending flag).
     for fid in sorted(new_for_pending):
         s = scraped_by_id[fid]
-        entry = build_new_fig(s, for_pending=True)
-        new_pending.append(entry)
+        new_pending.append(build_new_fig(s, for_pending=True))
         print(f"  📷 Downloading image: {s['slug']}")
         if download_image(s["slug"], s.get("af411_url", "")):
             img_downloaded += 1
         else:
             img_failed += 1
-        _attach_loadout(entry, s)
         time.sleep(0.5)  # Be polite
 
     for fid in sorted(new_for_existing):
         s = scraped_by_id[fid]
-        entry = build_new_fig(s, for_pending=False)
-        merged.append(entry)
+        merged.append(build_new_fig(s, for_pending=False))
         print(f"  📷 Downloading image: {s['slug']}")
         if download_image(s["slug"], s.get("af411_url", "")):
             img_downloaded += 1
         else:
             img_failed += 1
-        _attach_loadout(entry, s)
         time.sleep(0.5)
 
     # Sort by line then name for clean diffs
@@ -842,8 +658,6 @@ def main():
         print(f"  ✓ Wrote {len(new_pending)} figures to figures-pending.json")
 
     print(f"  ✓ Downloaded {img_downloaded} images ({img_failed} failed)")
-    if args.loadouts and _HAVE_EXTRACTOR:
-        print(f"  ✨ Attached {_loadouts_suggested} suggested loadout(s) to new figures")
     if new_for_pending:
         print(f"\n  ▸ Open figures-editor.html to review {len(new_for_pending)} new figure(s)")
     print(f"{'═' * 60}\n")

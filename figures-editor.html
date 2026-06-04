@@ -1122,11 +1122,6 @@ let decisions = {};
 let edits = {};
 // Per-figure accessory selections: {[id]: ['Power Sword', ...]}
 let figAccessories = {};
-// v1.10: ids whose accessory chips were pre-seeded from an auto-extracted
-// suggestion (scraper --loadouts or loadouts-suggested.json) rather than a
-// confirmed loadout. Used only to flag them visually so the reviewer knows
-// to confirm. Cleared for an id once the user toggles any chip on it.
-let suggestedSeed = new Set();
 
 // ── File loading ───────────────────────────────────────────────────
 
@@ -1188,16 +1183,9 @@ function ingestPending(data) {
     }
     return f;
   });
-  // Initialize per-figure accessories from any existing loadout entry,
-  // else fall back to an auto-extracted suggestion (v1.10) so new figures
-  // arrive with their chips pre-checked for one-tap confirmation.
+  // Initialize per-figure accessories from any existing loadout entry
   for (const f of pendingFigs) {
-    if (loadouts[f.id]) {
-      figAccessories[f.id] = [...loadouts[f.id]];
-    } else if (Array.isArray(f._suggestedLoadout) && f._suggestedLoadout.length) {
-      figAccessories[f.id] = [...f._suggestedLoadout];
-      suggestedSeed.add(f.id);
-    }
+    if (loadouts[f.id]) figAccessories[f.id] = [...loadouts[f.id]];
   }
 }
 
@@ -1215,23 +1203,7 @@ function ingestApproved(data) {
 
 function ingestLoadouts(data) {
   if (data && typeof data === 'object') {
-    // v1.10: loadouts-suggested.json (from sync_af411.py --backfill-loadouts)
-    // carries a `_meta` block of per-figure confidence. Treat it as a bundle
-    // of SUGGESTIONS — seed the editable chips (pre-checked, flagged) but do
-    // NOT promote them into the authoritative `loadouts` map. The reviewer
-    // confirms each via the normal Save/download flow.
-    if (data._meta && typeof data._meta === 'object') {
-      const meta = data._meta;
-      for (const [id, accs] of Object.entries(data)) {
-        if (id === '_meta' || loadouts[id] || !Array.isArray(accs) || !accs.length) continue;
-        figAccessories[id] = [...accs];
-        suggestedSeed.add(id);
-      }
-      window.__loadoutMeta = meta;  // optional: confidence lookup for the UI
-      return;
-    }
     loadouts = data.loadouts || data;
-    delete loadouts._meta;  // defensive: never let a stray meta key become a figId
     // v6.33: schema v2 carries the editor's master list of custom accessory
     // names. Merge into the local list (de-duped, case-insensitive) so a
     // round-trip through commit+pull preserves names and adds any that
@@ -1249,15 +1221,10 @@ function ingestLoadouts(data) {
     if (data.sublineOrder && typeof data.sublineOrder === 'object') {
       sublineOrder = data.sublineOrder;
     }
-    // Re-seed for both pending and approved (in case loadouts loaded last).
-    // Confirmed loadouts win; suggestions only fill where nothing's set yet.
+    // Re-seed for both pending and approved (in case loadouts loaded last)
     for (const f of [...pendingFigs, ...approvedFigs]) {
-      if (loadouts[f.id]) {
+      if (loadouts[f.id] && !figAccessories[f.id]) {
         figAccessories[f.id] = [...loadouts[f.id]];
-        suggestedSeed.delete(f.id);
-      } else if (!figAccessories[f.id] && Array.isArray(f._suggestedLoadout) && f._suggestedLoadout.length) {
-        figAccessories[f.id] = [...f._suggestedLoadout];
-        suggestedSeed.add(f.id);
       }
     }
   }
@@ -1662,7 +1629,7 @@ function renderCard(f) {
         </div>
       </div>
       <details>
-        <summary>Accessories / Loadout (${accs.length} selected)${suggestedSeed.has(f.id) ? ' · <span style="color:var(--acc)">✨ suggested — confirm</span>' : ''}</summary>
+        <summary>Accessories / Loadout (${accs.length} selected)</summary>
         ${renderAccessoriesPanel(f.id, accs)}
       </details>
     </div>
@@ -1821,7 +1788,7 @@ function renderExistingCard(f) {
         </div>
       </div>
       <details ${isEdited && hasLoadoutChange(f.id) ? 'open' : ''}>
-        <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''}${suggestedSeed.has(f.id) ? ' · <span style="color:var(--acc)">✨ suggested — confirm</span>' : ''})</summary>
+        <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''})</summary>
         ${renderAccessoriesPanel(f.id, accs)}
       </details>
     </div>
@@ -1878,7 +1845,6 @@ function setEdit(id, field, val) {
 
 function toggleAcc(id, acc, el) {
   if (!figAccessories[id]) figAccessories[id] = [];
-  suggestedSeed.delete(id);  // v1.10: a touched suggestion is now reviewer-owned
   const i = figAccessories[id].indexOf(acc);
   if (i >= 0) {
     figAccessories[id].splice(i, 1);
