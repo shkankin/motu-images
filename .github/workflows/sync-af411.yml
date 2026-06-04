@@ -41,7 +41,7 @@ jobs:
           CMD="python scripts/sync_af411.py"
           # Scheduled runs are always commit-mode; manual runs respect audit_only.
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.audit_only }}" != "true" ]; then
-            CMD="$CMD --commit --loadouts"
+            CMD="$CMD --commit"
           else
             CMD="$CMD --audit"
           fi
