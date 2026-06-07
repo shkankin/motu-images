@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "grayskull-and-snake-mountain-strongholds-13924",
+    "name": "Grayskull and Snake Mountain Strongholds",
+    "sourceName": "Grayskull and Snake Mountain Strongholds",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 86.39,
+    "slug": "grayskull-and-snake-mountain-strongholds-13924",
+    "faction": "Snake Men",
+    "source": "af411",
+    "_addedToPending": 1780822371
+  }
+]
