@@ -3353,3 +3353,13 @@ html {
 .detail-action-btn.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
 .detail-action-btn.red { color: var(--rd); border-color: color-mix(in srgb, var(--rd) 40%, transparent); }
 
+
+/* ── v6.74: suppress native text selection in list/grid rows ──────
+   Long-press is an app gesture here (context menu); Android was also
+   starting word selection under the menu. Inputs/textareas inside the
+   detail screen are unaffected — this targets list surfaces only. */
+.fig-row, .fig-card, .fig-row *, .fig-card * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

@@ -177,6 +177,12 @@ function initLongPress(el, figId) {
   // We suppress the Android copy/paste callout via contextmenu instead.
   el.addEventListener('touchstart', e => {
     if (isSelecting()) return;
+    // v6.74: never arm the long-press timer when the press starts on an
+    // interactive control (status dot, buttons, inputs). Pressing the
+    // quick-own dot a beat too long was legitimately crossing the 500ms
+    // threshold and popping the row menu — long-press belongs to the row
+    // surface, not its controls.
+    if (e.target.closest && e.target.closest('button, input, a, .quick-own')) return;
     _lpMoved = false;
     _lpFired = false;
     _lpFigId = figId;
@@ -188,12 +194,19 @@ function initLongPress(el, figId) {
     const ly = e.touches[0].clientY;
     _lpStartX = lx;
     _lpStartY = ly;
+    // v6.74: capture the exact node touched. If a patch/render swaps it out
+    // mid-gesture (rapid status cycling races the click-driven rebuild),
+    // its touchend is dispatched on the detached node and never reaches the
+    // row OR the document — no cancel path exists. So instead of relying
+    // on cancellation, validate at fire time: a node that left the DOM
+    // means this was a tap race, never a deliberate hold.
+    const touchedNode = e.target;
     _lpTimer = setTimeout(() => {
-      if (!_lpMoved) {
-        _lpFired = true;
-        haptic(25);
-        showContextMenu(figId, lx, ly);
-      }
+      if (_lpMoved) return;
+      if (touchedNode && !touchedNode.isConnected) return;
+      _lpFired = true;
+      haptic(25);
+      showContextMenu(figId, lx, ly);
     }, 500);
   }, {passive: true});
   el.addEventListener('touchmove', e => {
@@ -221,8 +234,9 @@ function initLongPress(el, figId) {
   // contextmenu fires once per gesture (not on every touch), so it doesn't
   // interfere with scrolling or tap-to-open.
   el.addEventListener('contextmenu', e => {
-    e.preventDefault();
+    e.preventDefault();  // always block the native callout (incl. on controls)
     if (isSelecting()) return;
+    if (e.target.closest && e.target.closest('button, input, a, .quick-own')) return;  // v6.74
     haptic(15);
     showContextMenu(figId, e.clientX, e.clientY);
   });
@@ -236,6 +250,11 @@ function showContextMenu(figId, x, y) {
   // Prevent the regular tap from firing
   const fig = figById(figId);
   if (!fig) return;
+  // v6.74: long-press on Android can also start native text selection in
+  // the row (user report: words highlighted under the popup). Kill any
+  // selection the gesture produced; CSS user-select:none on rows prevents
+  // new ones.
+  try { window.getSelection()?.removeAllRanges(); } catch {}
   const c = S.coll[figId] || {};
   dismissContextMenu();
   // v4.86: escape figId for innerHTML onclick interpolation. AF411 slugs are

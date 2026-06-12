@@ -4,6 +4,11 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.74. SHELL: handlers.js + render.js + vault.css.
+//     Long-press fix round 2: fire-time validation (touched node must
+//     still be in the DOM — kills the rapid-cycle race that survived
+//     v6.73's cancel hooks). Text-selection suppressed on rows/cards;
+//     stray selection cleared when the menu opens.
 //   • CACHE bumped to v6.73. SHELL: handlers.js + render.js + vault.css.
 //     BUG FIX: long-press menu firing after first status-cycle from
 //     cleared (mid-touch DOM rebuild orphaned the timer cancel — global
@@ -580,7 +585,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.73';
+const CACHE = 'motu-vault-v6.74';
 
 const SHELL = [
   'motu-vault.html',
