@@ -3243,3 +3243,85 @@ html {
     opacity: 1 !important;
   }
 }
+
+/* ── v6.65: variant nesting + tour ─────────────────────────────── */
+/* Nested variant card (grid): gold left rail + slight inset reads as
+   "attached to the card before it" without breaking the grid. */
+.fig-card.variant-nested { border-left: 3px solid var(--gold); }
+.card-variant-tag {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+  color: var(--bg); background: var(--gold);
+  padding: 2px 7px; border-radius: 99px;
+  max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Nested variant row (list): indented with a gold elbow connector. */
+.fig-row.variant-nested { margin-left: 22px; border-left: 2px solid var(--gold); }
+.row-variant-elbow {
+  flex: 0 0 auto; margin-left: -2px;
+  color: var(--gold); font-size: 14px; font-weight: 700; line-height: 1;
+}
+/* Variant count chip on parent (⧉N) — sibling of copy-count-inline. */
+.variant-count-inline {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 16px; padding: 0 5px; margin-left: 6px;
+  background: color-mix(in srgb, var(--gold) 20%, var(--bg3));
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 8px; font-size: 10px; font-weight: 700; color: var(--gold);
+}
+.variant-name-inline {
+  display: inline-block; margin-left: 6px; padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-radius: 8px; font-size: 10px; font-weight: 600; color: var(--gold);
+  vertical-align: 1px;
+}
+/* Detail-screen variant tour */
+.variant-section { padding: 0 16px 12px; }
+.variant-of-line {
+  font-size: 12px; color: var(--t2); margin-bottom: 8px; cursor: pointer;
+}
+.variant-of-line span { color: var(--gold); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.variant-strip {
+  display: flex; gap: 10px; overflow-x: auto; padding: 2px 0 6px;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.variant-strip::-webkit-scrollbar { display: none; }
+.variant-chip {
+  flex: 0 0 auto; width: 72px; cursor: pointer; text-align: center;
+}
+.variant-chip-thumb {
+  position: relative; width: 72px; height: 72px; border-radius: 12px;
+  overflow: hidden; background: var(--bg3); border: 2px solid var(--bd);
+  display: flex; align-items: center; justify-content: center;
+}
+.variant-chip.current .variant-chip-thumb { border-color: var(--gold); }
+.variant-chip-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.variant-chip-thumb span { font-family: 'Cinzel', serif; font-size: 24px; color: var(--t3); }
+.variant-chip-dot {
+  position: absolute; top: 4px; right: 4px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--gn); border: 1px solid var(--bg);
+}
+.variant-chip-label {
+  margin-top: 4px; font-size: 10px; font-weight: 600; color: var(--t2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.variant-chip.current .variant-chip-label { color: var(--gold); }
+/* v6.66: "+" chip at the end of the variant strip (in-app Add Variant) */
+.variant-chip-add .variant-chip-thumb { border-style: dashed; border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+.variant-chip-add .variant-chip-label { color: var(--gold); }
+/* v6.67: Mark Sold button on copy cards */
+.mark-sold-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 14px; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--gn) 45%, transparent);
+  background: var(--bg3); color: var(--gn);
+  font-size: 12px; font-weight: 600;
+}
+/* v6.69: price-watch DEAL badges */
+.deal-badge {
+  position: absolute; bottom: 6px; left: 6px; z-index: 2;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+  color: var(--bg); background: var(--gn);
+  padding: 2px 7px; border-radius: 99px;
+}
+.fig-deal-badge { font-size: 9px; font-weight: 700; color: var(--gn); letter-spacing: 0.5px; }

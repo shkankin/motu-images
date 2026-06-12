@@ -4,6 +4,24 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.69. SHELL: app.js + data.js + render.js +
+//     pricing.js + vault.css updated. Price-watch (targetPrice + DEAL
+//     badges + daily deal toast), price-history sparklines on detail,
+//     trade-list text share, printable insurance report (HTML export).
+//   • CACHE bumped to v6.68. SHELL: data.js + render.js + ui-sheets.js +
+//     eggs.js updated. Backup schema v5 (soldLog + customFigs in export/
+//     import), Waves-in-Progress checklist in Stats (goToWave + filterWave),
+//     Locations browser sheet (Settings → Locations).
+//   • CACHE bumped to v6.67. SHELL: app.js + data.js + render.js + handlers.js
+//     + ui-sheets.js + pricing.js + vault.css updated. Backup nag (changes
+//     counter + menu badge + boot toast), collection-value dashboard with
+//     bulk price fetch, for-sale lifecycle (per-copy asking, Mark Sold,
+//     sold log, realized gains in stats).
+//   • CACHE bumped to v6.66. SHELL: handlers.js + render.js + vault.css updated.
+//     In-app variant creation (Add Variant button / long-press / + chip),
+//     appPromptText modal, deleteCustomFig for user-added figures.
+//   • CACHE bumped to v6.65. SHELL: data.js + render.js + vault.css updated.
+//     Variant nesting (variantOf/variantName) + detail-screen variant tour.
 //   • CACHE bumped to v6.64. SHELL: pricing.js + render.js + vault.css updated.
 //   • Market Value: replaced the big condition-split block with a single
 //     inline "Asking" number rendered next to "Original Retail". Modern
@@ -542,7 +560,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.64';
+const CACHE = 'motu-vault-v6.69';
 
 const SHELL = [
   'motu-vault.html',

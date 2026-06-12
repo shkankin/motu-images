@@ -34,7 +34,7 @@ import {
   initPhotoViewerZoom,
 } from './photos.js';
 import {
-  figById, figIsHidden, getPrimaryCopy, copyVariant, copyCondition,
+  figById, figVariants, figIsHidden, getPrimaryCopy, copyVariant, copyCondition,
   copyPaid, copyNotes, entryCopyCount, totalCopyCount,
   getStats, getSortedFigs, getLineStats, hasFilters, progressRing,
   isLineFullyHidden, isSublineHidden, getOrderedSublines, getAllLocations,
@@ -42,13 +42,14 @@ import {
   getLoadout, getCopyCompleteness,
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
   isMigrated, saveColl, fetchFigs,
+  getSoldLog, backupDue,
 } from './data.js';
 import {
   playSound, preloadSound, getThemeIcon, getThemeSounds,
 } from './eggs.js';
 import { initLongPress, pushNav } from './handlers.js';
 import { renderSheet } from './ui-sheets.js';
-import { renderMarketValueBlock } from './pricing.js';
+import { renderMarketValueBlock, getCachedAskingPrice, isPricingConfigured, fetchPricing, renderSparkline } from './pricing.js';
 
 // § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
 // v6.04: container caps live toasts at 3. Any new toast trims the oldest
@@ -118,6 +119,38 @@ function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'}
     overlay.querySelector('#appConfirmOk').addEventListener('click', () => finish(true));
     overlay.querySelector('#appConfirmCancel').addEventListener('click', () => finish(false));
     overlay.addEventListener('click', e => { if (e.target === overlay) finish(false); });
+  });
+}
+
+// v6.66: text-input sibling of appConfirm. Resolves with the entered string,
+// or null on cancel. Used by Add Variant; generic enough for future prompts.
+function appPromptText(message, {placeholder = '', ok = 'OK', cancel = 'Cancel', value = ''} = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding-bottom:calc(16px + var(--safe-bottom,0px))';
+    overlay.innerHTML = `
+      <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:20px 20px 16px 16px;padding:22px 20px 12px;box-shadow:0 -4px 32px rgba(0,0,0,.4)">
+        <div style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:14px;text-align:center">${esc(message)}</div>
+        <input id="appPromptInput" type="text" placeholder="${esc(placeholder)}" value="${esc(value)}" maxlength="40"
+               style="width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:15px">
+        <div style="display:flex;gap:10px">
+          <button id="appPromptCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
+          <button id="appPromptOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--acc);color:#fff;font-size:15px;font-weight:700">${esc(ok)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#appPromptInput');
+    const finish = result => {
+      overlay.querySelector('#appPromptOk').disabled = true;
+      overlay.querySelector('#appPromptCancel').disabled = true;
+      overlay.remove();
+      resolve(result);
+    };
+    overlay.querySelector('#appPromptOk').addEventListener('click', () => finish(input.value));
+    overlay.querySelector('#appPromptCancel').addEventListener('click', () => finish(null));
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') finish(input.value); });
+    overlay.addEventListener('click', e => { if (e.target === overlay) finish(null); });
+    setTimeout(() => input.focus(), 60);
   });
 }
 
@@ -434,7 +467,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.64</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.69</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -846,6 +879,45 @@ function renderContent() {
   return renderFigList();
 }
 
+// ── v6.67: bulk price fetch ─────────────────────────────────────────
+// Fetches asking prices for every owned/for-sale figure that has no cached
+// price. Sequential with a 300ms gap to be polite to the worker; capped at
+// 150 per run (re-tap to continue on huge collections). Updates the stats
+// sheet in place when done.
+let _bulkFetchRunning = false;
+window.fetchAllOwnedPricing = async () => {
+  if (_bulkFetchRunning) { toast('Already fetching…'); return; }
+  if (!isPricingConfigured()) { toast('Configure a pricing backend first (Settings → Pricing Backend)'); return; }
+  const targets = S.figs.filter(f => {
+    if (figIsHidden(f)) return false;
+    const c = S.coll[f.id];
+    const st = c?.status;
+    const watched = (st === 'wishlist' || st === 'ordered') && Number.isFinite(parseFloat(c.targetPrice));
+    if (st !== 'owned' && st !== 'for-sale' && !watched) return false;
+    return getCachedAskingPrice(f) == null;
+  }).slice(0, 150);
+  if (!targets.length) { toast('✓ All owned figures already priced'); return; }
+  _bulkFetchRunning = true;
+  const btn = document.getElementById('fetchAllPricesBtn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.textContent = `Fetching 0/${targets.length}…`; }
+  let done = 0, got = 0;
+  try {
+    for (const f of targets) {
+      const r = await fetchPricing(f.id, { line: f.line, wave: f.wave, year: f.year });
+      done++;
+      if (r && getCachedAskingPrice(f) != null) got++;
+      if (btn) btn.textContent = `Fetching ${done}/${targets.length}…`;
+      await new Promise(res => setTimeout(res, 300));
+    }
+  } finally {
+    _bulkFetchRunning = false;
+  }
+  toast(`✓ Priced ${got} of ${targets.length} figures${got < targets.length ? ' (no listings found for the rest)' : ''}`);
+  // Refresh the stats sheet in place if it's still open.
+  const body = document.querySelector('.sheet-body');
+  if (body && S.sheet === 'stats') body.innerHTML = renderStatsSheet();
+};
+
 function renderStatsSheet() {
   const stats = getStats();
   const unowned = stats.total - stats.owned - stats.wish - stats.ord - stats.sale;
@@ -883,6 +955,59 @@ function renderStatsSheet() {
     ${totalSpent > 0 ? `<div style="margin-top:10px;font-size:13px;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent${avgStr ? ` · ${avgStr}` : ''}</div>` : ''}
   </div>`;
 
+  // ── v6.67: Collection Value ──────────────────────────────────────
+  // Aggregates cached asking prices (no network) across owned + for-sale
+  // figures. Unrealized gain compares market value against paid for the
+  // SAME priced subset — comparing against total spend would mix priced
+  // and unpriced figures and overstate/understate the delta.
+  {
+    let haveTotal = 0, priced = 0, marketValue = 0, spentOnPriced = 0;
+    S.figs.filter(f => !figIsHidden(f)).forEach(f => {
+      const c = S.coll[f.id];
+      const st = c?.status;
+      if (st !== 'owned' && st !== 'for-sale') return;
+      haveTotal++;
+      const price = getCachedAskingPrice(f);
+      if (price == null) return;
+      priced++;
+      const copies = isMigrated(c) && c.copies?.length ? c.copies.length : 1;
+      marketValue += price * copies;
+      if (isMigrated(c)) for (const cp of c.copies) { const v = parseFloat(cp.paid); if (Number.isFinite(v)) spentOnPriced += v; }
+    });
+    const soldLog = getSoldLog();
+    let soldGross = 0, soldProfit = 0, soldWithPaid = 0;
+    for (const s of soldLog) {
+      soldGross += s.price || 0;
+      if (Number.isFinite(s.paid)) { soldProfit += (s.price || 0) - s.paid; soldWithPaid++; }
+    }
+    if (priced > 0 || soldLog.length > 0 || isPricingConfigured()) {
+      const unrealized = marketValue - spentOnPriced;
+      const sign = n => (n >= 0 ? '+' : '−') + '$' + Math.abs(n).toFixed(2);
+      html += `<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Collection Value</div>
+      <div style="padding:0 0 14px">`;
+      if (priced > 0) {
+        html += `<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'Cinzel',serif;font-size:22px;font-weight:700;color:var(--gold)">$${marketValue.toFixed(2)}</span>
+          <span style="font-size:11px;color:var(--t3)">market · ${priced}/${haveTotal} priced</span>
+        </div>
+        ${spentOnPriced > 0 ? `<div style="font-size:12px;color:${unrealized >= 0 ? 'var(--gn)' : 'var(--rd)'};margin-top:4px">${sign(unrealized)} unrealized vs $${spentOnPriced.toFixed(2)} paid (priced figures only)</div>` : ''}`;
+      } else if (isPricingConfigured()) {
+        html += `<div style="font-size:12px;color:var(--t3)">No cached prices yet — fetch below.</div>`;
+      }
+      if (isPricingConfigured() && priced < haveTotal) {
+        html += `<button id="fetchAllPricesBtn" onclick="fetchAllOwnedPricing()" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:12px;font-weight:600">
+          ${icon(ICO.refresh || ICO.sort, 13)} Fetch prices for ${haveTotal - priced} unpriced
+        </button>`;
+      }
+      if (soldLog.length) {
+        html += `<div style="margin-top:12px;font-size:12px;color:var(--t2)">
+          <span style="font-weight:700;color:var(--t1)">${soldLog.length}</span> sold · $${soldGross.toFixed(2)} gross${soldWithPaid ? ` · <span style="color:${soldProfit >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(soldProfit)} realized</span>` : ''}
+        </div>`;
+      }
+      html += `</div>`;
+    }
+  }
+
   // Per-line breakdown
   html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">By Line</div>';
   const lineStats = getLineStats();
@@ -902,6 +1027,53 @@ function renderStatsSheet() {
       </div>
     </div>`;
   });
+
+  // ── v6.68: Waves in Progress ─────────────────────────────────────
+  // Collectors complete by wave; this surfaces every line+wave the user
+  // has started but not finished (0 < owned < total). Tapping a row jumps
+  // to a full-wave checklist (goToWave: filterLine + filterWave, all
+  // statuses visible). Fully-owned and untouched waves are omitted —
+  // they're not actionable.
+  {
+    const waveAgg = {}; // "line\x00wave" → {line, wave, total, owned}
+    for (const f of S.figs) {
+      if (figIsHidden(f) || !f.wave) continue;
+      const k = f.line + '\x00' + f.wave;
+      const a = waveAgg[k] || (waveAgg[k] = { line: f.line, wave: String(f.wave), total: 0, owned: 0 });
+      a.total++;
+      const st = S.coll[f.id]?.status;
+      if (st === 'owned' || st === 'for-sale') a.owned++;
+    }
+    const lineIdx = id => { const i = S.lineOrder.indexOf(id); return i === -1 ? 99 : i; };
+    const inProgress = Object.values(waveAgg)
+      .filter(a => a.owned > 0 && a.owned < a.total)
+      .sort((a, b) => lineIdx(a.line) - lineIdx(b.line) ||
+        ((parseFloat(a.wave) || 99) - (parseFloat(b.wave) || 99)) ||
+        a.wave.localeCompare(b.wave));
+    if (inProgress.length) {
+      const shown = inProgress.slice(0, 14);
+      html += `<div class="label text-upper text-dim text-xs" style="margin:14px 0 10px">Waves in Progress</div>`;
+      shown.forEach(a => {
+        const pctW = Math.round(a.owned / a.total * 100);
+        const missing = a.total - a.owned;
+        html += `<button onclick="goToWave(${jsArg(a.line)},${jsArg(a.wave)})" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(ln(a.line))} · Wave ${esc(a.wave)}</div>
+            <div style="height:3px;background:var(--bd);border-radius:2px;overflow:hidden">
+              <div style="height:100%;width:${pctW}%;background:var(--acc);border-radius:2px"></div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:12px;font-weight:700;color:var(--gold)">${a.owned}/${a.total}</div>
+            <div style="font-size:10px;color:var(--t3)">${missing} to go</div>
+          </div>
+        </button>`;
+      });
+      if (inProgress.length > shown.length) {
+        html += `<div style="font-size:11px;color:var(--t3);padding:8px 0">+${inProgress.length - shown.length} more in-progress waves</div>`;
+      }
+    }
+  }
 
   // v6.39: rebuilt activity & spend charts to walk owned copies directly
   // and use cp.acquired (MM/YYYY). Falls back to the v6.31 event-log
@@ -1248,6 +1420,25 @@ function renderShareSheet() {
     ${canShare ? `<button onclick="nativeShare()" style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;margin-bottom:10px">
       ${icon(ICO.share,16)} Share…
     </button>` : ''}
+    ${(() => {
+      // v6.69: trade list — extra copies (×2+) and for-sale figures as a
+      // shareable text block for forums/DMs. Counts shown here; the text
+      // itself is built on tap (shareTradeList) so it's always current.
+      let extras = 0, sale = 0;
+      for (const f2 of S.figs) {
+        const c2 = S.coll[f2.id];
+        if (!c2) continue;
+        if (c2.status === 'for-sale') sale++;
+        else if (c2.status === 'owned' && Array.isArray(c2.copies) && c2.copies.length > 1) extras++;
+      }
+      if (!extras && !sale) return '';
+      return `<div style="height:1px;background:var(--bd);margin:14px 0"></div>
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Trade List</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:10px">${sale ? `${sale} for sale` : ''}${sale && extras ? ' · ' : ''}${extras ? `${extras} with extra copies` : ''}</div>
+      <button onclick="shareTradeList()" style="width:100%;padding:13px;border-radius:12px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:14px;font-weight:600">
+        ${icon(ICO.export,15)} ${navigator.share ? 'Share' : 'Copy'} trade list as text
+      </button>`;
+    })()}
     <div style="margin-top:14px">
       <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">On your list</div>
       ${wishFigs.slice(0,8).map(f => {
@@ -1352,6 +1543,43 @@ function checkShareLink() {
   }
   show();
 }
+
+// ── v6.69: trade list text builder ──────────────────────────────────
+// "FOR SALE" = for-sale figures (with per-copy asking when set);
+// "EXTRAS / FOR TRADE" = owned figures with 2+ copies (the spares).
+// Shared via native sheet where available, else copied to clipboard.
+window.shareTradeList = async () => {
+  const saleLines = [], extraLines = [];
+  const sorted = [...S.figs].sort((a, b) => a.name.localeCompare(b.name));
+  for (const f of sorted) {
+    const c = S.coll[f.id];
+    if (!c || figIsHidden(f)) continue;
+    if (c.status === 'for-sale' && Array.isArray(c.copies)) {
+      for (const cp of c.copies) {
+        const bits = [cp.condition, cp.variant].filter(Boolean).join(', ');
+        const ask = parseFloat(cp.asking);
+        saleLines.push(`• ${f.name} (${ln(f.line)})${bits ? ` — ${bits}` : ''}${Number.isFinite(ask) ? ` — $${ask.toFixed(2)}` : ''}`);
+      }
+    } else if (c.status === 'owned' && Array.isArray(c.copies) && c.copies.length > 1) {
+      const spare = c.copies.length - 1;
+      extraLines.push(`• ${f.name} (${ln(f.line)}) — ${spare} spare cop${spare === 1 ? 'y' : 'ies'}`);
+    }
+  }
+  if (!saleLines.length && !extraLines.length) { toast('Nothing to trade yet'); return; }
+  let text = `MY TRADE LIST — ${new Date().toLocaleDateString()}\n`;
+  if (saleLines.length) text += `\nFOR SALE (${saleLines.length}):\n${saleLines.join('\n')}\n`;
+  if (extraLines.length) text += `\nEXTRAS / FOR TRADE (${extraLines.length}):\n${extraLines.join('\n')}\n`;
+  text += `\n— via MOTU Vault`;
+  if (navigator.share) {
+    try { await navigator.share({ text }); return; } catch (e) { if (e?.name === 'AbortError') return; }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('✓ Trade list copied');
+  } catch {
+    toast('✗ Could not copy — clipboard unavailable');
+  }
+};
 
 function renderWantListViewSheet() {
   const figs = S._sharedWantList || [];
@@ -1610,14 +1838,20 @@ function renderFigRow(f) {
     return '';
   })();
 
-  return `<div class="fig-row${isSelected ? ' selected' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
+  return `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+    ${f.variantOf ? '<div class="row-variant-elbow">↳</div>' : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
-      <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${loadoutTick}</div>
+      <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${(() => {
+        // v6.65: variant relations on rows. Parent → ⧉N count; variant → gold name chip.
+        if (f.variantOf) return f.variantName ? ` <span class="variant-name-inline">${esc(f.variantName)}</span>` : '';
+        const n = figVariants(f.id).length;
+        return n ? ` <span class="variant-count-inline" title="${n} variant${n===1?'':'s'}">⧉${n}</span>` : '';
+      })()}${loadoutTick}</div>
       <div class="fig-meta">
         ${S.search ? `<span class="line-name">${esc(ln(f.line))}</span>` : ''}
         ${f.group ? `<span>${S.search?'· ':''}${esc(f.group)}</span>` : ''}
@@ -1628,10 +1862,22 @@ function renderFigRow(f) {
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
+      ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
       ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
     </div>`}
   </div>`;
+}
+
+// v6.69: price-watch deal check (cache-only, no network). True when a
+// wishlist/ordered figure's cached asking is at or below its target price.
+function isWishDeal(f) {
+  const c = S.coll[f.id];
+  if (!c || (c.status !== 'wishlist' && c.status !== 'ordered')) return false;
+  const t = parseFloat(c.targetPrice);
+  if (!Number.isFinite(t)) return false;
+  const a = getCachedAskingPrice(f);
+  return a != null && a <= t;
 }
 
 function renderFigCard(f) {
@@ -1672,16 +1918,27 @@ function renderFigCard(f) {
   // All multi-copy: standard 2-layer stack only (no 3plus variant on cards)
   const stackCls = copyN > 1 ? ' has-stack' : '';
 
-  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}" data-fig-id="${eId}" data-action="${cardAction}">
+  // v6.65: variant nesting. A variant card gets a gold connector tag with its
+  // variantName; a parent with variants gets a small count chip.
+  const isVarFig = !!f.variantOf;
+  const varKids = figVariants(f.id);
+  const varTag = isVarFig
+    ? `<div class="card-variant-tag">↳ ${esc(f.variantName || 'Variant')}</div>` : '';
+  const varCount = varKids.length
+    ? ` <span class="variant-count-inline" title="${varKids.length} variant${varKids.length===1?'':'s'}">⧉${varKids.length}</span>` : '';
+
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}${isVarFig ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
     <div class="card-image-wrap">
+      ${varTag}
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
         `<div class="card-initial">${esc(f.name[0])}</div>`}
       ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
       ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}
+      ${!S.selectMode && isWishDeal(f) ? '<div class="deal-badge" title="At or below your target price">DEAL</div>' : ''}
     </div>
     <div class="card-strip">
       <div class="card-strip-info">
-        <div class="card-fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${missingAcc}</div>
+        <div class="card-fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${varCount}${missingAcc}</div>
         <div class="card-fig-meta">${S.search ? esc(ln(f.line)) + ' · ' : ''}${f.group ? esc(f.group) : ''}${f.year ? ' · ' + f.year : ''}</div>
       </div>
       ${S.selectMode ? '' : `<button class="card-status-btn ${statusCls}" data-action="${badgeAction}" data-fig-id="${eId}" title="Cycle status">${statusDot}</button>`}
@@ -1896,6 +2153,31 @@ function renderDetailStatusBlock(f, c) {
       </button>
       </div>`;
     }
+    // v6.69: Price Watch — wishlist/ordered figures can carry a target
+    // price. When the cached asking drops to or below it, the figure gets
+    // a DEAL badge in lists and a green callout here. Entry-level field
+    // (not per-copy) since you don't own a copy yet.
+    if (c.status === 'wishlist' || c.status === 'ordered') {
+      const target = parseFloat(c.targetPrice);
+      const askingNow = getCachedAskingPrice(f);
+      const isDeal = Number.isFinite(target) && askingNow != null && askingNow <= target;
+      h += `<div class="copies-section">
+        <div class="copies-header">
+          <div class="label text-upper text-dim text-xs">Price Watch</div>
+        </div>
+        <div class="detail-fields copy-fields">
+          <div>
+            <div class="field-label text-dim text-sm">Target Price</div>
+            <input type="number" step="0.01" value="${esc(c.targetPrice || '')}" placeholder="Alert at or below…" onchange="updateOrderedField(${jId},'targetPrice',this.value)">
+          </div>
+          ${Number.isFinite(target) ? `<div style="font-size:12px;color:${isDeal ? 'var(--gn)' : 'var(--t3)'};align-self:end;padding-bottom:8px">
+            ${askingNow != null
+              ? (isDeal ? `✓ Deal! Asking $${askingNow.toFixed(2)} ≤ your $${target.toFixed(2)} target` : `Asking $${askingNow.toFixed(2)} — above your $${target.toFixed(2)} target`)
+              : 'No asking price cached yet'}
+          </div>` : ''}
+        </div>
+      </div>`;
+    }
     if (c.status === 'ordered') {
       h += `<div class="copies-section">
         <div class="copies-header">
@@ -1953,6 +2235,10 @@ function renderCopyCard(f, cp, i, isMulti) {
       <div class="field-label text-dim text-sm">Price Paid</div>
       <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'paid',this.value)">
     </div>
+    ${S.coll[f.id]?.status === 'for-sale' ? `<div>
+      <div class="field-label text-dim text-sm">Asking Price</div>
+      <input type="number" step="0.01" value="${esc(cp.asking || '')}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'asking',this.value)">
+    </div>` : ''}
     <div>
       <div class="field-label text-dim text-sm">Acquired</div>
       <input type="text" inputmode="numeric" maxlength="7" value="${esc(cp.acquired || '')}"
@@ -2002,6 +2288,11 @@ function renderCopyCard(f, cp, i, isMulti) {
     <div>
       <div class="field-label text-dim text-sm">Notes</div>
       <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced(${jId},${cid},'notes',this.value)" onblur="updateCopy(${jId},${cid},'notes',this.value)">${esc(notes)}</textarea>
+    </div>
+    <div>
+      <button class="mark-sold-btn" onclick="markCopySold(${jId},${cid})" title="Record the sale and remove this copy">
+        ${icon(ICO.tag || ICO.check, 14)} Mark Sold…
+      </button>
     </div>`;
   // Per-copy photos (multi-copy only — single-copy uses the main carousel)
   if (isMulti) {
@@ -2126,6 +2417,34 @@ function renderDetail() {
     </div>` : ''}
     <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
     ${(() => {
+      // v6.65: variant tour. If this figure is part of a variant family
+      // (it has variants, or it IS a variant), render a horizontal strip of
+      // the whole family — parent first, then each variant — with thumbs.
+      // Tapping a member opens its own detail screen; the current member is
+      // highlighted. Variants additionally get a "Variant of …" link line.
+      const parent = f.variantOf ? figById(f.variantOf) : null;
+      const root = parent || f;
+      const fam = [root, ...figVariants(root.id)];
+      if (fam.length < 2) return '';
+      const chip = (m) => {
+        const cur = m.id === f.id;
+        const mImg = (S.customPhotos[m.id] && photoStore.get(m.id)) || (!S.imgErrors[m.id] && m.image) || '';
+        const label = m.id === root.id ? 'Original' : (m.variantName || m.name);
+        const owned = S.coll[m.id]?.status === 'owned';
+        return `<div class="variant-chip${cur ? ' current' : ''}" ${cur ? '' : `data-action="open-fig" data-fig-id="${esc(m.id)}"`}>
+          <div class="variant-chip-thumb">${mImg ? `<img src="${esc(mImg)}" alt="" loading="lazy">` : `<span>${esc(m.name[0])}</span>`}${owned ? '<div class="variant-chip-dot"></div>' : ''}</div>
+          <div class="variant-chip-label">${esc(label)}</div>
+        </div>`;
+      };
+      return `<div class="variant-section">
+        ${parent ? `<div class="variant-of-line" data-action="open-fig" data-fig-id="${esc(parent.id)}">↳ Variant of <span>${esc(parent.name)}</span></div>` : ''}
+        <div class="variant-strip">${fam.map(chip).join('')}<div class="variant-chip variant-chip-add" onclick="addVariant(${jsArg(root.id)})" title="Add a variant">
+          <div class="variant-chip-thumb"><span style="font-size:28px;color:var(--gold)">+</span></div>
+          <div class="variant-chip-label">Add</div>
+        </div></div>
+      </div>`;
+    })()}
+    ${(() => {
       // v6.64: inline retail + asking price. Replaces the previous big
       // Market Value block. "Original Retail" is the launch price; "Asking"
       // is the current eBay BIN median (single number, no min/max, no
@@ -2142,7 +2461,7 @@ function renderDetail() {
       const retailPart = f.retail ? `Original Retail: <span class="price">$${f.retail.toFixed(2)}</span>` : '';
       const sep = (f.retail && asking) ? ' <span class="text-dim" style="margin:0 4px">·</span> ' : '';
       // Wrap in mvBlock_<id> so rerenderMVBlock() can swap the asking part in place.
-      return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${retailPart}${sep}${asking}</div>`;
+      return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${retailPart}${sep}${asking}${asking ? renderSparkline(f.id) : ''}</div>`;
     })()}
     <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
       ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411(${jId})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
@@ -2154,6 +2473,12 @@ function renderDetail() {
       <button onclick="openFigureEditor(${jId})" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
         ${icon(ICO.edit,14)} Edit
       </button>
+      <button onclick="addVariant(${jId})" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:13px;font-weight:500">
+        ${icon(ICO.plus,14)} Add Variant
+      </button>
+      ${f.source === 'custom-local' ? `<button onclick="deleteCustomFig(${jId})" title="Delete this user-added figure" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid color-mix(in srgb,var(--rd) 45%,transparent);background:var(--bg3);color:var(--rd);font-size:13px;font-weight:500">
+        ${icon(ICO.x,14)} Delete
+      </button>` : ''}
     </div>
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <datalist id="locationSuggestions">
@@ -2225,6 +2550,7 @@ function renderPhotoViewer() {
 // import cycles.
 window.checkShareLink = checkShareLink;
 window.appConfirm = appConfirm;
+window.appPromptText = appPromptText;
 window.toast = toast;
 // v6.33: tab-swipe handler in handlers.js needs renderContent so it can
 // pre-render the destination tab into a sibling pane during a swipe.
@@ -2232,5 +2558,5 @@ window.renderContent = renderContent;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  toast, haptic, appConfirm, triggerPulse, toastUndo, toastAction, showUpdateBanner, patchFigRow, updateNavBadge, render, renderLoading, renderMain, renderSelectActionbar, renderNavBtn, renderBreadcrumb, renderKidsCoreAdminSheet, renderContent, renderStatsSheet, buildShareURL, decodeShareURL, renderQR, renderShareSheet, SHORTCUT_ACTIONS, checkShortcutAction, checkShareLink, renderWantListViewSheet, renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigItem, yearHeader, renderFigsWithHeaders, renderFigList, renderDetailStatusBlock, renderCopyCard, patchDetailStatus, renderDetail, renderPhotoViewer
+  toast, haptic, appConfirm, appPromptText, triggerPulse, toastUndo, toastAction, showUpdateBanner, patchFigRow, updateNavBadge, render, renderLoading, renderMain, renderSelectActionbar, renderNavBtn, renderBreadcrumb, renderKidsCoreAdminSheet, renderContent, renderStatsSheet, buildShareURL, decodeShareURL, renderQR, renderShareSheet, SHORTCUT_ACTIONS, checkShortcutAction, checkShareLink, renderWantListViewSheet, renderLinesGrid, renderSublines, renderFigRow, renderFigCard, renderFigItem, yearHeader, renderFigsWithHeaders, renderFigList, renderDetailStatusBlock, renderCopyCard, patchDetailStatus, renderDetail, renderPhotoViewer
 };

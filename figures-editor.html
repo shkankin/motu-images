@@ -461,6 +461,16 @@
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Wave
         <input id="afWave" type="text" placeholder="1" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
+      <!-- v1.12: variant linkage. Pick a parent figure to make this a variant
+           that nests under it in the app (variantOf = parent id). -->
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Variant of (optional)
+        <input id="afVariantOf" type="text" list="afParentList" placeholder="type parent figure name…" onchange="afParentChange()" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+        <datalist id="afParentList"></datalist>
+        <div id="afParentInfo" style="font-size:11px;color:var(--t3);min-height:14px"></div>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Variant name
+        <input id="afVariantName" type="text" placeholder="e.g. Dark Face" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Slug (image filename)
         <input id="afSlug" type="text" placeholder="auto-generated" oninput="afUpdateSlugPreview()" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
@@ -498,7 +508,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.11.1';
+const EDITOR_VERSION = 'v1.12.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -928,7 +938,12 @@ function openAddFigModal() {
   const lineSel = document.getElementById('afLine');
   lineSel.innerHTML = LINES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
   afLineChange();
-  ['afName','afYear','afWave','afSlug'].forEach(id => document.getElementById(id).value = '');
+  ['afName','afYear','afWave','afSlug','afVariantOf','afVariantName'].forEach(id => document.getElementById(id).value = '');
+  // v1.12: populate parent-figure datalist (name → id) from current merged set.
+  const dl = document.getElementById('afParentList');
+  const pool = [...approvedFigs, ...manualFigs].filter(f => !f.variantOf);
+  dl.innerHTML = pool.map(f => `<option value="${esc(f.name)} [${esc(f.id)}]"></option>`).join('');
+  document.getElementById('afParentInfo').textContent = '';
   // v1.11: clear staged image
   const imgEl = document.getElementById('afImage');
   if (imgEl) { imgEl.value = ''; imgEl._stagedImage = null; }
@@ -936,6 +951,33 @@ function openAddFigModal() {
   document.getElementById('afImagePreviewWrap').style.display = 'none';
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('afName').focus(), 50);
+}
+
+// v1.12: resolve the "Variant of" input to a parent fig. Accepts the
+// datalist format "Name [id]" or a bare id; returns the fig or null.
+function afParentResolve() {
+  const raw = document.getElementById('afVariantOf').value.trim();
+  if (!raw) return null;
+  const pool = [...approvedFigs, ...manualFigs];
+  const m = raw.match(/\[([^\]]+)\]\s*$/);
+  const id = m ? m[1] : raw;
+  return pool.find(f => f.id === id) || null;
+}
+
+function afParentChange() {
+  const p = afParentResolve();
+  const info = document.getElementById('afParentInfo');
+  if (!p) { info.textContent = document.getElementById('afVariantOf').value.trim() ? '✗ no match — pick from the list' : ''; return; }
+  info.textContent = `✓ ${p.name} (${p.line}${p.group ? ' · ' + p.group : ''})`;
+  // Prefill line/group/year/wave from the parent if still empty.
+  const lineSel = document.getElementById('afLine');
+  if (lineSel.value !== p.line) { lineSel.value = p.line; afLineChange(); }
+  if (p.group) document.getElementById('afGroup').value = p.group;
+  ['afYear','afWave'].forEach(fid => {
+    const el = document.getElementById(fid);
+    const key = fid === 'afYear' ? 'year' : 'wave';
+    if (!el.value && p[key] != null) el.value = p[key];
+  });
 }
 
 function afLineChange() {
@@ -958,6 +1000,12 @@ function submitAddFig() {
   const year  = document.getElementById('afYear').value.trim();
   const wave  = document.getElementById('afWave').value.trim();
   if (!name) { alert('Name is required.'); return; }
+
+  // v1.12: variant linkage
+  const variantOfRaw = document.getElementById('afVariantOf').value.trim();
+  const parentFig = afParentResolve();
+  if (variantOfRaw && !parentFig) { alert('"Variant of" doesn\'t match any figure — pick one from the list or clear the field.'); return; }
+  const variantName = document.getElementById('afVariantName').value.trim();
 
   const slugIn = document.getElementById('afSlug').value.trim();
   const { id, slug } = slugIn
@@ -988,6 +1036,8 @@ function submitAddFig() {
     ...(group   ? { group, sourceGroup: group } : {}),
     ...(wave    ? { wave } : {}),
     ...(year    ? { year: parseInt(year) } : {}),
+    ...(parentFig ? { variantOf: parentFig.id } : {}),
+    ...(parentFig && variantName ? { variantName } : {}),
     slug,
     source: 'manual',
   };
@@ -1122,6 +1172,11 @@ let decisions = {};
 let edits = {};
 // Per-figure accessory selections: {[id]: ['Power Sword', ...]}
 let figAccessories = {};
+// v1.10: ids whose accessory chips were pre-seeded from an auto-extracted
+// suggestion (scraper --loadouts or loadouts-suggested.json) rather than a
+// confirmed loadout. Used only to flag them visually so the reviewer knows
+// to confirm. Cleared for an id once the user toggles any chip on it.
+let suggestedSeed = new Set();
 
 // ── File loading ───────────────────────────────────────────────────
 
@@ -1183,9 +1238,16 @@ function ingestPending(data) {
     }
     return f;
   });
-  // Initialize per-figure accessories from any existing loadout entry
+  // Initialize per-figure accessories from any existing loadout entry,
+  // else fall back to an auto-extracted suggestion (v1.10) so new figures
+  // arrive with their chips pre-checked for one-tap confirmation.
   for (const f of pendingFigs) {
-    if (loadouts[f.id]) figAccessories[f.id] = [...loadouts[f.id]];
+    if (loadouts[f.id]) {
+      figAccessories[f.id] = [...loadouts[f.id]];
+    } else if (Array.isArray(f._suggestedLoadout) && f._suggestedLoadout.length) {
+      figAccessories[f.id] = [...f._suggestedLoadout];
+      suggestedSeed.add(f.id);
+    }
   }
 }
 
@@ -1203,7 +1265,23 @@ function ingestApproved(data) {
 
 function ingestLoadouts(data) {
   if (data && typeof data === 'object') {
+    // v1.10: loadouts-suggested.json (from sync_af411.py --backfill-loadouts)
+    // carries a `_meta` block of per-figure confidence. Treat it as a bundle
+    // of SUGGESTIONS — seed the editable chips (pre-checked, flagged) but do
+    // NOT promote them into the authoritative `loadouts` map. The reviewer
+    // confirms each via the normal Save/download flow.
+    if (data._meta && typeof data._meta === 'object') {
+      const meta = data._meta;
+      for (const [id, accs] of Object.entries(data)) {
+        if (id === '_meta' || loadouts[id] || !Array.isArray(accs) || !accs.length) continue;
+        figAccessories[id] = [...accs];
+        suggestedSeed.add(id);
+      }
+      window.__loadoutMeta = meta;  // optional: confidence lookup for the UI
+      return;
+    }
     loadouts = data.loadouts || data;
+    delete loadouts._meta;  // defensive: never let a stray meta key become a figId
     // v6.33: schema v2 carries the editor's master list of custom accessory
     // names. Merge into the local list (de-duped, case-insensitive) so a
     // round-trip through commit+pull preserves names and adds any that
@@ -1221,10 +1299,15 @@ function ingestLoadouts(data) {
     if (data.sublineOrder && typeof data.sublineOrder === 'object') {
       sublineOrder = data.sublineOrder;
     }
-    // Re-seed for both pending and approved (in case loadouts loaded last)
+    // Re-seed for both pending and approved (in case loadouts loaded last).
+    // Confirmed loadouts win; suggestions only fill where nothing's set yet.
     for (const f of [...pendingFigs, ...approvedFigs]) {
-      if (loadouts[f.id] && !figAccessories[f.id]) {
+      if (loadouts[f.id]) {
         figAccessories[f.id] = [...loadouts[f.id]];
+        suggestedSeed.delete(f.id);
+      } else if (!figAccessories[f.id] && Array.isArray(f._suggestedLoadout) && f._suggestedLoadout.length) {
+        figAccessories[f.id] = [...f._suggestedLoadout];
+        suggestedSeed.add(f.id);
       }
     }
   }
@@ -1629,7 +1712,7 @@ function renderCard(f) {
         </div>
       </div>
       <details>
-        <summary>Accessories / Loadout (${accs.length} selected)</summary>
+        <summary>Accessories / Loadout (${accs.length} selected)${suggestedSeed.has(f.id) ? ' · <span style="color:var(--acc)">✨ suggested — confirm</span>' : ''}</summary>
         ${renderAccessoriesPanel(f.id, accs)}
       </details>
     </div>
@@ -1788,7 +1871,7 @@ function renderExistingCard(f) {
         </div>
       </div>
       <details ${isEdited && hasLoadoutChange(f.id) ? 'open' : ''}>
-        <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''})</summary>
+        <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''}${suggestedSeed.has(f.id) ? ' · <span style="color:var(--acc)">✨ suggested — confirm</span>' : ''})</summary>
         ${renderAccessoriesPanel(f.id, accs)}
       </details>
     </div>
@@ -1845,6 +1928,7 @@ function setEdit(id, field, val) {
 
 function toggleAcc(id, acc, el) {
   if (!figAccessories[id]) figAccessories[id] = [];
+  suggestedSeed.delete(id);  // v1.10: a touched suggestion is now reviewer-owned
   const i = figAccessories[id].indexOf(acc);
   if (i >= 0) {
     figAccessories[id].splice(i, 1);

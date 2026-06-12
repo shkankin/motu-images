@@ -404,8 +404,59 @@ function saveColl() {
   // v4.86: bump version counter so _derived cache key invalidates without
   // having to re-hash Object.keys(S.coll) on every render.
   S._collVersion++;
+  _bumpBackupChanges();
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
   _saveCollTimer = setTimeout(() => { store.set('motu-c2', S.coll); _saveCollTimer = null; }, 80);
+}
+
+// ── v6.67: backup hygiene ─────────────────────────────────────────
+// localStorage + OPFS are evictable on mobile (especially iOS PWAs that go
+// unused for a while), and the only safety net is the manual JSON export.
+// Track edits since the last backup so the UI can nudge before a loss hurts.
+// motu-backup-meta = { changes: n, lastBackupTs: ms|null }
+const BACKUP_META_KEY = 'motu-backup-meta';
+const BACKUP_NAG_CHANGES = 25;                       // nag after this many edits
+const BACKUP_NAG_AGE = 30 * 24 * 60 * 60 * 1000;     // …or 30 days with any edits
+let _backupMeta = null;
+let _backupMetaTimer = null;
+function getBackupMeta() {
+  if (!_backupMeta) _backupMeta = store.get(BACKUP_META_KEY) || { changes: 0, lastBackupTs: null };
+  return _backupMeta;
+}
+function _bumpBackupChanges() {
+  const m = getBackupMeta();
+  m.changes++;
+  // Coalesce persistence — same rationale as the saveColl debounce.
+  if (_backupMetaTimer) clearTimeout(_backupMetaTimer);
+  _backupMetaTimer = setTimeout(() => { store.set(BACKUP_META_KEY, _backupMeta); _backupMetaTimer = null; }, 250);
+}
+function markBackupDone() {
+  _backupMeta = { changes: 0, lastBackupTs: Date.now() };
+  store.set(BACKUP_META_KEY, _backupMeta);
+}
+function backupDue() {
+  const m = getBackupMeta();
+  if (!m.changes) return false;
+  if (m.changes >= BACKUP_NAG_CHANGES) return true;
+  return !m.lastBackupTs || (Date.now() - m.lastBackupTs) > BACKUP_NAG_AGE;
+}
+
+// ── v6.67: sold log ───────────────────────────────────────────────
+// Completed sales live outside S.coll: the copy is gone from the collection
+// but the transaction (paid → sold, when) is kept for realized-gain stats.
+// motu-sold-log = [{figId, name, line, paid|null, price, date(ISO), variant}]
+const SOLD_LOG_KEY = 'motu-sold-log';
+function getSoldLog() { return store.get(SOLD_LOG_KEY) || []; }
+function recordSale(sale) {
+  const log = getSoldLog();
+  log.push(sale);
+  store.set(SOLD_LOG_KEY, log);
+}
+function deleteSale(idx) {
+  const log = getSoldLog();
+  if (idx < 0 || idx >= log.length) return;
+  log.splice(idx, 1);
+  store.set(SOLD_LOG_KEY, log);
 }
 function flushSaveColl() {
   if (_saveCollTimer) { clearTimeout(_saveCollTimer); _saveCollTimer = null; }
@@ -428,13 +479,29 @@ window.addEventListener('pagehide', () => {
 
 // O(1) figure lookup by id — rebuilt whenever S.figs changes.
 let _figById = new Map();
+let _variantsByParent = new Map(); // v6.65: parentId → [variant figs]
 function rebuildFigIndex() {
   // Apply any local field overrides before indexing so figById reflects them.
   applyOverrides();
   _figById = new Map();
+  _variantsByParent = new Map();
   for (const f of S.figs) _figById.set(f.id, f);
+  // v6.65: variant index. A figure with `variantOf: <parentId>` is a full
+  // figure record (own copies, image, pricing) that nests under its parent
+  // in lists and appears in the parent's variant strip on the detail screen.
+  for (const f of S.figs) {
+    if (!f.variantOf || !_figById.has(f.variantOf)) continue;
+    const arr = _variantsByParent.get(f.variantOf) || [];
+    arr.push(f);
+    _variantsByParent.set(f.variantOf, arr);
+  }
+  for (const arr of _variantsByParent.values())
+    arr.sort((a, b) => (a.variantName || a.name).localeCompare(b.variantName || b.name));
 }
 function figById(id) { return _figById.get(id); }
+// v6.65: variants of a figure (empty array if none). Only returns variants
+// whose parent actually exists — a dangling variantOf renders standalone.
+function figVariants(id) { return _variantsByParent.get(id) || []; }
 
 // ─── Figure Overrides (v4.47) ────────────────────────────────────
 // Local patches on top of figures.json — fixes incomplete entries (e.g. a
@@ -749,7 +816,7 @@ function setStatus(id, status) {
 
 // Per-copy field names (write into copies[0]). The UI may submit 'variants'
 // (legacy plural) which is normalized to 'variant' (singular) in the schema.
-const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'variants', 'acquired']);
+const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'variants', 'acquired', 'asking']);
 
 // v6.23: conditions that imply the copy contains all loadout accessories.
 // MIB/MOC/New-Sealed are packaged; Loose Complete is a user assertion.
@@ -1344,6 +1411,7 @@ const _derived = {
       S.sortBy, S.filterFaction, S.filterStatus,
       S.filterVariants ? 1 : 0, S.filterLine,
       S.filterLoadout || '',
+      S.filterWave || '',
       S.searchScope || '',
       S.figs.length, S._hiddenKey,
       S._collVersion,
@@ -1393,6 +1461,9 @@ function _computeSortedFigs() {
   }
   if (!isSearch && S.tab === 'collection') list = list.filter(f => S.coll[f.id]?.status);
   if (S.filterLine) list = list.filter(f => f.line === S.filterLine);
+  // v6.68: wave checklist filter. Set via the Waves section in Stats (no
+  // chip UI in the filter sheet yet) — cleared by "Reset all filters".
+  if (S.filterWave) list = list.filter(f => String(f.wave || '') === String(S.filterWave));
   if (S.filterFaction) list = list.filter(f => f.faction === S.filterFaction);
   if (S.filterStatus === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
   else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
@@ -1444,6 +1515,22 @@ function _computeSortedFigs() {
   else if (sb === 'wave') list.sort((a,b) => { const na=parseFloat(a.wave||''),nb=parseFloat(b.wave||''); return (isNaN(na)?99:na)-(isNaN(nb)?99:nb); });
   else if (sb === 'retail') list.sort((a,b) => (a.retail||0)-(b.retail||0));
   else if (sb === 'retail-desc') list.sort((a,b) => (b.retail||0)-(a.retail||0));
+  // v6.65: variant nesting. Variants whose parent is also visible are pulled
+  // out of sort order and re-emitted immediately after their parent, so the
+  // pair always travels together regardless of sort. A variant whose parent
+  // is filtered out (or hidden) stays in place and renders standalone —
+  // filters and search apply to variants as individual figures.
+  if (_variantsByParent.size) {
+    const idsIn = new Set(list.map(f => f.id));
+    const out = [];
+    for (const f of list) {
+      if (f.variantOf && idsIn.has(f.variantOf)) continue; // emitted under parent below
+      out.push(f);
+      const vars = _variantsByParent.get(f.id);
+      if (vars) for (const v of vars) if (idsIn.has(v.id)) out.push(v);
+    }
+    list = out;
+  }
   return list;
 }
 
@@ -1465,7 +1552,7 @@ function getLineStats() {
   });
 }
 
-function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine || S.filterLoadout; }
+function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine || S.filterLoadout || S.filterWave; }
 
 function progressRing(pct, size=48, color='var(--acc)') {
   const r = (size/2)-4, circ = 2*Math.PI*r;
@@ -1639,6 +1726,95 @@ window.exportPhotosZip = async () => {
   toast(`✓ Exported ${total} photos`);
 };
 
+// ── v6.69: insurance report ──────────────────────────────────────────
+// Standalone, printable HTML inventory of owned + for-sale figures:
+// per-copy condition, paid, acquired, location, plus cached market value
+// per figure and grand totals. Photos optional (first photo per figure,
+// embedded as data URLs — adds size but insurers want them). Print via the
+// browser's Share/Print → Save as PDF.
+window.buildInsuranceReport = async () => {
+  const withPhotos = await (window.appConfirm
+    ? window.appConfirm('Include photos in the report? (Bigger file, better documentation.)', { ok: 'With photos', cancel: 'Without' })
+    : Promise.resolve(false));
+  toast('Building report…', { duration: 8000 });
+  const escH = str => String(str ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  const figs = S.figs
+    .filter(f => { const st = S.coll[f.id]?.status; return st === 'owned' || st === 'for-sale'; })
+    .sort((a, b) => (ln(a.line) || '').localeCompare(ln(b.line) || '') || a.name.localeCompare(b.name));
+  let rows = '', totalPaid = 0, totalMarket = 0, copyCount = 0, pricedFigs = 0, photoN = 0;
+  for (let fi = 0; fi < figs.length; fi++) {
+    const f = figs[fi];
+    const c = S.coll[f.id];
+    const copies = (isMigrated(c) && c.copies?.length) ? c.copies : [{ id: 1 }];
+    const market = getCachedAskingPrice(f);
+    if (market != null) { totalMarket += market * copies.length; pricedFigs++; }
+    let img = '';
+    if (withPhotos) {
+      try {
+        const photos = await photoStore.exportAllAsDataURLs(f.id);
+        if (photos.length) { img = photos[0].dataUrl; photoN++; }
+      } catch {}
+      if (fi % 20 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+    const copyRows = copies.map((cp, i) => {
+      const paid = parseFloat(cp.paid);
+      if (Number.isFinite(paid)) totalPaid += paid;
+      copyCount++;
+      return `<tr>
+        <td>${copies.length > 1 ? `#${i + 1}` : ''}</td>
+        <td>${escH(cp.condition || '—')}</td>
+        <td>${Number.isFinite(paid) ? '$' + paid.toFixed(2) : '—'}</td>
+        <td>${escH(cp.acquired || '—')}</td>
+        <td>${escH(cp.location || '—')}</td>
+        <td>${escH(cp.variant || '')}</td>
+      </tr>`;
+    }).join('');
+    rows += `<div class="fig">
+      <div class="fig-head">
+        ${img ? `<img src="${img}" alt="">` : ''}
+        <div>
+          <div class="fig-name">${escH(f.name)}</div>
+          <div class="fig-meta">${escH(ln(f.line))}${f.wave ? ` · Wave ${escH(f.wave)}` : ''}${f.year ? ` · ${f.year}` : ''}${c.status === 'for-sale' ? ' · FOR SALE' : ''}</div>
+          <div class="fig-val">${market != null ? `Market: $${market.toFixed(2)}${copies.length > 1 ? ` × ${copies.length} = $${(market * copies.length).toFixed(2)}` : ''}` : 'Market: not priced'}${f.retail ? ` · Retail: $${(+f.retail).toFixed(2)}` : ''}</div>
+        </div>
+      </div>
+      <table><thead><tr><th></th><th>Condition</th><th>Paid</th><th>Acquired</th><th>Location</th><th>Variant/Notes</th></tr></thead><tbody>${copyRows}</tbody></table>
+    </div>`;
+  }
+  const now = new Date();
+  const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Collection Inventory — ${now.toLocaleDateString()}</title>
+<style>
+  body{font-family:Georgia,serif;max-width:800px;margin:24px auto;padding:0 16px;color:#222}
+  h1{font-size:22px;margin-bottom:2px} .sub{color:#666;font-size:13px;margin-bottom:18px}
+  .totals{border:2px solid #222;padding:12px 16px;margin-bottom:22px;font-size:14px;line-height:1.7}
+  .fig{break-inside:avoid;border-bottom:1px solid #ccc;padding:12px 0}
+  .fig-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:6px}
+  .fig-head img{width:64px;height:64px;object-fit:cover;border:1px solid #999;border-radius:4px}
+  .fig-name{font-weight:bold;font-size:15px} .fig-meta{font-size:12px;color:#555}
+  .fig-val{font-size:12px;color:#333;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:#777;font-weight:normal;border-bottom:1px solid #ddd;padding:3px 6px}
+  td{padding:3px 6px;border-bottom:1px dotted #eee}
+  @media print{.fig{page-break-inside:avoid}}
+</style></head><body>
+<h1>Collection Inventory</h1>
+<div class="sub">Generated ${now.toLocaleString()} · MOTU Vault · For insurance/documentation purposes</div>
+<div class="totals">
+  <strong>${figs.length}</strong> figures · <strong>${copyCount}</strong> copies${photoN ? ` · ${photoN} photographed` : ''}<br>
+  Total paid (where recorded): <strong>$${totalPaid.toFixed(2)}</strong><br>
+  Estimated market value (${pricedFigs} of ${figs.length} priced, eBay BIN medians): <strong>$${totalMarket.toFixed(2)}</strong>
+</div>
+${rows}
+</body></html>`;
+  const blob = new Blob([doc], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `motu-vault-inventory-${now.toISOString().slice(0, 10)}.html`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`✓ Report saved · ${figs.length} figures`);
+};
+
 async function exportJSON() {
   // v6.30: large backups (hundreds of photos as base64 data URLs) used to
   // build the entire string in memory at once, then JSON.stringify it with
@@ -1656,12 +1832,14 @@ async function exportJSON() {
     pendingToast = true;
     toast('Building backup…', { duration: 8000 });
     const backup = {
-      version: 'motu-vault-backup-v4',  // v4: includes per-copy photo assignments + figure overrides
+      version: 'motu-vault-backup-v5',  // v5: + soldLog (realized sales) + customFigs (user-added figures/variants)
       exported: new Date().toISOString(),
       collection: S.coll,
       photos: {},
       photoCopy: getPhotoCopyMap(),  // {figId: {n: copyId}} — which copy each photo belongs to
       overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
+      soldLog: getSoldLog(),  // v6.68: completed sales for realized-gain stats
+      customFigs: store.get(CUSTOM_FIGS_KEY) || [],  // v6.68: in-app variants & customs
     };
     // Include custom photos as arrays of {label, dataUrl}.
     // Yield to the event loop every 25 figures so the UI can update — without
@@ -1689,6 +1867,7 @@ async function exportJSON() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast(`✓ Backup saved · ${totalPhotos} photo${totalPhotos===1?'':'s'}`);
+    markBackupDone();
   } catch (e) {
     console.error('Backup failed:', e);
     // Disambiguate the common failure mode: device ran out of memory
@@ -1707,7 +1886,7 @@ async function applyImportedBackup(backup) {
   // a crafted backup from manipulating S.coll's prototype via bracket-assignment.
   const RESERVED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
   try {
-    const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4'];
+    const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4', 'motu-vault-backup-v5'];
     if (!backup || !knownVersions.includes(backup.version)) throw new Error('Unknown format');
     if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
     const overwrite = document.querySelector('.checkbox.checked') !== null;
@@ -1787,6 +1966,48 @@ async function applyImportedBackup(backup) {
       // Re-apply against current S.figs so the view updates without a reload
       rebuildFigIndex();
     }
+    // v5 (v6.68): restore sold log + user-added custom figures/variants.
+    let salesRestored = 0, customsRestored = 0;
+    if (Array.isArray(backup.soldLog)) {
+      const clean = backup.soldLog.filter(x => x && typeof x === 'object' && Number.isFinite(+x.price));
+      if (overwrite) {
+        store.set(SOLD_LOG_KEY, clean);
+        salesRestored = clean.length;
+      } else {
+        // Merge-append, deduped by figId+date+price signature.
+        const log = getSoldLog();
+        const seen = new Set(log.map(x => `${x.figId}\x00${x.date}\x00${x.price}`));
+        for (const x of clean) {
+          const sig = `${x.figId}\x00${x.date}\x00${x.price}`;
+          if (seen.has(sig)) continue;
+          seen.add(sig);
+          log.push(x);
+          salesRestored++;
+        }
+        store.set(SOLD_LOG_KEY, log);
+      }
+    }
+    if (Array.isArray(backup.customFigs)) {
+      const existing = store.get(CUSTOM_FIGS_KEY) || [];
+      const ids = new Set(existing.map(x => x.id));
+      const inFigs = new Set(S.figs.map(f => f.id));
+      for (const cf of backup.customFigs) {
+        if (!cf || typeof cf !== 'object' || !cf.id || !cf.name) continue;
+        if (RESERVED_KEYS.has(cf.id) || ids.has(cf.id)) continue;
+        existing.push(cf);
+        ids.add(cf.id);
+        customsRestored++;
+        // Surface immediately without waiting for the next sync merge.
+        if (!inFigs.has(cf.id)) {
+          S.figs.push({ ...cf, source: 'custom-local', image: cf.slug ? `${IMG}/${cf.slug}.jpg` : (cf.image || '') });
+        }
+      }
+      if (customsRestored) {
+        store.set(CUSTOM_FIGS_KEY, existing);
+        rebuildFigIndex();
+        _derived.invalidate();
+      }
+    }
     const body = document.querySelector('.sheet-body');
     if (body) {
       body.innerHTML = `<div style="text-align:center;padding:20px 0">
@@ -1794,6 +2015,8 @@ async function applyImportedBackup(backup) {
         <div class="font-display" style="font-size:22px;color:var(--gold);margin-bottom:4px">${imported} restored</div>
         ${skipped>0 ? `<div class="text-sm text-dim" style="margin-bottom:4px">${skipped} skipped (already set)</div>` : ''}
         ${photos>0 ? `<div class="text-sm text-dim">${photos} photos restored</div>` : ''}
+        ${customsRestored>0 ? `<div class="text-sm text-dim">${customsRestored} custom figure${customsRestored===1?'':'s'} restored</div>` : ''}
+        ${salesRestored>0 ? `<div class="text-sm text-dim">${salesRestored} sale record${salesRestored===1?'':'s'} restored</div>` : ''}
       </div>`;
     }
     // Ensure the collection write hits localStorage before the user can
@@ -1938,6 +2161,14 @@ function renderExportSheet() {
     <span style="color:var(--t3);font-size:12px">${anyStatus} entries · ${photoCount} photos</span>
   </button>`;
   html += '<div class="text-sm text-dim" style="line-height:1.5">Includes all statuses, conditions, notes, variants, and custom photos. Use to restore your full collection.</div>';
+  // v6.69: insurance report
+  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Insurance Report</div>';
+  html += `<button onclick="buildInsuranceReport()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+    <span>Itemized Report (HTML)</span>
+    <span style="color:var(--t3);font-size:12px">${stats.owned + sale} figures</span>
+  </button>`;
+  html += '<div class="text-sm text-dim" style="line-height:1.5">Printable inventory of owned figures with condition, paid, market value, and location. Optionally embeds photos.</div>';
   if (photoCount > 0) {
     html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
     html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Photos Only (ZIP)</div>';
@@ -2141,5 +2372,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
 };

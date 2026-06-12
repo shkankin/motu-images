@@ -14,7 +14,7 @@ const onSearch = (...a) => window.onSearch?.(...a);
 // ════════════════════════════════════════════════════════════════════
 
 import {
-  S, store, ICO, icon, IMG, LINES, FACTIONS, KIDS_CORE_KEY,
+  S, store, ICO, icon, IMG, LINES, FACTIONS, KIDS_CORE_KEY, CUSTOM_FIGS_KEY,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, SUBLINES,
   ln, normalize, esc, jsArg, _clone, isSelecting,
 } from './state.js';
@@ -27,9 +27,117 @@ import {
   rebuildFigIndex, applyOverrides, fetchFigs,
   clearOverrides, _derived, getSortedFigs,
   isMigrated, migrateEntry, migrateOrderedToOwned,
+  recordSale, getSoldLog,
 } from './data.js';
-import { render, toast, haptic, appConfirm, patchFigRow, toastUndo, triggerPulse, renderContent, renderSelectActionbar } from './render.js';
+import { render, toast, haptic, appConfirm, appPromptText, patchFigRow, toastUndo, triggerPulse, renderContent, renderSelectActionbar } from './render.js';
 import { checkCompletion } from './eggs.js';
+
+// ── v6.66: in-app variant creation ──────────────────────────────────
+// Users can attach their own variants to any catalog figure without the
+// standalone editor. The new figure is a local custom record (survives
+// AF411 syncs via CUSTOM_FIGS_KEY, same mechanism as v5.04 custom figs)
+// carrying variantOf/variantName so it nests under the parent. If invoked
+// on a figure that is itself a variant, the new one attaches to the same
+// root — no variant-of-variant chains.
+window.addVariant = async (parentId) => {
+  const parent = figById(parentId);
+  if (!parent) return;
+  const root = (parent.variantOf && figById(parent.variantOf)) || parent;
+  const raw = await appPromptText(`Add a variant of “${root.name}”`, {
+    placeholder: 'Variant name — e.g. Dark Face', ok: 'Add variant',
+  });
+  if (raw == null) return;
+  const nm = raw.trim();
+  if (!nm) { toast('Variant name is required'); return; }
+  const id = 'custom-var-' + Date.now().toString(36);
+  const entry = {
+    id,
+    name: `${root.name} (${nm})`,
+    line: root.line,
+    ...(root.group ? { group: root.group } : {}),
+    ...(root.wave ? { wave: root.wave } : {}),
+    ...(root.year ? { year: root.year } : {}),
+    ...(root.retail ? { retail: root.retail } : {}),
+    ...(root.faction ? { faction: root.faction } : {}),
+    variantOf: root.id,
+    variantName: nm,
+    slug: '',                 // no repo image — user attaches photos
+    source: 'custom-local',
+  };
+  const arr = store.get(CUSTOM_FIGS_KEY) || [];
+  arr.push(entry);
+  store.set(CUSTOM_FIGS_KEY, arr);
+  S.figs.push({ ...entry, image: '' });
+  rebuildFigIndex();
+  _derived.invalidate();
+  haptic && haptic(15);
+  toast(`✓ Variant added — “${nm}”`);
+  window.openFig?.(id);
+};
+
+// ── v6.67: mark a copy sold ─────────────────────────────────────────
+// Completes the for-sale lifecycle: prompts for the sale price (prefilled
+// from the copy's asking price), records the transaction in the sold log
+// for realized-gain stats, and removes the copy. If it was the last copy,
+// the figure leaves the collection entirely (status cleared) — selling out
+// is the one case where "owned" should genuinely end.
+window.markCopySold = async (figId, copyId) => {
+  const f = figById(figId);
+  const c = S.coll[figId];
+  if (!f || !c || !isMigrated(c)) return;
+  const cp = c.copies.find(x => x.id === copyId);
+  if (!cp) return;
+  const raw = await appPromptText(`Sold price for “${f.name}”`, {
+    placeholder: 'e.g. 45.00', ok: 'Mark sold', value: cp.asking ? String(cp.asking) : '',
+  });
+  if (raw == null) return;
+  const price = parseFloat(String(raw).replace(/[$,\s]/g, ''));
+  if (!Number.isFinite(price) || price < 0) { toast('✗ Enter a valid price'); return; }
+  const paid = parseFloat(cp.paid);
+  recordSale({
+    figId, name: f.name, line: f.line,
+    paid: Number.isFinite(paid) ? paid : null,
+    price,
+    date: new Date().toISOString(),
+    variant: cp.variant || f.variantName || '',
+  });
+  const newCopies = c.copies.filter(x => x.id !== copyId);
+  if (newCopies.length === 0) {
+    delete S.coll[figId];
+    window.logStatusEvent?.(figId, c.status, null);
+  } else {
+    S.coll[figId] = { ...c, copies: newCopies };
+  }
+  saveColl();
+  _derived.invalidate();
+  haptic && haptic(20);
+  const profit = Number.isFinite(paid) ? price - paid : null;
+  const profitStr = profit == null ? '' :
+    ` · ${profit >= 0 ? '+' : '−'}$${Math.abs(profit).toFixed(2)} ${profit >= 0 ? 'profit' : 'loss'}`;
+  toast(`✓ Sold for $${price.toFixed(2)}${profitStr}${newCopies.length === 0 ? ' · removed from collection' : ''}`);
+  if (newCopies.length === 0 && S.screen === 'figure') render();
+  else window.patchDetailStatus?.();
+};
+
+// Delete a user-created variant / custom figure (source 'custom-local' only —
+// catalog figures are managed by the repo editor). Removes the record, its
+// collection entry, and any custom photos.
+window.deleteCustomFig = async (figId) => {
+  const f = figById(figId);
+  if (!f || f.source !== 'custom-local') { toast('Only user-added figures can be deleted here'); return; }
+  const ok = await appConfirm(`Delete “${f.name}”? Its photos and collection data are removed too.`, { danger: true, ok: 'Delete' });
+  if (!ok) return;
+  const arr = (store.get(CUSTOM_FIGS_KEY) || []).filter(x => x.id !== figId && 'custom-' + x.id !== figId);
+  store.set(CUSTOM_FIGS_KEY, arr);
+  S.figs = S.figs.filter(x => x.id !== figId);
+  if (S.coll[figId]) { delete S.coll[figId]; saveColl(); }
+  try { await photoStore.delAll(figId); } catch {}
+  rebuildFigIndex();
+  _derived.invalidate();
+  if (S.screen === 'figure' && S.activeFig?.id === figId) window.closeDetail?.();
+  toast('✓ Deleted');
+  render();
+};
 
 
 // ── Route announcer (a11y SC 4.1.3): emit polite status when tabs change ──
@@ -168,6 +276,10 @@ function showContextMenu(figId, x, y) {
   // Local edit (override) — for fixing missing/wrong AF411 metadata
   items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFigureEditor(${jFigId})">
     ${icon(ICO.menu, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
+  </button>`;
+  // v6.66: in-app variant creation from long-press
+  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addVariant(${jFigId})">
+    ${icon(ICO.plus, 16)} Add variant…
   </button>`;
   items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith(${jFigId})">
     ${icon(ICO.check, 16)} Select

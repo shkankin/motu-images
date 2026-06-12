@@ -141,6 +141,7 @@ export async function fetchPricing(figId, opts = {}) {
       cache[figId] = { data: clean, fetchedAt: Date.now() };
       _cache = cache;
       _saveCache();
+      _recordHistory(figId, clean, opts.line);  // v6.69: sparkline history
       return { data: clean, age: 0, fresh: true };
     } catch (e) {
       // Network/timeout/parse failure — return stale data if we have any,
@@ -240,6 +241,69 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
   // Show low-sample as dim so users can tell it's an estimate without a badge.
   const dimClass = (bucket.confidence === 'low') ? ' mv-inline-dim' : '';
   return `<span class="mv-inline${dimClass}" title="Median of ${bucket.n} eBay BIN listings">Asking: <span class="price">${fmtMoney(price)}</span></span>`;
+}
+
+// v6.67: synchronous cached asking price for a figure record. Mirrors the
+// bucket-selection logic in renderMarketValueBlock (modern → sealed median,
+// vintage → loose median, fall back to the populated bucket). Used by the
+// collection-value dashboard to aggregate without any network traffic.
+export function getCachedAskingPrice(fig) {
+  if (!fig || !fig.id) return null;
+  const cached = getCachedPricing(fig.id);
+  if (!cached || !cached.data) return null;
+  const d = cached.data;
+  const prefersSealed = !VINTAGE_LINES.has(fig.line);
+  const bucket = (prefersSealed ? d.sealed : d.loose) || (prefersSealed ? d.loose : d.sealed);
+  if (!bucket) return null;
+  const price = Number.isFinite(bucket.median) ? bucket.median : bucket.avg;
+  return (Number.isFinite(price) && price > 0) ? price : null;
+}
+
+// ── v6.69: price history + sparkline ────────────────────────────────
+// Every successful fetch appends a daily {d, p} point per figure (same-day
+// fetches overwrite; capped at 40 points ≈ a year of weekly checks). The
+// detail screen renders an inline sparkline once 3+ points exist.
+// localStorage motu-pricing-history = { [figId]: [{d:'YYYY-MM-DD', p:number}] }
+const HISTORY_KEY = 'motu-pricing-history';
+const HISTORY_CAP = 40;
+let _history = null;
+function _loadHistory() {
+  if (!_history) _history = store.get(HISTORY_KEY) || {};
+  return _history;
+}
+function _recordHistory(figId, data, line) {
+  const prefersSealed = !VINTAGE_LINES.has(line);
+  const bucket = (prefersSealed ? data.sealed : data.loose) || (prefersSealed ? data.loose : data.sealed);
+  if (!bucket) return;
+  const price = Number.isFinite(bucket.median) ? bucket.median : bucket.avg;
+  if (!Number.isFinite(price) || price <= 0) return;
+  const h = _loadHistory();
+  const arr = h[figId] || (h[figId] = []);
+  const day = new Date().toISOString().slice(0, 10);
+  const last = arr[arr.length - 1];
+  if (last && last.d === day) last.p = price;
+  else arr.push({ d: day, p: price });
+  if (arr.length > HISTORY_CAP) arr.splice(0, arr.length - HISTORY_CAP);
+  store.set(HISTORY_KEY, h);
+}
+export function getPriceHistory(figId) {
+  return _loadHistory()[figId] || [];
+}
+// Tiny inline SVG sparkline (64×16). Returns '' below 3 points. Stroke is
+// green/red by overall trend so the price direction reads at a glance.
+export function renderSparkline(figId) {
+  const pts = getPriceHistory(figId);
+  if (pts.length < 3) return '';
+  const W = 64, H = 16, P = 2;
+  const ps = pts.map(x => x.p);
+  const min = Math.min(...ps), max = Math.max(...ps);
+  const span = (max - min) || 1;
+  const step = (W - 2 * P) / (pts.length - 1);
+  const poly = ps.map((p, i) =>
+    `${(P + i * step).toFixed(1)},${(H - P - ((p - min) / span) * (H - 2 * P)).toFixed(1)}`).join(' ');
+  const up = ps[ps.length - 1] >= ps[0];
+  const col = up ? 'var(--gn)' : 'var(--rd)';
+  return `<svg class="mv-spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:-3px;margin-left:6px" aria-label="price trend"><polyline points="${poly}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 
 // Inline action — exposed to inline-onclick. Forces a fresh fetch.

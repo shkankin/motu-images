@@ -17,6 +17,7 @@ import {
 import {
   loadOverrides, applyOverrides, fetchFigs, migrateColl,
   rebuildFigIndex, saveColl, loadPersistedNewFigIds, mergeCustomSublines,
+  backupDue, getBackupMeta,
 } from './data.js';
 import {
   render, toast, haptic, showUpdateBanner,
@@ -54,6 +55,7 @@ import * as eggs from './eggs.js';
 Object.assign(window, {
   // Core state + helpers (referenced from inline handlers in render templates)
   S, store, render, toast, haptic,
+  toastAction: renderMod.toastAction,
   // Functions used in inline handlers but not previously mirrored
   renderSheetBody: data.renderSheetBody,
   initPhotoViewerZoom: photos.initPhotoViewerZoom,
@@ -199,6 +201,47 @@ async function init() {
     _splashTimer = setTimeout(kill, 3000);
     splash.addEventListener('click', kill, {once: true});
   }
+  // v6.67: backup nag. Local-only storage is evictable on mobile; if the
+  // user has piled up edits with no recent export, surface a gentle nudge.
+  // Throttled to once per 3 days so it never becomes wallpaper.
+  setTimeout(() => {
+    try {
+      if (!backupDue()) return;
+      const NAG_TS_KEY = 'motu-backup-nag-ts';
+      const last = store.get(NAG_TS_KEY) || 0;
+      if (Date.now() - last < 3 * 24 * 60 * 60 * 1000) return;
+      store.set(NAG_TS_KEY, Date.now());
+      const n = getBackupMeta().changes;
+      if (typeof window.toastAction === 'function') {
+        window.toastAction(`${n} change${n === 1 ? '' : 's'} since your last backup`, 'Back up', () => window.openSheet?.('export'));
+      }
+    } catch {}
+  }, 4000);
+
+  // v6.69: price-watch deal toast. Cache-only check (no network) for
+  // wishlist/ordered figures at/below their target. Once per day max.
+  setTimeout(() => {
+    try {
+      const DEAL_TS_KEY = 'motu-deal-nag-ts';
+      const last = store.get(DEAL_TS_KEY) || 0;
+      if (Date.now() - last < 24 * 60 * 60 * 1000) return;
+      let deals = 0;
+      for (const f of S.figs) {
+        const c = S.coll[f.id];
+        if (!c || (c.status !== 'wishlist' && c.status !== 'ordered')) continue;
+        const t = parseFloat(c.targetPrice);
+        if (!Number.isFinite(t)) continue;
+        const a = pricing.getCachedAskingPrice(f);
+        if (a != null && a <= t) deals++;
+      }
+      if (!deals) return;
+      store.set(DEAL_TS_KEY, Date.now());
+      if (typeof window.toastAction === 'function') {
+        window.toastAction(`${deals} want-list figure${deals === 1 ? '' : 's'} at or below your target price`, 'View', () => window.goToFiltered?.('wishlist'));
+      }
+    } catch {}
+  }, 6000);
+
   // Check for incoming share link in URL fragment
   checkShareLink();
   // v5.00: PWA shortcut deep-links via ?action=...

@@ -27,7 +27,7 @@ import {
   copyPaid, copyNotes, getAllLocations,
   renderExportSheet, renderSheetBody,
   renderAccessoryPickerSheet, SETTINGS_KEYS,
-  _derived, clearOverrides,
+  _derived, clearOverrides, backupDue, getBackupMeta,
 } from './data.js';
 import {
   renderQR, renderShareSheet, renderStatsSheet,
@@ -38,7 +38,7 @@ import { pushNav } from './handlers.js';
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations'};
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -56,6 +56,7 @@ function renderSheet() {
   else if (S.sheet === 'pricing') body = renderPricingSheet();
   else if (S.sheet === 'wishlistHistory') body = renderWishlistHistorySheet();
   else if (S.sheet === 'about') body = renderAboutSheet();
+  else if (S.sheet === 'locations') body = renderLocationsSheet();
 
   // v6.30: Defensive fallback. If a deep link / shortcut / typo lands us on
   // an unknown sheet name, S.sheet is set but no body renders. Without this,
@@ -85,6 +86,82 @@ function renderSheet() {
   </div>`;
 }
 
+// ── v6.68: Locations browser ─────────────────────────────────────────
+// Top level: every distinct copy location with figure/copy counts.
+// Drill-down (S._locView): the figures whose copies live there, with
+// per-copy condition; tap a row to open the figure's detail screen.
+// Helps physically find figures and doubles as a shelf/bin inventory.
+function _locIndex() {
+  const map = new Map(); // location → [{fig, copies:[cp,…]}]
+  for (const id in S.coll) {
+    const e = S.coll[id];
+    if (!e || !Array.isArray(e.copies)) continue;
+    const f = figById(id);
+    if (!f || figIsHidden(f)) continue;
+    const byLoc = {};
+    for (const cp of e.copies) {
+      if (!cp || !cp.location) continue;
+      (byLoc[cp.location] = byLoc[cp.location] || []).push(cp);
+    }
+    for (const loc in byLoc) {
+      const arr = map.get(loc) || [];
+      arr.push({ fig: f, copies: byLoc[loc] });
+      map.set(loc, arr);
+    }
+  }
+  return map;
+}
+
+function renderLocationsSheet() {
+  const idx = _locIndex();
+  if (S._locView && idx.has(S._locView)) {
+    const entries = idx.get(S._locView).sort((a, b) => a.fig.name.localeCompare(b.fig.name));
+    let h = `<button onclick="patchLocSheet(null)" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;margin-bottom:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:600">‹ All locations</button>
+      <div style="font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold);margin-bottom:10px">${esc(S._locView)}</div>`;
+    entries.forEach(({ fig, copies }) => {
+      const img = (S.customPhotos[fig.id] && photoStore.get(fig.id)) || (!S.imgErrors[fig.id] && fig.image) || '';
+      const condStr = copies.map(cp => cp.condition).filter(Boolean).join(', ');
+      h += `<button onclick="closeSheet();openFig(${jsArg(fig.id)})" style="width:100%;display:flex;align-items:center;gap:12px;padding:9px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
+        <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          ${img ? `<img src="${esc(img)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-family:'Cinzel',serif;color:var(--t3);font-size:16px">${esc(fig.name[0])}</span>`}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(fig.name)}${copies.length > 1 ? ` <span style="color:var(--gold);font-size:11px">×${copies.length}</span>` : ''}</div>
+          ${condStr ? `<div style="font-size:11px;color:var(--t3)">${esc(condStr)}</div>` : ''}
+        </div>
+        <span style="color:var(--t3)">${icon(ICO.chevR, 14)}</span>
+      </button>`;
+    });
+    return h;
+  }
+  // Top level
+  const locs = [...idx.keys()].sort((a, b) => a.localeCompare(b));
+  if (!locs.length) {
+    return `<div style="text-align:center;padding:28px 12px;color:var(--t3);font-size:13px">No locations yet.<br>Set a copy's Location field on any figure's detail screen and it'll show up here.</div>`;
+  }
+  let h = `<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Where your figures physically live — tap a location to see what's there.</div>`;
+  locs.forEach(loc => {
+    const entries = idx.get(loc);
+    const copies = entries.reduce((n, e) => n + e.copies.length, 0);
+    h += `<button onclick="patchLocSheet(${jsArg(loc)})" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
+      <span style="color:var(--acc)">${icon(ICO.box || ICO.tag, 18)}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(loc)}</div>
+        <div style="font-size:11px;color:var(--t3)">${entries.length} figure${entries.length === 1 ? '' : 's'}${copies !== entries.length ? ` · ${copies} copies` : ''}</div>
+      </div>
+      <span style="color:var(--t3)">${icon(ICO.chevR, 14)}</span>
+    </button>`;
+  });
+  return h;
+}
+
+// In-place drill-down — same pattern as patchFilter (sheet body only).
+window.patchLocSheet = (loc) => {
+  S._locView = loc;
+  const body = document.querySelector('.sheet-body');
+  if (body && S.sheet === 'locations') body.innerHTML = renderLocationsSheet();
+};
+
 function renderMenuSheet() {
   const menuItems = [
     {label:'Collection Stats',    icon:ICO.heart,   action:"openSheet('stats')"},
@@ -92,9 +169,19 @@ function renderMenuSheet() {
     {label:'Theme',               icon:ICO.palette, action:"openSheet('theme')"},
     {label:'Manage Collections',  icon:ICO.sort,    action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
     {label:'Import',              icon:ICO.import,  action:"openSheet('import')"},
-    {label:'Export / Backup',     icon:ICO.export,  action:"openSheet('export')"},
+    {label:'Export / Backup' + (backupDue() ? ` <span style="font-size:9px;font-weight:700;color:var(--bg);background:var(--gold);padding:2px 7px;border-radius:99px;vertical-align:1px">${getBackupMeta().changes} UNSAVED</span>` : ''), icon:ICO.export,  action:"openSheet('export')"},
     {label:'Pricing Backend',     icon:ICO.tag,     action:"openSheet('pricing')"},
   ];
+  // v6.68: Locations browser — only shown once at least one copy has a
+  // location set, mirroring the Viewed Wishlists pattern below.
+  const _locs = getAllLocations();
+  if (_locs.length) {
+    menuItems.splice(3, 0, {
+      label: `Locations (${_locs.length})`,
+      icon: ICO.box || ICO.tag,
+      action: "S._locView=null;openSheet('locations')",
+    });
+  }
   // v6.31: insert "Viewed Wishlists" only when there's at least one entry,
   // so new users don't see an empty option that won't do anything.
   const wlHistory = (typeof window.getWishlistHistory === 'function') ? window.getWishlistHistory() : [];
@@ -461,7 +548,7 @@ function renderFilterSheet() {
 // the same work that would happen on sheet-close anyway.
 window.patchFilter = (key, val) => {
   if (key === 'clear') {
-    S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search=''; S.filterLoadout='';
+    S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search=''; S.filterLoadout=''; S.filterWave='';
   } else if (key === 'line')     S.filterLine = val;
   else if (key === 'faction')    S.filterFaction = val;
   else if (key === 'status')     S.filterStatus = val;
