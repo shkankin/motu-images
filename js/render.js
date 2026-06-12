@@ -469,7 +469,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.71</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.72</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1869,36 +1869,6 @@ function renderFigRow(f) {
   </div>`;
 }
 
-// ── v6.71: text-only view ───────────────────────────────────────────
-// Third view mode: no thumbnails, one slim line per figure — name, dim
-// meta, status dot. Shares .fig-row classes (fig-name / fig-actions /
-// data-fig-id) so patchFigRow's surgical status updates work unchanged;
-// the absent .fig-thumb is already guarded there. Densest way to scan a
-// big line; year headers render in this mode too.
-function renderFigText(f) {
-  const c = S.coll[f.id] || {};
-  const statusCls = c.status || '';
-  const copyN = entryCopyCount(c);
-  const isNew = S.newFigIds.has(f.id);
-  const isSelected = S.selectMode && S.selected.has(f.id);
-  const eId = esc(f.id);
-  const rowAction = S.selectMode ? 'select-toggle' : 'open-fig';
-  const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
-  const varCount = !f.variantOf ? figVariants(f.id).length : 0;
-  return `<div class="fig-row fig-row-text${isSelected ? ' selected' : ''}${f.variantOf ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
-    ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
-    <div class="fig-text">
-      <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${varCount ? ` <span class="variant-count-inline" title="${varCount} variant${varCount===1?'':'s'}">⧉${varCount}</span>` : ''}<span class="fig-text-meta">${S.search ? ` · ${esc(ln(f.line))}` : ''}${f.wave ? ` · W${esc(f.wave)}` : ''}${f.year ? ` · ${f.year}` : ''}</span></div>
-    </div>
-    ${S.selectMode ? '' : `<div class="fig-actions">
-      ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
-      ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
-      ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
-        `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
-    </div>`}
-  </div>`;
-}
-
 // v6.69: price-watch deal check (cache-only, no network). True when a
 // wishlist/ordered figure's cached asking is at or below its target price.
 function isWishDeal(f) {
@@ -1974,9 +1944,7 @@ function renderFigCard(f) {
 }
 
 function renderFigItem(f) {
-  if (S.viewMode === 'grid') return renderFigCard(f);
-  if (S.viewMode === 'text') return renderFigText(f);  // v6.71
-  return renderFigRow(f);
+  return S.viewMode === 'grid' ? renderFigCard(f) : renderFigRow(f);
 }
 
 function yearHeader(year) {
@@ -1984,7 +1952,7 @@ function yearHeader(year) {
 }
 
 function renderFigsWithHeaders(figs, renderFn) {
-  const showHeaders = !S.search && (S.sortBy === 'year' || S.sortBy === 'year-desc') && S.viewMode !== 'grid';  // v6.71: list + text
+  const showHeaders = !S.search && (S.sortBy === 'year' || S.sortBy === 'year-desc') && S.viewMode === 'list';
   let html = '';
   let lastYear = null;
   figs.forEach(f => {
@@ -2025,9 +1993,8 @@ function renderFigList() {
     }
   }
   // View toggle + count row
-  const listActive = S.viewMode === 'list' ? 'active' : '';
+  const listActive = !isGrid ? 'active' : '';
   const gridActive = isGrid ? 'active' : '';
-  const textActive = S.viewMode === 'text' ? 'active' : '';
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px;gap:8px">
     <div class="fig-count" style="margin-bottom:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
     <button class="select-btn${S.selectMode ? ' active' : ''}" onclick="${S.selectMode ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
@@ -2036,7 +2003,6 @@ function renderFigList() {
     <div class="view-toggle">
       <button class="${listActive}" onclick="setViewMode('list')" title="List view">${icon(ICO.list,14)}</button>
       <button class="${gridActive}" onclick="setViewMode('grid')" title="Grid view">${icon(ICO.lines,14)}</button>
-      <button class="${textActive}" onclick="setViewMode('text')" title="Text-only view">${icon(ICO.menu,14)}</button>
     </div>
   </div>`;
   if (!figs.length) {

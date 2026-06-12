@@ -4,6 +4,12 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.72. SHELL: app.js + data.js + render.js +
+//     state.js + vault.css. Text-only view REVERTED (persisted 'text'
+//     viewMode sanitized back to list). CRITICAL FIX: collection writes
+//     (saveColl/flushSaveColl) gated behind S._collLoaded so a failed
+//     boot can never overwrite motu-c2 with the empty initial state on
+//     pagehide/visibilitychange — the suspected wipe mechanism.
 //   • CACHE bumped to v6.71. SHELL: render.js + handlers.js + vault.css.
 //     Text-only view mode (3rd toggle), BUG FIX: stale immersive-hide
 //     header after root-level back press (popstate now reconciles DOM
@@ -570,7 +576,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.71';
+const CACHE = 'motu-vault-v6.72';
 
 const SHELL = [
   'motu-vault.html',

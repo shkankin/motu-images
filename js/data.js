@@ -406,7 +406,10 @@ function saveColl() {
   S._collVersion++;
   _bumpBackupChanges();
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
-  _saveCollTimer = setTimeout(() => { store.set('motu-c2', S.coll); _saveCollTimer = null; }, 80);
+  _saveCollTimer = setTimeout(() => {
+    if (S._collLoaded) store.set('motu-c2', S.coll);  // v6.72: see flushSaveColl
+    _saveCollTimer = null;
+  }, 80);
 }
 
 // ── v6.67: backup hygiene ─────────────────────────────────────────
@@ -460,6 +463,10 @@ function deleteSale(idx) {
 }
 function flushSaveColl() {
   if (_saveCollTimer) { clearTimeout(_saveCollTimer); _saveCollTimer = null; }
+  // v6.72 CRITICAL: never persist before app.js has loaded the stored
+  // collection into S.coll. See the _collLoaded comment in app.js — this
+  // guard is what prevents a failed boot from wiping motu-c2 on tab-hide.
+  if (!S._collLoaded) return;
   store.set('motu-c2', S.coll);
 }
 // Unload: apply pending field debounces first, then persist collection.

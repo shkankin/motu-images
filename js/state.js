@@ -313,7 +313,7 @@ const S = {
   // subline; users who want strictly figure-name matches set this to 'name'.
   searchScope: store.get('motu-search-scope') || 'all',
   sortBy: store.get('motu-sort') || 'year',
-  viewMode: store.get('motu-view') || 'list',  // list | grid
+  viewMode: (v => (v === 'grid' || v === 'list') ? v : 'list')(store.get('motu-view')),  // list | grid — v6.72: sanitized (short-lived 'text' mode removed)
   theme: store.get('motu-theme') || 'eternia',
   // v6.62: merge any line ids from LINES that are missing from the stored
   // order. Previously, when a new line was added (e.g. cross-brand in v6.61),

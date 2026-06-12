@@ -113,6 +113,15 @@ async function init() {
     S.coll = loaded;
     if (JSON.stringify(loaded) !== before) saveColl();
   }
+  // v6.72 CRITICAL: only after this point is it safe to persist S.coll.
+  // The pagehide/beforeunload/visibilitychange flush in data.js previously
+  // ran unconditionally — if boot failed before this line (module-version
+  // mismatch during a partial deploy, SW serving a stale module, an init
+  // exception), the first tab-hide overwrote the stored collection with
+  // the empty initial S.coll = {}. That is a real data wipe. The flag
+  // also covers legitimate first runs: no stored collection means an empty
+  // write is harmless, and it's set here either way.
+  S._collLoaded = true;
   // Load persisted recent changes
   const rc = store.get('motu-recent');
   if (rc && Array.isArray(rc)) S._recentChanges = rc;
