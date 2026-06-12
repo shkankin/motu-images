@@ -2615,15 +2615,17 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 /* ── Undo Toast ──────────────────────────────────────────────────── */
 .toast-undo {
+  /* v6.73: slimmed per user request — was 5px 13px / 13px bold pill that
+     visually competed with the toast message. */
   flex-shrink: 0;
-  padding: 5px 13px;
-  border-radius: 7px;
-  background: var(--acc);
-  color: var(--bg);
-  font-size: 13px;
-  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--acc);
+  border: 1px solid color-mix(in srgb, var(--acc) 60%, transparent);
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
-  border: none;
   font-family: 'Outfit', sans-serif;
   align-self: center;
 }

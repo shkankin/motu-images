@@ -270,6 +270,7 @@ function showUpdateBanner() {
 
 
 function patchFigRow(id) {
+  window.cancelLongPress?.();  // v6.73: see render() — same mid-touch rebuild hazard
   const c = S.coll[id] || {};
   const statusCls = c.status || '';
   const copyN = entryCopyCount(c);
@@ -349,6 +350,10 @@ const $ = id => document.getElementById(id);
 const app = () => document.getElementById('app');
 
 function render() {
+  // v6.73: a rebuild mid-touch orphans the long-press cancel path — see
+  // cancelLongPress in handlers.js. Clearing here is always safe: any
+  // legitimate long-press has no render between touchstart and fire.
+  window.cancelLongPress?.();
   try {
     // v5.04: stagger animation gate. Only fires when render is preceded by
     // navigation (tab change, line change, search clear, etc.) — NOT when
@@ -469,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.72</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.73</span></div>
         </div>
       </div>
       <div class="header-actions">

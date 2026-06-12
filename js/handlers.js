@@ -157,6 +157,21 @@ let _lpFired = false;
 let _lpStartX = 0;
 let _lpStartY = 0;
 
+// v6.73 BUG FIX: the long-press timer is module-global but its cancel
+// listeners (touchend/touchcancel) live on the row element. When a tap
+// triggers a DOM rebuild mid-gesture — e.g. first status change from
+// cleared replaces the quick-own button via patchFigRow/render — the
+// original touch target is detached, its touchend never propagates, the
+// timer survives the tap, and the context menu pops 500ms later. Fix is
+// belt-and-braces: a global cancel hook (called by render/patchFigRow,
+// which run synchronously inside the very tap that caused the rebuild)
+// plus document-level capture listeners as a final net.
+window.cancelLongPress = () => {
+  if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+};
+document.addEventListener('touchend', () => window.cancelLongPress(), { capture: true, passive: true });
+document.addEventListener('touchcancel', () => window.cancelLongPress(), { capture: true, passive: true });
+
 function initLongPress(el, figId) {
   // Passive touchstart — do NOT preventDefault here or it kills scrolling.
   // We suppress the Android copy/paste callout via contextmenu instead.
