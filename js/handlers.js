@@ -423,9 +423,25 @@ window.addEventListener('popstate', e => {
   _navlog('popstate-in');
   _skipPush = true;
   try {
-    // Always restore bars on back navigation
+    // Always restore bars on back navigation.
+    // v6.71 BUG FIX: resetting the flags alone isn't enough. The root-level
+    // "press back again to exit" path below doesn't call render(), so the
+    // topBar kept its `immersive-hide` CSS class while S.barsHidden was
+    // already false — and with the flag false, the scroll-up handler's
+    // un-hide branch (gated on S.barsHidden) never fired. Result: permanent
+    // blank space where the header should be until the next full render.
+    // Reconcile the DOM classes here directly so every popstate path —
+    // render or not — leaves the bars actually visible.
     S.barsHidden = false;
     S.searchBarHidden = false;
+    {
+      const tb = document.getElementById('topBar');
+      const bn = document.getElementById('bottomNav');
+      const sb = document.getElementById('searchBar');
+      if (tb) tb.classList.remove('immersive-hide');
+      if (bn) bn.classList.remove('immersive-hide');
+      if (sb) sb.classList.remove('hidden');
+    }
 
     // If photo viewer is open, close it first
     if (S.photoViewer) {
@@ -504,15 +520,8 @@ window.addEventListener('popstate', e => {
     // Push exactly one absorber so the next back press fires popstate again.
     history.pushState(navState(), '');
     // v6.18: a back press at root strongly signals "I want to navigate" —
-    // restore the immersive-hidden bars so the user actually has something
-    // to tap. Force a full render too, since previous attempts at just
-    // toggling classes left the UI in an inconsistent state for some users
-    // (likely a render-on-resume race that re-applied the hide class).
-    if (S.barsHidden) {
-      S.barsHidden = false;
-      S.searchBarHidden = false;
-      render();
-    }
+    // bars were already force-shown at the top of this handler (v6.71),
+    // both flags and CSS classes, so no conditional render is needed here.
     toast('Press back again to exit', { large: true, duration: 2500 });
   } finally {
     _skipPush = false;

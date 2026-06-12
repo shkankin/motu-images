@@ -3245,22 +3245,30 @@ html {
 }
 
 /* ── v6.65: variant nesting + tour ─────────────────────────────── */
-/* Nested variant card (grid): gold left rail + slight inset reads as
-   "attached to the card before it" without breaking the grid. */
-.fig-card.variant-nested { border-left: 3px solid var(--gold); }
-.card-variant-tag {
-  position: absolute; top: 6px; left: 6px; z-index: 2;
-  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
-  color: var(--bg); background: var(--gold);
-  padding: 2px 7px; border-radius: 99px;
-  max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/* Nested variant card (grid) — v6.70: softer rail (was solid gold). */
+.fig-card.variant-nested {
+  border-left: 3px solid color-mix(in srgb, var(--gold) 50%, transparent);
 }
-/* Nested variant row (list): indented with a gold elbow connector. */
-.fig-row.variant-nested { margin-left: 22px; border-left: 2px solid var(--gold); }
-.row-variant-elbow {
-  flex: 0 0 auto; margin-left: -2px;
-  color: var(--gold); font-size: 14px; font-weight: 700; line-height: 1;
+/* Nested variant row (list) — v6.70 restyle. A single subtle curved
+   connector drawn off the parent row above; no hard border wall, no elbow
+   glyph, smaller thumb via transform to read as subordinate. */
+.fig-row.variant-nested {
+  margin-left: 30px;
+  position: relative;
 }
+.fig-row.variant-nested::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: -8px;
+  width: 14px;
+  height: 50%;
+  border-left: 1.5px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-bottom-left-radius: 10px;
+  pointer-events: none;
+}
+.fig-row.variant-nested .fig-thumb { transform: scale(0.86); transform-origin: left center; }
 /* Variant count chip on parent (⧉N) — sibling of copy-count-inline. */
 .variant-count-inline {
   display: inline-flex; align-items: center; justify-content: center;
@@ -3325,3 +3333,28 @@ html {
   padding: 2px 7px; border-radius: 99px;
 }
 .fig-deal-badge { font-size: 9px; font-weight: 700; color: var(--gn); letter-spacing: 0.5px; }
+
+/* ── v6.70: detail action bar ──────────────────────────────────── */
+.detail-action-bar {
+  display: grid;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+.detail-action-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 10px 4px; min-height: 58px;
+  border-radius: 12px; border: 1px solid var(--bd);
+  background: var(--bg3); color: var(--t2);
+  font-size: 11px; font-weight: 600; line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.detail-action-btn.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
+.detail-action-btn.red { color: var(--rd); border-color: color-mix(in srgb, var(--rd) 40%, transparent); }
+
+/* ── v6.71: text-only view ─────────────────────────────────────── */
+.fig-row-text { padding: 7px 4px; min-height: 0; gap: 8px; }
+.fig-row-text .fig-name { font-size: 13px; line-height: 1.35; }
+.fig-text-meta { color: var(--t3); font-size: 11px; font-weight: 400; }
+.fig-row-text .quick-own { transform: scale(0.85); }
+.fig-row-text.variant-nested { margin-left: 26px; }
+.fig-row-text.variant-nested::before { top: -6px; height: 55%; }

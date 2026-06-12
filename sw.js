@@ -4,6 +4,16 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.71. SHELL: render.js + handlers.js + vault.css.
+//     Text-only view mode (3rd toggle), BUG FIX: stale immersive-hide
+//     header after root-level back press (popstate now reconciles DOM
+//     classes directly, not just S.barsHidden flags).
+//   • CACHE bumped to v6.70. SHELL: data.js + render.js + vault.css updated.
+//     UI polish round: detail action bar rebuilt as uniform grid (All
+//     versions removed), per-copy Variant field legacy-only, Mark Sold
+//     gated to for-sale, appPromptText top-anchored (keyboard fix),
+//     nested variant rows restyled (curved connector, chips/VAR removed),
+//     Has-variants filter repurposed to structured model.
 //   • CACHE bumped to v6.69. SHELL: app.js + data.js + render.js +
 //     pricing.js + vault.css updated. Price-watch (targetPrice + DEAL
 //     badges + daily deal toast), price-history sparklines on detail,
@@ -560,7 +570,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.69';
+const CACHE = 'motu-vault-v6.71';
 
 const SHELL = [
   'motu-vault.html',

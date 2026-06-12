@@ -99,9 +99,11 @@ function haptic(ms = 15) {
 function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'} = {}) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding-bottom:calc(16px + var(--safe-bottom,0px))';
+    // v6.70: top-anchored (was bottom sheet) — the on-screen keyboard was
+    // covering the input on Android, hiding what the user typed.
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding-top:max(48px, 10vh)';
     overlay.innerHTML = `
-      <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:20px 20px 16px 16px;padding:22px 20px 12px;box-shadow:0 -4px 32px rgba(0,0,0,.4)">
+      <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:16px;margin:0 16px;padding:22px 20px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5)">
         <div style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:18px;text-align:center">${esc(message)}</div>
         <div style="display:flex;gap:10px">
           <button id="appConfirmCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
@@ -296,11 +298,11 @@ function patchFigRow(id) {
     updateNameInline(row.querySelector('.fig-name'));
     const actions = row.querySelector('.fig-actions');
     if (actions) {
-      const hasVar = /\w/.test(copyVariant(c) || '');
       const isNew = S.newFigIds.has(id);
+      // v6.70: VAR badge retired — variant info now lives in the nested
+      // row/strip presentation, not a per-copy free-text flag.
       actions.innerHTML =
         (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
-        (hasVar ? '<div class="fig-var-badge">VAR</div>' : '') +
         (c.status
           ? `<button class="quick-own" onclick="cycleStatus(event,${jId})" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
           : `<button class="quick-own" onclick="event.stopPropagation();setStatus(${jId},'owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
@@ -467,7 +469,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.69</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.71</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1793,7 +1795,6 @@ const BATCH_SIZE = 80;
 function renderFigRow(f) {
   const c = S.coll[f.id] || {};
   const statusCls = c.status || '';
-  const hasVar = /\w/.test(copyVariant(c) || '');
   const copyN = entryCopyCount(c);
   const isNew = S.newFigIds.has(f.id);
   const hasCustom = S.customPhotos[f.id];
@@ -1840,15 +1841,15 @@ function renderFigRow(f) {
 
   return `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
-    ${f.variantOf ? '<div class="row-variant-elbow">↳</div>' : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
       <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${(() => {
-        // v6.65: variant relations on rows. Parent → ⧉N count; variant → gold name chip.
-        if (f.variantOf) return f.variantName ? ` <span class="variant-name-inline">${esc(f.variantName)}</span>` : '';
+        // v6.70: variant rows carry no extra chip — the connector + name
+        // (which already includes the variant) say it all. Parents keep ⧉N.
+        if (f.variantOf) return '';
         const n = figVariants(f.id).length;
         return n ? ` <span class="variant-count-inline" title="${n} variant${n===1?'':'s'}">⧉${n}</span>` : '';
       })()}${loadoutTick}</div>
@@ -1861,7 +1862,36 @@ function renderFigRow(f) {
     </div>
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
-      ${hasVar ? '<div class="fig-var-badge">VAR</div>' : ''}
+      ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
+      ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
+        `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
+    </div>`}
+  </div>`;
+}
+
+// ── v6.71: text-only view ───────────────────────────────────────────
+// Third view mode: no thumbnails, one slim line per figure — name, dim
+// meta, status dot. Shares .fig-row classes (fig-name / fig-actions /
+// data-fig-id) so patchFigRow's surgical status updates work unchanged;
+// the absent .fig-thumb is already guarded there. Densest way to scan a
+// big line; year headers render in this mode too.
+function renderFigText(f) {
+  const c = S.coll[f.id] || {};
+  const statusCls = c.status || '';
+  const copyN = entryCopyCount(c);
+  const isNew = S.newFigIds.has(f.id);
+  const isSelected = S.selectMode && S.selected.has(f.id);
+  const eId = esc(f.id);
+  const rowAction = S.selectMode ? 'select-toggle' : 'open-fig';
+  const checkSvg = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>`;
+  const varCount = !f.variantOf ? figVariants(f.id).length : 0;
+  return `<div class="fig-row fig-row-text${isSelected ? ' selected' : ''}${f.variantOf ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
+    ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
+    <div class="fig-text">
+      <div class="fig-name">${esc(f.name)}${copyN > 1 ? ` <span class="copy-count-inline" title="${copyN} copies">×${copyN}</span>` : ''}${varCount ? ` <span class="variant-count-inline" title="${varCount} variant${varCount===1?'':'s'}">⧉${varCount}</span>` : ''}<span class="fig-text-meta">${S.search ? ` · ${esc(ln(f.line))}` : ''}${f.wave ? ` · W${esc(f.wave)}` : ''}${f.year ? ` · ${f.year}` : ''}</span></div>
+    </div>
+    ${S.selectMode ? '' : `<div class="fig-actions">
+      ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
       ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
@@ -1922,14 +1952,11 @@ function renderFigCard(f) {
   // variantName; a parent with variants gets a small count chip.
   const isVarFig = !!f.variantOf;
   const varKids = figVariants(f.id);
-  const varTag = isVarFig
-    ? `<div class="card-variant-tag">↳ ${esc(f.variantName || 'Variant')}</div>` : '';
   const varCount = varKids.length
     ? ` <span class="variant-count-inline" title="${varKids.length} variant${varKids.length===1?'':'s'}">⧉${varKids.length}</span>` : '';
 
   return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}${isVarFig ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
     <div class="card-image-wrap">
-      ${varTag}
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
         `<div class="card-initial">${esc(f.name[0])}</div>`}
       ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
@@ -1947,7 +1974,9 @@ function renderFigCard(f) {
 }
 
 function renderFigItem(f) {
-  return S.viewMode === 'grid' ? renderFigCard(f) : renderFigRow(f);
+  if (S.viewMode === 'grid') return renderFigCard(f);
+  if (S.viewMode === 'text') return renderFigText(f);  // v6.71
+  return renderFigRow(f);
 }
 
 function yearHeader(year) {
@@ -1955,7 +1984,7 @@ function yearHeader(year) {
 }
 
 function renderFigsWithHeaders(figs, renderFn) {
-  const showHeaders = !S.search && (S.sortBy === 'year' || S.sortBy === 'year-desc') && S.viewMode === 'list';
+  const showHeaders = !S.search && (S.sortBy === 'year' || S.sortBy === 'year-desc') && S.viewMode !== 'grid';  // v6.71: list + text
   let html = '';
   let lastYear = null;
   figs.forEach(f => {
@@ -1996,8 +2025,9 @@ function renderFigList() {
     }
   }
   // View toggle + count row
-  const listActive = !isGrid ? 'active' : '';
+  const listActive = S.viewMode === 'list' ? 'active' : '';
   const gridActive = isGrid ? 'active' : '';
+  const textActive = S.viewMode === 'text' ? 'active' : '';
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px;gap:8px">
     <div class="fig-count" style="margin-bottom:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
     <button class="select-btn${S.selectMode ? ' active' : ''}" onclick="${S.selectMode ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
@@ -2006,6 +2036,7 @@ function renderFigList() {
     <div class="view-toggle">
       <button class="${listActive}" onclick="setViewMode('list')" title="List view">${icon(ICO.list,14)}</button>
       <button class="${gridActive}" onclick="setViewMode('grid')" title="Grid view">${icon(ICO.lines,14)}</button>
+      <button class="${textActive}" onclick="setViewMode('text')" title="Text-only view">${icon(ICO.menu,14)}</button>
     </div>
   </div>`;
   if (!figs.length) {
@@ -2059,7 +2090,7 @@ function renderFigList() {
           newFigs.forEach(f => { html += renderFigCard(f); });
           html += '</div>';
         } else {
-          newFigs.forEach(f => { html += renderFigRow(f); });
+          newFigs.forEach(f => { html += renderFigItem(f); });
         }
         html += `<div style="height:1px;background:var(--bd);margin:12px 0"></div>`;
       }
@@ -2070,7 +2101,7 @@ function renderFigList() {
       if (recent.length) {
         recent.forEach(f => pinnedIds.add(f.id));
         html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px">Recently changed</div>`;
-        recent.forEach(f => { html += isGrid ? renderFigCard(f) : renderFigRow(f); });
+        recent.forEach(f => { html += isGrid ? renderFigCard(f) : renderFigItem(f); });
         html += `<div style="height:1px;background:var(--bd);margin:12px 0"></div>`;
       }
     }
@@ -2084,7 +2115,7 @@ function renderFigList() {
       if (rest.length) html += `<div id="figListRest" style="display:contents"></div>`;
       html += '</div>';
     } else {
-      html += renderFigsWithHeaders(first, renderFigRow);
+      html += renderFigsWithHeaders(first, renderFigItem);
       if (rest.length) html += `<div id="figListRest"></div>`;
     }
     if (rest.length) {
@@ -2094,7 +2125,7 @@ function renderFigList() {
         if (isGrid) {
           container.innerHTML = rest.map(f => renderFigCard(f)).join('');
         } else {
-          container.innerHTML = renderFigsWithHeaders(rest, renderFigRow);
+          container.innerHTML = renderFigsWithHeaders(rest, renderFigItem);
         }
         // Bind long-press to newly rendered items
         container.querySelectorAll('[data-fig-id]').forEach(el => {
@@ -2246,10 +2277,14 @@ function renderCopyCard(f, cp, i, isMulti) {
         oninput="formatAcquired(this)"
         onchange="updateCopy(${jId},${cid},'acquired',this.value)">
     </div>
-    <div>
-      <div class="field-label text-dim text-sm">Variant</div>
-      <input type="text" value="${esc(variant)}" placeholder="e.g. Dark Face, Painted Back…" onchange="updateCopy(${jId},${cid},'variant',this.value)">
-    </div>
+    ${variant ? `<div>
+      <!-- v6.70: per-copy Variant free-text removed — superseded by the
+           structured variantOf model. Field only renders when a legacy
+           value exists so it stays editable/clearable; clearing it hides
+           the field for good. -->
+      <div class="field-label text-dim text-sm">Variant (legacy)</div>
+      <input type="text" value="${esc(variant)}" onchange="updateCopy(${jId},${cid},'variant',this.value)">
+    </div>` : ''}
     <div>
       <div class="field-label text-dim text-sm" style="display:flex;align-items:center;gap:8px">
         <span>Accessories</span>
@@ -2289,11 +2324,11 @@ function renderCopyCard(f, cp, i, isMulti) {
       <div class="field-label text-dim text-sm">Notes</div>
       <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced(${jId},${cid},'notes',this.value)" onblur="updateCopy(${jId},${cid},'notes',this.value)">${esc(notes)}</textarea>
     </div>
-    <div>
+    ${S.coll[f.id]?.status === 'for-sale' ? `<div>
       <button class="mark-sold-btn" onclick="markCopySold(${jId},${cid})" title="Record the sale and remove this copy">
         ${icon(ICO.tag || ICO.check, 14)} Mark Sold…
       </button>
-    </div>`;
+    </div>` : ''}`;
   // Per-copy photos (multi-copy only — single-copy uses the main carousel)
   if (isMulti) {
     const copyPhotos = photoStore.getForCopy(f.id, cid, false);  // exclude shared
@@ -2463,23 +2498,20 @@ function renderDetail() {
       // Wrap in mvBlock_<id> so rerenderMVBlock() can swap the asking part in place.
       return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${retailPart}${sep}${asking}${asking ? renderSparkline(f.id) : ''}</div>`;
     })()}
-    <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
-      ${(f.line !== 'kids-core' && f.line !== 'custom') ? `<a href="#" onclick="event.preventDefault();openAF411(${jId})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500;text-decoration:none">
-        ${icon(ICO.export,14)} View on AF411
-      </a>` : ''}
-      <button onclick="searchCharacter(${jsArg(f.name)})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
-        ${icon(ICO.search,14)} All versions
-      </button>
-      <button onclick="openFigureEditor(${jId})" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">
-        ${icon(ICO.edit,14)} Edit
-      </button>
-      <button onclick="addVariant(${jId})" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:13px;font-weight:500">
-        ${icon(ICO.plus,14)} Add Variant
-      </button>
-      ${f.source === 'custom-local' ? `<button onclick="deleteCustomFig(${jId})" title="Delete this user-added figure" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:12px;border:1px solid color-mix(in srgb,var(--rd) 45%,transparent);background:var(--bg3);color:var(--rd);font-size:13px;font-weight:500">
-        ${icon(ICO.x,14)} Delete
-      </button>` : ''}
-    </div>
+    ${(() => {
+      // v6.70: action bar rebuilt — uniform equal-width buttons in a grid,
+      // single-line labels ("AF411" not "View on AF411"), "All versions"
+      // removed (user request). Delete (custom figs) joins the same grid.
+      const btn = (onclick, label, ic, color) => `<button onclick="${onclick}" class="detail-action-btn${color ? ' ' + color : ''}">${icon(ic, 15)}<span>${label}</span></button>`;
+      const btns = [];
+      if (f.line !== 'kids-core' && f.line !== 'custom')
+        btns.push(btn(`event.preventDefault();openAF411(${jId})`, 'AF411', ICO.export));
+      btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
+      btns.push(btn(`addVariant(${jId})`, 'Add Variant', ICO.plus, 'gold'));
+      if (f.source === 'custom-local')
+        btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.x, 'red'));
+      return `<div class="detail-action-bar" style="grid-template-columns:repeat(${btns.length},1fr)">${btns.join('')}</div>`;
+    })()}
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <datalist id="locationSuggestions">
       ${getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('')}

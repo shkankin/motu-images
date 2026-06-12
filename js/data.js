@@ -1467,7 +1467,11 @@ function _computeSortedFigs() {
   if (S.filterFaction) list = list.filter(f => f.faction === S.filterFaction);
   if (S.filterStatus === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
   else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
-  if (S.filterVariants) list = list.filter(f => /\w/.test(copyVariant(S.coll[f.id]) || ''));
+  // v6.70: "Has variants" now means the structured model — figure is part
+  // of a variant family (has variants, or is one). Legacy copy-level
+  // free-text variant values still count so old data remains findable.
+  if (S.filterVariants) list = list.filter(f =>
+    f.variantOf || figVariants(f.id).length > 0 || /\w/.test(copyVariant(S.coll[f.id]) || ''));
   // v6.37: loadout completeness filter. Implicit-owned and implicit-
   // has-loadout — figures without either silently drop out, since the
   // filter is meaningless for them.
