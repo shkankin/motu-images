@@ -4,6 +4,9 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.77. SHELL: render.js + vault.css. Variant chips:
+//     removed redundant 'Standard' pill (parent keeps its normal circular
+//     status dot), chips now list only variants and are smaller (10px).
 //   • CACHE bumped to v6.76. SHELL: render.js + vault.css. REGRESSION FIX:
 //     v6.74 CSS cleanup regex deleted the detail-screen variant-tour,
 //     action-bar, and mark-sold styles by accident — all restored. Chips
@@ -597,7 +600,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.76';
+const CACHE = 'motu-vault-v6.77';
 
 const SHELL = [
   'motu-vault.html',

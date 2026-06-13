@@ -3265,12 +3265,13 @@ html {
 .variant-chip-pill {
   display: inline-flex;
   align-items: center;
-  padding: 1px 9px;           /* v6.76: slimmer — secondary tag, not a button */
+  padding: 0 8px;             /* v6.77: even tighter */
   border-radius: 999px;
-  font-size: 11px;            /* v6.76: down from 12px */
+  font-size: 10px;            /* v6.77: down from 11px */
   font-weight: 600;
   font-family: 'Outfit', sans-serif;
-  line-height: 1.4;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
   background: #2a2a2a;
   color: var(--t3);
   border: 1px solid color-mix(in srgb, var(--bd) 80%, transparent);

@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.76</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.77</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1865,39 +1865,27 @@ function renderFigRow(f) {
         ${f.year ? `<span>· ${f.year}</span>` : ''}
       </div>
       ${(() => {
-        // v6.75: variant chips. When a figure has variants, render the whole
-        // family as inline pills directly under the metadata — "Standard"
-        // (the parent itself) plus one chip per variant. Each chip lights up
-        // neon-green when that specific figure is owned, and tapping it opens
-        // that figure's detail. This replaces the old separate nested rows.
+        // v6.77: variant chips list ONLY the variants — the "Standard" pill
+        // was redundant with the parent row itself and its right-side dot.
+        // The parent keeps its normal circular status toggle (restored
+        // below); chips are pure secondary tags for the sub-variants.
         if (f.variantOf) return '';  // variants don't render as their own rows
         const vars = figVariants(f.id);
         if (!vars.length) return '';
-        const chip = (m, label) => {
-          const owned = S.coll[m.id]?.status === 'owned';
-          const forSale = S.coll[m.id]?.status === 'for-sale';
-          const cls = owned ? ' owned' : forSale ? ' for-sale' : '';
-          return `<button class="variant-chip-pill${cls}" data-action="open-fig" data-fig-id="${esc(m.id)}" title="${esc(m.name)}">${esc(label)}</button>`;
+        const chip = (m) => {
+          const st = S.coll[m.id]?.status;
+          const cls = st === 'owned' ? ' owned' : st === 'for-sale' ? ' for-sale' : '';
+          return `<button class="variant-chip-pill${cls}" data-action="open-fig" data-fig-id="${esc(m.id)}" title="${esc(m.name)}">${esc(m.variantName || m.name)}</button>`;
         };
-        return `<div class="variant-chip-row">
-          ${chip(f, 'Standard')}
-          ${vars.map(v => chip(v, v.variantName || v.name)).join('')}
-        </div>`;
+        return `<div class="variant-chip-row">${vars.map(chip).join('')}</div>`;
       })()}
     </div>
-    ${S.selectMode ? '' : (() => {
-      // v6.76: a figure with variants delegates ownership state to its
-      // chips (each variant + "Standard" toggle independently), so the
-      // single right-side dot would be ambiguous — hide it for parents.
-      // Variants-as-orphan-rows and ordinary figures keep their dot.
-      if (!f.variantOf && figVariants(f.id).length) return '';
-      return `<div class="fig-actions">
+    ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
       ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
-    </div>`;
-    })()}
+    </div>`}
   </div>`;
 }
 
