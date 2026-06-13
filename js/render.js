@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.82</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.83</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1703,11 +1703,18 @@ function renderDetail() {
     <div class="photo-section">
       ${carouselHtml}
       <div class="photo-controls">
-        ${canAddMore ? `<button class="photo-btn" onclick="document.getElementById('photoInput').click()">
-          ${icon(ICO.plus,14)} Add photo${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
+        ${canAddMore ? `<button class="photo-btn" onclick="document.getElementById('photoCamera').click()">
+          ${icon(ICO.plus,14)} Camera
+        </button>
+        <button class="photo-btn" onclick="document.getElementById('photoGallery').click()">
+          ${icon(ICO.plus,14)} Gallery${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
         </button>` : `<div class="photo-btn" style="opacity:0.5;cursor:default">Max ${MAX_PHOTOS} photos</div>`}
       </div>
-      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this,${jId})">
+      <!-- v6.83: split capture. The camera input keeps capture="environment"
+           to open the rear camera directly; the gallery input omits capture so
+           the OS shows the photo library / files picker. Both feed handlePhoto. -->
+      <input type="file" id="photoCamera" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,${jId})">
+      <input type="file" id="photoGallery" accept="image/*" style="display:none" onchange="handlePhoto(this,${jId})">
     </div>
     ${userPhotos.length > 0 ? `<div class="photo-labels">
       ${userPhotos.map(p => `

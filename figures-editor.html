@@ -461,6 +461,9 @@
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Wave
         <input id="afWave" type="text" placeholder="1" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">UPC / barcode (optional)
+        <input id="afUpc" type="text" inputmode="numeric" placeholder="scan or type digits" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
       <!-- v1.12: variant linkage. Pick a parent figure to make this a variant
            that nests under it in the app (variantOf = parent id). -->
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Variant of (optional)
@@ -938,7 +941,7 @@ function openAddFigModal() {
   const lineSel = document.getElementById('afLine');
   lineSel.innerHTML = LINES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
   afLineChange();
-  ['afName','afYear','afWave','afSlug','afVariantOf','afVariantName'].forEach(id => document.getElementById(id).value = '');
+  ['afName','afYear','afWave','afUpc','afSlug','afVariantOf','afVariantName'].forEach(id => document.getElementById(id).value = '');
   // v1.12: populate parent-figure datalist (name → id) from current merged set.
   const dl = document.getElementById('afParentList');
   const pool = [...approvedFigs, ...manualFigs].filter(f => !f.variantOf);
@@ -999,6 +1002,7 @@ function submitAddFig() {
   const group = document.getElementById('afGroup').value;
   const year  = document.getElementById('afYear').value.trim();
   const wave  = document.getElementById('afWave').value.trim();
+  const upc   = document.getElementById('afUpc').value.replace(/[^0-9]/g, '');
   if (!name) { alert('Name is required.'); return; }
 
   // v1.12: variant linkage
@@ -1036,6 +1040,7 @@ function submitAddFig() {
     ...(group   ? { group, sourceGroup: group } : {}),
     ...(wave    ? { wave } : {}),
     ...(year    ? { year: parseInt(year) } : {}),
+    ...(upc     ? { upc } : {}),
     ...(parentFig ? { variantOf: parentFig.id } : {}),
     ...(parentFig && variantName ? { variantName } : {}),
     slug,
@@ -1473,7 +1478,8 @@ function refreshUI() {
       <option value="all">All (incl. decided)</option>
       <option value="undecided">Undecided only</option>
       <option value="approved">Approved only</option>
-      <option value="rejected">Rejected only</option>`;
+      <option value="rejected">Rejected only</option>
+      <option value="incomplete">⚠ Incomplete data only</option>`;
     bulkBtn.style.display = '';
     bulkBtn.textContent = 'Approve filtered';
     bulkBtn.title = 'Approve every undecided figure in the current line filter';
@@ -1482,7 +1488,8 @@ function refreshUI() {
     filterStatus.innerHTML = `
       <option value="all">All existing</option>
       <option value="edited">Edited only</option>
-      <option value="unedited">Unedited only</option>`;
+      <option value="unedited">Unedited only</option>
+      <option value="incomplete">⚠ Incomplete data only</option>`;
     bulkBtn.style.display = '';
     bulkBtn.textContent = 'Reset all edits';
     bulkBtn.title = 'Discard all edits to existing figures (does not affect pending decisions)';
@@ -1518,6 +1525,27 @@ function refreshUI() {
   renderList();
 }
 
+// v6.83: catalog completeness audit (editor parity with the app's collection
+// gap-fill). Reports which key catalog fields a figure is missing, honoring
+// any in-session edits. "image" is satisfied by a slug (the image path is
+// derived from it). Variants inherit line/wave/year/retail/slug from their
+// parent, so they're judged only on name + group.
+function catalogGaps(f) {
+  const eff = k => (edits[f.id]?.[k] ?? f[k]);
+  const blank = v => v == null || String(v).trim() === '';
+  const out = [];
+  if (blank(eff('name'))) out.push('name');
+  if (blank(eff('line'))) out.push('line');
+  if (blank(eff('group'))) out.push('group');
+  if (!f.variantOf) {
+    if (blank(eff('wave'))) out.push('wave');
+    if (blank(eff('year'))) out.push('year');
+    if (blank(eff('retail'))) out.push('retail');
+    if (blank(eff('slug')) && blank(eff('image'))) out.push('image');
+  }
+  return out;
+}
+
 function renderList() {
   const list = document.getElementById('list');
   const search = document.getElementById('searchBox').value.toLowerCase().trim();
@@ -1539,6 +1567,8 @@ function renderList() {
       const figLabel = match ? match.label : '(no subline)';
       if (figLabel !== sublineFilter) return false;
     }
+    // v6.83: catalog-completeness filter — works in both modes.
+    if (statusFilter === 'incomplete' && catalogGaps(f).length === 0) return false;
     if (mode === 'pending') {
       const dec = decisions[f.id];
       if (statusFilter === 'undecided' && dec) return false;
@@ -1710,6 +1740,9 @@ function renderCard(f) {
         <div class="field${e.retail!==undefined?' changed':''}"><label>Retail $</label>
           <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit(${jsArg(f.id)},'retail',this.value?Number(this.value):0)">
         </div>
+        <div class="field${e.upc!==undefined?' changed':''}"><label>UPC / barcode</label>
+          <input type="text" inputmode="numeric" value="${esc(eff('upc') ?? '')}" placeholder="scan or type digits" oninput="setEdit(${jsArg(f.id)},'upc',this.value.replace(/[^0-9]/g,''))">
+        </div>
       </div>
       <details>
         <summary>Accessories / Loadout (${accs.length} selected)${suggestedSeed.has(f.id) ? ' · <span style="color:var(--acc)">✨ suggested — confirm</span>' : ''}</summary>
@@ -1868,6 +1901,9 @@ function renderExistingCard(f) {
         </div>
         <div class="field${e.retail!==undefined?' changed':''}"><label>Retail $</label>
           <input type="number" step="0.01" value="${eff('retail') ?? ''}" oninput="setEdit(${jsArg(f.id)},'retail',this.value?Number(this.value):0)">
+        </div>
+        <div class="field${e.upc!==undefined?' changed':''}"><label>UPC / barcode</label>
+          <input type="text" inputmode="numeric" value="${esc(eff('upc') ?? '')}" placeholder="scan or type digits" oninput="setEdit(${jsArg(f.id)},'upc',this.value.replace(/[^0-9]/g,''))">
         </div>
       </div>
       <details ${isEdited && hasLoadoutChange(f.id) ? 'open' : ''}>
@@ -2071,7 +2107,7 @@ function buildFinal(f) {
   const e = edits[f.id] || {};
   const out = {};
   // Preserve original key order roughly; produce a clean object
-  for (const k of ['id','name','sourceName','line','sourceLine','group','sourceGroup','wave','year','retail','slug','faction','source']) {
+  for (const k of ['id','name','sourceName','line','sourceLine','group','sourceGroup','wave','year','retail','slug','faction','source','upc']) {
     if (e[k] !== undefined) out[k] = e[k];
     else if (f[k] !== undefined) out[k] = f[k];
   }

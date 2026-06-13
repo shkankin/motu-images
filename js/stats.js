@@ -13,7 +13,7 @@
 import { S, store, esc, ln, icon, ICO, jsArg } from './state.js';
 import {
   getStats, getLineStats, getSoldLog, figIsHidden, isMigrated,
-  isLineFullyHidden, getEvents,
+  isLineFullyHidden, getEvents, getCompletenessStats,
 } from './data.js';
 import {
   getCachedAskingPrice, isPricingConfigured, fetchPricing,
@@ -344,6 +344,41 @@ function renderStatsSheet() {
         </div>
         <div style="font-size:12px;color:var(--gold);font-weight:700;width:70px;text-align:right;flex-shrink:0">$${v.toFixed(0)}</div>
       </div>`;
+    }
+  }
+
+  // v6.83: Data Completeness — surfaces owned figures missing priority fields
+  // (condition, acquired, paid, location) and offers a one-tap gap-CSV export
+  // that round-trips back through Import (matched by stable ID).
+  const comp = getCompletenessStats();
+  if (comp._rows > 0) {
+    const FIELD_ORDER = [
+      ['condition', 'Condition'], ['acquired', 'Date obtained'],
+      ['paid', 'Purchase price'], ['location', 'Location'],
+    ];
+    const anyGap = FIELD_ORDER.some(([k]) => comp[k] > 0);
+    html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Data completeness</div>`;
+    if (!anyGap) {
+      html += `<div style="font-size:13px;color:var(--gn);padding:4px 0 10px">✓ Every owned figure has condition, date, price, and location filled.</div>`;
+    } else {
+      html += `<div style="font-size:12px;color:var(--t3);margin-bottom:8px">${comp._figs} of ${comp._rows} owned ${comp._rows === 1 ? 'copy is' : 'copies are'} missing data</div>`;
+      for (const [k, label] of FIELD_ORDER) {
+        const n = comp[k];
+        if (!n) continue;
+        const pctMissing = Math.round((n / comp._rows) * 100);
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 0">
+          <div style="font-size:12px;color:var(--t2);font-weight:600;width:110px;flex-shrink:0">${label}</div>
+          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pctMissing}%;background:var(--acc);border-radius:3px"></div>
+          </div>
+          <div style="font-size:12px;color:var(--acc);font-weight:700;width:90px;text-align:right;flex-shrink:0">${n} missing</div>
+        </div>`;
+      }
+      html += `<button onclick="exportGaps()" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer">
+        ${icon(ICO.export, 15)} Export gaps to CSV
+      </button>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Fill the blanks in any spreadsheet, then re-import (Menu → Import). Rows match by ID, so nothing else is touched.</div>`;
     }
   }
 

@@ -4,6 +4,22 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.83. SHELL: render.js + data.js. Collection
+//     data-completeness + UPC feature set (figures-editor.html also updated
+//     but is not part of the runtime shell):
+//       – Photo regression fix: "Add photo" split into Camera (capture) +
+//         Gallery (no capture) buttons so BOTH are available again.
+//       – Fill Missing Data round-trip: exportGaps() emits owned copies
+//         missing condition/acquired/paid/location with a stable ID column;
+//         doImportVault now matches by ID first, reads Acquired (MM/YYYY),
+//         and lets blank-status gap rows patch existing owned figures.
+//       – Data Completeness panel in Collection Stats with per-field missing
+//         counts + one-tap "Export gaps to CSV".
+//       – figures-editor: "Incomplete data only" filter (catalog gaps) in
+//         both modes; UPC/barcode field captured on manual-add and edits,
+//         persisted to figures.json.
+//       – App search: all-digit queries (>=3) match against figure.upc, so a
+//         typed/scanned barcode jumps straight to the figure.
 //   • CACHE bumped to v6.82. SHELL: render.js + eggs.js + data.js +
 //     ui-sheets.js. Six-item fix batch (no new module):
 //       #1 variant figs in Recently Changed / New-to-Catalog no longer
@@ -634,7 +650,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.82';
+const CACHE = 'motu-vault-v6.83';
 
 const SHELL = [
   'motu-vault.html',

@@ -1545,7 +1545,13 @@ function _computeSortedFigs() {
       .replace(/[-'’‘`]/g, '');
     const s = fold(S.search);
     const scope = S.searchScope || 'all';
+    // v6.83: barcode search. When the query is all digits (e.g. typed or
+    // scanned from a UPC), match it against the figure's upc as a substring.
+    // This works regardless of scope — a scanned barcode is an unambiguous
+    // lookup, so we don't want the name-only scope to suppress it.
+    const digitQuery = /^\d{3,}$/.test(S.search.trim()) ? S.search.trim() : null;
     list = list.filter(f => {
+      if (digitQuery && f.upc && String(f.upc).includes(digitQuery)) return true;
       const name = fold(f.name);
       if (name.includes(s)) return true;
       if (scope === 'name') return false;
@@ -1671,7 +1677,74 @@ function exportCSV(filter) {
   toast(summary);
 }
 
-// ─── Minimal ZIP encoder (STORE method, no compression) ──────────
+// v6.83: "Fill Missing Data" round-trip export. Emits ONLY owned figures
+// (one row per copy) that are missing at least one priority field, with a
+// stable ID column for lossless re-import, an Acquired (MM/YYYY) column, and
+// a Missing helper column so the spreadsheet shows what each row needs.
+// Re-importing through doImportVault patches the blanks back in by ID.
+// PRIORITY_GAP_FIELDS order matches the user's ranking: condition first.
+const PRIORITY_GAP_FIELDS = ['condition', 'acquired', 'paid', 'location'];
+const GAP_FIELD_LABEL = { condition: 'condition', acquired: 'acquired', paid: 'paid', location: 'location' };
+// Which priority fields are blank on a given copy. Returns an array of keys.
+function copyGaps(cp) {
+  const out = [];
+  for (const k of PRIORITY_GAP_FIELDS) {
+    const v = cp[k];
+    if (v == null || String(v).trim() === '') out.push(k);
+  }
+  return out;
+}
+// Count, across all owned copies, how many are missing each priority field —
+// powers the Data Completeness panel. { condition: n, acquired: n, ... , _figs: n, _rows: n }
+function getCompletenessStats() {
+  const tally = { _figs: 0, _rows: 0 };
+  for (const k of PRIORITY_GAP_FIELDS) tally[k] = 0;
+  for (const f of S.figs) {
+    const c = S.coll[f.id];
+    if (!c || c.status !== 'owned') continue;
+    const copies = isMigrated(c) && c.copies.length ? c.copies : [getPrimaryCopy(c) || {}];
+    let figHasGap = false;
+    for (const cp of copies) {
+      tally._rows++;
+      const gaps = copyGaps(cp);
+      if (gaps.length) { figHasGap = true; for (const g of gaps) tally[g]++; }
+    }
+    if (figHasGap) tally._figs++;
+  }
+  return tally;
+}
+function exportGaps() {
+  const h = ['ID','Name','Line','Group','Wave','Status','Copy #','Condition','Acquired','Paid','Location','Variant','Accessories','Notes','Missing'];
+  const rows = [];
+  let figCount = 0;
+  for (const f of S.figs) {
+    const c = S.coll[f.id];
+    if (!c || c.status !== 'owned') continue;
+    const copies = isMigrated(c) && c.copies.length ? c.copies : [getPrimaryCopy(c) || {}];
+    let figCounted = false;
+    copies.forEach((cp, i) => {
+      const gaps = copyGaps(cp);
+      if (!gaps.length) return;  // copy is complete — skip
+      if (!figCounted) { figCount++; figCounted = true; }
+      const acc = Array.isArray(cp.accessories) ? cp.accessories.join('; ') : '';
+      const missing = gaps.map(g => GAP_FIELD_LABEL[g]).join(', ');
+      rows.push([
+        f.id, f.name, ln(f.line), f.group || '', f.wave || '', c.status, i + 1,
+        cp.condition || '', cp.acquired || '', cp.paid || '', cp.location || '',
+        cp.variant || '', acc, cp.notes || '', missing,
+      ]);
+    });
+  }
+  if (!rows.length) { toast('✓ No gaps — every owned figure has its data'); return; }
+  const csv = [h, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'motu-gaps.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`✓ Exported ${rows.length} rows · ${figCount} figures need data`);
+}
+window.exportGaps = exportGaps;
 // Produces a valid uncompressed .zip file. Photos are already JPEG, so
 // compression wouldn't help much anyway. Pure-JS, no dependencies.
 // Spec: PKWARE APPNOTE.TXT (only the bits we actually need).
@@ -2299,6 +2372,14 @@ function doImportVault(csvText, overwrite) {
   const iVariant = col('Variant');
   const iAcc = col('Accessories');
   const iLoc = col('Location');
+  // v6.83: optional ID column for lossless round-trip. When present, rows
+  // match the figure by stable id directly (handles duplicate names like the
+  // four "Rattlor" entries that the name-composite could mis-route). Falls
+  // back to the name+line+group+wave index when ID is absent or unknown.
+  const iId = col('ID');
+  // v6.83: Acquired (date obtained, MM/YYYY) now round-trips. Older CSVs
+  // without the column simply leave it blank.
+  const iAcquired = col('Acquired');
   // v4.95: read Copy # for multi-copy round-trip. If absent (older exports
   // or single-copy lines), each row gets a unique copy id.
   const iCopyNum = col('Copy #');
@@ -2310,34 +2391,47 @@ function doImportVault(csvText, overwrite) {
 
   rows.slice(1).forEach(c => {
     const name = c[iName]?.trim();
-    if (!name) return;
+    const rowId = iId >= 0 ? (c[iId]?.trim() || '') : '';
+    // v6.83: a row is valid if it has a name OR a resolvable ID. Gap-fill
+    // CSVs may legitimately carry only the ID + the fields being filled.
+    if (!name && !(rowId && figById(rowId))) return;
     const lineName = c[iLine]?.trim() || '';
     const lineId = LINE_ID_MAP[lineName] || lineName.toLowerCase().replace(/\s+/g,'-');
     const group = c[iGroup]?.trim() || '';
     const wave = c[iWave]?.trim() || '';
-    const status = c[iStatus]?.trim() || '';
     const cond = c[iCond]?.trim() || '';
     const paid = c[iPaid]?.trim() || '';
     const notes = c[iNotes]?.trim() || '';
     const variant = iVariant >= 0 ? (c[iVariant]?.trim() || '') : '';
     const accRaw = iAcc >= 0 ? (c[iAcc]?.trim() || '') : '';
     const location = iLoc >= 0 ? (c[iLoc]?.trim() || '') : '';
+    const acquired = iAcquired >= 0 ? (c[iAcquired]?.trim() || '') : '';
 
     const k4 = normalize(name)+'|'+lineId+'|'+normalize(group)+'|'+normalize(wave);
     const k3 = normalize(name)+'|'+lineId+'|'+normalize(group);
     const k2 = normalize(name)+'|'+lineId;
-    const fig = idx4[k4] || idx3[k3] || (() => {
+    // v6.83: ID match wins when a valid ID column value is present.
+    const fig = (rowId && figById(rowId)) || idx4[k4] || idx3[k3] || (() => {
       const c2 = idx2[k2];
       if (!c2 || c2 === 'AMBIGUOUS') return null;
       return c2;
     })();
 
     if (!fig) { unmatched.push(lineName + ': ' + name + (group ? ' [' + group + ']' : '')); return; }
+    // v6.83: gap-fill support. A round-trip "fill missing data" CSV may carry
+    // only ID + the fields being filled, with no Status. If the figure is
+    // already in the collection, inherit its current status so the row patches
+    // the existing copy instead of being dropped by the `if (status)` gate.
+    const rowHasFieldData = cond || paid || variant || notes || accRaw || location || acquired;
+    let status = c[iStatus]?.trim() || '';
+    if (!status && rowHasFieldData && S.coll[fig.id]?.status) {
+      status = S.coll[fig.id].status;
+    }
     // v4.95: previously skipped any second row for the same figure, collapsing
     // multi-copy CSVs back to copy #1. Now append additional rows as new copies.
     // First-row-per-figure logic still respects overwrite vs merge semantics.
     const isFirstRow = !matchedIds.has(fig.id);
-    if (isFirstRow && !overwrite && S.coll[fig.id]?.status && status) { skipped++; return; }
+    if (isFirstRow && !overwrite && S.coll[fig.id]?.status && c[iStatus]?.trim()) { skipped++; return; }
 
     if (status) {
       const accessories = accRaw ? accRaw.split(/\s*;\s*/).filter(Boolean) : [];
@@ -2361,9 +2455,13 @@ function doImportVault(csvText, overwrite) {
       if (notes) copy.notes = notes;
       if (accessories.length) copy.accessories = accessories;
       if (location) copy.location = location;
+      // v6.83: accept Acquired only in MM/YYYY form (same validation the
+      // per-copy editor enforces); silently ignore malformed dates so a
+      // typo in the spreadsheet doesn't poison the field.
+      if (acquired && /^(0[1-9]|1[0-2])\/\d{4}$/.test(acquired)) copy.acquired = acquired;
       // Decide whether this row defines a copy (any data field set, OR
       // status is owned/for-sale which always needs at least one copy)
-      const rowDefinesCopy = cond || paid || variant || notes || accessories.length || location ||
+      const rowDefinesCopy = cond || paid || variant || notes || accessories.length || location || copy.acquired ||
                               (isFirstRow && (status === 'owned' || status === 'for-sale'));
       if (rowDefinesCopy) {
         const nextId = base.copies.reduce((m, cp) => Math.max(m, cp.id || 0), 0) + 1;
@@ -2445,5 +2543,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
 };
