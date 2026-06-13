@@ -577,6 +577,7 @@ window.patchFilter = (key, val) => {
 function renderSortSheet() {
   const opts = [
     {v:'year',l:'Year — oldest first (default)'},{v:'year-desc',l:'Year — newest first'},
+    {v:'added-desc',l:'Recently Added'},
     {v:'wave',l:'Wave'},{v:'name',l:'Name A → Z'},{v:'name-desc',l:'Name Z → A'},
     {v:'retail',l:'Price (low → high)'},{v:'retail-desc',l:'Price (high → low)'},
   ];

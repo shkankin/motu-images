@@ -52,6 +52,31 @@ const mergeCustomSublines = _mergeCustomSublines;
 // so we can age-out stale entries. Default TTL: 14 days.
 const NEW_FIG_IDS_KEY = 'motu-new-figs';
 const NEW_BADGE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+// v6.82: durable "date added to catalog" timestamps, keyed by figId. Unlike
+// motu-new-figs (which ages out after 24h to expire the NEW pill), this map
+// is permanent — it backs the "Recently Added" sort so a freshly captured
+// figure stays pinned at the top of that sort regardless of its release year.
+const FIG_ADDED_KEY = 'motu-fig-added';
+let _figAdded = null;
+function getFigAdded() {
+  if (_figAdded) return _figAdded;
+  try { _figAdded = store.get(FIG_ADDED_KEY) || {}; }
+  catch { _figAdded = {}; }
+  return _figAdded;
+}
+// Stamp any ids we haven't seen before with the current time. Existing
+// stamps are never overwritten, so a figure keeps its original add date.
+function recordFigsAdded(ids) {
+  const map = getFigAdded();
+  const now = Date.now();
+  let mutated = false;
+  for (const id of ids) {
+    if (!map[id]) { map[id] = now; mutated = true; }
+  }
+  if (mutated) { try { store.set(FIG_ADDED_KEY, map); } catch {} }
+}
+// Lookup used by the sort. Unknown ids sort last (0) under newest-first.
+function figAddedTs(id) { return getFigAdded()[id] || 0; }
 function _persistNewFigIds() {
   try {
     const existing = store.get(NEW_FIG_IDS_KEY) || {};
@@ -233,7 +258,12 @@ async function fetchFigs(manual = false, firstLoad = false) {
       const hydrated = remote.map(f => ({...f, image: f.slug ? `${IMG}/${f.slug}.jpg` : ''}));
       // Only flag as new if we had a previous catalog loaded (not first boot)
       if (prevIds.size > 100) {
-        hydrated.forEach(f => { if (!prevIds.has(f.id)) S.newFigIds.add(f.id); });
+        const freshIds = [];
+        hydrated.forEach(f => {
+          if (!prevIds.has(f.id)) { S.newFigIds.add(f.id); freshIds.push(f.id); }
+        });
+        // v6.82: durably stamp the add-date for the "Recently Added" sort.
+        if (freshIds.length) recordFigsAdded(freshIds);
       }
       // v6.28: persist newFigIds with timestamps so the NEW pill survives a
       // refresh. Auto-expire entries older than NEW_BADGE_TTL so stale "NEW"
@@ -529,8 +559,14 @@ function applyOverrides() {
   for (let i = 0; i < S.figs.length; i++) {
     const ov = _overrides[S.figs[i].id];
     if (!ov || !ov.fields) continue;
+    // v6.82: coerce numeric fields so an override that persisted year/retail
+    // as a STRING (older edit paths, imported data) doesn't reintroduce the
+    // type mismatch that split the year-grouped list into duplicate headers.
+    const fields = { ...ov.fields };
+    if (fields.year != null && fields.year !== '') fields.year = Number(fields.year);
+    if (fields.retail != null && fields.retail !== '') fields.retail = Number(fields.retail);
     // Mark with _overridden so future audits/UI can show "this entry has local edits"
-    S.figs[i] = { ...S.figs[i], ...ov.fields, _overridden: true };
+    S.figs[i] = { ...S.figs[i], ...fields, _overridden: true };
   }
 }
 // Get a single field's override value (or undefined).
@@ -1526,6 +1562,15 @@ function _computeSortedFigs() {
   else if (sb === 'wave') list.sort((a,b) => { const na=parseFloat(a.wave||''),nb=parseFloat(b.wave||''); return (isNaN(na)?99:na)-(isNaN(nb)?99:nb); });
   else if (sb === 'retail') list.sort((a,b) => (a.retail||0)-(b.retail||0));
   else if (sb === 'retail-desc') list.sort((a,b) => (b.retail||0)-(a.retail||0));
+  // v6.82: "Recently Added" — sort by durable catalog-add timestamp, newest
+  // first. Figures with no recorded add-date (the entire pre-v6.82 catalog)
+  // share ts 0 and fall to the bottom in stable order, so only genuinely
+  // newly-captured figures rise to the top. Ties broken by year-desc so the
+  // tail stays sensibly ordered.
+  else if (sb === 'added-desc') list.sort((a,b) => {
+    const d = figAddedTs(b.id) - figAddedTs(a.id);
+    return d !== 0 ? d : (b.year||0)-(a.year||0);
+  });
   // v6.65: variant nesting. Variants whose parent is also visible are pulled
   // out of sort order and re-emitted immediately after their parent, so the
   // pair always travels together regardless of sort. A variant whose parent
@@ -1854,6 +1899,7 @@ async function exportJSON() {
       overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
       soldLog: getSoldLog(),  // v6.68: completed sales for realized-gain stats
       customFigs: store.get(CUSTOM_FIGS_KEY) || [],  // v6.68: in-app variants & customs
+      figAdded: getFigAdded(),  // v6.82: durable catalog-add timestamps (Recently Added sort)
     };
     // Include custom photos as arrays of {label, dataUrl}.
     // Yield to the event loop every 25 figures so the UI can update — without
@@ -2021,6 +2067,19 @@ async function applyImportedBackup(backup) {
         rebuildFigIndex();
         _derived.invalidate();
       }
+    }
+    // v6.82: restore durable catalog-add timestamps (Recently Added sort).
+    // Merge without clobbering — if a figure already has a local add-date,
+    // keep the earlier of the two so its "added" position stays stable.
+    if (backup.figAdded && typeof backup.figAdded === 'object') {
+      const map = getFigAdded();
+      let added = false;
+      for (const [id, ts] of Object.entries(backup.figAdded)) {
+        const n = +ts;
+        if (!Number.isFinite(n)) continue;
+        if (!map[id] || n < map[id]) { map[id] = n; added = true; }
+      }
+      if (added) { try { store.set(FIG_ADDED_KEY, map); } catch {} }
     }
     const body = document.querySelector('.sheet-body');
     if (body) {

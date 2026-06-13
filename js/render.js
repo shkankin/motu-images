@@ -442,7 +442,7 @@ function renderMain() {
   const _preservedScroll = (!S.sheet && _prevCa && !_returningFromDetail && _scopeMatches) ? _prevCa.scrollTop : 0;
 
   const stats = getStats();
-  const sortLabel = S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
+  const sortLabel = S.sortBy === 'added-desc' ? 'Added' : S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
   const hf = hasFilters();
   const syncCls = S.isOffline ? 'offline' : (S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '');
   const syncClick = S.isOffline ? `toast('✗ No connection')` : `fetchFigs(true)`;
@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.81</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.82</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1071,7 +1071,7 @@ function renderSublines() {
 
 const BATCH_SIZE = 80;
 
-function renderFigRow(f) {
+function renderFigRow(f, standalone = false) {
   const c = S.coll[f.id] || {};
   const statusCls = c.status || '';
   const copyN = entryCopyCount(c);
@@ -1118,7 +1118,7 @@ function renderFigRow(f) {
     return '';
   })();
 
-  return `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
+  return `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
@@ -1174,7 +1174,7 @@ function isWishDeal(f) {
   return a != null && a <= t;
 }
 
-function renderFigCard(f) {
+function renderFigCard(f, standalone = false) {
   const c = S.coll[f.id] || {};
   const statusCls = c.status || '';
   const copyN = entryCopyCount(c);
@@ -1219,7 +1219,7 @@ function renderFigCard(f) {
   const varCount = varKids.length
     ? ` <span class="variant-count-inline" title="${varKids.length} variant${varKids.length===1?'':'s'}">⧉${varKids.length}</span>` : '';
 
-  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}${isVarFig ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}${isVarFig && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
     <div class="card-image-wrap">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
         `<div class="card-initial">${esc(f.name[0])}</div>`}
@@ -1237,8 +1237,8 @@ function renderFigCard(f) {
   </div>`;
 }
 
-function renderFigItem(f) {
-  return S.viewMode === 'grid' ? renderFigCard(f) : renderFigRow(f);
+function renderFigItem(f, standalone = false) {
+  return S.viewMode === 'grid' ? renderFigCard(f, standalone) : renderFigRow(f, standalone);
 }
 
 function yearHeader(year) {
@@ -1249,9 +1249,17 @@ function renderFigsWithHeaders(figs, renderFn) {
   const showHeaders = !S.search && (S.sortBy === 'year' || S.sortBy === 'year-desc') && S.viewMode === 'list';
   let html = '';
   let lastYear = null;
+  // v6.82: normalize year for header grouping. Catalog years are ints, but
+  // overrides/custom figures created via some paths can persist a STRING
+  // year (e.g. "2026"). Strict !== then treated "2026" and 2026 as different
+  // buckets, emitting a duplicate "2026" header that split otherwise-adjacent
+  // figures. Compare (and display) a normalized key so same-year figures
+  // group together regardless of how the value was stored.
+  const yearKey = (y) => (y === '' || y == null) ? '' : String(y).trim();
   figs.forEach(f => {
-    if (showHeaders && f.year !== lastYear) {
-      lastYear = f.year;
+    const yk = yearKey(f.year);
+    if (showHeaders && yk !== lastYear) {
+      lastYear = yk;
       html += yearHeader(f.year);
     }
     html += renderFn(f);
@@ -1347,10 +1355,10 @@ function renderFigList() {
         </div>`;
         if (isGrid) {
           html += '<div class="fig-grid">';
-          newFigs.forEach(f => { html += renderFigCard(f); });
+          newFigs.forEach(f => { html += renderFigCard(f, true); });
           html += '</div>';
         } else {
-          newFigs.forEach(f => { html += renderFigItem(f); });
+          newFigs.forEach(f => { html += renderFigItem(f, true); });
         }
         html += `<div style="height:1px;background:var(--bd);margin:12px 0"></div>`;
       }
@@ -1361,7 +1369,7 @@ function renderFigList() {
       if (recent.length) {
         recent.forEach(f => pinnedIds.add(f.id));
         html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px">Recently changed</div>`;
-        recent.forEach(f => { html += isGrid ? renderFigCard(f) : renderFigItem(f); });
+        recent.forEach(f => { html += isGrid ? renderFigCard(f, true) : renderFigItem(f, true); });
         html += `<div style="height:1px;background:var(--bd);margin:12px 0"></div>`;
       }
     }
@@ -1699,7 +1707,7 @@ function renderDetail() {
           ${icon(ICO.plus,14)} Add photo${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
         </button>` : `<div class="photo-btn" style="opacity:0.5;cursor:default">Max ${MAX_PHOTOS} photos</div>`}
       </div>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,${jId})">
+      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this,${jId})">
     </div>
     ${userPhotos.length > 0 ? `<div class="photo-labels">
       ${userPhotos.map(p => `

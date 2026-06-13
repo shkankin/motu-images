@@ -4,6 +4,21 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.82. SHELL: render.js + eggs.js + data.js +
+//     ui-sheets.js. Six-item fix batch (no new module):
+//       #1 variant figs in Recently Changed / New-to-Catalog no longer
+//          render with the orphaned variant-nested indent (standalone flag
+//          on renderFigRow/Card/Item);
+//       #3 duplicate "2026" year header — grouping now normalizes year type
+//          (string vs int), and applyOverrides coerces year/retail to Number;
+//       #4 Add-photo input drops capture="environment" so the OS offers
+//          gallery + files, not camera-only;
+//       #5 "Recently Added" sort (added-desc) backed by a durable
+//          motu-fig-added timestamp map (stamped on AF411 sync, survives
+//          backup v5 via new figAdded field) so freshly captured figures
+//          pin to the top regardless of release year;
+//       #6 missing-wave chip in Collection Stats now dismisses the sheet
+//          (openFig clears S.sheet) so the figure opens in front, not behind.
 //   • CACHE bumped to v6.81. SHELL gains js/share.js. Want-List share
 //     layer (buildShareURL/decodeShareURL, QR encoder, renderShareSheet,
 //     copy/native/trade-list share actions, PWA shortcut dispatch, and
@@ -619,7 +634,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.81';
+const CACHE = 'motu-vault-v6.82';
 
 const SHELL = [
   'motu-vault.html',

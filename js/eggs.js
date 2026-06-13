@@ -405,6 +405,10 @@ window.moveLine = (id, dir) => {
 window.openFig = id => {
   const ca = document.getElementById('contentArea');
   if (ca) S.savedScroll = ca.scrollTop;
+  // v6.82: if a sheet is open (e.g. Collection Stats → missing-wave chip),
+  // dismiss it first. Otherwise renderDetail() re-appends the sheet overlay
+  // on top of the detail screen and the figure opens hidden behind it.
+  S.sheet = null;
   S.activeFig = figById(id);
   S.screen = 'figure'; pushNav(); render();
 };
