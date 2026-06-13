@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.75</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.76</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1885,12 +1885,19 @@ function renderFigRow(f) {
         </div>`;
       })()}
     </div>
-    ${S.selectMode ? '' : `<div class="fig-actions">
+    ${S.selectMode ? '' : (() => {
+      // v6.76: a figure with variants delegates ownership state to its
+      // chips (each variant + "Standard" toggle independently), so the
+      // single right-side dot would be ambiguous — hide it for parents.
+      // Variants-as-orphan-rows and ordinary figures keep their dot.
+      if (!f.variantOf && figVariants(f.id).length) return '';
+      return `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
       ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
-    </div>`}
+    </div>`;
+    })()}
   </div>`;
 }
 
