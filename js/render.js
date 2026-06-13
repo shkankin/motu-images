@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.77</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.78</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -892,6 +892,18 @@ function renderContent() {
 // 150 per run (re-tap to continue on huge collections). Updates the stats
 // sheet in place when done.
 let _bulkFetchRunning = false;
+// v6.78: expand/collapse a Waves-in-Progress row to reveal missing figures.
+// DOM-only toggle (no render) so the sheet scroll position and other open
+// rows are preserved.
+window.toggleWaveExpand = (wid) => {
+  const panel = document.getElementById(wid);
+  const caret = document.getElementById(wid + '_caret');
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (caret) caret.style.transform = open ? '' : 'rotate(90deg)';
+};
+
 window.fetchAllOwnedPricing = async () => {
   if (_bulkFetchRunning) { toast('Already fetching…'); return; }
   if (!isPricingConfigured()) { toast('Configure a pricing backend first (Settings → Pricing Backend)'); return; }
@@ -1037,19 +1049,21 @@ function renderStatsSheet() {
 
   // ── v6.68: Waves in Progress ─────────────────────────────────────
   // Collectors complete by wave; this surfaces every line+wave the user
-  // has started but not finished (0 < owned < total). Tapping a row jumps
-  // to a full-wave checklist (goToWave: filterLine + filterWave, all
-  // statuses visible). Fully-owned and untouched waves are omitted —
-  // they're not actionable.
+  // has started but not finished (0 < owned < total). v6.78: each row is
+  // now tap-to-expand, listing the specific missing figures inline so the
+  // section answers "what am I missing" without leaving the sheet. The
+  // figure name still deep-links to that figure; a "View whole wave"
+  // affordance jumps to the filtered checklist (goToWave).
   {
-    const waveAgg = {}; // "line\x00wave" → {line, wave, total, owned}
+    const waveAgg = {}; // "line\x00wave" → {line, wave, total, owned, missing:[figs]}
     for (const f of S.figs) {
       if (figIsHidden(f) || !f.wave) continue;
       const k = f.line + '\x00' + f.wave;
-      const a = waveAgg[k] || (waveAgg[k] = { line: f.line, wave: String(f.wave), total: 0, owned: 0 });
+      const a = waveAgg[k] || (waveAgg[k] = { line: f.line, wave: String(f.wave), total: 0, owned: 0, missing: [] });
       a.total++;
       const st = S.coll[f.id]?.status;
       if (st === 'owned' || st === 'for-sale') a.owned++;
+      else a.missing.push(f);
     }
     const lineIdx = id => { const i = S.lineOrder.indexOf(id); return i === -1 ? 99 : i; };
     const inProgress = Object.values(waveAgg)
@@ -1059,22 +1073,39 @@ function renderStatsSheet() {
         a.wave.localeCompare(b.wave));
     if (inProgress.length) {
       const shown = inProgress.slice(0, 14);
-      html += `<div class="label text-upper text-dim text-xs" style="margin:14px 0 10px">Waves in Progress</div>`;
+      html += `<div class="label text-upper text-dim text-xs" style="margin:14px 0 4px">Waves in Progress</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Tap a wave to see what you're missing.</div>`;
       shown.forEach(a => {
         const pctW = Math.round(a.owned / a.total * 100);
         const missing = a.total - a.owned;
-        html += `<button onclick="goToWave(${jsArg(a.line)},${jsArg(a.wave)})" style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(ln(a.line))} · Wave ${esc(a.wave)}</div>
-            <div style="height:3px;background:var(--bd);border-radius:2px;overflow:hidden">
-              <div style="height:100%;width:${pctW}%;background:var(--acc);border-radius:2px"></div>
+        const wid = `wave_${esc(a.line)}_${esc(a.wave)}`.replace(/[^\w]/g, '');
+        // Missing-figure chips, name-sorted; each deep-links to the figure.
+        const missList = a.missing
+          .slice()
+          .sort((x, y) => x.name.localeCompare(y.name))
+          .map(m => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(m.id)}" title="${esc(m.name)}">${esc(m.name)}</button>`)
+          .join('');
+        html += `<div class="wave-row">
+          <button class="wave-row-head" onclick="toggleWaveExpand('${wid}')">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(ln(a.line))} · Wave ${esc(a.wave)}</div>
+              <div style="height:3px;background:var(--bd);border-radius:2px;overflow:hidden">
+                <div style="height:100%;width:${pctW}%;background:var(--acc);border-radius:2px"></div>
+              </div>
             </div>
+            <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:8px">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:var(--gold)">${a.owned}/${a.total}</div>
+                <div style="font-size:10px;color:var(--t3)">${missing} to go</div>
+              </div>
+              <span class="wave-caret" id="${wid}_caret" style="color:var(--t3);transition:transform 0.2s">${icon(ICO.chevR, 14)}</span>
+            </div>
+          </button>
+          <div class="wave-missing" id="${wid}" style="display:none">
+            <div class="wave-missing-chips">${missList}</div>
+            <button class="wave-viewall" onclick="goToWave(${jsArg(a.line)},${jsArg(a.wave)})">View whole wave →</button>
           </div>
-          <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:12px;font-weight:700;color:var(--gold)">${a.owned}/${a.total}</div>
-            <div style="font-size:10px;color:var(--t3)">${missing} to go</div>
-          </div>
-        </button>`;
+        </div>`;
       });
       if (inProgress.length > shown.length) {
         html += `<div style="font-size:11px;color:var(--t3);padding:8px 0">+${inProgress.length - shown.length} more in-progress waves</div>`;

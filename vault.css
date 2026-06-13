@@ -3362,3 +3362,30 @@ html {
   background: var(--bg3); color: var(--gn);
   font-size: 12px; font-weight: 600;
 }
+
+/* ── v6.78: Waves in Progress — expandable missing-figure detail ──── */
+.wave-row { border-bottom: 1px solid color-mix(in srgb, var(--bd) 30%, transparent); }
+.wave-row-head {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border: none; background: none; text-align: left; cursor: pointer;
+}
+.wave-missing { padding: 4px 0 12px; }
+.wave-missing-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.wave-missing-chip {
+  display: inline-flex; align-items: center;
+  padding: 4px 11px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; font-family: 'Outfit', sans-serif;
+  background: color-mix(in srgb, var(--rd) 12%, var(--bg3));
+  color: color-mix(in srgb, var(--rd) 85%, white);
+  border: 1px solid color-mix(in srgb, var(--rd) 35%, transparent);
+  cursor: pointer; max-width: 100%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wave-missing-chip:active { transform: scale(0.97); }
+.wave-viewall {
+  display: inline-flex; align-items: center;
+  padding: 7px 14px; border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--acc) 45%, transparent);
+  background: var(--bg3); color: var(--acc);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
