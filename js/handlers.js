@@ -39,6 +39,15 @@ import { checkCompletion } from './eggs.js';
 // carrying variantOf/variantName so it nests under the parent. If invoked
 // on a figure that is itself a variant, the new one attaches to the same
 // root — no variant-of-variant chains.
+// v6.75: keep the figures cache in sync with custom additions so a cold
+// start never loses them (belt-and-braces with the boot-merge in app.js).
+function _refreshFigCache() {
+  try {
+    const cached = store.get('motu-figs-cache');
+    if (cached) { cached.rows = S.figs; store.set('motu-figs-cache', cached); }
+  } catch {}
+}
+
 window.addVariant = async (parentId) => {
   const parent = figById(parentId);
   if (!parent) return;
@@ -69,6 +78,7 @@ window.addVariant = async (parentId) => {
   store.set(CUSTOM_FIGS_KEY, arr);
   S.figs.push({ ...entry, image: '' });
   rebuildFigIndex();
+  _refreshFigCache();
   _derived.invalidate();
   haptic && haptic(15);
   toast(`✓ Variant added — “${nm}”`);
@@ -133,6 +143,7 @@ window.deleteCustomFig = async (figId) => {
   if (S.coll[figId]) { delete S.coll[figId]; saveColl(); }
   try { await photoStore.delAll(figId); } catch {}
   rebuildFigIndex();
+  _refreshFigCache();
   _derived.invalidate();
   if (S.screen === 'figure' && S.activeFig?.id === figId) window.closeDetail?.();
   toast('✓ Deleted');

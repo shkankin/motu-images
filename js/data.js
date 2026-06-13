@@ -1535,10 +1535,13 @@ function _computeSortedFigs() {
     const idsIn = new Set(list.map(f => f.id));
     const out = [];
     for (const f of list) {
-      if (f.variantOf && idsIn.has(f.variantOf)) continue; // emitted under parent below
+      // v6.75: variants whose parent is visible are NO LONGER emitted as
+      // their own rows — the parent row renders them as inline chips. A
+      // variant only appears standalone when its parent is filtered out of
+      // the current view (so it isn't silently hidden). Stats still count
+      // variants individually because getStats walks S.coll, not this list.
+      if (f.variantOf && idsIn.has(f.variantOf)) continue;
       out.push(f);
-      const vars = _variantsByParent.get(f.id);
-      if (vars) for (const v of vars) if (idsIn.has(v.id)) out.push(v);
     }
     list = out;
   }
@@ -1809,7 +1812,7 @@ window.buildInsuranceReport = async () => {
   @media print{.fig{page-break-inside:avoid}}
 </style></head><body>
 <h1>Collection Inventory</h1>
-<div class="sub">Generated ${now.toLocaleString()} · MOTU Vault · For insurance/documentation purposes</div>
+<div class="sub">Generated ${now.toLocaleString()} · MOTU Collector · For insurance/documentation purposes</div>
 <div class="totals">
   <strong>${figs.length}</strong> figures · <strong>${copyCount}</strong> copies${photoN ? ` · ${photoN} photographed` : ''}<br>
   Total paid (where recorded): <strong>$${totalPaid.toFixed(2)}</strong><br>

@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.74</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.75</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1484,7 +1484,7 @@ window.copyShareURL = () => {
 window.nativeShare = () => {
   const url = buildShareURL();
   if (!url || !navigator.share) return;
-  navigator.share({ title: 'MOTU Vault — Want List', url })
+  navigator.share({ title: 'MOTU Collector — Want List', url })
     .catch(() => {});
 };
 
@@ -1576,7 +1576,7 @@ window.shareTradeList = async () => {
   let text = `MY TRADE LIST — ${new Date().toLocaleDateString()}\n`;
   if (saleLines.length) text += `\nFOR SALE (${saleLines.length}):\n${saleLines.join('\n')}\n`;
   if (extraLines.length) text += `\nEXTRAS / FOR TRADE (${extraLines.length}):\n${extraLines.join('\n')}\n`;
-  text += `\n— via MOTU Vault`;
+  text += `\n— via MOTU Collector`;
   if (navigator.share) {
     try { await navigator.share({ text }); return; } catch (e) { if (e?.name === 'AbortError') return; }
   }
@@ -1864,6 +1864,26 @@ function renderFigRow(f) {
         ${f.wave ? `<span>· W${esc(f.wave)}</span>` : ''}
         ${f.year ? `<span>· ${f.year}</span>` : ''}
       </div>
+      ${(() => {
+        // v6.75: variant chips. When a figure has variants, render the whole
+        // family as inline pills directly under the metadata — "Standard"
+        // (the parent itself) plus one chip per variant. Each chip lights up
+        // neon-green when that specific figure is owned, and tapping it opens
+        // that figure's detail. This replaces the old separate nested rows.
+        if (f.variantOf) return '';  // variants don't render as their own rows
+        const vars = figVariants(f.id);
+        if (!vars.length) return '';
+        const chip = (m, label) => {
+          const owned = S.coll[m.id]?.status === 'owned';
+          const forSale = S.coll[m.id]?.status === 'for-sale';
+          const cls = owned ? ' owned' : forSale ? ' for-sale' : '';
+          return `<button class="variant-chip-pill${cls}" data-action="open-fig" data-fig-id="${esc(m.id)}" title="${esc(m.name)}">${esc(label)}</button>`;
+        };
+        return `<div class="variant-chip-row">
+          ${chip(f, 'Standard')}
+          ${vars.map(v => chip(v, v.variantName || v.name)).join('')}
+        </div>`;
+      })()}
     </div>
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}

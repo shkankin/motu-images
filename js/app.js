@@ -145,7 +145,24 @@ async function init() {
   // Load cached figs
   const cached = store.get(CACHE_KEY);
   if (cached?.rows?.length) {
-    S.figs = cached.rows.map(f => ({...f, image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')}));
+    // v6.75 BUG FIX: custom figures/variants (CUSTOM_FIGS_KEY) were only
+    // merged into S.figs during a full network sync. Adding a variant
+    // writes it to CUSTOM_FIGS_KEY + S.figs but does NOT rewrite CACHE_KEY,
+    // so on the next cold start the cached rows are stale and the variant
+    // vanishes until the next successful sync (its photo survived because
+    // photos live in their own store — exactly the symptom reported).
+    // Re-merge the custom store over the cached rows here, every boot.
+    const cachedRows = cached.rows.map(f => ({...f, image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')}));
+    const cachedIds = new Set(cachedRows.map(f => f.id));
+    const localCustom = (store.get('motu-custom-figs') || []).map(f => ({
+      ...f,
+      source: 'custom-local',
+      id: f.id && f.id.startsWith('custom-') ? f.id : 'custom-' + f.id,
+      year: f.year ? Number(f.year) : f.year,
+      retail: f.retail ? Number(f.retail) : f.retail,
+      image: f.slug ? `${IMG}/${f.slug}.jpg` : (f.image || ''),
+    })).filter(f => !cachedIds.has(f.id));
+    S.figs = [...cachedRows, ...localCustom];
     rebuildFigIndex();
     S.syncTs = cached.ts;
     S.loaded = true;

@@ -4,6 +4,13 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.75. SHELL: app.js + data.js + render.js +
+//     state.js + ui-sheets.js + vault.css + manifest.json + motu-vault.html.
+//     CRITICAL: custom variants lost on cold start — boot now re-merges
+//     CUSTOM_FIGS_KEY over cached rows (+ cache refresh on add/delete).
+//     App renamed MOTU Vault → MOTU Collector (manifest + about + shares).
+//     Snake Mountain theme removed (saved theme sanitized). Variant rows
+//     replaced by inline owned-aware chips on the parent row.
 //   • CACHE bumped to v6.74. SHELL: handlers.js + render.js + vault.css.
 //     Long-press fix round 2: fire-time validation (touched node must
 //     still be in the DOM — kills the rapid-cycle race that survived
@@ -585,7 +592,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.74';
+const CACHE = 'motu-vault-v6.75';
 
 const SHELL = [
   'motu-vault.html',

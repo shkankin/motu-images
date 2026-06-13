@@ -106,7 +106,6 @@ const THEMES = {
   skeletor: {name:'Skeletor',      bg:'#090212', acc:'#b14eff', gold:'#f2e162', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
   heman:    {name:'He-Man',        bg:'#140803', acc:'#cbd5e1', gold:'#ff8a1f', icons:['he-man-icon.png']},
   grayskull:{name:'Grayskull',     bg:'#030d06', acc:'#a3e635', gold:'#b8e070', icons:['grayskull-icon.png']},
-  snake:    {name:'Snake Mountain',bg:'#120303', acc:'#fde047', gold:'#d8c089', icons:['skeletor-icon.png']},
 };
 
 const SUBLINES = {
@@ -314,7 +313,7 @@ const S = {
   searchScope: store.get('motu-search-scope') || 'all',
   sortBy: store.get('motu-sort') || 'year',
   viewMode: (v => (v === 'grid' || v === 'list') ? v : 'list')(store.get('motu-view')),  // list | grid — v6.72: sanitized (short-lived 'text' mode removed)
-  theme: store.get('motu-theme') || 'eternia',
+  theme: (t => THEMES[t] ? t : 'eternia')(store.get('motu-theme')),  // v6.75: fall back if saved theme was removed (e.g. snake)
   // v6.62: merge any line ids from LINES that are missing from the stored
   // order. Previously, when a new line was added (e.g. cross-brand in v6.61),
   // users with an existing stored lineOrder array got the new line appended

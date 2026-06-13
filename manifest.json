@@ -1,6 +1,6 @@
 {
-  "name": "MOTU Vault",
-  "short_name": "MOTU Vault",
+  "name": "MOTU Collector",
+  "short_name": "MOTU Collector",
   "description": "Masters of the Universe figure catalog and collection tracker",
   "start_url": "https://shkankin.github.io/motu-images/motu-vault.html",
   "scope": "https://shkankin.github.io/motu-images/",

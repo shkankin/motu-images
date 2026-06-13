@@ -225,7 +225,7 @@ function renderMenuSheet() {
     </button>
     <button onclick="openSheet('about')" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc);font-size:18px">ⓘ</span>
-      <span style="flex:1">About MOTU Vault</span>
+      <span style="flex:1">About MOTU Collector</span>
       <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
     </button>`;
   return html;
@@ -365,7 +365,7 @@ function renderAboutSheet() {
     <img src="masters_logo.png" alt="Masters of the Universe"
       onerror="this.style.display='none'"
       style="max-width:240px;width:75%;height:auto;margin:0 auto 16px;display:block;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5))">
-    <div class="font-display text-gold" style="font-size:24px;letter-spacing:1.5px;margin-bottom:4px">MOTU VAULT</div>
+    <div class="font-display text-gold" style="font-size:24px;letter-spacing:1.5px;margin-bottom:4px">MOTU COLLECTOR</div>
     <div style="font-size:12px;color:var(--t3);letter-spacing:0.5px">Version ${esc(version)}</div>
   </div>
 
@@ -583,7 +583,7 @@ function renderSortSheet() {
 
 function renderImportSheet() {
   return `<p class="text-md text-muted" style="margin-bottom:16px;line-height:1.6">
-    Import from ActionFigure411.com CSV, a MOTU Vault CSV export, a JSON collection backup, or an app settings file. The format is auto-detected.
+    Import from ActionFigure411.com CSV, a MOTU Collector CSV export, a JSON collection backup, or an app settings file. The format is auto-detected.
   </p>
   <div class="overwrite-toggle" onclick="this.querySelector('.checkbox').classList.toggle('checked')">
     <div class="checkbox"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
