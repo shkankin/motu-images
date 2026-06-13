@@ -4,6 +4,12 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.81. SHELL gains js/share.js. Want-List share
+//     layer (buildShareURL/decodeShareURL, QR encoder, renderShareSheet,
+//     copy/native/trade-list share actions, PWA shortcut dispatch, and
+//     checkShareLink + renderWantListViewSheet, ~430 lines) extracted from
+//     render.js into its own module. render.js 2288→1859 lines. One-way
+//     import (share→render for toast); render()/openSheet() via window.*.
 //   • CACHE bumped to v6.80. SHELL gains js/stats.js. Collection Stats
 //     sheet (renderStatsSheet + fetchAllOwnedPricing + toggleWaveExpand,
 //     ~330 lines) extracted from render.js into its own module. render.js
@@ -613,7 +619,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.80';
+const CACHE = 'motu-vault-v6.81';
 
 const SHELL = [
   'motu-vault.html',
@@ -632,6 +638,7 @@ const SHELL = [
   'js/tutorial.js',
   'js/pricing.js',
   'js/stats.js',
+  'js/share.js',
   'js/delegate.js',
   'js/delegate-handlers.js',
 ];

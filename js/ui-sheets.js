@@ -30,10 +30,13 @@ import {
   _derived, clearOverrides, backupDue, getBackupMeta,
 } from './data.js';
 import {
-  renderQR, renderShareSheet,
-  renderKidsCoreAdminSheet, renderWantListViewSheet, buildShareURL,
+  renderKidsCoreAdminSheet,
   renderContent, render, appConfirm,
 } from './render.js';
+import {
+  renderQR, renderShareSheet,
+  renderWantListViewSheet, buildShareURL,
+} from './share.js';
 import { renderStatsSheet } from './stats.js';
 import { pushNav } from './handlers.js';
 

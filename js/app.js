@@ -21,8 +21,10 @@ import {
 } from './data.js';
 import {
   render, toast, haptic, showUpdateBanner,
-  checkShareLink, checkShortcutAction,
 } from './render.js';
+import {
+  checkShareLink, checkShortcutAction,
+} from './share.js';
 import {
   SND, preloadSound, preloadImage, getThemeSounds,
 } from './eggs.js';
