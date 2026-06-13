@@ -334,22 +334,6 @@ window.openAF411 = figId => {
   window.open('https://www.actionfigure411.com/masters-of-the-universe/all-action-figures.php', '_blank', 'noopener');
 };
 
-window.searchCharacter = name => {
-  // Extract base character name: strip parenthetical suffixes, "Battle Armor", "200x" prefixes etc.
-  let base = name.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*-\s*(Battle|Deluxe|Mega|Mini|Giant|Lord|King|Prince).*$/i, '').trim();
-  // Use first two words if name is long (e.g. "Battle Armor He-Man" → "He-Man")
-  const parts = base.split(/\s+/);
-  if (parts.length > 2) {
-    // Try to find the core name — usually the last hyphenated word or proper noun
-    const hyphenated = parts.find(p => p.includes('-'));
-    if (hyphenated) base = hyphenated;
-    else base = parts.slice(-2).join(' ');
-  }
-  S.screen = 'main'; S.search = base; S.tab = 'all';
-  S.activeLine = null; S.activeSubline = null;
-  S.savedScroll = 0; S.barsHidden = false; S.searchBarHidden = false;
-  pushNav(); render();
-};
 // v4.91: Breadcrumb-specific handlers. Previously "Lines" used goBack() and
 // "Origins" used history.back() via clearSubline — both rely on browser
 // history being in the right state, which isn't guaranteed (e.g. arriving

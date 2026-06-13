@@ -30,10 +30,11 @@ import {
   _derived, clearOverrides, backupDue, getBackupMeta,
 } from './data.js';
 import {
-  renderQR, renderShareSheet, renderStatsSheet,
+  renderQR, renderShareSheet,
   renderKidsCoreAdminSheet, renderWantListViewSheet, buildShareURL,
   renderContent, render, appConfirm,
 } from './render.js';
+import { renderStatsSheet } from './stats.js';
 import { pushNav } from './handlers.js';
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──

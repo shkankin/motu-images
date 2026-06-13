@@ -884,7 +884,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-meta .line-name { color: var(--acc); font-weight: 600; }
 
 .fig-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.fig-var-badge { font-size: 9px; font-weight: 700; color: var(--gold); letter-spacing: 0.5px; }
 .fig-status-dot { width: 10px; height: 10px; border-radius: 50%; }
 .fig-status-dot.owned { background: var(--gn); }
 .fig-status-dot.wishlist { background: var(--bl); }
@@ -1328,75 +1327,6 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .detail-retail .mv-inline.mv-loading { color: var(--t3); }
 .detail-retail .mv-inline.mv-inline-dim .price { opacity: 0.6; }
 
-/* v6.28: Market Value block (eBay sold avg, etc.) */
-.market-value-block {
-  margin: 0 16px 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--gold) 6%, var(--bg2));
-  border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--bd));
-  font-size: 13px;
-}
-.market-value-block.placeholder { opacity: 0.6; }
-.market-value-block.stale { opacity: 0.85; }
-.market-value-block .mv-header {
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 8px;
-}
-.market-value-block .mv-title {
-  font-weight: 700; color: var(--gold); font-size: 12px;
-  letter-spacing: 0.5px; text-transform: uppercase;
-}
-.market-value-block .mv-source { font-size: 11px; flex: 1; }
-.market-value-block .mv-age { font-size: 11px; }
-.market-value-block .mv-row {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 4px 0;
-}
-.market-value-block .mv-label {
-  width: 56px; font-size: 12px; color: var(--t3);
-  text-transform: uppercase; letter-spacing: 0.4px; font-weight: 600;
-}
-.market-value-block .mv-value {
-  font-size: 16px; font-weight: 700; color: var(--t1);
-}
-.market-value-block .mv-meta {
-  margin-left: auto; font-size: 11px; color: var(--t3);
-}
-.market-value-block .mv-good { color: var(--gn); font-weight: 700; }
-.market-value-block .mv-warn { color: var(--rd); font-weight: 700; }
-.market-value-block .mv-flat { color: var(--t3); }
-.market-value-block .mv-row.mv-active { background: var(--bg3); border-radius: 8px; margin: 0 -8px; padding: 4px 8px; }
-.market-value-block .mv-row.mv-active .mv-label { color: var(--t1); font-weight: 600; }
-.market-value-block .mv-row.mv-active .mv-value { color: var(--t1); }
-.market-value-block .mv-row.mv-dim { opacity: 0.4; }
-.market-value-block .mv-note {
-  margin-top: 6px; line-height: 1.5; font-size: 11px;
-}
-/* v6.56: confidence badge — pill rendered inline in .mv-meta */
-.market-value-block .mv-confidence {
-  display: inline-block; margin-left: 6px; padding: 1px 6px;
-  border-radius: 6px; font-size: 10px; font-weight: 600;
-  letter-spacing: 0.3px; text-transform: uppercase;
-  vertical-align: 1px;
-}
-.market-value-block .mv-conf-low {
-  background: color-mix(in srgb, var(--rd) 18%, transparent);
-  color: var(--rd);
-}
-.market-value-block .mv-conf-medium {
-  background: color-mix(in srgb, var(--gold, #d4a017) 18%, transparent);
-  color: var(--gold, #d4a017);
-}
-.market-value-block .mv-actions {
-  margin-top: 8px; display: flex; justify-content: flex-end;
-}
-.market-value-block .mv-actions button {
-  padding: 5px 10px; border-radius: 7px;
-  border: 1px solid var(--bd); background: var(--bg3);
-  color: var(--t3); font-size: 11px; font-weight: 500;
-}
-.market-value-block .mv-actions button:active { background: var(--bg2); }
 
 .status-grid {
   padding: 0 16px 16px;
@@ -2678,7 +2608,6 @@ summary {
 /* Exempt small inline pills / chips that have spacing exception */
 .chip,
 .copy-count-inline,
-.fig-var-badge,
 .new-badge,
 .new-count-badge {
   min-height: 0;

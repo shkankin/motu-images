@@ -4,6 +4,16 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.80. SHELL gains js/stats.js. Collection Stats
+//     sheet (renderStatsSheet + fetchAllOwnedPricing + toggleWaveExpand,
+//     ~330 lines) extracted from render.js into its own module. render.js
+//     2616→2289 lines. No behavior change except the activity chart now
+//     reads the event log directly (was a defensive always-empty guard).
+//   • CACHE bumped to v6.79. SHELL: render.js + eggs.js + vault.css.
+//     Dead-code cleanup (no behavior change): removed orphaned
+//     .market-value-block CSS (~69 lines), retired .fig-var-badge rules,
+//     deleted unused window.searchCharacter, trimmed render.js export
+//     list to externally-consumed names only.
 //   • CACHE bumped to v6.78. SHELL: render.js + vault.css. Waves in
 //     Progress rows now expand (toggleWaveExpand) to list the specific
 //     missing figures as deep-link chips + 'View whole wave' button.
@@ -603,7 +613,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.78';
+const CACHE = 'motu-vault-v6.80';
 
 const SHELL = [
   'motu-vault.html',
@@ -621,6 +631,7 @@ const SHELL = [
   'js/eggs.js',
   'js/tutorial.js',
   'js/pricing.js',
+  'js/stats.js',
   'js/delegate.js',
   'js/delegate-handlers.js',
 ];

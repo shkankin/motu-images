@@ -288,6 +288,7 @@ const PATH_MAP = {
   'ui-sheets.js':         'js/ui-sheets.js',
   'photos.js':            'js/photos.js',
   'pricing.js':           'js/pricing.js',
+  'stats.js':             'js/stats.js',
   'tutorial.js':          'js/tutorial.js',
   'pricing-worker.js':    'backend/pricing-worker.js',
   'wrangler.toml':        'backend/wrangler.toml',
@@ -361,8 +362,14 @@ dropZone.addEventListener('drop', e => {
 
 function onFilePick(fileList) {
   for (const f of fileList) {
+    // v2: resolution order — explicit PATH_MAP entry first, then sensible
+    // fallbacks so new files don't silently skip. Any unmapped *.js routes
+    // to js/<name> (every app module lives there), images keep their name
+    // at repo root, and *.json at root. Anything else stays unknown.
     const repoPath = PATH_MAP[f.name]
-      || (f.name.match(/\.jpe?g$/i) ? f.name : null);
+      || (/\.js$/i.test(f.name) ? 'js/' + f.name : null)
+      || (/\.jpe?g$/i.test(f.name) ? f.name : null)
+      || (/\.json$/i.test(f.name) ? f.name : null);
     files.set(f.name, { file: f, repoPath, status: 'pending' });
   }
   renderFileList();
