@@ -425,22 +425,58 @@ def download_image(slug, af411_url):
 # ─── v1.6: UPC enrichment ─────────────────────────────────────────
 # The checklist pages the scraper normally reads do NOT carry UPCs — those
 # live on each figure's individual detail page, in a line that reads like:
-#   **Retail**: $6.49 **UPC**: 065616000011 **Series:** Original ...
+#   <strong>UPC</strong>: 065616000011 <strong>Series:</strong> Original ...
 # So UPC capture costs one extra request PER FIGURE. To keep that cost sane,
 # enrichment is opt-in (--upc) and incremental: we only fetch the detail page
 # for figures that don't already have a upc, so the first run backfills and
 # later runs touch only genuinely new figures.
-_UPC_RE = re.compile(r'UPC[:\s*]*?(\d{8,14})', re.I)
+#
+# v1.6.1: the detail-page HTML wraps the label in tags (<b>/<strong>) and uses
+# &nbsp; entities, so a naive "UPC...digits" regex on raw HTML never matched
+# (captured 0/50 on the first live run). We now strip tags + decode entities
+# into plain text first, THEN match — the same clean-text form the format was
+# verified against. The "12–14 digit number near a UPC label" pattern is the
+# primary; a bare 12-digit fallback is intentionally NOT used (too many false
+# positives from ASINs/DPCIs/prices).
+import html as _html_mod
 
-def fetch_upc(af411_url):
-    """Fetch a figure's detail page and extract its UPC (8–14 digits).
-    Returns the UPC string, or None if the page can't be read or has none."""
-    url = af411_url if af411_url.startswith("http") else f"{BASE}{af411_url}"
-    html = fetch_page(url)
-    if not html:
+_TAG_RE = re.compile(r'<[^>]+>')
+_UPC_LABEL_RE = re.compile(r'UPC\b[^0-9]{0,12}(\d{8,14})', re.I)
+
+def _page_to_text(raw):
+    """Strip HTML tags + decode entities + collapse whitespace → plain text."""
+    txt = _TAG_RE.sub(' ', raw)
+    txt = _html_mod.unescape(txt)
+    txt = re.sub(r'\s+', ' ', txt)
+    return txt
+
+def extract_upc(raw_html):
+    """Pull a UPC out of a detail page's raw HTML. Returns the digit string or
+    None. Exposed separately from fetch so it's unit-testable without network."""
+    if not raw_html:
         return None
-    m = _UPC_RE.search(html)
+    text = _page_to_text(raw_html)
+    m = _UPC_LABEL_RE.search(text)
     return m.group(1) if m else None
+
+def fetch_upc(af411_url, debug=False):
+    """Fetch a figure's detail page and extract its UPC (8–14 digits).
+    Returns the UPC string, or None if the page can't be read or has none.
+    When debug=True and no UPC is found, prints a snippet around the first
+    'UPC' occurrence so a format change is easy to diagnose from CI logs."""
+    url = af411_url if af411_url.startswith("http") else f"{BASE}{af411_url}"
+    raw = fetch_page(url)
+    if not raw:
+        return None
+    upc = extract_upc(raw)
+    if upc is None and debug:
+        text = _page_to_text(raw)
+        i = text.lower().find('upc')
+        if i >= 0:
+            print(f"      [debug] context: …{text[max(0,i-20):i+40]}…")
+        else:
+            print(f"      [debug] no 'UPC' substring on page ({len(text)} chars of text)")
+    return upc
 
 
 def enrich_upcs(figs, existing_by_id, delay, limit=None):
@@ -465,14 +501,18 @@ def enrich_upcs(figs, existing_by_id, delay, limit=None):
         return 0
     print(f"  🏷  UPC: fetching {len(need)} detail page(s)…")
     got = 0
+    misses = 0
     for i, f in enumerate(need):
-        upc = fetch_upc(f["af411_url"])
+        # Print page-context for the first few misses only, so a format change
+        # is visible in CI logs without flooding them.
+        upc = fetch_upc(f["af411_url"], debug=(misses < 5))
         if upc:
             f["upc"] = upc
             got += 1
             print(f"    + {f['id']}: {upc}")
         else:
             print(f"    – {f['id']}: no UPC found")
+            misses += 1
         if i < len(need) - 1:
             time.sleep(delay)
     print(f"  ✓ UPC: captured {got}/{len(need)}")
