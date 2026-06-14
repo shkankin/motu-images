@@ -11,6 +11,17 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.6 (2026-06-14)
+    - UPC capture. New --upc flag fetches each figure's AF411 detail page and
+      extracts its UPC barcode (the checklist pages used for normal scraping
+      don't carry UPCs — only the per-figure detail pages do). Incremental:
+      figures that already have a upc are skipped, so the first --upc run
+      backfills the catalog and later runs only fetch genuinely new figures.
+      --upc-limit N caps detail-page fetches per run for a gentle first pass.
+      upc flows into new figures.json/pending records and is refreshed onto
+      pending entries; the app (v6.83+) searches figure.upc, so a scanned or
+      typed barcode jumps straight to the figure.
+
   v1.4 (2026-04-27)
     - Review queue. New figures route to figures-pending.json instead of
       figures.json. Existing figures still get metadata updates applied
@@ -411,6 +422,63 @@ def download_image(slug, af411_url):
         return False
 
 
+# ─── v1.6: UPC enrichment ─────────────────────────────────────────
+# The checklist pages the scraper normally reads do NOT carry UPCs — those
+# live on each figure's individual detail page, in a line that reads like:
+#   **Retail**: $6.49 **UPC**: 065616000011 **Series:** Original ...
+# So UPC capture costs one extra request PER FIGURE. To keep that cost sane,
+# enrichment is opt-in (--upc) and incremental: we only fetch the detail page
+# for figures that don't already have a upc, so the first run backfills and
+# later runs touch only genuinely new figures.
+_UPC_RE = re.compile(r'UPC[:\s*]*?(\d{8,14})', re.I)
+
+def fetch_upc(af411_url):
+    """Fetch a figure's detail page and extract its UPC (8–14 digits).
+    Returns the UPC string, or None if the page can't be read or has none."""
+    url = af411_url if af411_url.startswith("http") else f"{BASE}{af411_url}"
+    html = fetch_page(url)
+    if not html:
+        return None
+    m = _UPC_RE.search(html)
+    return m.group(1) if m else None
+
+
+def enrich_upcs(figs, existing_by_id, delay, limit=None):
+    """Populate `upc` on the given scraped figures. Skips any figure that
+    already has a upc (on the scraped record or its existing figures.json
+    counterpart). Polite delay between detail-page fetches. `limit` caps how
+    many detail pages we'll fetch in one run (None = no cap)."""
+    need = []
+    for f in figs:
+        if f.get("upc"):
+            continue
+        prior = existing_by_id.get(f["id"])
+        if prior and prior.get("upc"):
+            f["upc"] = prior["upc"]   # carry forward, no fetch needed
+            continue
+        if f.get("af411_url"):
+            need.append(f)
+    if limit is not None:
+        need = need[:limit]
+    if not need:
+        print("  ✓ UPC: nothing to fetch (all figures already have one)")
+        return 0
+    print(f"  🏷  UPC: fetching {len(need)} detail page(s)…")
+    got = 0
+    for i, f in enumerate(need):
+        upc = fetch_upc(f["af411_url"])
+        if upc:
+            f["upc"] = upc
+            got += 1
+            print(f"    + {f['id']}: {upc}")
+        else:
+            print(f"    – {f['id']}: no UPC found")
+        if i < len(need) - 1:
+            time.sleep(delay)
+    print(f"  ✓ UPC: captured {got}/{len(need)}")
+    return got
+
+
 # ─── Main ─────────────────────────────────────────────────────────
 
 def main():
@@ -426,6 +494,13 @@ def main():
     parser.add_argument("--no-pending", action="store_true",
                         help="v1.4: write new figures directly to figures.json "
                              "instead of routing them to the review queue.")
+    parser.add_argument("--upc", action="store_true",
+                        help="v1.6: also fetch each figure's detail page to capture "
+                             "its UPC barcode. Incremental — skips figures that "
+                             "already have a upc. Costs one request per new figure.")
+    parser.add_argument("--upc-limit", type=int, default=None,
+                        help="v1.6: cap how many UPC detail-pages to fetch this run "
+                             "(useful for a gentle first backfill, e.g. --upc-limit 50).")
     args = parser.parse_args()
 
     print("═" * 60)
@@ -482,6 +557,13 @@ def main():
         all_scraped.extend(figs)
         if i < len(lines_to_scrape) - 1:
             time.sleep(args.delay)
+
+    # v1.6: optional UPC enrichment. Runs against everything just scraped,
+    # but only fetches detail pages for figures that still lack a upc (new
+    # ones, plus a one-time backfill of existing figures missing it).
+    if args.upc:
+        print(f"\n🏷  UPC enrichment…\n")
+        enrich_upcs(all_scraped, existing_by_id, args.delay, limit=args.upc_limit)
 
     scraped_by_id = {f["id"]: f for f in all_scraped}
     scraped_ids = set(scraped_by_id.keys())
@@ -598,6 +680,8 @@ def main():
             "faction": guess_faction(s["name"], s["group"]),
             "source": "af411",                   # v1.1: tag every new fig as AF411-sourced
         }
+        if s.get("upc"):
+            out["upc"] = s["upc"]                 # v1.6: barcode for app search
         if for_pending:
             out["_addedToPending"] = int(time.time())  # editor can sort by date
         return out
@@ -617,6 +701,7 @@ def main():
         if s["name"]: p["name"] = s["name"]
         if s["wave"]: p["wave"] = s["wave"]
         if s["year"]: p["year"] = s["year"]
+        if s.get("upc") and not p.get("upc"): p["upc"] = s["upc"]  # v1.6: backfill barcode
         if s["retail"] is not None: p["retail"] = s["retail"]
 
     # v1.4: brand-new figures route to pending queue (default) or directly
