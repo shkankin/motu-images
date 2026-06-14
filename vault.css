@@ -1132,6 +1132,10 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: flex;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  /* v6.84: contain horizontal overscroll so swiping past the first/last
+     photo doesn't chain to the browser's back/forward gesture (which was
+     navigating away to the previous/next figure mid-swipe). */
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   background: var(--bg3);

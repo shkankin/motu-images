@@ -4,6 +4,20 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.84. SHELL: render.js + vault.css. SW image-cache
+//     architecture fix + photo/editor polish:
+//       – IMAGE CACHE FIX (important): figure images + sounds now live in a
+//         separate, UNVERSIONED cache (motu-vault-images). They previously
+//         shared the versioned shell cache, so the activate cleanup wiped
+//         every downloaded image on EVERY version bump — they then silently
+//         re-fetched from GitHub as figures were re-viewed. Images are
+//         immutable (slug-addressed), so they now persist across updates.
+//         activate handler keeps both CACHE and IMG_CACHE.
+//       – Photo carousel: overscroll-behavior-x:contain so swiping past the
+//         first/last photo no longer chains to the browser back/forward
+//         gesture (which was jumping to the prev/next figure).
+//       – figures-editor: red "missing fields" badges on cards with catalog
+//         gaps, so the Incomplete-data filter shows AT A GLANCE what's absent.
 //   • CACHE bumped to v6.83. SHELL: render.js + data.js. Collection
 //     data-completeness + UPC feature set (figures-editor.html also updated
 //     but is not part of the runtime shell):
@@ -650,7 +664,15 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.83';
+const CACHE = 'motu-vault-v6.84';
+// v6.84: figure images + sounds live in their OWN cache, deliberately NOT
+// version-stamped. Previously they shared the versioned shell CACHE, so the
+// activate-handler cleanup (which deletes every cache != CACHE) wiped every
+// downloaded image on EVERY version bump — they then silently re-downloaded
+// from GitHub one-by-one as figures were re-viewed. Images are immutable
+// (content-addressed by slug on raw.githubusercontent.com), so they never
+// need eviction on app updates. Keeping them here makes them survive bumps.
+const IMG_CACHE = 'motu-vault-images';
 
 const SHELL = [
   'motu-vault.html',
@@ -693,7 +715,10 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+      // v6.84: keep BOTH the current shell cache and the unversioned image
+      // cache. Only stale versioned shell caches are evicted now, so figure
+      // images persist across app updates instead of being wiped each bump.
+      Promise.all(keys.filter(k => k !== CACHE && k !== IMG_CACHE).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -732,14 +757,15 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Figure images & sounds — cache first, network fallback
+  // Figure images & sounds — cache first, network fallback. Stored in the
+  // unversioned IMG_CACHE so they survive app version bumps (v6.84).
   if (url.hostname === 'raw.githubusercontent.com' && (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.png') || url.pathname.endsWith('.mp3'))) {
     e.respondWith(
       caches.match(e.request).then(cached => {
         if (cached) return cached;
         return fetch(e.request).then(res => {
           const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          caches.open(IMG_CACHE).then(c => c.put(e.request, clone));
           return res;
         });
       })

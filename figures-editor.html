@@ -112,6 +112,17 @@
   }
   .fig-card.approved { border-color: var(--gn); opacity: 0.7; }
   .fig-card.rejected { border-color: var(--rd); opacity: 0.45; }
+  /* v6.84: red "missing fields" badge for the Incomplete-data filter, so the
+     eye lands straight on what each entry still needs. */
+  .fig-missing {
+    display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
+  }
+  .fig-missing .mtag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.4px; padding: 2px 7px; border-radius: 5px;
+    color: #fff; background: var(--rd);
+  }
+  .fig-card.incomplete-flag { border-color: var(--rd); }
 
   .fig-img {
     width: 120px; height: 120px;
@@ -1701,6 +1712,7 @@ function renderCard(f) {
         <div>
           <div class="fig-name">${esc(eff('name'))}</div>
           <div class="fig-id">${esc(f.id)}</div>
+          ${(() => { const g = catalogGaps(f); return g.length ? `<div class="fig-missing">${g.map(k => `<span class="mtag">${k}</span>`).join('')}</div>` : ''; })()}
           <div class="fig-meta-orig">AF411 said: line=<strong>${esc(f.sourceLine || f.line)}</strong>, group=<strong>${esc(f.group || '—')}</strong>, year=${f.year ?? '—'}, wave=${esc(f.wave || '—')}</div>
         </div>
         <div class="actions" style="border:none;padding:0">
@@ -1864,6 +1876,7 @@ function renderExistingCard(f) {
         <div>
           <div class="fig-name">${esc(eff('name'))} ${isEdited ? '<span class="edit-badge">edited</span>' : ''}</div>
           <div class="fig-id">${esc(f.id)}</div>
+          ${(() => { const g = catalogGaps(f); return g.length ? `<div class="fig-missing">${g.map(k => `<span class="mtag">${k}</span>`).join('')}</div>` : ''; })()}
           <div class="fig-meta-orig">Currently: line=<strong>${esc(f.line || '—')}</strong>, group=<strong>${esc(f.group || '—')}</strong>, faction=<strong>${esc(f.faction || '—')}</strong></div>
         </div>
         <div class="actions" style="border:none;padding:0">
