@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.88</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.89</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1433,9 +1433,12 @@ function renderDetailStatusBlock(f, c) {
   });
   h += `</div></div>`;
   if (c.status) {
-    // Owned / for-sale / wishlist / ordered all reach this branch.
-    // Copies UI only renders for owned/for-sale (where you actually have
-    // physical items). Ordered shows order detail fields. Wishlist is status only.
+    // v6.89: the per-status data now lives inside a colored container tinted
+    // to the status (green owned, blue wishlist, orange ordered, red
+    // for-sale), so the eye lands on "your data for this figure" and the
+    // color reinforces the state. --status-color drives the tint via CSS.
+    const tint = STATUS_HEX[c.status] || 'var(--gold)';
+    h += `<div class="detail-databox" style="--status-color:${tint}">`;
     const showsCopies = c.status === 'owned' || c.status === 'for-sale';
     if (showsCopies) {
       // Ensure we always have at least one copy slot to edit.
@@ -1443,27 +1446,29 @@ function renderDetailStatusBlock(f, c) {
       const isMulti = copies.length > 1;
       h += `<div class="copies-section">
         <div class="copies-header">
-          <div class="label text-upper text-dim text-xs">Collection Details${isMulti ? ` <span class="copies-count">${copies.length} copies</span>` : ''}</div>
+          <div class="label text-upper databox-label text-xs">Collection Details${isMulti ? ` <span class="copies-count">${copies.length} copies</span>` : ''}</div>
         </div>`;
+      // v6.89: Original Retail is a figure-level fact (same for every copy),
+      // so it shows ONCE at the top of the box rather than inside each copy
+      // card. Sits as a comparison anchor above the per-copy Price Paid.
+      if (f.retail) {
+        h += `<div class="databox-retail">Original Retail <span class="price">$${f.retail.toFixed(2)}</span></div>`;
+      }
       copies.forEach((cp, i) => {
         h += renderCopyCard(f, cp, i, isMulti);
       });
-      h += `<button class="add-copy-btn" onclick="addCopy(${jId})">
-        <span class="add-copy-plus">+</span> ${isMulti ? 'Add another copy' : 'Add a second copy'}
-      </button>
-      </div>`;
+      h += `</div>`;
     }
     // v6.69: Price Watch — wishlist/ordered figures can carry a target
     // price. When the cached asking drops to or below it, the figure gets
-    // a DEAL badge in lists and a green callout here. Entry-level field
-    // (not per-copy) since you don't own a copy yet.
+    // a DEAL badge in lists and a green callout here.
     if (c.status === 'wishlist' || c.status === 'ordered') {
       const target = parseFloat(c.targetPrice);
       const askingNow = getCachedAskingPrice(f);
       const isDeal = Number.isFinite(target) && askingNow != null && askingNow <= target;
       h += `<div class="copies-section">
         <div class="copies-header">
-          <div class="label text-upper text-dim text-xs">Price Watch</div>
+          <div class="label text-upper databox-label text-xs">Price Watch</div>
         </div>
         <div class="detail-fields copy-fields">
           <div>
@@ -1481,7 +1486,7 @@ function renderDetailStatusBlock(f, c) {
     if (c.status === 'ordered') {
       h += `<div class="copies-section">
         <div class="copies-header">
-          <div class="label text-upper text-dim text-xs">Order Details</div>
+          <div class="label text-upper databox-label text-xs">Order Details</div>
         </div>
         <div class="detail-fields copy-fields">
           <div>
@@ -1498,6 +1503,16 @@ function renderDetailStatusBlock(f, c) {
           </div>
         </div>
       </div>`;
+    }
+    h += `</div>`; // .detail-databox
+    // v6.89: "Add a second copy" moved OUT of the data box to sit below it
+    // as a standalone action button, consistent with the other actions.
+    if (showsCopies) {
+      const copies = (isMigrated(c) && c.copies.length) ? c.copies : [{ id: 1 }];
+      const isMulti = copies.length > 1;
+      h += `<button class="add-copy-btn" onclick="addCopy(${jId})">
+        <span class="add-copy-plus">+</span> ${isMulti ? 'Add another copy' : 'Add a second copy'}
+      </button>`;
     }
   }
   return h;
@@ -1698,7 +1713,10 @@ function renderDetail() {
   let html = `
   <div class="detail-header">
     <button class="detail-back" onclick="closeDetail()">${icon(ICO.back,22)}</button>
-    <div class="detail-title">${esc(f.name)}</div>
+    <div class="detail-title-wrap">
+      <div class="detail-title">${esc(f.name)}</div>
+      ${pills.length ? `<div class="detail-subtitle">${pills.map(p => esc(p)).join(' · ')}</div>` : ''}
+    </div>
   </div>
   <div class="detail-scroll">
     <div class="photo-section">
@@ -1726,7 +1744,8 @@ function renderDetail() {
         </div>
       `).join('')}
     </div>` : ''}
-    <div class="detail-pills">${pills.map(p => `<span class="pill">${esc(p)}</span>`).join('')}</div>
+    <!-- v6.89: metadata pills moved to the header subtitle line under the
+         name; the floating pill band was removed here. -->
     ${(() => {
       // v6.65: variant tour. If this figure is part of a variant family
       // (it has variants, or it IS a variant), render a horizontal strip of
@@ -1736,11 +1755,18 @@ function renderDetail() {
       const parent = f.variantOf ? figById(f.variantOf) : null;
       const root = parent || f;
       const fam = [root, ...figVariants(root.id)];
-      if (fam.length < 2) return '';
+      // v6.89: previously this returned '' for solo figures (fam < 2), but the
+      // action-bar "Add Variant" button was removed in the detail redesign, so
+      // the strip is now the ONLY entry point for starting a variant family.
+      // We therefore always render it — for a solo figure it shows just that
+      // figure plus the "+ Add" chip. Custom/kids-core figures don't support
+      // variants, so they still skip it.
+      if (f.line === 'kids-core' || f.line === 'custom') return '';
+      const soloMode = fam.length < 2;
       const chip = (m) => {
         const cur = m.id === f.id;
         const mImg = (S.customPhotos[m.id] && photoStore.get(m.id)) || (!S.imgErrors[m.id] && m.image) || '';
-        const label = m.id === root.id ? 'Original' : (m.variantName || m.name);
+        const label = soloMode ? 'This figure' : (m.id === root.id ? 'Original' : (m.variantName || m.name));
         const owned = S.coll[m.id]?.status === 'owned';
         return `<div class="variant-chip${cur ? ' current' : ''}" ${cur ? '' : `data-action="open-fig" data-fig-id="${esc(m.id)}"`}>
           <div class="variant-chip-thumb">${mImg ? `<img src="${esc(mImg)}" alt="" loading="lazy">` : `<span>${esc(m.name[0])}</span>`}${owned ? '<div class="variant-chip-dot"></div>' : ''}</div>
@@ -1756,39 +1782,35 @@ function renderDetail() {
       </div>`;
     })()}
     ${(() => {
-      // v6.64: inline retail + asking price. Replaces the previous big
-      // Market Value block. "Original Retail" is the launch price; "Asking"
-      // is the current eBay BIN median (single number, no min/max, no
-      // condition split). Sealed bucket for modern lines, loose for vintage
-      // (decided inside renderMarketValueBlock by line id). Both sit on one
-      // line; either may be missing.
+      // v6.89: market value line (asking + sparkline) moved BELOW the status
+      // block. Original Retail now lives inside the Collection Details box
+      // (passed into renderDetailStatusBlock), so it's only the live asking
+      // price + sparkline that render here as market context.
       const paidArr = [];
       if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
       const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
       const condition = primaryCp?.condition || undefined;
       renderMarketValueBlock._meta = { line: f.line, wave: f.wave, year: f.year };
       const asking = renderMarketValueBlock(f.id, paidArr, condition);
-      if (!f.retail && !asking) return '';
-      const retailPart = f.retail ? `Original Retail: <span class="price">$${f.retail.toFixed(2)}</span>` : '';
-      const sep = (f.retail && asking) ? ' <span class="text-dim" style="margin:0 4px">·</span> ' : '';
-      // Wrap in mvBlock_<id> so rerenderMVBlock() can swap the asking part in place.
-      return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${retailPart}${sep}${asking}${asking ? renderSparkline(f.id) : ''}</div>`;
+      if (!asking) return '';
+      return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${asking}${renderSparkline(f.id)}</div>`;
     })()}
+    <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     ${(() => {
-      // v6.70: action bar rebuilt — uniform equal-width buttons in a grid,
-      // single-line labels ("AF411" not "View on AF411"), "All versions"
-      // removed (user request). Delete (custom figs) joins the same grid.
+      // v6.89: reference/action buttons moved to the BOTTOM of the screen.
+      // This is a collection-management app, so status + collection data sit
+      // up top; AF411/Edit/Delete are utilities and belong below. "Add
+      // Variant" was removed from this bar — it already lives in the variant
+      // strip's "+" chip, so the duplicate here was redundant.
       const btn = (onclick, label, ic, color) => `<button onclick="${onclick}" class="detail-action-btn${color ? ' ' + color : ''}">${icon(ic, 15)}<span>${label}</span></button>`;
       const btns = [];
       if (f.line !== 'kids-core' && f.line !== 'custom')
         btns.push(btn(`event.preventDefault();openAF411(${jId})`, 'AF411', ICO.export));
       btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
-      btns.push(btn(`addVariant(${jId})`, 'Add Variant', ICO.plus, 'gold'));
       if (f.source === 'custom-local')
         btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.x, 'red'));
       return `<div class="detail-action-bar" style="grid-template-columns:repeat(${btns.length},1fr)">${btns.join('')}</div>`;
     })()}
-    <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <datalist id="locationSuggestions">
       ${getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('')}
     </datalist>

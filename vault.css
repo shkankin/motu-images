@@ -1097,11 +1097,16 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   border-bottom: 1px solid var(--bd);
   display: flex; align-items: center; gap: 12px;
 }
+.detail-title-wrap { flex: 1; min-width: 0; }
 .detail-title {
-  flex: 1;
-  font-family: 'Cinzel', serif;
-  font-size: 15px; font-weight: 700;
-  color: var(--t1); line-height: 1.3;
+  /* v6.89: dropped Cinzel here (only place) — it read heavy/hard at title
+     size. The rest of the app keeps Cinzel; this screen uses the UI sans. */
+  font-size: 17px; font-weight: 600;
+  color: var(--t1); line-height: 1.25;
+}
+.detail-subtitle {
+  font-size: 12px; color: var(--t3);
+  margin-top: 3px; line-height: 1.35;
 }
 .detail-back, .detail-delete {
   padding: 8px; border-radius: 8px;
@@ -1310,17 +1315,35 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   z-index: 5;
 }
 
-.detail-pills {
-  padding: 16px;
-  display: flex; flex-wrap: wrap; gap: 8px;
+/* v6.89: .detail-pills / .pill removed — figure metadata now renders as the
+   header subtitle line. The per-status data box below replaces them as the
+   screen's main visual anchor. */
+
+/* Status-tinted container that wraps Collection Details / Price Watch /
+   Order Details. --status-color is set inline per the figure's status. */
+.detail-databox {
+  margin: 0 16px 12px;
+  padding: 12px 14px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--status-color) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-color) 40%, transparent);
 }
-.pill {
-  padding: 5px 12px;
-  border-radius: 20px;
-  background: var(--bg3);
-  border: 1px solid var(--bd);
-  font-size: 12px; color: var(--t2);
+.detail-databox .databox-label {
+  color: var(--status-color);
+  opacity: 0.95;
 }
+.detail-databox .copies-section { margin-top: 0; padding: 0; }
+.detail-databox .copies-section + .copies-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--status-color) 22%, transparent);
+}
+/* Original Retail anchor line inside the owned box. */
+.databox-retail {
+  font-size: 13px; color: var(--t3);
+  margin-bottom: 10px;
+}
+.databox-retail .price { color: var(--gold); font-weight: 600; }
 
 .detail-retail {
   padding: 0 16px 16px;
@@ -1328,10 +1351,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .detail-retail .price { color: var(--gold); font-weight: 600; }
 
-/* v6.64: inline asking-price next to Original Retail. The .price color is
-   inherited from .detail-retail .price above (gold). Low-sample data renders
-   dimmed so users can tell at a glance it's an estimate. The .mv-loading
-   variant uses the same dimming for the placeholder text. */
+/* v6.64: inline asking-price. Low-sample data renders dimmed so users can
+   tell at a glance it's an estimate. */
 .detail-retail .mv-inline { display: inline; }
 .detail-retail .mv-inline.mv-inline-dim,
 .detail-retail .mv-inline.mv-loading { color: var(--t3); }

@@ -4,6 +4,20 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.89. SHELL: render.js + vault.css. Detail-screen
+//     remodel (collection-management-first layout):
+//       – New order: name + metadata subtitle → photo → variant strip →
+//         STATUS (compact 2x2) → status-tinted DATA BOX (Collection Details /
+//         Price Watch / Order Details, colored green/blue/orange/red) →
+//         Add-a-copy button → AF411/Edit/Delete at the bottom.
+//       – Detail title drops Cinzel for the UI sans (only this screen); the
+//         floating metadata pill band is replaced by a one-line subtitle
+//         under the name (line · wave · year · faction, middot-joined).
+//       – Original Retail moved into the owned data box as a single anchor
+//         line (figure-level, shown once) above per-copy Price Paid.
+//       – "Add Variant" removed from the action bar (was redundant with the
+//         variant strip's "+"); the strip now always renders so solo figures
+//         still have an Add-variant entry point.
 //   • CACHE bumped to v6.88. SHELL: render.js + data.js + pricing.js. The
 //     pricing-backend URL (motu-pricing-backend) was never in the settings
 //     backup, so a browser-storage clear wiped it permanently and silently
@@ -700,7 +714,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.88';
+const CACHE = 'motu-vault-v6.89';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
