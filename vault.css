@@ -1433,13 +1433,17 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .copy-del-btn {
   background: none; border: none;
-  color: var(--t3);
+  color: color-mix(in srgb, var(--rd) 60%, var(--t3));
   padding: 4px 8px;
   border-radius: 6px;
   cursor: pointer;
   display: flex; align-items: center; gap: 4px;
   font-size: 12px;
   transition: background .15s, color .15s;
+}
+.copy-del-btn:hover {
+  background: color-mix(in srgb, var(--rd) 10%, transparent);
+  color: var(--rd);
 }
 .copy-del-btn:active {
   background: color-mix(in srgb, var(--rd) 15%, transparent);
@@ -1450,6 +1454,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   gap: 10px;
 }
 .add-copy-btn {
+  /* v6.90: sit in the same 16px gutters as .detail-databox and fill the
+     width between them, so the button is centered under the data box
+     instead of shrinking to content and hugging the left edge. */
+  display: flex;
+  width: auto;
+  margin: 0 16px 12px;
   background: color-mix(in srgb, var(--acc) 8%, transparent);
   border: 1px dashed var(--bd);
   border-radius: 12px;
@@ -1459,8 +1469,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-weight: 600;
   letter-spacing: .3px;
   cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
+  align-items: center; justify-content: center; gap: 6px;
   transition: background .15s, border-color .15s;
+}
+.add-copy-btn:hover {
+  background: color-mix(in srgb, var(--acc) 13%, transparent);
+  border-color: color-mix(in srgb, var(--acc) 55%, var(--bd));
 }
 .add-copy-btn:active {
   background: color-mix(in srgb, var(--acc) 18%, transparent);
@@ -1470,6 +1484,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
+  margin-top: -1px; /* optical center against the text baseline */
 }
 
 /* Per-copy photos (v4.46) — strip of thumbs + add button inside the copy card */

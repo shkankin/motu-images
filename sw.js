@@ -1,7 +1,17 @@
-// MOTU Vault — Service Worker v6.64
+// MOTU Vault — Service Worker v6.90
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.90 changelog:
+//   • CACHE bumped to v6.90. SHELL: vault.css only. Detail-screen polish:
+//       – Fix: "Add a copy" button was left-aligned/content-width; now fills
+//         the 16px gutters to sit centered under the data box.
+//       – Add :hover state for the add-copy button (desktop/secure-context
+//         testing parity).
+//       – Per-copy delete (trash) button now carries a faint resting red
+//         tint so it reads as interactive before being pressed.
+//       – Add-copy "+" glyph optically recentered against the label.
 //
 // v6.64 changelog:
 //   • CACHE bumped to v6.89. SHELL: render.js + vault.css. Detail-screen
@@ -719,7 +729,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.89';
+const CACHE = 'motu-vault-v6.90';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
