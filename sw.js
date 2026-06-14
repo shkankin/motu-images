@@ -4,6 +4,13 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.88. SHELL: render.js + data.js + pricing.js. The
+//     pricing-backend URL (motu-pricing-backend) was never in the settings
+//     backup, so a browser-storage clear wiped it permanently and silently
+//     removed the market-value section from Collection Stats (the feature
+//     code was always intact — it just gates on isPricingConfigured()). Added
+//     the key to SETTINGS_KEYS so it rides settings export/import, plus a
+//     reloadBackend() helper to refresh the in-memory cache after restore.
 //   • CACHE bumped to v6.87. SHELL: render.js + vault.css. Fixes the v6.86
 //     scan button: it was a normal-flow element inside the relatively-
 //     positioned .search-wrap, so it dropped onto its own line below the
@@ -693,7 +700,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.87';
+const CACHE = 'motu-vault-v6.88';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -62,6 +62,11 @@ function _loadBackend() {
 
 export function isPricingConfigured() { return !!_loadBackend(); }
 
+// v6.88: drop the in-memory backend cache so the next read re-pulls from
+// storage. Called after a settings import restores motu-pricing-backend, so
+// a restored pricing backend works immediately without a page reload.
+export function reloadBackend() { _backend = null; return _loadBackend(); }
+
 export function getPricingBackend() {
   const b = _loadBackend();
   return b ? { url: b.url, hasKey: !!b.apiKey } : null;

@@ -2197,6 +2197,11 @@ const SETTINGS_KEYS = [
   'motu-hidden', 'motu-recent', 'motu-default-photo', 'motu-onboarded',
   'motu-celebrated', 'motu-ptr-enabled', 'motu-acc-avail', 'motu-custom-figs',
   'motu-tutorial-seen',
+  // v6.88: the pricing backend URL (+ optional key) was NOT in the settings
+  // backup, so clearing browser storage wiped it permanently with no way to
+  // restore — which silently removed the market-value section from Collection
+  // Stats. Now it rides the settings export/import like every other pref.
+  'motu-pricing-backend',
 ];
 window.exportSettings = () => {
   const settings = {};
