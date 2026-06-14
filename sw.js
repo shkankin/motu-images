@@ -4,6 +4,13 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.87. SHELL: render.js + vault.css. Fixes the v6.86
+//     scan button: it was a normal-flow element inside the relatively-
+//     positioned .search-wrap, so it dropped onto its own line below the
+//     field. Now absolutely positioned at the right edge (right:10px); the
+//     clear-X shifts to right:42px and the input gains right padding so both
+//     sit inline. (Workflow sync-af411.yml also gained rebase-and-retry on
+//     push to fix non-fast-forward rejections — not part of the app shell.)
 //   • CACHE bumped to v6.86. SHELL: render.js + photos.js + vault.css.
 //     Barcode CAMERA scanning (Android). A scan button in the search bar
 //     opens a live camera overlay using the native BarcodeDetector API (no
@@ -686,7 +693,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.86';
+const CACHE = 'motu-vault-v6.87';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

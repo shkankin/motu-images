@@ -325,7 +325,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   color: var(--t3); pointer-events: none;
 }
 .search-wrap input {
-  padding: 11px 44px 11px 38px;
+  padding: 11px 76px 11px 38px;
   border-radius: 12px;
   font-size: 15px;
 }
@@ -340,7 +340,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .search-wrap input::-ms-reveal { display: none; width: 0; height: 0; }
 .search-wrap input { appearance: none; -webkit-appearance: none; }
 .search-clear {
-  position: absolute; right: 12px; top: 50%;
+  position: absolute; right: 42px; top: 50%;
   transform: translateY(-50%);
   color: var(--t3);
   padding: 4px;
@@ -3331,12 +3331,14 @@ html {
 
 /* ── v6.86: Barcode camera scanner ──────────────────────────────── */
 .search-scan {
+  position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%);
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; width: 30px; height: 30px; margin-right: 2px;
+  width: 28px; height: 28px;
   border: none; background: transparent; color: var(--t3);
-  cursor: pointer; border-radius: 7px;
+  cursor: pointer; border-radius: 7px; padding: 0;
 }
-.search-scan:active { transform: scale(0.9); color: var(--acc); }
+.search-scan:active { transform: translateY(-50%) scale(0.9); color: var(--acc); }
 .barcode-scanner {
   position: fixed; inset: 0; z-index: 4000;
   background: #000; display: flex; align-items: center; justify-content: center;

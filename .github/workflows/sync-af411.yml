@@ -97,7 +97,25 @@ jobs:
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
           git commit -m "sync: update catalog from AF411${LINE_MSG} — ${TIMESTAMP} [${TRIGGER}]" \
                      -m "Figures: ${NEW_FIGS:-0} lines · Pending: ${NEW_PENDING:-0} lines · Images: ${NEW_IMGS}"
-          git push
+          # v1.7: push with rebase-and-retry. The earlier bare `git push` failed
+          # with non-fast-forward when something else (a deploy-tool push, or an
+          # overlapping run) landed on main between checkout and push. Rebasing
+          # our single sync commit on top of the latest remote and retrying a
+          # few times resolves that without a merge commit. figures.json changes
+          # are generated wholesale, so on the rare content overlap the rebase
+          # takes our freshly-built file (-X theirs from rebase's perspective).
+          git config pull.rebase true
+          PUSHED=0
+          for attempt in 1 2 3; do
+            if git push; then PUSHED=1; break; fi
+            echo "⚠ push rejected (attempt $attempt) — rebasing on latest main…"
+            git pull --rebase -X theirs origin main || git rebase --abort || true
+            sleep 3
+          done
+          if [ "$PUSHED" != "1" ]; then
+            echo "::error::Could not push after rebase retries — remote moved repeatedly."
+            exit 1
+          fi
           echo "✅ Changes committed and pushed"
 
       # v1.5: Discord notification when new figures land in the pending queue.
