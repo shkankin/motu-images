@@ -1,75 +1,5 @@
 [
   {
-    "id": "macho-man-randy-savage-12008",
-    "name": "“Macho Man” Randy Savage",
-    "line": "origins",
-    "group": "WWE",
-    "wave": "2",
-    "year": 2020,
-    "retail": 19.99,
-    "slug": "macho-man-randy-savage-12008",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "macho-man-randy-savage-hwo-12020",
-    "name": "“Macho Man” Randy Savage (hWo)",
-    "line": "origins",
-    "group": "WWE",
-    "wave": "5",
-    "year": 2020,
-    "retail": 19.99,
-    "slug": "macho-man-randy-savage-hwo-12020",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "rowdy-roddy-piper-12022",
-    "name": "“Rowdy” Roddy Piper",
-    "line": "origins",
-    "group": "WWE",
-    "wave": "5",
-    "year": 2020,
-    "retail": 19.99,
-    "slug": "rowdy-roddy-piper-12022",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "stone-cold-steve-austin-12033",
-    "name": "“Stone Cold” Steve Austin",
-    "line": "origins",
-    "group": "WWE",
-    "wave": "8",
-    "year": 2021,
-    "retail": 19.99,
-    "slug": "stone-cold-steve-austin-12033",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "the-fiend-bray-wyatt-12015",
-    "name": "“The Fiend” Bray Wyatt",
-    "line": "origins",
-    "group": "WWE",
-    "wave": "4",
-    "year": 2020,
-    "retail": 19.99,
-    "slug": "the-fiend-bray-wyatt-12015",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
     "id": "2-bopsteady-8567",
     "name": "2-BopSteady",
     "line": "origins",
@@ -81,7 +11,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735205608"
   },
   {
     "id": "andre-the-giant-12027",
@@ -109,7 +40,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190317"
   },
   {
     "id": "battle-armor-he-man-and-battle-cat-battlefield-warriors-2732",
@@ -123,7 +55,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735005840"
   },
   {
     "id": "battle-cat-2415",
@@ -137,7 +70,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961874907"
   },
   {
     "id": "battle-cat-man-10553",
@@ -151,7 +85,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307654"
   },
   {
     "id": "battle-of-eternia-multipack-10371",
@@ -165,7 +100,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307562"
   },
   {
     "id": "beast-man-2394",
@@ -194,7 +130,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190072"
   },
   {
     "id": "beast-man-200x-cartoon-collection-12169",
@@ -208,7 +145,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333493"
   },
   {
     "id": "beast-man-cartoon-collection-7312",
@@ -222,7 +160,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190249"
   },
   {
     "id": "beast-man-deluxe-13523",
@@ -236,7 +175,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735376650"
   },
   {
     "id": "beast-man-lords-of-power-2458",
@@ -279,7 +219,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735345922"
   },
   {
     "id": "bolt-man-4936",
@@ -308,7 +249,8 @@
     "faction": "Great Rebellion",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264490"
   },
   {
     "id": "braun-strowman-12011",
@@ -350,7 +292,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735321599"
   },
   {
     "id": "buzz-off-3339",
@@ -379,7 +322,8 @@
     "slug": "buzz-off-200x-cartoon-collection-13602",
     "faction": "Heroic Warriors",
     "source": "af411",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333455"
   },
   {
     "id": "buzz-off-cartoon-collection-10690",
@@ -393,7 +337,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264346"
   },
   {
     "id": "camo-khan-deluxe-5540",
@@ -407,7 +352,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735059072"
   },
   {
     "id": "casey-jones-8403",
@@ -421,7 +367,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190225"
   },
   {
     "id": "castle-grayskull-2411",
@@ -435,7 +382,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961960242"
   },
   {
     "id": "castle-grayskull-mark-taylor-11375",
@@ -449,7 +397,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735350377"
   },
   {
     "id": "catra-cartoon-collection-9389",
@@ -463,7 +412,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264278"
   },
   {
     "id": "cheetara-10554",
@@ -477,7 +427,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307623"
   },
   {
     "id": "chyna-12031",
@@ -505,7 +456,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264407"
   },
   {
     "id": "clamp-champ-deluxe-2416",
@@ -519,7 +471,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961929621"
   },
   {
     "id": "clawful-3710",
@@ -548,7 +501,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333417"
   },
   {
     "id": "clawful-cartoon-collection-8759",
@@ -562,7 +516,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244201"
   },
   {
     "id": "crimson-horde-trooper-prime-8472",
@@ -576,7 +531,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735237173"
   },
   {
     "id": "demo-man-8910",
@@ -590,7 +546,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735194322"
   },
   {
     "id": "despara-10965",
@@ -604,7 +561,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267958"
   },
   {
     "id": "diabolical-snake-invasion-4-pack-6222",
@@ -618,7 +576,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735165537"
   },
   {
     "id": "digitino-4943",
@@ -647,7 +606,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735165582"
   },
   {
     "id": "donatello-v2-8945",
@@ -661,7 +621,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264520"
   },
   {
     "id": "dragon-blaster-skeletor-deluxe-6217",
@@ -675,7 +636,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104338"
   },
   {
     "id": "dragstor-collectors-edition-12512",
@@ -718,7 +680,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735059058"
   },
   {
     "id": "eternian-goddess-2457",
@@ -747,7 +710,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104130"
   },
   {
     "id": "eternian-palace-guard-deluxe-2478",
@@ -761,7 +725,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735005864"
   },
   {
     "id": "evil-horde-multi-pack-2444",
@@ -775,7 +740,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735005871"
   },
   {
     "id": "evil-lyn-2395",
@@ -804,7 +770,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333240"
   },
   {
     "id": "evil-lyn-cartoon-collection-8407",
@@ -818,7 +785,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244157"
   },
   {
     "id": "evil-lyn-version-2-2453",
@@ -862,7 +830,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735194285"
   },
   {
     "id": "faker-2455",
@@ -891,21 +860,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "faker-and-dupli-cat-2445",
-    "name": "Faker and Dupli-Cat",
-    "line": "origins",
-    "group": "Exclusives",
-    "wave": "Power-Con",
-    "year": 2021,
-    "retail": 60,
-    "slug": "faker-and-dupli-cat-2445",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264261"
   },
   {
     "id": "faker-john-cena-12007",
@@ -922,6 +878,21 @@
     "sourceGroup": ""
   },
   {
+    "id": "faker-and-dupli-cat-2445",
+    "name": "Faker and Dupli-Cat",
+    "line": "origins",
+    "group": "Exclusives",
+    "wave": "Power-Con",
+    "year": 2021,
+    "retail": 60,
+    "slug": "faker-and-dupli-cat-2445",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "0194735005888"
+  },
+  {
     "id": "fang-man-cartoon-collection-10558",
     "name": "Fang Man (Cartoon Collection)",
     "line": "origins",
@@ -933,7 +904,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264308"
   },
   {
     "id": "fang-or-7078",
@@ -947,7 +919,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735161812"
   },
   {
     "id": "finn-balor-12003",
@@ -961,7 +934,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961838503"
   },
   {
     "id": "fisto-2456",
@@ -990,7 +964,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735030910"
   },
   {
     "id": "flying-fists-he-man-terror-claws-skeletor-10687",
@@ -1004,7 +979,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "07429902024"
   },
   {
     "id": "fright-fighter-2026-movie-13439",
@@ -1018,7 +994,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735350872"
   },
   {
     "id": "fright-zone-playset-11294",
@@ -1032,7 +1009,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307647"
   },
   {
     "id": "frog-monger-5334",
@@ -1046,7 +1024,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104147"
   },
   {
     "id": "frosta-cartoon-collection-10688",
@@ -1060,7 +1039,8 @@
     "faction": "Great Rebellion",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264230"
   },
   {
     "id": "geldor-9041",
@@ -1074,7 +1054,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735194216"
   },
   {
     "id": "goldberg-12023",
@@ -1145,7 +1126,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735345939"
   },
   {
     "id": "grizzlor-cartoon-collection-10559",
@@ -1159,7 +1141,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264209"
   },
   {
     "id": "grizzlor-5054",
@@ -1173,7 +1156,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735035137"
   },
   {
     "id": "ground-ripper-mekaneck-5291",
@@ -1187,7 +1171,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104031"
   },
   {
     "id": "he-man-11290",
@@ -1201,7 +1186,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735307555"
   },
   {
     "id": "he-man-2393",
@@ -1230,21 +1216,23 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333363"
   },
   {
-    "id": "he-man-battle-armor-deluxe-2419",
-    "name": "He-Man - Battle Armor (Deluxe)",
+    "id": "he-man-vecna-stranger-things-8473",
+    "name": "He-Man & Vecna (Stranger Things)",
     "line": "origins",
-    "group": "Action Figures",
-    "wave": "3",
-    "year": 2021,
-    "retail": 19.99,
-    "slug": "he-man-battle-armor-deluxe-2419",
+    "group": "Crossovers",
+    "wave": "",
+    "year": 2024,
+    "retail": 34.99,
+    "slug": "he-man-vecna-stranger-things-8473",
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735208685"
   },
   {
     "id": "he-man-200x-cartoon-collection-12170",
@@ -1258,7 +1246,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333219"
   },
   {
     "id": "he-man-200x-4215",
@@ -1302,7 +1291,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244249"
   },
   {
     "id": "he-man-nick-galitzine-13442",
@@ -1316,7 +1306,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735350865"
   },
   {
     "id": "he-man-reissue-13228",
@@ -1330,7 +1321,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735401949"
   },
   {
     "id": "he-man-vintage-sculpt-2462",
@@ -1348,18 +1340,19 @@
     "upc": "0194735049110"
   },
   {
-    "id": "he-man-vecna-stranger-things-8473",
-    "name": "He-Man & Vecna (Stranger Things)",
+    "id": "he-man-battle-armor-deluxe-2419",
+    "name": "He-Man - Battle Armor (Deluxe)",
     "line": "origins",
-    "group": "Crossovers",
-    "wave": "",
-    "year": 2024,
-    "retail": 34.99,
-    "slug": "he-man-vecna-stranger-things-8473",
+    "group": "Action Figures",
+    "wave": "3",
+    "year": 2021,
+    "retail": 19.99,
+    "slug": "he-man-battle-armor-deluxe-2419",
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961929652"
   },
   {
     "id": "he-man-40th-anniversary-4-pack-5058",
@@ -1373,7 +1366,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735059010"
   },
   {
     "id": "he-ro-club-grayskull-10370",
@@ -1387,7 +1381,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267897"
   },
   {
     "id": "he-skeletor-5335",
@@ -1401,7 +1396,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735104307"
   },
   {
     "id": "hordak-2407",
@@ -1430,21 +1426,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "hordak-cartoon-collection-9088",
-    "name": "Hordak (Cartoon Collection)",
-    "line": "origins",
-    "group": "Cartoon Collection",
-    "wave": "22",
-    "year": 2024,
-    "retail": 19.99,
-    "slug": "hordak-cartoon-collection-9088",
-    "faction": "Evil Horde",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190379"
   },
   {
     "id": "hordak-grizzlor-sketchbook-9423",
@@ -1458,7 +1441,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735290031"
   },
   {
     "id": "hordak-hellfire-man-stranger-things-12113",
@@ -1472,7 +1456,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735331239"
   },
   {
     "id": "hordak-she-ra-7906",
@@ -1486,7 +1471,23 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "074299020250"
+  },
+  {
+    "id": "hordak-cartoon-collection-9088",
+    "name": "Hordak (Cartoon Collection)",
+    "line": "origins",
+    "group": "Cartoon Collection",
+    "wave": "22",
+    "year": 2024,
+    "retail": 19.99,
+    "slug": "hordak-cartoon-collection-9088",
+    "faction": "Evil Horde",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "194735264513"
   },
   {
     "id": "hordak-buzz-saw-deluxe-2421",
@@ -1500,7 +1501,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961982893"
   },
   {
     "id": "horde-trooper-3711",
@@ -1529,7 +1531,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "10194735267948"
   },
   {
     "id": "hypno-5565",
@@ -1558,7 +1561,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264339"
   },
   {
     "id": "jake-the-snake-roberts-12016",
@@ -1629,7 +1633,8 @@
     "slug": "keldor-200x-cartoon-collection-13603",
     "faction": "Other",
     "source": "af411",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333523"
   },
   {
     "id": "keldor-and-kronis-rise-of-evil-2420",
@@ -1643,7 +1648,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961989717"
   },
   {
     "id": "king-grayskull-7976",
@@ -1671,7 +1677,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104246"
   },
   {
     "id": "king-randor-4941",
@@ -1700,7 +1707,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735346554"
   },
   {
     "id": "king-randor-fan-favorite-7790",
@@ -1714,7 +1722,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244133"
   },
   {
     "id": "kobra-khan-4938",
@@ -1743,7 +1752,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735035090"
   },
   {
     "id": "krang-7901",
@@ -1757,7 +1767,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735165575"
   },
   {
     "id": "lady-slither-7223",
@@ -1771,7 +1782,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735161829"
   },
   {
     "id": "land-shark-2412",
@@ -1785,7 +1797,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961960211"
   },
   {
     "id": "laser-power-he-man-13263",
@@ -1799,7 +1812,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735345915"
   },
   {
     "id": "leatherhead-8914",
@@ -1813,7 +1827,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190089"
   },
   {
     "id": "leech-cartoon-collection-9388",
@@ -1827,7 +1842,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264391"
   },
   {
     "id": "leech-deluxe-4191",
@@ -1841,7 +1857,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735030903"
   },
   {
     "id": "leonardo-7892",
@@ -1855,7 +1872,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735165551"
   },
   {
     "id": "leonardo-reptile-wars-9093",
@@ -1869,7 +1887,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264223"
   },
   {
     "id": "lion-o-10552",
@@ -1883,7 +1902,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307678"
   },
   {
     "id": "lion-o-gold-armor-13004",
@@ -1897,7 +1917,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735377749"
   },
   {
     "id": "lord-grasp-8020",
@@ -1911,7 +1932,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244270"
   },
   {
     "id": "lords-of-power-5-pack-2422",
@@ -1925,22 +1947,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "man-at-arms-2396",
-    "name": "Man-at-arms",
-    "line": "origins",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 2020,
-    "retail": 14.99,
-    "slug": "man-at-arms-2396",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
     "sourceGroup": "",
-    "upc": "887961875379"
+    "upc": "0887961932065"
   },
   {
     "id": "man-at-arms-7894",
@@ -1954,7 +1962,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735165568"
   },
   {
     "id": "man-at-arms-200x-cartoon-collection-12504",
@@ -1968,7 +1977,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333332"
   },
   {
     "id": "man-at-arms-cartoon-collection-7313",
@@ -1982,7 +1992,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244300"
   },
   {
     "id": "man-e-faces-2399",
@@ -2011,7 +2022,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333271"
   },
   {
     "id": "man-e-faces-200x-cartoon-collection-deluxe-13916",
@@ -2026,7 +2038,8 @@
     "retail": 23.99,
     "slug": "man-e-faces-200x-cartoon-collection-deluxe-13916",
     "faction": "Heroic Warriors",
-    "source": "af411"
+    "source": "af411",
+    "upc": "194735333516"
   },
   {
     "id": "man-e-faces-cartoon-collection-9089",
@@ -2040,7 +2053,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264247"
   },
   {
     "id": "man-e-faces-mini-comic-6218",
@@ -2054,7 +2068,23 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104314"
+  },
+  {
+    "id": "man-at-arms-2396",
+    "name": "Man-at-arms",
+    "line": "origins",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 2020,
+    "retail": 14.99,
+    "slug": "man-at-arms-2396",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "887961875379"
   },
   {
     "id": "mantenna-4218",
@@ -2083,7 +2113,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264377"
   },
   {
     "id": "megatron-armor-skeletor-11412",
@@ -2097,7 +2128,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735321575"
   },
   {
     "id": "mekaneck-8948",
@@ -2111,7 +2143,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264483"
   },
   {
     "id": "mer-man-2403",
@@ -2140,7 +2173,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190362"
   },
   {
     "id": "mer-man-200x-cartoon-collection-13223",
@@ -2154,7 +2188,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333226"
   },
   {
     "id": "mer-man-cartoon-collection-8408",
@@ -2168,7 +2203,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244225"
   },
   {
     "id": "mer-man-fan-favorite-7318",
@@ -2182,7 +2218,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244126"
   },
   {
     "id": "mer-man-lords-of-power-2454",
@@ -2225,7 +2262,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190027"
   },
   {
     "id": "michelangelo-snake-armor-9092",
@@ -2239,7 +2277,8 @@
     "faction": "Snake Men",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264322"
   },
   {
     "id": "moat-monster-7975",
@@ -2267,7 +2306,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264902"
   },
   {
     "id": "mosquitor-deluxe-2461",
@@ -2281,7 +2321,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961982763"
   },
   {
     "id": "moss-man-200x-cartoon-collection-12502",
@@ -2295,7 +2336,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333462"
   },
   {
     "id": "moss-man-flocked-deluxe-5337",
@@ -2309,7 +2351,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735158201"
   },
   {
     "id": "mouse-jaw-7900",
@@ -2323,7 +2366,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735205592"
   },
   {
     "id": "mr-t-12017",
@@ -2351,7 +2395,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735346578"
   },
   {
     "id": "mutated-he-man-7893",
@@ -2365,7 +2410,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735165605"
   },
   {
     "id": "mutated-king-hiss-as-foot-soldier-8968",
@@ -2379,7 +2425,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264421"
   },
   {
     "id": "mutated-moss-man-7903",
@@ -2407,7 +2454,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735230105"
   },
   {
     "id": "night-stalker-8697",
@@ -2421,7 +2469,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735194223"
   },
   {
     "id": "ninjor-2408",
@@ -2450,7 +2499,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264292"
   },
   {
     "id": "ninjor-fan-favorite-7789",
@@ -2464,7 +2514,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244188"
   },
   {
     "id": "optimus-prime-armor-he-man-12114",
@@ -2478,7 +2529,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735321605"
   },
   {
     "id": "orko-2400",
@@ -2507,7 +2559,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333301"
   },
   {
     "id": "orko-cartoon-collection-10560",
@@ -2521,7 +2574,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264254"
   },
   {
     "id": "orko-fan-favorite-8763",
@@ -2535,7 +2589,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244348"
   },
   {
     "id": "panthor-flocked-2425",
@@ -2549,7 +2604,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961979831"
   },
   {
     "id": "panthor-standard-2414",
@@ -2563,7 +2619,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961930849"
   },
   {
     "id": "panthor-man-12460",
@@ -2577,7 +2634,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735377725"
   },
   {
     "id": "panthro-11289",
@@ -2605,7 +2663,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735377732"
   },
   {
     "id": "pig-head-4217",
@@ -2623,20 +2682,6 @@
     "upc": "194735030835"
   },
   {
-    "id": "prince-adam-200x-cartoon-collection-12849",
-    "name": "Prince Adam (200x - Cartoon Collection)",
-    "line": "origins",
-    "group": "Cartoon Collection",
-    "wave": "29",
-    "year": 2026,
-    "retail": 21.99,
-    "slug": "prince-adam-200x-cartoon-collection-12849",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
     "id": "prince-adam-cringer-cartoon-collection-8410",
     "name": "Prince Adam & Cringer (Cartoon Collection)",
     "line": "origins",
@@ -2648,21 +2693,23 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190201"
   },
   {
-    "id": "prince-adam-and-he-man-2-pack-2424",
-    "name": "Prince Adam and He-Man 2 Pack",
+    "id": "prince-adam-200x-cartoon-collection-12849",
+    "name": "Prince Adam (200x - Cartoon Collection)",
     "line": "origins",
-    "group": "Exclusives",
-    "wave": "SDCC",
-    "year": 2019,
-    "retail": 39.99,
-    "slug": "prince-adam-and-he-man-2-pack-2424",
+    "group": "Cartoon Collection",
+    "wave": "29",
+    "year": 2026,
+    "retail": 21.99,
+    "slug": "prince-adam-200x-cartoon-collection-12849",
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333165"
   },
   {
     "id": "prince-adam-sky-sled-2413",
@@ -2676,7 +2723,23 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961893243"
+  },
+  {
+    "id": "prince-adam-and-he-man-2-pack-2424",
+    "name": "Prince Adam and He-Man 2 Pack",
+    "line": "origins",
+    "group": "Exclusives",
+    "wave": "SDCC",
+    "year": 2019,
+    "retail": 39.99,
+    "slug": "prince-adam-and-he-man-2-pack-2424",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "887961820089"
   },
   {
     "id": "queen-marlena-cartoon-collection-12977",
@@ -2690,7 +2753,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735346561"
   },
   {
     "id": "ram-man-7899",
@@ -2704,7 +2768,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190164"
   },
   {
     "id": "ram-man-200x-cartoon-collection-deluxe-12505",
@@ -2718,7 +2783,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333400"
   },
   {
     "id": "ram-man-cartoon-collection-8942",
@@ -2732,7 +2798,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264445"
   },
   {
     "id": "ram-man-deluxe-2417",
@@ -2746,7 +2813,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961929645"
   },
   {
     "id": "raphael-7897",
@@ -2760,7 +2828,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190188"
   },
   {
     "id": "raphael-reptile-wars-8946",
@@ -2774,7 +2843,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264315"
   },
   {
     "id": "rattlesnake-mountain-ring-12036",
@@ -2817,7 +2887,8 @@
     "faction": "Snake Men",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264216"
   },
   {
     "id": "red-shadow-12470",
@@ -2831,7 +2902,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267965"
   },
   {
     "id": "reptilax-8405",
@@ -2845,7 +2917,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244355"
   },
   {
     "id": "retro-punching-he-man-and-skeletor-80th-anniversary-10566",
@@ -2859,7 +2932,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307685"
   },
   {
     "id": "rey-mysterio-12009",
@@ -2915,7 +2989,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267934"
   },
   {
     "id": "roboto-2404",
@@ -2944,7 +3019,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333349"
   },
   {
     "id": "roboto-mini-comic-5564",
@@ -2958,7 +3034,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104079"
   },
   {
     "id": "rokkon-7977",
@@ -2972,7 +3049,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735194230"
   },
   {
     "id": "roman-reigns-12010",
@@ -3000,7 +3078,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735059003"
   },
   {
     "id": "rulers-of-the-sun-3-pack-6221",
@@ -3014,7 +3093,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735165544"
   },
   {
     "id": "samurai-he-man-cartoon-collection-12143",
@@ -3071,7 +3151,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104239"
   },
   {
     "id": "seth-rollins-12018",
@@ -3113,7 +3194,8 @@
     "faction": "Evil Horde",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264506"
   },
   {
     "id": "sharella-11246",
@@ -3127,7 +3209,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267903"
   },
   {
     "id": "she-ra-2405",
@@ -3156,7 +3239,8 @@
     "faction": "Great Rebellion",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0887961932072"
   },
   {
     "id": "she-ra-cartoon-collection-8944",
@@ -3170,7 +3254,8 @@
     "faction": "Great Rebellion",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264360"
   },
   {
     "id": "she-ra-fan-favorite-7316",
@@ -3184,7 +3269,8 @@
     "faction": "Great Rebellion",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244362"
   },
   {
     "id": "she-ra-and-swift-wind-12110",
@@ -3198,7 +3284,8 @@
     "faction": "Great Rebellion",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267910"
   },
   {
     "id": "shredder-7896",
@@ -3212,7 +3299,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190010"
   },
   {
     "id": "skele-shredder-11264",
@@ -3226,7 +3314,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307586"
   },
   {
     "id": "skeleton-warrior-2-pack-6220",
@@ -3240,7 +3329,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735184361"
   },
   {
     "id": "skeletor-2397",
@@ -3269,21 +3359,38 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190218"
   },
   {
-    "id": "skeletor-battle-armor-deluxe-2418",
-    "name": "Skeletor - Battle Armor (Deluxe)",
+    "id": "skeletor-demogorgon-stranger-things-8470",
+    "name": "Skeletor & Demogorgon (Stranger Things)",
     "line": "origins",
-    "group": "Action Figures",
+    "group": "Crossovers",
     "wave": "",
-    "year": 2021,
-    "retail": 19.99,
-    "slug": "skeletor-battle-armor-deluxe-2418",
+    "year": 2024,
+    "retail": 34.99,
+    "slug": "skeletor-demogorgon-stranger-things-8470",
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735208708"
+  },
+  {
+    "id": "skeletor-screeech-6219",
+    "name": "Skeletor & Screeech",
+    "line": "origins",
+    "group": "Action Figures",
+    "wave": "",
+    "year": 2023,
+    "retail": 29.99,
+    "slug": "skeletor-screeech-6219",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "194735104338"
   },
   {
     "id": "skeletor-200x-cartoon-collection-12847",
@@ -3297,7 +3404,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333356"
   },
   {
     "id": "skeletor-200x-4216",
@@ -3326,7 +3434,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "10194735005908"
   },
   {
     "id": "skeletor-cartoon-collection-7311",
@@ -3340,7 +3449,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190348"
   },
   {
     "id": "skeletor-reissue-13227",
@@ -3354,7 +3464,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735401956"
   },
   {
     "id": "skeletor-vintage-sculpt-2463",
@@ -3372,32 +3483,19 @@
     "upc": "194735049103"
   },
   {
-    "id": "skeletor-demogorgon-stranger-things-8470",
-    "name": "Skeletor & Demogorgon (Stranger Things)",
-    "line": "origins",
-    "group": "Crossovers",
-    "wave": "",
-    "year": 2024,
-    "retail": 34.99,
-    "slug": "skeletor-demogorgon-stranger-things-8470",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "skeletor-screeech-6219",
-    "name": "Skeletor & Screeech",
+    "id": "skeletor-battle-armor-deluxe-2418",
+    "name": "Skeletor - Battle Armor (Deluxe)",
     "line": "origins",
     "group": "Action Figures",
     "wave": "",
-    "year": 2023,
-    "retail": 29.99,
-    "slug": "skeletor-screeech-6219",
+    "year": 2021,
+    "retail": 19.99,
+    "slug": "skeletor-battle-armor-deluxe-2418",
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961929614"
   },
   {
     "id": "skell-ra-skeletor-mumm-ra-10555",
@@ -3411,21 +3509,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "slaker-7902",
-    "name": "Sla’Ker",
-    "line": "origins",
-    "group": "Turtles of Grayskull",
-    "wave": "3",
-    "year": 2024,
-    "retail": 24.99,
-    "slug": "slaker-7902",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307579"
   },
   {
     "id": "slamurai-5837",
@@ -3439,7 +3524,23 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104024"
+  },
+  {
+    "id": "slaker-7902",
+    "name": "Sla’Ker",
+    "line": "origins",
+    "group": "Turtles of Grayskull",
+    "wave": "3",
+    "year": 2024,
+    "retail": 24.99,
+    "slug": "slaker-7902",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "194735205585"
   },
   {
     "id": "snake-armor-he-man-4937",
@@ -3468,7 +3569,8 @@
     "faction": "Snake Men",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104185"
   },
   {
     "id": "snake-face-deluxe-6213",
@@ -3482,7 +3584,8 @@
     "faction": "Snake Men",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104093"
   },
   {
     "id": "snake-lair-playset-11542",
@@ -3510,7 +3613,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735158232"
   },
   {
     "id": "snake-teela-5840",
@@ -3524,7 +3628,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104161"
   },
   {
     "id": "snake-trooper-5839",
@@ -3538,7 +3643,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104253"
   },
   {
     "id": "snout-spout-deluxe-4192",
@@ -3552,7 +3658,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735030897"
   },
   {
     "id": "sorceress-3338",
@@ -3582,7 +3689,8 @@
     "retail": 17.99,
     "slug": "sorceress-200x-cartoon-collection-13914",
     "faction": "Heroic Warriors",
-    "source": "af411"
+    "source": "af411",
+    "upc": "194735333486"
   },
   {
     "id": "space-sumo-4935",
@@ -3596,7 +3704,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735035144"
   },
   {
     "id": "spikor-6214",
@@ -3610,7 +3719,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104321"
   },
   {
     "id": "spikor-2026-movie-13443",
@@ -3624,7 +3734,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735350834"
   },
   {
     "id": "spikor-sketchbook-11413",
@@ -3638,7 +3749,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307531"
   },
   {
     "id": "spikor-cartoon-collection-8760",
@@ -3652,7 +3764,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244218"
   },
   {
     "id": "splinter-skull-8510",
@@ -3666,7 +3779,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735205615"
   },
   {
     "id": "sssqueeze-6215",
@@ -3680,7 +3794,8 @@
     "faction": "Snake Men",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104260"
   },
   {
     "id": "starscream-armor-scare-glow-12134",
@@ -3694,7 +3809,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735321582"
   },
   {
     "id": "stealth-ninja-he-man-8564",
@@ -3708,7 +3824,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190232"
   },
   {
     "id": "stealth-ninja-leonardo-8566",
@@ -3722,7 +3839,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190324"
   },
   {
     "id": "stephanie-mcmahon-12025",
@@ -3750,7 +3868,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961838589"
   },
   {
     "id": "sting-or-12267",
@@ -3764,7 +3883,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267972"
   },
   {
     "id": "stinkor-2459",
@@ -3793,7 +3913,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735345953"
   },
   {
     "id": "stratos-2409",
@@ -3822,7 +3943,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333509"
   },
   {
     "id": "stratos-cartoon-collection-8404",
@@ -3836,7 +3958,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244379"
   },
   {
     "id": "stratos-mini-comic-3341",
@@ -3865,7 +3988,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735030927"
   },
   {
     "id": "sun-man-3713",
@@ -3894,7 +4018,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735035120"
   },
   {
     "id": "sun-man-and-the-rulers-of-the-sun-action-figure-3-pack-4544",
@@ -3908,7 +4033,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735108343"
   },
   {
     "id": "super-shredder-deluxe-9428",
@@ -3922,7 +4048,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264285"
   },
   {
     "id": "sy-klone-sketchbook-10565",
@@ -3936,7 +4063,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307616"
   },
   {
     "id": "sy-klone-200x-cartoon-collection-13913",
@@ -3951,7 +4079,8 @@
     "retail": 17.99,
     "slug": "sy-klone-200x-cartoon-collection-13913",
     "faction": "Heroic Warriors",
-    "source": "af411"
+    "source": "af411",
+    "upc": "194735333172"
   },
   {
     "id": "sy-klone-collectors-edition-8462",
@@ -3965,7 +4094,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735194261"
   },
   {
     "id": "talon-fighter-point-dread-6223",
@@ -3979,7 +4109,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104277"
   },
   {
     "id": "teela-2398",
@@ -4008,7 +4139,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735190065"
   },
   {
     "id": "teela-200x-cartoon-collection-13222",
@@ -4022,7 +4154,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333257"
   },
   {
     "id": "teela-cartoon-collection-7314",
@@ -4036,7 +4169,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244324"
   },
   {
     "id": "teela-and-zoar-4089",
@@ -4050,7 +4184,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735059027"
   },
   {
     "id": "terroar-8019",
@@ -4064,7 +4199,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244294"
   },
   {
     "id": "terror-claw-skeletor-deluxe-3343",
@@ -4078,7 +4214,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735030880"
   },
   {
     "id": "the-collector-cartoon-collection-8409",
@@ -4092,7 +4229,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735194292"
   },
   {
     "id": "the-new-day-12012",
@@ -4134,7 +4272,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104178"
   },
   {
     "id": "trap-jaw-2402",
@@ -4164,7 +4303,8 @@
     "retail": 17.99,
     "slug": "trap-jaw-200x-cartoon-collection-13915",
     "faction": "Evil Warriors",
-    "source": "af411"
+    "source": "af411",
+    "upc": "194735333264"
   },
   {
     "id": "trap-jaw-black-armor-fan-favorite-8762",
@@ -4178,7 +4318,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244232"
   },
   {
     "id": "trap-jaw-cartoon-collection-7315",
@@ -4192,7 +4333,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244140"
   },
   {
     "id": "trap-jaw-2026-movie-deluxe-13438",
@@ -4220,7 +4362,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244317"
   },
   {
     "id": "trap-jaw-mini-comic-4944",
@@ -4264,7 +4407,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333448"
   },
   {
     "id": "tri-klops-cartoon-collection-9090",
@@ -4278,7 +4422,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264414"
   },
   {
     "id": "tri-klops-fan-favorite-8569",
@@ -4292,7 +4437,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244164"
   },
   {
     "id": "tri-klops-mini-comic-3243",
@@ -4306,7 +4452,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735001743"
   },
   {
     "id": "triple-h-12004",
@@ -4334,7 +4481,8 @@
     "faction": "Snake Men",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104291"
   },
   {
     "id": "two-bad-multipack-cartoon-collection-8698",
@@ -4348,7 +4496,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735194315"
   },
   {
     "id": "tygra-11288",
@@ -4362,7 +4511,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735307609"
   },
   {
     "id": "ultimate-warrior-12006",
@@ -4418,7 +4568,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735267927"
   },
   {
     "id": "vypor-8474",
@@ -4432,7 +4583,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244171"
   },
   {
     "id": "webstor-2460",
@@ -4461,7 +4613,8 @@
     "slug": "webstor-200x-cartoon-collection-13601",
     "faction": "Evil Warriors",
     "source": "af411",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333370"
   },
   {
     "id": "webstor-cartoon-collection-8406",
@@ -4475,7 +4628,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244263"
   },
   {
     "id": "webstor-fan-favorite-7792",
@@ -4489,7 +4643,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735244256"
   },
   {
     "id": "whiplash-4942",
@@ -4533,7 +4688,8 @@
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735264469"
   },
   {
     "id": "wind-raider-2443",
@@ -4547,7 +4703,8 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "887961982886"
   },
   {
     "id": "wun-dar-4325",
@@ -4561,7 +4718,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "0194735035106"
   },
   {
     "id": "young-king-randor-200x-5838",
@@ -4575,7 +4733,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735104215"
   },
   {
     "id": "zodac-2406",
@@ -4604,7 +4763,8 @@
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "origins",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "upc": "194735333295"
   },
   {
     "id": "zodac-fan-favorite-7317",
@@ -4616,6 +4776,77 @@
     "retail": 17.99,
     "slug": "zodac-fan-favorite-7317",
     "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "194735244331"
+  },
+  {
+    "id": "macho-man-randy-savage-12008",
+    "name": "“Macho Man” Randy Savage",
+    "line": "origins",
+    "group": "WWE",
+    "wave": "2",
+    "year": 2020,
+    "retail": 19.99,
+    "slug": "macho-man-randy-savage-12008",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": ""
+  },
+  {
+    "id": "macho-man-randy-savage-hwo-12020",
+    "name": "“Macho Man” Randy Savage (hWo)",
+    "line": "origins",
+    "group": "WWE",
+    "wave": "5",
+    "year": 2020,
+    "retail": 19.99,
+    "slug": "macho-man-randy-savage-hwo-12020",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": ""
+  },
+  {
+    "id": "rowdy-roddy-piper-12022",
+    "name": "“Rowdy” Roddy Piper",
+    "line": "origins",
+    "group": "WWE",
+    "wave": "5",
+    "year": 2020,
+    "retail": 19.99,
+    "slug": "rowdy-roddy-piper-12022",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": ""
+  },
+  {
+    "id": "stone-cold-steve-austin-12033",
+    "name": "“Stone Cold” Steve Austin",
+    "line": "origins",
+    "group": "WWE",
+    "wave": "8",
+    "year": 2021,
+    "retail": 19.99,
+    "slug": "stone-cold-steve-austin-12033",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": ""
+  },
+  {
+    "id": "the-fiend-bray-wyatt-12015",
+    "name": "“The Fiend” Bray Wyatt",
+    "line": "origins",
+    "group": "WWE",
+    "wave": "4",
+    "year": 2020,
+    "retail": 19.99,
+    "slug": "the-fiend-bray-wyatt-12015",
+    "faction": "Other",
     "source": "af411",
     "sourceLine": "origins",
     "sourceGroup": ""
@@ -5335,20 +5566,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "man-at-arms-2747",
-    "name": "Man-at-Arms",
-    "line": "masterverse",
-    "group": "Revelation",
-    "wave": "2",
-    "year": 2021,
-    "retail": 26.99,
-    "slug": "man-at-arms-2747",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "masterverse",
-    "sourceGroup": ""
-  },
-  {
     "id": "man-at-arms-11384",
     "name": "Man-At-Arms",
     "line": "masterverse",
@@ -5399,6 +5616,20 @@
     "year": 2023,
     "retail": 23.99,
     "slug": "man-e-faces-deluxe-5368",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "masterverse",
+    "sourceGroup": ""
+  },
+  {
+    "id": "man-at-arms-2747",
+    "name": "Man-at-Arms",
+    "line": "masterverse",
+    "group": "Revelation",
+    "wave": "2",
+    "year": 2021,
+    "retail": 26.99,
+    "slug": "man-at-arms-2747",
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "masterverse",
@@ -6273,231 +6504,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "2026-movie-4-pack-13440",
-    "name": "2026 Movie 4 Pack",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 37.79,
-    "slug": "2026-movie-4-pack-13440",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "battle-cat-13551",
-    "name": "Battle Cat",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 22,
-    "slug": "battle-cat-13551",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "beast-man-13550",
-    "name": "Beast Man",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 11,
-    "slug": "beast-man-13550",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "combat-ready-roboto-twist-release-13546",
-    "name": "Combat Ready Roboto (Twist & Release)",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 17,
-    "slug": "combat-ready-roboto-twist-release-13546",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "grayskull-and-snake-mountain-strongholds-13924",
-    "name": "Grayskull and Snake Mountain Strongholds",
-    "sourceName": "Grayskull and Snake Mountain Strongholds",
-    "line": "kids-core",
-    "sourceLine": "chronicles",
-    "group": "Movie",
-    "sourceGroup": "",
-    "wave": "",
-    "year": 2026,
-    "retail": 86.39,
-    "slug": "grayskull-and-snake-mountain-strongholds-13924",
-    "faction": "Other",
-    "source": "af411"
-  },
-  {
-    "id": "he-man-nicholas-galitzine-13549",
-    "name": "He-Man (Nicholas Galitzine)",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 11,
-    "slug": "he-man-nicholas-galitzine-13549",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "he-man-power-sword-slash-13544",
-    "name": "He-Man (Power Sword Slash)",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 17,
-    "slug": "he-man-power-sword-slash-13544",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "he-man-and-sky-sled-2026-movie-13444",
-    "name": "He-Man and Sky Sled",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 26.99,
-    "slug": "he-man-and-sky-sled-2026-movie-13444",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "mekaneck-13547",
-    "name": "Mekaneck",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 11,
-    "slug": "mekaneck-13547",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "roton-assault-vehicle-13541",
-    "name": "Roton Assault Vehicle",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 37.79,
-    "slug": "roton-assault-vehicle-13541",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "skel-knight-13545",
-    "name": "Skel-Knight",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 11,
-    "slug": "skel-knight-13545",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "skeletor-13542",
-    "name": "Skeletor",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 11,
-    "slug": "skeletor-13542",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "skeletor-alcala-face-13247",
-    "name": "Skeletor (Alcala Face)",
-    "line": "kids-core",
-    "group": "Action Figures",
-    "wave": "",
-    "year": 2026,
-    "retail": 9.97,
-    "slug": "skeletor-alcala-face-13247",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "skeletor-havoc-staff-13543",
-    "name": "Skeletor (Havoc Staff)",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 17,
-    "slug": "skeletor-havoc-staff-13543",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "teela-13552",
-    "name": "Teela",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 10,
-    "slug": "teela-13552",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
-    "id": "trap-jaw-13548",
-    "name": "Trap Jaw",
-    "line": "kids-core",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 17,
-    "slug": "trap-jaw-13548",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "chronicles",
-    "sourceGroup": ""
-  },
-  {
     "id": "battle-cat-13245",
     "name": "Battle Cat",
     "line": "chronicles",
@@ -6665,299 +6671,6 @@
     "source": "af411",
     "sourceLine": "chronicles",
     "sourceGroup": ""
-  },
-  {
-    "id": "manual-5-pack-character-vehicles-mp7fkcpf",
-    "name": "5-pack Character Vehicles",
-    "sourceName": "5-pack Character Vehicles",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Hot Wheels & Die-Cast",
-    "sourceGroup": "Hot Wheels & Die-Cast",
-    "year": 2021,
-    "slug": "manual-5-pack-character-vehicles",
-    "source": "manual"
-  },
-  {
-    "id": "manual-battle-cat-virgil-abloh-war-mp7illh3",
-    "name": "Battle-Cat Virgil Abloh \"War\"",
-    "sourceName": "Battle-Cat Virgil Abloh \"War\"",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "year": 2021,
-    "slug": "manual-battle-cat-virgil-abloh-war",
-    "source": "manual",
-    "retail": 80
-  },
-  {
-    "id": "manual-he-man-madsaki-mp7g7q9q",
-    "name": "He-Man Madsaki",
-    "sourceName": "He-Man Madsaki",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "wave": "1",
-    "year": 2020,
-    "slug": "manual-he-man-madsaki",
-    "source": "manual",
-    "retail": 400
-  },
-  {
-    "id": "manual-he-man-motu-x-barbie-signature-collection-mp7iowyf",
-    "name": "He-Man MOTU x Barbie Signature Collection",
-    "sourceName": "He-Man MOTU x Barbie Signature Collection",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Fashion & Collector Dolls",
-    "sourceGroup": "Fashion & Collector Dolls",
-    "year": 2026,
-    "slug": "manual-he-man-motu-x-barbie-signature-collection",
-    "source": "manual",
-    "retail": 60
-  },
-  {
-    "id": "manual-he-man-motu-x-katun-mp821ksg",
-    "name": "He-Man MOTU x Katun",
-    "sourceName": "He-Man MOTU x Katun",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "year": 2026,
-    "slug": "manual-he-man-motu-x-katun",
-    "source": "manual"
-  },
-  {
-    "id": "manual-he-man-virgil-abloh-woman-mp7gbwek",
-    "name": "He-Man Virgil Abloh \"Woman\"",
-    "sourceName": "He-Man Virgil Abloh \"Woman\"",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "year": 2021,
-    "slug": "manual-he-man-virgil-abloh-woman",
-    "source": "manual",
-    "retail": 50
-  },
-  {
-    "id": "james-jean-coral-skeletor-and-panthor-13312",
-    "name": "James Jean Coral Skeletor and Panthor",
-    "line": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "wave": "",
-    "year": 2026,
-    "retail": 100,
-    "slug": "james-jean-coral-skeletor-and-panthor-13312",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "james-jean-floral-he-man-and-battle-cat-13313",
-    "name": "James Jean Floral He-Man and Battle Cat",
-    "line": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "wave": "",
-    "year": 2026,
-    "retail": 100,
-    "slug": "james-jean-floral-he-man-and-battle-cat-13313",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "manual-monster-high-skullector-skeletor-doll-mp7gli28",
-    "name": "Monster High Skullector Skeletor Doll",
-    "sourceName": "Monster High Skullector Skeletor Doll",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Fashion & Collector Dolls",
-    "sourceGroup": "Fashion & Collector Dolls",
-    "year": 2026,
-    "slug": "manual-monster-high-skullector-skeletor-doll",
-    "source": "manual",
-    "retail": 70
-  },
-  {
-    "id": "manual-orko-motu-x-katun-mp823snu",
-    "name": "Orko MOTU x Katun",
-    "sourceName": "Orko MOTU x Katun",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "year": 2026,
-    "slug": "manual-orko-motu-x-katun",
-    "source": "manual"
-  },
-  {
-    "id": "manual-she-ra-barbie-40th-anniversary-doll-mp7gdrnp",
-    "name": "She-ra Barbie 40th Anniversary Doll",
-    "sourceName": "She-ra Barbie 40th Anniversary Doll",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Fashion & Collector Dolls",
-    "sourceGroup": "Fashion & Collector Dolls",
-    "year": 2025,
-    "slug": "manual-she-ra-barbie-40th-anniversary-doll",
-    "source": "manual",
-    "retail": 55
-  },
-  {
-    "id": "manual-shogun-masters-faker-mp207hu0",
-    "name": "Shogun Masters Faker",
-    "sourceName": "Shogun Masters Faker",
-    "line": "cross-brand",
-    "sourceLine": "origins",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Exclusives",
-    "wave": "3",
-    "year": 2021,
-    "slug": "manual-shogun-masters-faker",
-    "source": "manual",
-    "faction": "Evil Warriors",
-    "retail": 300
-  },
-  {
-    "id": "manual-shogun-masters-he-man-mp201u2x",
-    "name": "Shogun Masters He-Man",
-    "sourceName": "Shogun Masters He-Man",
-    "line": "cross-brand",
-    "sourceLine": "origins",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Exclusives",
-    "year": 2021,
-    "slug": "manual-shogun-masters-he-man",
-    "source": "manual",
-    "wave": "3",
-    "retail": 300
-  },
-  {
-    "id": "shogun-masters-skeletor-3247",
-    "name": "Shogun Masters Skeletor",
-    "line": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "wave": "",
-    "year": 2021,
-    "retail": 300,
-    "slug": "shogun-masters-skeletor-3247",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "shogun-masters-skeletor-dark-malice-edition-3245",
-    "name": "Shogun Masters Skeletor (Dark Malice Edition)",
-    "line": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "wave": "",
-    "year": 2021,
-    "retail": 300,
-    "slug": "shogun-masters-skeletor-dark-malice-edition-3245",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "shogun-masters-skeletor-golden-havoc-edition-3246",
-    "name": "Shogun Masters Skeletor (Golden Havoc Edition)",
-    "line": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "wave": "",
-    "year": 2021,
-    "retail": 300,
-    "slug": "shogun-masters-skeletor-golden-havoc-edition-3246",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "manual-skelegod-virgil-abloh-she-mp7ikhp8",
-    "name": "Skelegod Virgil Abloh \"She\"",
-    "sourceName": "Skelegod Virgil Abloh \"She\"",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "year": 2021,
-    "slug": "manual-skelegod-virgil-abloh-she",
-    "source": "manual",
-    "retail": 60
-  },
-  {
-    "id": "manual-skeletor-madsaki-mp7g8inw",
-    "name": "Skeletor Madsaki",
-    "sourceName": "Skeletor Madsaki",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "wave": "2",
-    "year": 2020,
-    "slug": "manual-skeletor-madsaki",
-    "source": "manual",
-    "retail": 400
-  },
-  {
-    "id": "manual-skeletor-motu-x-katun-mp822edl",
-    "name": "Skeletor MOTU x Katun",
-    "sourceName": "Skeletor MOTU x Katun",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "year": 2026,
-    "slug": "manual-skeletor-motu-x-katun",
-    "source": "manual"
-  },
-  {
-    "id": "manual-skeletor-virgil-abloh-her-mp7iinq4",
-    "name": "Skeletor Virgil Abloh \"Her\"",
-    "sourceName": "Skeletor Virgil Abloh \"Her\"",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "sourceGroup": "Designer & Artist Collaborations",
-    "year": 2021,
-    "slug": "manual-skeletor-virgil-abloh-her",
-    "source": "manual",
-    "retail": 50
-  },
-  {
-    "id": "skeletor-x-veefriends-skilled-skeleton-2-pack-7346",
-    "name": "Skeletor x VeeFriends Skilled Skeleton 2 Pack",
-    "line": "cross-brand",
-    "group": "Designer & Artist Collaborations",
-    "wave": "",
-    "year": 2024,
-    "retail": 45,
-    "slug": "skeletor-x-veefriends-skilled-skeleton-2-pack-7346",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": ""
-  },
-  {
-    "id": "manual-teela-motu-x-barbie-signature-collection-mp7inn62",
-    "name": "Teela MOTU x Barbie Signature Collection",
-    "sourceName": "Teela MOTU x Barbie Signature Collection",
-    "line": "cross-brand",
-    "sourceLine": "cross-brand",
-    "group": "Fashion & Collector Dolls",
-    "sourceGroup": "Fashion & Collector Dolls",
-    "year": 2026,
-    "slug": "manual-teela-motu-x-barbie-signature-collection",
-    "source": "manual",
-    "retail": 60
   },
   {
     "id": "adora-4010",
@@ -11272,20 +10985,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "battle-for-eternia-skeletor-panthor-man-e-faces-2850",
-    "name": "Battle for Eternia (Skeletor Panthor Man-E-Faces)",
-    "line": "original",
-    "group": "Vehicles & Playsets",
-    "wave": "2",
-    "year": 1983,
-    "retail": 16.99,
-    "slug": "battle-for-eternia-skeletor-panthor-man-e-faces-2850",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "original",
-    "sourceGroup": ""
-  },
-  {
     "id": "battle-ram-2431",
     "name": "Battle Ram",
     "line": "original",
@@ -11295,6 +10994,20 @@
     "retail": 14.99,
     "slug": "battle-ram-2431",
     "faction": "Other",
+    "source": "af411",
+    "sourceLine": "original",
+    "sourceGroup": ""
+  },
+  {
+    "id": "battle-for-eternia-skeletor-panthor-man-e-faces-2850",
+    "name": "Battle for Eternia (Skeletor Panthor Man-E-Faces)",
+    "line": "original",
+    "group": "Vehicles & Playsets",
+    "wave": "2",
+    "year": 1983,
+    "retail": 16.99,
+    "slug": "battle-for-eternia-skeletor-panthor-man-e-faces-2850",
+    "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
@@ -12222,20 +11935,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "man-at-arms-2437",
-    "name": "Man-at-Arms",
-    "line": "original",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 1982,
-    "retail": 4.99,
-    "slug": "man-at-arms-2437",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "original",
-    "sourceGroup": ""
-  },
-  {
     "id": "man-e-faces-2839",
     "name": "Man-E-Faces",
     "line": "original",
@@ -12244,6 +11943,20 @@
     "year": 1983,
     "retail": 4.99,
     "slug": "man-e-faces-2839",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "original",
+    "sourceGroup": ""
+  },
+  {
+    "id": "man-at-arms-2437",
+    "name": "Man-at-Arms",
+    "line": "original",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 1982,
+    "retail": 4.99,
+    "slug": "man-at-arms-2437",
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "original",
@@ -12836,20 +12549,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "skeletor-the-original-3235",
-    "name": "Skeletor (The Original)",
-    "line": "original",
-    "group": "Action Figures",
-    "wave": "3",
-    "year": 1984,
-    "retail": 4.99,
-    "slug": "skeletor-the-original-3235",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "original",
-    "sourceGroup": ""
-  },
-  {
     "id": "skeletor-beast-man-12471",
     "name": "Skeletor & Beast Man",
     "line": "original",
@@ -12872,6 +12571,20 @@
     "year": 1982,
     "retail": 8.49,
     "slug": "skeletor-mer-man-11333",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "original",
+    "sourceGroup": ""
+  },
+  {
+    "id": "skeletor-the-original-3235",
+    "name": "Skeletor (The Original)",
+    "line": "original",
+    "group": "Action Figures",
+    "wave": "3",
+    "year": 1984,
+    "retail": 4.99,
+    "slug": "skeletor-the-original-3235",
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "original",
@@ -14632,20 +14345,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "swift-wind-timed-edition-12119",
-    "name": "Swift Wind (Timed Edition)",
-    "line": "mondo",
-    "group": "Action Figures",
-    "wave": "",
-    "year": 2025,
-    "retail": 599,
-    "slug": "swift-wind-timed-edition-12119",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "mondo",
-    "sourceGroup": ""
-  },
-  {
     "id": "swift-wind-she-ra-deluxe-timed-edition-12120",
     "name": "Swift Wind & She-Ra (Deluxe - Timed Edition)",
     "line": "mondo",
@@ -14655,6 +14354,20 @@
     "retail": 795,
     "slug": "swift-wind-she-ra-deluxe-timed-edition-12120",
     "faction": "Great Rebellion",
+    "source": "af411",
+    "sourceLine": "mondo",
+    "sourceGroup": ""
+  },
+  {
+    "id": "swift-wind-timed-edition-12119",
+    "name": "Swift Wind (Timed Edition)",
+    "line": "mondo",
+    "group": "Action Figures",
+    "wave": "",
+    "year": 2025,
+    "retail": 599,
+    "slug": "swift-wind-timed-edition-12119",
+    "faction": "Other",
     "source": "af411",
     "sourceLine": "mondo",
     "sourceGroup": ""
@@ -16033,20 +15746,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "faker-revelation-3201",
-    "name": "Faker (Revelation)",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "4",
-    "year": 2021,
-    "retail": 4.99,
-    "slug": "faker-revelation-3201",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "eternia-minis",
-    "sourceGroup": ""
-  },
-  {
     "id": "faker-man-at-arms-2-pack-2625",
     "name": "Faker & Man-At-Arms 2 Pack",
     "line": "eternia-minis",
@@ -16055,6 +15754,20 @@
     "year": 2014,
     "retail": 14.99,
     "slug": "faker-man-at-arms-2-pack-2625",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "eternia-minis",
+    "sourceGroup": ""
+  },
+  {
+    "id": "faker-revelation-3201",
+    "name": "Faker (Revelation)",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "4",
+    "year": 2021,
+    "retail": 4.99,
+    "slug": "faker-revelation-3201",
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "eternia-minis",
@@ -16271,20 +15984,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "man-at-arms-grayskull-2599",
-    "name": "Man-at-Arms (Grayskull)",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "1",
-    "year": 2020,
-    "retail": 4.99,
-    "slug": "man-at-arms-grayskull-2599",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "eternia-minis",
-    "sourceGroup": ""
-  },
-  {
     "id": "man-at-arms-netflix-5551",
     "name": "Man-At-Arms (Netflix)",
     "line": "eternia-minis",
@@ -16293,6 +15992,20 @@
     "year": 2022,
     "retail": 4.99,
     "slug": "man-at-arms-netflix-5551",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "eternia-minis",
+    "sourceGroup": ""
+  },
+  {
+    "id": "man-at-arms-grayskull-2599",
+    "name": "Man-at-Arms (Grayskull)",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "1",
+    "year": 2020,
+    "retail": 4.99,
+    "slug": "man-at-arms-grayskull-2599",
     "faction": "Heroic Warriors",
     "source": "af411",
     "sourceLine": "eternia-minis",
@@ -16705,20 +16418,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "whiplash-full-metal-revelation-2620",
-    "name": "Whiplash - Full Metal (Revelation)",
-    "line": "eternia-minis",
-    "group": "Action Figures",
-    "wave": "3",
-    "year": 2021,
-    "retail": 4.99,
-    "slug": "whiplash-full-metal-revelation-2620",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "eternia-minis",
-    "sourceGroup": ""
-  },
-  {
     "id": "whiplash-revelation-2619",
     "name": "Whiplash (Revelation)",
     "line": "eternia-minis",
@@ -16727,6 +16426,20 @@
     "year": 2021,
     "retail": 4.99,
     "slug": "whiplash-revelation-2619",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "eternia-minis",
+    "sourceGroup": ""
+  },
+  {
+    "id": "whiplash-full-metal-revelation-2620",
+    "name": "Whiplash - Full Metal (Revelation)",
+    "line": "eternia-minis",
+    "group": "Action Figures",
+    "wave": "3",
+    "year": 2021,
+    "retail": 4.99,
+    "slug": "whiplash-full-metal-revelation-2620",
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "eternia-minis",
@@ -16758,6 +16471,527 @@
     "faction": "Other",
     "source": "af411",
     "sourceLine": "eternia-minis",
+    "sourceGroup": ""
+  },
+  {
+    "id": "2026-movie-4-pack-13440",
+    "name": "2026 Movie 4 Pack",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 37.79,
+    "slug": "2026-movie-4-pack-13440",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-5-pack-character-vehicles-mp7fkcpf",
+    "name": "5-pack Character Vehicles",
+    "sourceName": "5-pack Character Vehicles",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Hot Wheels & Die-Cast",
+    "sourceGroup": "Hot Wheels & Die-Cast",
+    "year": 2021,
+    "slug": "manual-5-pack-character-vehicles",
+    "source": "manual"
+  },
+  {
+    "id": "battle-cat-13551",
+    "name": "Battle Cat",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 22,
+    "slug": "battle-cat-13551",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-battle-cat-virgil-abloh-war-mp7illh3",
+    "name": "Battle-Cat Virgil Abloh \"War\"",
+    "sourceName": "Battle-Cat Virgil Abloh \"War\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-battle-cat-virgil-abloh-war",
+    "source": "manual",
+    "retail": 80
+  },
+  {
+    "id": "beast-man-13550",
+    "name": "Beast Man",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 11,
+    "slug": "beast-man-13550",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "combat-ready-roboto-twist-release-13546",
+    "name": "Combat Ready Roboto (Twist & Release)",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 17,
+    "slug": "combat-ready-roboto-twist-release-13546",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "grayskull-and-snake-mountain-strongholds-13924",
+    "name": "Grayskull and Snake Mountain Strongholds",
+    "sourceName": "Grayskull and Snake Mountain Strongholds",
+    "line": "kids-core",
+    "sourceLine": "chronicles",
+    "group": "Movie",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 86.39,
+    "slug": "grayskull-and-snake-mountain-strongholds-13924",
+    "faction": "Other",
+    "source": "af411"
+  },
+  {
+    "id": "he-man-nicholas-galitzine-13549",
+    "name": "He-Man (Nicholas Galitzine)",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 11,
+    "slug": "he-man-nicholas-galitzine-13549",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "he-man-power-sword-slash-13544",
+    "name": "He-Man (Power Sword Slash)",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 17,
+    "slug": "he-man-power-sword-slash-13544",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-he-man-motu-x-barbie-signature-collection-mp7iowyf",
+    "name": "He-Man MOTU x Barbie Signature Collection",
+    "sourceName": "He-Man MOTU x Barbie Signature Collection",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Fashion & Collector Dolls",
+    "sourceGroup": "Fashion & Collector Dolls",
+    "year": 2026,
+    "slug": "manual-he-man-motu-x-barbie-signature-collection",
+    "source": "manual",
+    "retail": 60
+  },
+  {
+    "id": "manual-he-man-motu-x-katun-mp821ksg",
+    "name": "He-Man MOTU x Katun",
+    "sourceName": "He-Man MOTU x Katun",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2026,
+    "slug": "manual-he-man-motu-x-katun",
+    "source": "manual"
+  },
+  {
+    "id": "manual-he-man-madsaki-mp7g7q9q",
+    "name": "He-Man Madsaki",
+    "sourceName": "He-Man Madsaki",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "wave": "1",
+    "year": 2020,
+    "slug": "manual-he-man-madsaki",
+    "source": "manual",
+    "retail": 400
+  },
+  {
+    "id": "manual-he-man-virgil-abloh-woman-mp7gbwek",
+    "name": "He-Man Virgil Abloh \"Woman\"",
+    "sourceName": "He-Man Virgil Abloh \"Woman\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-he-man-virgil-abloh-woman",
+    "source": "manual",
+    "retail": 50
+  },
+  {
+    "id": "he-man-and-sky-sled-2026-movie-13444",
+    "name": "He-Man and Sky Sled",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 26.99,
+    "slug": "he-man-and-sky-sled-2026-movie-13444",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "james-jean-coral-skeletor-and-panthor-13312",
+    "name": "James Jean Coral Skeletor and Panthor",
+    "line": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "wave": "",
+    "year": 2026,
+    "retail": 100,
+    "slug": "james-jean-coral-skeletor-and-panthor-13312",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": ""
+  },
+  {
+    "id": "james-jean-floral-he-man-and-battle-cat-13313",
+    "name": "James Jean Floral He-Man and Battle Cat",
+    "line": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "wave": "",
+    "year": 2026,
+    "retail": 100,
+    "slug": "james-jean-floral-he-man-and-battle-cat-13313",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": ""
+  },
+  {
+    "id": "mekaneck-13547",
+    "name": "Mekaneck",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 11,
+    "slug": "mekaneck-13547",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-monster-high-skullector-skeletor-doll-mp7gli28",
+    "name": "Monster High Skullector Skeletor Doll",
+    "sourceName": "Monster High Skullector Skeletor Doll",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Fashion & Collector Dolls",
+    "sourceGroup": "Fashion & Collector Dolls",
+    "year": 2026,
+    "slug": "manual-monster-high-skullector-skeletor-doll",
+    "source": "manual",
+    "retail": 70
+  },
+  {
+    "id": "manual-orko-motu-x-katun-mp823snu",
+    "name": "Orko MOTU x Katun",
+    "sourceName": "Orko MOTU x Katun",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2026,
+    "slug": "manual-orko-motu-x-katun",
+    "source": "manual"
+  },
+  {
+    "id": "roton-assault-vehicle-13541",
+    "name": "Roton Assault Vehicle",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 37.79,
+    "slug": "roton-assault-vehicle-13541",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-she-ra-barbie-40th-anniversary-doll-mp7gdrnp",
+    "name": "She-ra Barbie 40th Anniversary Doll",
+    "sourceName": "She-ra Barbie 40th Anniversary Doll",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Fashion & Collector Dolls",
+    "sourceGroup": "Fashion & Collector Dolls",
+    "year": 2025,
+    "slug": "manual-she-ra-barbie-40th-anniversary-doll",
+    "source": "manual",
+    "retail": 55
+  },
+  {
+    "id": "manual-shogun-masters-faker-mp207hu0",
+    "name": "Shogun Masters Faker",
+    "sourceName": "Shogun Masters Faker",
+    "line": "cross-brand",
+    "sourceLine": "origins",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Exclusives",
+    "wave": "3",
+    "year": 2021,
+    "slug": "manual-shogun-masters-faker",
+    "source": "manual",
+    "faction": "Evil Warriors",
+    "retail": 300
+  },
+  {
+    "id": "manual-shogun-masters-he-man-mp201u2x",
+    "name": "Shogun Masters He-Man",
+    "sourceName": "Shogun Masters He-Man",
+    "line": "cross-brand",
+    "sourceLine": "origins",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Exclusives",
+    "year": 2021,
+    "slug": "manual-shogun-masters-he-man",
+    "source": "manual",
+    "wave": "3",
+    "retail": 300
+  },
+  {
+    "id": "shogun-masters-skeletor-3247",
+    "name": "Shogun Masters Skeletor",
+    "line": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "wave": "",
+    "year": 2021,
+    "retail": 300,
+    "slug": "shogun-masters-skeletor-3247",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "887961981681"
+  },
+  {
+    "id": "shogun-masters-skeletor-dark-malice-edition-3245",
+    "name": "Shogun Masters Skeletor (Dark Malice Edition)",
+    "line": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "wave": "",
+    "year": 2021,
+    "retail": 300,
+    "slug": "shogun-masters-skeletor-dark-malice-edition-3245",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "10194735066886"
+  },
+  {
+    "id": "shogun-masters-skeletor-golden-havoc-edition-3246",
+    "name": "Shogun Masters Skeletor (Golden Havoc Edition)",
+    "line": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "wave": "",
+    "year": 2021,
+    "retail": 300,
+    "slug": "shogun-masters-skeletor-golden-havoc-edition-3246",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": ""
+  },
+  {
+    "id": "skel-knight-13545",
+    "name": "Skel-Knight",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 11,
+    "slug": "skel-knight-13545",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-skelegod-virgil-abloh-she-mp7ikhp8",
+    "name": "Skelegod Virgil Abloh \"She\"",
+    "sourceName": "Skelegod Virgil Abloh \"She\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-skelegod-virgil-abloh-she",
+    "source": "manual",
+    "retail": 60
+  },
+  {
+    "id": "skeletor-13542",
+    "name": "Skeletor",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 11,
+    "slug": "skeletor-13542",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "skeletor-alcala-face-13247",
+    "name": "Skeletor (Alcala Face)",
+    "line": "kids-core",
+    "group": "Action Figures",
+    "wave": "",
+    "year": 2026,
+    "retail": 9.97,
+    "slug": "skeletor-alcala-face-13247",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "skeletor-havoc-staff-13543",
+    "name": "Skeletor (Havoc Staff)",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 17,
+    "slug": "skeletor-havoc-staff-13543",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-skeletor-motu-x-katun-mp822edl",
+    "name": "Skeletor MOTU x Katun",
+    "sourceName": "Skeletor MOTU x Katun",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2026,
+    "slug": "manual-skeletor-motu-x-katun",
+    "source": "manual"
+  },
+  {
+    "id": "manual-skeletor-madsaki-mp7g8inw",
+    "name": "Skeletor Madsaki",
+    "sourceName": "Skeletor Madsaki",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "wave": "2",
+    "year": 2020,
+    "slug": "manual-skeletor-madsaki",
+    "source": "manual",
+    "retail": 400
+  },
+  {
+    "id": "manual-skeletor-virgil-abloh-her-mp7iinq4",
+    "name": "Skeletor Virgil Abloh \"Her\"",
+    "sourceName": "Skeletor Virgil Abloh \"Her\"",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "sourceGroup": "Designer & Artist Collaborations",
+    "year": 2021,
+    "slug": "manual-skeletor-virgil-abloh-her",
+    "source": "manual",
+    "retail": 50
+  },
+  {
+    "id": "skeletor-x-veefriends-skilled-skeleton-2-pack-7346",
+    "name": "Skeletor x VeeFriends Skilled Skeleton 2 Pack",
+    "line": "cross-brand",
+    "group": "Designer & Artist Collaborations",
+    "wave": "",
+    "year": 2024,
+    "retail": 45,
+    "slug": "skeletor-x-veefriends-skilled-skeleton-2-pack-7346",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "194735179374"
+  },
+  {
+    "id": "teela-13552",
+    "name": "Teela",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 10,
+    "slug": "teela-13552",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
+    "sourceGroup": ""
+  },
+  {
+    "id": "manual-teela-motu-x-barbie-signature-collection-mp7inn62",
+    "name": "Teela MOTU x Barbie Signature Collection",
+    "sourceName": "Teela MOTU x Barbie Signature Collection",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Fashion & Collector Dolls",
+    "sourceGroup": "Fashion & Collector Dolls",
+    "year": 2026,
+    "slug": "manual-teela-motu-x-barbie-signature-collection",
+    "source": "manual",
+    "retail": 60
+  },
+  {
+    "id": "trap-jaw-13548",
+    "name": "Trap Jaw",
+    "line": "kids-core",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 17,
+    "slug": "trap-jaw-13548",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "chronicles",
     "sourceGroup": ""
   }
 ]
