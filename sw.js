@@ -4,6 +4,18 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.85. SHELL: render.js + vault.css. Photo fixes:
+//       – STAR/DEFAULT BUG (root cause): the fullscreen viewer computed
+//         "is this the default?" by strict equality on the explicit
+//         S.defaultPhoto entry only, so the IMPLICIT default (first user
+//         photo, no explicit entry) was wrongly shown as "Set as default."
+//         Tapping it wrote a redundant entry that fought the implicit
+//         fallback and broke list-thumbnail behavior. Viewer now resolves
+//         the same EFFECTIVE default the carousel does (?? first user photo).
+//       – Carousel swipe: touch-action:pan-x pinch-zoom so a rightward swipe
+//         starting near the left screen edge no longer triggers the OS back
+//         gesture and loads the previous figure. Pairs with the v6.84
+//         overscroll-behavior fix (which only handled the left direction).
 //   • CACHE bumped to v6.84. SHELL: render.js + vault.css. SW image-cache
 //     architecture fix + photo/editor polish:
 //       – IMAGE CACHE FIX (important): figure images + sounds now live in a
@@ -664,7 +676,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.84';
+const CACHE = 'motu-vault-v6.85';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

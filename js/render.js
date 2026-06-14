@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.84</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.85</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1836,8 +1836,19 @@ function renderPhotoViewer() {
   // default thumbnail. Stock photos (n=-1) and stub-less viewers skip it.
   const isStock = !!p.stock || p.n === -1;
   const figId = v.figId;
-  const curDefault = (figId && S.defaultPhoto) ? S.defaultPhoto[figId] : undefined;
-  const isAlreadyDefault = !isStock && curDefault === p.n;
+  // v6.85: resolve the EFFECTIVE default the same way the detail carousel
+  // does. Previously this checked S.defaultPhoto[figId] === p.n by strict
+  // equality only — so a photo that is the IMPLICIT default (no explicit
+  // entry yet; the first user photo) was wrongly shown as "Set as default".
+  // Tapping it then wrote a redundant explicit entry that fought the implicit
+  // fallback and broke list-thumbnail behavior. Mirror the carousel's
+  // `?? firstPhoto.n` fallback so implicit and explicit defaults agree.
+  const explicitDefault = (figId && S.defaultPhoto) ? S.defaultPhoto[figId] : undefined;
+  const userNs = v.photos.filter(ph => !ph.stock && ph.n !== -1).map(ph => ph.n);
+  const effectiveDefault = explicitDefault != null
+    ? explicitDefault
+    : (userNs.length ? userNs[0] : -1);
+  const isAlreadyDefault = !isStock && effectiveDefault === p.n;
   const showSetDefault = !isStock && figId && !isAlreadyDefault;
   return `<div class="photo-viewer" onclick="if(event.target===this)closePhotoViewer()">
     <button class="photo-viewer-close" onclick="closePhotoViewer()">${icon(ICO.x,28)}</button>

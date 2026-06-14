@@ -1136,6 +1136,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
      photo doesn't chain to the browser's back/forward gesture (which was
      navigating away to the previous/next figure mid-swipe). */
   overscroll-behavior-x: contain;
+  /* v6.85: claim horizontal panning for the carousel itself. Without this,
+     a right-ward swipe that begins near the left screen edge was being
+     captured by the OS/PWA "back" gesture and loading the previous figure.
+     pan-x tells the browser this element owns horizontal gestures; pinch-zoom
+     is still allowed so the fullscreen viewer's zoom is unaffected. */
+  touch-action: pan-x pinch-zoom;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   background: var(--bg3);
