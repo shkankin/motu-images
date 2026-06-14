@@ -1755,18 +1755,15 @@ function renderDetail() {
       const parent = f.variantOf ? figById(f.variantOf) : null;
       const root = parent || f;
       const fam = [root, ...figVariants(root.id)];
-      // v6.89: previously this returned '' for solo figures (fam < 2), but the
-      // action-bar "Add Variant" button was removed in the detail redesign, so
-      // the strip is now the ONLY entry point for starting a variant family.
-      // We therefore always render it — for a solo figure it shows just that
-      // figure plus the "+ Add" chip. Custom/kids-core figures don't support
-      // variants, so they still skip it.
-      if (f.line === 'kids-core' || f.line === 'custom') return '';
-      const soloMode = fam.length < 2;
+      // v6.89.1: only show the strip when there's an actual variant family
+      // (2+ members) — as it behaved before the redesign. A solo figure with
+      // no variants shows nothing here; "Add Variant" lives in the bottom
+      // action bar instead.
+      if (fam.length < 2) return '';
       const chip = (m) => {
         const cur = m.id === f.id;
         const mImg = (S.customPhotos[m.id] && photoStore.get(m.id)) || (!S.imgErrors[m.id] && m.image) || '';
-        const label = soloMode ? 'This figure' : (m.id === root.id ? 'Original' : (m.variantName || m.name));
+        const label = m.id === root.id ? 'Original' : (m.variantName || m.name);
         const owned = S.coll[m.id]?.status === 'owned';
         return `<div class="variant-chip${cur ? ' current' : ''}" ${cur ? '' : `data-action="open-fig" data-fig-id="${esc(m.id)}"`}>
           <div class="variant-chip-thumb">${mImg ? `<img src="${esc(mImg)}" alt="" loading="lazy">` : `<span>${esc(m.name[0])}</span>`}${owned ? '<div class="variant-chip-dot"></div>' : ''}</div>
@@ -1807,6 +1804,11 @@ function renderDetail() {
       if (f.line !== 'kids-core' && f.line !== 'custom')
         btns.push(btn(`event.preventDefault();openAF411(${jId})`, 'AF411', ICO.export));
       btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
+      // v6.89.1: Add Variant back in the action bar (the strip now hides for
+      // solo figures, so this is the entry point to START a family). Skipped
+      // for kids-core/custom, which don't support the variant model.
+      if (f.line !== 'kids-core' && f.line !== 'custom')
+        btns.push(btn(`addVariant(${jId})`, 'Variant', ICO.plus, 'gold'));
       if (f.source === 'custom-local')
         btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.x, 'red'));
       return `<div class="detail-action-bar" style="grid-template-columns:repeat(${btns.length},1fr)">${btns.join('')}</div>`;

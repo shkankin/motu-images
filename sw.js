@@ -18,6 +18,11 @@
 //       – "Add Variant" removed from the action bar (was redundant with the
 //         variant strip's "+"); the strip now always renders so solo figures
 //         still have an Add-variant entry point.
+//     v6.89.1 corrections (same release, pre-deploy):
+//       – Variant strip hides again for solo figures (the always-on version
+//         looked wrong); Add Variant returns to the bottom action bar (gold).
+//       – Bottom action buttons: icon + label on one inline row (were stacked
+//         column, too tall + mismatched). Compact uniform height.
 //   • CACHE bumped to v6.88. SHELL: render.js + data.js + pricing.js. The
 //     pricing-backend URL (motu-pricing-backend) was never in the settings
 //     backup, so a browser-storage clear wiped it permanently and silently

@@ -3270,13 +3270,16 @@ html {
   padding: 0 16px 12px;
 }
 .detail-action-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px; padding: 10px 4px; min-height: 58px;
+  /* v6.89.1: icon + label on ONE line (was stacked column, too tall and
+     visually mismatched). Compact, uniform height. */
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: 7px; padding: 11px 8px; min-height: 0;
   border-radius: 12px; border: 1px solid var(--bd);
   background: var(--bg3); color: var(--t2);
-  font-size: 11px; font-weight: 600; line-height: 1.15;
+  font-size: 13px; font-weight: 600; line-height: 1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.detail-action-btn svg { flex-shrink: 0; }
 .detail-action-btn.gold { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
 .detail-action-btn.red { color: var(--rd); border-color: color-mix(in srgb, var(--rd) 40%, transparent); }
 
