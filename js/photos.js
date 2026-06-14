@@ -682,6 +682,108 @@ document.addEventListener('drop', e => {
   }
 });
 
+// ── v6.86: Barcode camera scanner ───────────────────────────────
+// Android-only by design: uses the native BarcodeDetector API (no library).
+// On a successful decode we just feed the digits into the existing search via
+// onSearch — the app already matches figure.upc, so a scan jumps to the figure.
+// The whole thing is a self-contained DOM overlay with its own teardown; it
+// never touches app render state, so it's safe to open from anywhere.
+let _scanStream = null;
+let _scanRAF = null;
+
+function _teardownScanner() {
+  if (_scanRAF) { cancelAnimationFrame(_scanRAF); _scanRAF = null; }
+  if (_scanStream) {
+    try { _scanStream.getTracks().forEach(t => t.stop()); } catch {}
+    _scanStream = null;
+  }
+  const ov = document.getElementById('barcodeScanner');
+  if (ov) ov.remove();
+}
+
+window.openBarcodeScanner = async () => {
+  // 1. Feature support. BarcodeDetector is Chromium/Android; absent on iOS
+  //    Safari and older browsers. Fail with a clear message, not a crash.
+  if (!('BarcodeDetector' in window)) {
+    window.toast && window.toast('Barcode scanning needs Chrome on Android', { large: true });
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    window.toast && window.toast('Camera not available on this device');
+    return;
+  }
+
+  // 2. Which formats. UPC-A/E + EAN-13/8 cover retail toy packaging.
+  let detector;
+  try {
+    const supported = await window.BarcodeDetector.getSupportedFormats();
+    const want = ['upc_a', 'upc_e', 'ean_13', 'ean_8'].filter(f => supported.includes(f));
+    detector = new window.BarcodeDetector({ formats: want.length ? want : undefined });
+  } catch {
+    detector = new window.BarcodeDetector();
+  }
+
+  // 3. Build the overlay UI.
+  const ov = document.createElement('div');
+  ov.id = 'barcodeScanner';
+  ov.className = 'barcode-scanner';
+  ov.innerHTML = `
+    <video class="barcode-video" playsinline muted></video>
+    <div class="barcode-frame"><div class="barcode-laser"></div></div>
+    <div class="barcode-hint">Point at a barcode</div>
+    <button class="barcode-close" aria-label="Close scanner">${icon(ICO.x, 26)}</button>`;
+  document.body.appendChild(ov);
+  const video = ov.querySelector('.barcode-video');
+  const hint = ov.querySelector('.barcode-hint');
+  ov.querySelector('.barcode-close').onclick = _teardownScanner;
+
+  // 4. Camera. Prefer the rear camera; getUserMedia rejects on denied perms.
+  try {
+    _scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }, audio: false,
+    });
+  } catch (err) {
+    _teardownScanner();
+    const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+    window.toast && window.toast(denied ? 'Camera permission denied' : 'Could not start camera');
+    return;
+  }
+  video.srcObject = _scanStream;
+  try { await video.play(); } catch {}
+
+  // 5. Scan loop. Throttle to ~every 250ms so we don't pin the CPU. On a hit,
+  //    tear down immediately and route the digits to search.
+  let last = 0;
+  let done = false;
+  const tick = async (ts) => {
+    if (done) return;
+    if (ts - last > 250 && video.readyState >= 2) {
+      last = ts;
+      try {
+        const codes = await detector.detect(video);
+        if (codes && codes.length) {
+          const raw = (codes[0].rawValue || '').replace(/[^0-9]/g, '');
+          if (raw.length >= 6) {
+            done = true;
+            if (window.haptic) window.haptic();
+            _teardownScanner();
+            window.onSearch && window.onSearch(raw);
+            // Surface a no-match hint: onSearch filters; if nothing matched,
+            // the empty-state already explains it, but a toast confirms the read.
+            window.toast && window.toast('Scanned ' + raw);
+            return;
+          }
+        }
+      } catch { /* transient detect errors are fine; keep scanning */ }
+    }
+    _scanRAF = requestAnimationFrame(tick);
+  };
+  _scanRAF = requestAnimationFrame(tick);
+
+  // Safety: if the user navigates back (hardware back), tear down.
+  window.addEventListener('popstate', _teardownScanner, { once: true });
+};
+
 // ── Exports ─────────────────────────────────────────────────
 export {
   MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, _opfsReady, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, getPhotoCopyMap, replacePhotoCopyMap, mergePhotoCopyMap, compressPhoto, initPhotoViewerZoom

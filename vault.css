@@ -3328,3 +3328,49 @@ html {
   background: var(--bg3); color: var(--acc);
   font-size: 12px; font-weight: 600; cursor: pointer;
 }
+
+/* ── v6.86: Barcode camera scanner ──────────────────────────────── */
+.search-scan {
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; width: 30px; height: 30px; margin-right: 2px;
+  border: none; background: transparent; color: var(--t3);
+  cursor: pointer; border-radius: 7px;
+}
+.search-scan:active { transform: scale(0.9); color: var(--acc); }
+.barcode-scanner {
+  position: fixed; inset: 0; z-index: 4000;
+  background: #000; display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.barcode-video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover;
+}
+.barcode-frame {
+  position: relative; z-index: 2;
+  width: 78%; max-width: 360px; aspect-ratio: 5 / 3;
+  border: 2px solid rgba(255,255,255,0.85); border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+  overflow: hidden;
+}
+.barcode-laser {
+  position: absolute; left: 0; right: 0; top: 0; height: 2px;
+  background: var(--acc, #b794f6);
+  box-shadow: 0 0 8px 2px var(--acc, #b794f6);
+  animation: barcodeScan 1.8s ease-in-out infinite;
+}
+@keyframes barcodeScan {
+  0%, 100% { top: 6%; opacity: 0.4; }
+  50% { top: 94%; opacity: 1; }
+}
+.barcode-hint {
+  position: absolute; z-index: 3; bottom: 16%;
+  color: #fff; font-size: 14px; font-weight: 600;
+  background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 20px;
+}
+.barcode-close {
+  position: absolute; z-index: 3; top: 16px; right: 16px;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%; background: rgba(0,0,0,0.5);
+  color: #fff; cursor: pointer;
+}

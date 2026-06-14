@@ -4,6 +4,16 @@
 // Images: cache-first
 //
 // v6.64 changelog:
+//   • CACHE bumped to v6.86. SHELL: render.js + photos.js + vault.css.
+//     Barcode CAMERA scanning (Android). A scan button in the search bar
+//     opens a live camera overlay using the native BarcodeDetector API (no
+//     library, no new dependency). On decode it strips to digits and feeds
+//     the existing search via onSearch — which already matches figure.upc,
+//     so a scan jumps straight to the figure. Defensive: clear messages when
+//     BarcodeDetector is unsupported (iOS/old browsers), camera is missing,
+//     or permission is denied; self-contained overlay with full teardown
+//     (stops camera tracks + cancels RAF) on hit, close, or hardware-back.
+//     Targets UPC-A/E + EAN-13/8 (retail toy packaging).
 //   • CACHE bumped to v6.85. SHELL: render.js + vault.css. Photo fixes:
 //       – STAR/DEFAULT BUG (root cause): the fullscreen viewer computed
 //         "is this the default?" by strict equality on the explicit
@@ -676,7 +686,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.85';
+const CACHE = 'motu-vault-v6.86';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.85</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.86</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -488,6 +488,7 @@ function renderMain() {
         <span class="search-icon">${icon(ICO.search,16)}</span>
         <input id="searchInput" value="${esc(S.search)}" placeholder="${S.activeLine ? 'Search '+ln(S.activeLine)+'…' : 'Search figures…'}" oninput="onSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         ${S.search ? `<button class="search-clear" data-action="clear-search">${icon(ICO.x,14)}</button>` : ''}
+        <button class="search-scan" onclick="openBarcodeScanner()" title="Scan a barcode" aria-label="Scan barcode">${icon(ICO.qr,16)}</button>
       </div>
       <button class="filter-btn ${hf?'active':''}" onclick="openSheet('filter')">
         ${icon(ICO.filter,18)}${hf ? '<span class="filter-dot"></span>' : ''}
