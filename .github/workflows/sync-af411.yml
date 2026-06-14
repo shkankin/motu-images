@@ -14,6 +14,16 @@ on:
         required: false
         default: false
         type: boolean
+      capture_upc:
+        description: 'Also capture UPC barcodes (fetches one detail page per figure — slow; use occasionally, not daily)'
+        required: false
+        default: false
+        type: boolean
+      upc_limit:
+        description: 'Cap UPC detail-page fetches this run (blank = no cap; e.g. 50 for a gentle first pass)'
+        required: false
+        default: ''
+        type: string
   schedule:
     # 06:00 UTC daily (≈ 2am ET, 1am CT, 11pm PT)
     - cron: '0 6 * * *'
@@ -47,6 +57,16 @@ jobs:
           fi
           if [ -n "${{ inputs.line }}" ]; then
             CMD="$CMD --line ${{ inputs.line }}"
+          fi
+          # UPC capture is MANUAL-ONLY and never runs on the daily schedule —
+          # it costs one detail-page fetch per figure, so it's opt-in via the
+          # workflow_dispatch toggle. The script itself is incremental (skips
+          # figures that already have a upc), so repeat manual runs are cheap.
+          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.capture_upc }}" = "true" ]; then
+            CMD="$CMD --upc"
+            if [ -n "${{ inputs.upc_limit }}" ]; then
+              CMD="$CMD --upc-limit ${{ inputs.upc_limit }}"
+            fi
           fi
           echo "Running: $CMD"
           $CMD
