@@ -625,6 +625,18 @@ def main():
     removed_ids = existing_ids - scraped_ids if not args.line else set()  # Only flag removals on full sync
     # v1.9: existing figures are NEVER modified. Once a figure is in
     # figures.json it belongs to the user. AF411 data for new figures only.
+    # v1.6 exception: existing figures missing a `upc` that we just captured.
+    # UPC is objective data with no override concept, so it's safe to backfill
+    # (only when --upc is set, only onto records that lack one). Computed here
+    # so the "Everything is in sync!" early-return below doesn't skip the write
+    # when the ONLY change this run is a batch of UPCs.
+    upc_pending = set()
+    if args.upc:
+        upc_pending = {
+            fid for fid in (scraped_ids & existing_ids)
+            if scraped_by_id[fid].get("upc")
+            and not existing_by_id[fid].get("upc")
+        }
     updated = []
     line_overrides = []
     group_overrides = []
@@ -642,6 +654,8 @@ def main():
     if args.no_pending:
         print(f"  New → figures.json:  {len(new_for_existing)}")
     print(f"  Existing updated:    {len(updated)}")
+    if args.upc:
+        print(f"  UPC backfill (existing): {len(upc_pending)}")
     print(f"  Pending refreshed:   {len(pending_refresh)}")
     print(f"  Skipped (rejected):  {len(skipped_rejected)}")
     if not args.line:
@@ -689,7 +703,7 @@ def main():
             print(f"    ? [{f.get('line','')}] {f.get('name',fid)}")
         print()
 
-    if not new_for_pending and not new_for_existing and not updated and not pending_refresh:
+    if not new_for_pending and not new_for_existing and not updated and not pending_refresh and not upc_pending:
         print("  ✓ Everything is in sync!\n")
         return
 
@@ -765,6 +779,29 @@ def main():
         else:
             img_failed += 1
         time.sleep(0.5)
+
+    # v1.6: UPC backfill onto EXISTING figures. The sync's core rule is that
+    # existing records are never modified (v1.9) — that protects manual
+    # line/group/name overrides. UPC is different: it's objective AF411 data
+    # with no user-override concept, and it's the whole point of an --upc run.
+    # So we make a narrow exception: write ONLY the `upc` field, ONLY onto
+    # existing figures that don't already have one. An existing upc is never
+    # overwritten, so a hand-corrected barcode survives future syncs.
+    upc_backfilled = 0
+    if args.upc:
+        for fid in scraped_ids & existing_ids:
+            s = scraped_by_id[fid]
+            new_upc = s.get("upc")
+            if not new_upc:
+                continue
+            tgt = merged_by_id.get(fid)
+            if tgt is not None and not tgt.get("upc"):
+                tgt["upc"] = new_upc
+                upc_backfilled += 1
+        if upc_backfilled:
+            print(f"  🏷  UPC: backfilled {upc_backfilled} existing figure(s)")
+        else:
+            print(f"  🏷  UPC: no existing figures needed a backfill")
 
     # Sort by line then name for clean diffs
     line_order = {l[0]: i for i, l in enumerate(LINES)}
