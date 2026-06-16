@@ -110,6 +110,12 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .text-md { font-size: 14px; }
 .text-upper { text-transform: uppercase; letter-spacing: 1.5px; }
 
+/* v6.91: standalone field label for sheet forms. Previously this only existed
+   scoped as `.detail-fields .field-label`; the detail redesign dropped that
+   wrapper, so this keeps the edit/add/backend sheets looking unchanged. */
+.field-label { font-size: 12px; color: var(--t3); margin-bottom: 4px; }
+.field-hint { font-size: 10px; color: var(--t3); margin-top: 4px; }
+
 /* ── Layout Shell ────────────────────────────────────────────────── */
 #app {
   display: flex;
@@ -685,7 +691,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
      column width, readable and dense.
      Cap the header as a whole (so back button stays left of title at 780px)
      but cap individual scroll-body children so each section centers. */
-  .detail-header {
+  .detail-body {
     max-width: 780px;
     margin-left: auto;
     margin-right: auto;
@@ -1090,105 +1096,145 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 
 /* ── Figure Detail ───────────────────────────────────────────────── */
-.detail-header {
-  padding: 16px 16px 12px;
-  padding-top: max(16px, var(--safe-top));
-  background: var(--bg2);
-  border-bottom: 1px solid var(--bd);
-  display: flex; align-items: center; gap: 12px;
+/* v6.91: detail screen redesign — the header is no longer a separate bar
+   above the photo. The hero image is full-bleed at the top of the scroll
+   container, and the title sticks to the top of the viewport (with a blur
+   backdrop) as the user scrolls past the hero. */
+.detail-body { padding: 0 16px 20px; }
+
+.sticky-title-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  padding: 16px 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid transparent;
 }
-.detail-title-wrap { flex: 1; min-width: 0; }
 .detail-title {
   /* v6.89: dropped Cinzel here (only place) — it read heavy/hard at title
      size. The rest of the app keeps Cinzel; this screen uses the UI sans. */
-  font-size: 17px; font-weight: 600;
+  font-size: 22px; font-weight: 600;
   color: var(--t1); line-height: 1.25;
 }
 .detail-subtitle {
-  font-size: 12px; color: var(--t3);
-  margin-top: 3px; line-height: 1.35;
+  font-size: 13px; color: var(--t3);
+  margin-top: 4px; line-height: 1.35;
 }
-.detail-back, .detail-delete {
-  padding: 8px; border-radius: 8px;
-}
-.detail-back { color: var(--t1); }
-.detail-delete { color: var(--rd); }
 
 .detail-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-.photo-section {
+/* ── Hero image + floating controls ──────────────────────────────── */
+.hero-image {
   position: relative;
+  width: 100%;
+  height: 400px;
   background: var(--bg3);
+  border-bottom: 1px solid var(--bd);
 }
-.photo-container {
-  aspect-ratio: 1;
-  max-height: 320px;
+.hero-empty {
+  width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
 }
-.photo-container img { width: 100%; height: 100%; object-fit: contain; }
-.photo-container .initial-large {
+.hero-empty .initial-large {
   font-family: 'Cinzel', serif;
-  font-size: 72px; color: var(--t3); font-weight: 900;
+  font-size: 96px; color: var(--t3); font-weight: 900;
 }
-
-/* Multi-photo carousel */
-.photo-carousel {
+.back-fab {
+  position: absolute;
+  top: max(16px, var(--safe-top)); left: 16px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.15);
+  color: var(--t1);
+  display: flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  z-index: 10; cursor: pointer;
+}
+.back-fab:active { transform: scale(0.92); }
+.default-badge {
+  position: absolute;
+  top: max(16px, var(--safe-top)); right: 16px;
+  background: rgba(0,0,0,.65);
+  color: var(--gold);
+  border: 1px solid rgba(255,255,255,.15);
+  padding: 6px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  display: flex; align-items: center; gap: 6px;
+  z-index: 5;
+}
+.icon-fab {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.15);
+  color: var(--t1);
+  display: flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  transition: transform .15s, background .15s;
+}
+.icon-fab:active { transform: scale(0.92); }
+/* Photo carousel — fills the 400px hero. Single image or swipeable strip. */
+.hero-image .photo-carousel {
   display: flex;
+  width: 100%; height: 100%;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   /* v6.84: contain horizontal overscroll so swiping past the first/last
-     photo doesn't chain to the browser's back/forward gesture (which was
-     navigating away to the previous/next figure mid-swipe). */
+     photo doesn't chain to the browser's back/forward gesture. */
   overscroll-behavior-x: contain;
-  /* v6.85: claim horizontal panning for the carousel itself. Without this,
-     a right-ward swipe that begins near the left screen edge was being
-     captured by the OS/PWA "back" gesture and loading the previous figure.
-     pan-x tells the browser this element owns horizontal gestures; pinch-zoom
-     is still allowed so the fullscreen viewer's zoom is unaffected. */
+  /* v6.85: claim horizontal panning for the carousel itself so an edge swipe
+     doesn't trigger the OS "back" gesture; pinch-zoom still allowed. */
   touch-action: pan-x pinch-zoom;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   background: var(--bg3);
 }
-.photo-carousel::-webkit-scrollbar { display: none; }
-.photo-slide {
+.hero-image .photo-carousel::-webkit-scrollbar { display: none; }
+.hero-image .photo-slide {
   position: relative;
   flex: 0 0 100%;
   scroll-snap-align: start;
-  aspect-ratio: 1;
-  max-height: 360px;
+  width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
   cursor: zoom-in;
 }
-.photo-slide img {
+.hero-image .photo-slide img {
   width: 100%; height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: top;
 }
 .photo-slide-label {
-  position: absolute; bottom: 12px; left: 12px;
+  position: absolute; bottom: 64px; left: 12px;
   background: rgba(0,0,0,.7); color: #fff;
   padding: 4px 10px; border-radius: 8px;
   font-size: 11px; font-weight: 600;
   letter-spacing: 0.5px; text-transform: uppercase;
   backdrop-filter: blur(4px);
+  z-index: 5;
 }
 .photo-slide-remove {
-  position: absolute; top: 10px; right: 10px;
+  position: absolute; top: 64px; right: 12px;
   width: 32px; height: 32px; border-radius: 50%;
   background: rgba(0,0,0,.6); color: var(--rd);
   border: 1px solid rgba(248,113,113,.4);
   display: flex; align-items: center; justify-content: center;
   backdrop-filter: blur(4px); cursor: pointer;
+  z-index: 6;
 }
 .photo-slide-default {
-  position: absolute; top: 10px; left: 10px;
+  position: absolute; bottom: 12px; left: 12px;
   width: 32px; height: 32px; border-radius: 50%;
   background: rgba(0,0,0,.6); color: rgba(255,255,255,.4);
   border: 1px solid rgba(255,255,255,.15);
   display: flex; align-items: center; justify-content: center;
   backdrop-filter: blur(4px); cursor: pointer;
   font-size: 16px; line-height: 1;
+  z-index: 6;
 }
 .photo-slide-default.active {
   color: var(--gold);
@@ -1196,51 +1242,35 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   text-shadow: 0 0 8px var(--gold);
 }
 .photo-dots {
+  position: absolute; bottom: 12px; left: 0; right: 0;
   display: flex; justify-content: center; gap: 6px;
-  padding: 10px 0 4px;
-  background: var(--bg3);
+  z-index: 5;
 }
 .photo-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: var(--bd);
+  background: rgba(255,255,255,.35);
   transition: all 0.2s;
 }
 .photo-dot.active { background: var(--gold); width: 18px; border-radius: 3px; }
 
 .photo-controls {
-  position: absolute; bottom: 10px; right: 10px;
-  display: flex; gap: 8px;
-  z-index: 5;
-}
-.photo-btn {
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  background: rgba(0,0,0,.7);
-  border: 1px solid rgba(255,255,255,.15);
-  color: #fff; font-size: 12px;
-  display: flex; align-items: center; gap: 6px;
-  backdrop-filter: blur(4px); cursor: pointer;
-}
-.photo-btn.remove {
-  border-color: rgba(248,113,113,.4);
-  color: var(--rd);
+  position: absolute; bottom: 12px; right: 12px;
+  display: flex; gap: 10px;
+  z-index: 7;
 }
 
+.photo-labels-details { margin-top: 0; margin-bottom: 20px; }
 .photo-labels {
-  padding: 12px 16px;
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 12px;
 }
 .photo-label-row {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 10px;
 }
 .photo-label-num {
   font-size: 11px; color: var(--t3); font-weight: 600;
   width: 24px; flex-shrink: 0;
 }
-.photo-label-row input {
-  flex: 1; font-size: 13px;
-  padding: 8px 12px;
-}
+.photo-label-row .ghost-input { flex: 1; }
 
 /* Full-screen photo viewer */
 .photo-viewer {
@@ -1315,177 +1345,226 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   z-index: 5;
 }
 
-/* v6.89: .detail-pills / .pill removed — figure metadata now renders as the
-   header subtitle line. The per-status data box below replaces them as the
-   screen's main visual anchor. */
+/* v6.91: detail-screen redesign. The per-status data now lives in one or more
+   "databox" cards (one per copy + order/price-watch sections). Status is a
+   horizontal pill bar; fields are borderless "ghost inputs". */
 
-/* Status-tinted container that wraps Collection Details / Price Watch /
-   Order Details. --status-color is set inline per the figure's status. */
-.detail-databox {
-  margin: 0 16px 12px;
-  padding: 12px 14px 14px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--status-color) 9%, transparent);
-  border: 1px solid color-mix(in srgb, var(--status-color) 40%, transparent);
+/* ── Status pill bar ─────────────────────────────────────────────── */
+.status-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 24px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
 }
-.detail-databox .databox-label {
+.status-bar::-webkit-scrollbar { display: none; }
+.status-bar::after { content: ''; padding-right: 10px; }
+.status-pill {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 24px;
+  background: var(--bg2);
+  border: 1px solid var(--bd);
+  color: var(--t2);
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.status-pill svg { flex-shrink: 0; }
+.status-pill.active {
+  background: color-mix(in srgb, var(--status-color) 15%, transparent);
+  border-color: var(--status-color);
   color: var(--status-color);
-  opacity: 0.95;
 }
-.detail-databox .copies-section { margin-top: 0; padding: 0; }
-.detail-databox .copies-section + .copies-section {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid color-mix(in srgb, var(--status-color) 22%, transparent);
+
+/* ── Databox (per-copy / per-section card) ───────────────────────── */
+.databox {
+  background: var(--bg2);
+  border-radius: 16px;
+  padding: 20px 16px;
+  border: 1px solid var(--bd);
+  margin-bottom: 16px;
+  transition: transform .2s, box-shadow .2s;
 }
-/* Original Retail anchor line inside the owned box. */
+.databox-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bd);
+}
+.databox-title-wrap { display: flex; align-items: center; gap: 8px; }
+.drag-handle {
+  color: var(--t3); cursor: grab; opacity: 0.5;
+  display: flex; align-items: center;
+}
+.databox-title {
+  font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
+  font-weight: 700; margin: 0; color: var(--t1);
+}
+.databox-title.owned-title { color: var(--gn); }
+.delete-btn {
+  color: var(--t3); background: none; border: none;
+  padding: 6px; border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+.delete-btn:active { background: color-mix(in srgb, var(--rd) 15%, transparent); color: var(--rd); }
+
+/* Original Retail anchor line inside the box. */
 .databox-retail {
   font-size: 13px; color: var(--t3);
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 .databox-retail .price { color: var(--gold); font-weight: 600; }
 
-.detail-retail {
-  padding: 0 16px 16px;
-  font-size: 14px; color: var(--t2);
-}
-.detail-retail .price { color: var(--gold); font-weight: 600; }
+.price-watch-note { font-size: 12px; align-self: flex-end; padding-bottom: 8px; }
 
-/* v6.64: inline asking-price. Low-sample data renders dimmed so users can
-   tell at a glance it's an estimate. */
+/* Status-tinted databox variants */
+.databox.ordered-state { border-color: color-mix(in srgb, var(--or) 30%, transparent); }
+.databox.ordered-state .databox-title { color: var(--or); }
+.databox.for-sale-state { border-color: color-mix(in srgb, var(--rd) 30%, transparent); }
+.databox.for-sale-state .databox-title { color: var(--rd); }
+.databox.variant-showcase {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 10%, transparent) 0%, var(--bg2) 60%);
+  border: 1px solid var(--gold);
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.databox.variant-showcase .databox-title { color: var(--gold); }
+.variant-badge {
+  background: var(--gold); color: var(--bg);
+  padding: 4px 10px; border-radius: 12px;
+  font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* ── Ghost inputs ────────────────────────────────────────────────── */
+.ghost-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 16px;
+  margin-bottom: 20px;
+}
+.input-group { display: flex; flex-direction: column; }
+.input-group label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--t3); margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ghost-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--bd) 80%, transparent);
+  border-radius: 0;
+  color: var(--t1);
+  font-size: 15px; font-weight: 500;
+  padding: 6px 4px;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+  transition: border-color .2s, background .2s, border-radius .2s;
+}
+.ghost-input:focus {
+  border-bottom-color: var(--gold);
+  background: rgba(255,255,255,.04);
+  border-radius: 6px 6px 0 0;
+  box-shadow: none;
+}
+/* Keyboard focus: keep an accessible indicator but in-theme (gold), not the
+   violet UA/button ring — matches the showcase mock's gold underline. */
+.ghost-input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gold) 70%, transparent);
+  outline-offset: 1px;
+}
+select.ghost-input { appearance: none; -webkit-appearance: none; }
+textarea.ghost-input { resize: vertical; min-height: 40px; }
+
+/* ── Accessories ─────────────────────────────────────────────────── */
+.acc-group { margin-bottom: 16px; }
+.acc-group label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--t3); margin-bottom: 12px;
+}
+.badge-complete {
+  background: color-mix(in srgb, var(--gn) 15%, transparent);
+  color: var(--gn);
+  padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 700;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: flex; align-items: center; gap: 6px;
+  background: color-mix(in srgb, var(--gold) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  color: var(--t1);
+  padding: 6px 12px; border-radius: 20px;
+  font-size: 13px;
+  max-width: 100%;
+}
+.chip .acc-chip-label {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+}
+.chip-x {
+  background: none; border: none; color: var(--t3);
+  font-size: 16px; line-height: 1; cursor: pointer; padding: 0;
+  flex-shrink: 0;
+}
+.chip-x:active { color: var(--rd); }
+.chip-add {
+  background: transparent;
+  border: 1px dashed var(--bd);
+  color: var(--gold);
+  padding: 6px 16px; border-radius: 20px;
+  font-size: 13px; cursor: pointer;
+}
+
+/* ── Collapsible "More details…" ─────────────────────────────────── */
+details.more-details {
+  background: rgba(255,255,255,.02);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 16px;
+}
+details.more-details summary {
+  font-size: 13px; color: var(--gold); cursor: pointer; font-weight: 600;
+  list-style: none; display: flex; align-items: center; gap: 8px;
+}
+details.more-details summary::-webkit-details-marker { display: none; }
+details.more-details summary::before {
+  content: "▾"; font-size: 16px; transition: transform .2s;
+}
+details.more-details[open] summary::before { transform: rotate(180deg); }
+.details-content { margin-top: 16px; }
+
+/* Live market-value line (kept for parity, now unused on the main screen). */
+.detail-retail { font-size: 14px; color: var(--t2); margin-bottom: 16px; }
+.detail-retail .price { color: var(--gold); font-weight: 600; }
 .detail-retail .mv-inline { display: inline; }
 .detail-retail .mv-inline.mv-inline-dim,
 .detail-retail .mv-inline.mv-loading { color: var(--t3); }
 .detail-retail .mv-inline.mv-inline-dim .price { opacity: 0.6; }
 
-
-.status-grid {
-  padding: 0 16px 16px;
-}
-.status-grid .label {
-  font-size: 11px; color: var(--t3);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 10px;
-}
-.status-grid .grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.status-btn {
-  padding: 14px 8px;
-  border-radius: 12px;
-  border: 2px solid var(--bd);
-  background: var(--bg2);
-  color: var(--t2);
-  font-size: 14px; font-weight: 600;
-  transition: all 0.15s;
-}
-.status-btn.active { background: color-mix(in srgb, var(--status-color) 12%, transparent); border-color: var(--status-color); color: var(--status-color); }
-
-.detail-fields {
-  padding: 0 16px 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.detail-fields .field-label {
-  font-size: 12px; color: var(--t3); margin-bottom: 4px;
-}
-.detail-fields .field-hint {
-  font-size: 10px; color: var(--t3); margin-top: 4px;
-}
-
-/* ── Multi-Copy Detail UI (v4.43) ────────────────────────────────── */
-.copies-section {
-  padding: 0 16px 16px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.copies-header {
-  display: flex; align-items: center; gap: 8px;
-  padding-bottom: 2px;
-}
-.copies-count {
-  font-size: 10px;
-  color: var(--gold);
-  background: color-mix(in srgb, var(--gold) 15%, transparent);
-  padding: 2px 8px;
-  border-radius: 10px;
-  letter-spacing: 1px;
-}
-.copy-card {
-  background: var(--bg2);
-  border: 1px solid var(--bd);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.copy-card-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px;
-  background: color-mix(in srgb, var(--acc) 6%, transparent);
-  border-bottom: 1px solid var(--bd);
-}
-.copy-num {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--t1);
-  letter-spacing: .5px;
-  text-transform: uppercase;
-}
-.copy-del-btn {
-  background: none; border: none;
-  color: color-mix(in srgb, var(--rd) 60%, var(--t3));
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex; align-items: center; gap: 4px;
-  font-size: 12px;
-  transition: background .15s, color .15s;
-}
-.copy-del-btn:hover {
-  background: color-mix(in srgb, var(--rd) 10%, transparent);
-  color: var(--rd);
-}
-.copy-del-btn:active {
-  background: color-mix(in srgb, var(--rd) 15%, transparent);
-  color: var(--rd);
-}
-.copy-fields {
-  padding: 12px 14px;
-  gap: 10px;
-}
+/* "Add another copy" — standalone dashed action below the databoxes. */
 .add-copy-btn {
-  /* v6.90: sit in the same 16px gutters as .detail-databox and fill the
-     width between them, so the button is centered under the data box
-     instead of shrinking to content and hugging the left edge. */
-  display: flex;
-  width: auto;
-  margin: 0 16px 12px;
-  background: color-mix(in srgb, var(--acc) 8%, transparent);
+  display: flex; width: 100%;
+  margin: 0 0 16px;
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
   border: 1px dashed var(--bd);
   border-radius: 12px;
   padding: 14px;
-  color: var(--acc);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: .3px;
+  color: var(--gold);
+  font-size: 13px; font-weight: 600; letter-spacing: .3px;
   cursor: pointer;
   align-items: center; justify-content: center; gap: 6px;
   transition: background .15s, border-color .15s;
 }
-.add-copy-btn:hover {
-  background: color-mix(in srgb, var(--acc) 13%, transparent);
-  border-color: color-mix(in srgb, var(--acc) 55%, var(--bd));
-}
 .add-copy-btn:active {
-  background: color-mix(in srgb, var(--acc) 18%, transparent);
-  border-color: var(--acc);
+  background: color-mix(in srgb, var(--gold) 18%, transparent);
+  border-color: var(--gold);
 }
-.add-copy-plus {
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-  margin-top: -1px; /* optical center against the text baseline */
-}
+.add-copy-plus { font-size: 18px; font-weight: 700; line-height: 1; margin-top: -1px; }
 
 /* Per-copy photos (v4.46) — strip of thumbs + add button inside the copy card */
 .copy-photos-row {
@@ -2139,7 +2218,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 
 /* ── Spacers ─────────────────────────────────────────────────────── */
 .bottom-spacer { height: calc(48px + var(--safe-bottom)); }
-.detail-spacer { height: calc(32px + var(--safe-bottom)); }
+.detail-spacer { height: calc(96px + var(--safe-bottom)); }
 
 /* ── Status Pulse Animation ──────────────────────────────────────── */
 @keyframes statusPulse {
@@ -3278,7 +3357,51 @@ html {
    with the obsolete nested-row rules. These were never meant to go.
    ════════════════════════════════════════════════════════════════════ */
 
-/* Detail action bar — uniform equal-width buttons in a grid */
+/* v6.91: fixed bottom action bar (matches the showcase mock). */
+.action-bar-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  max-width: 780px;
+  margin: 0 auto;
+  background: var(--bg2);
+  border-top: 1px solid var(--bd);
+  padding: 12px 16px;
+  padding-bottom: max(12px, var(--safe-bottom));
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  z-index: 30;
+}
+.action-btn {
+  display: flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
+  font-size: 13px; font-weight: 600; line-height: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer;
+}
+.action-btn svg { flex-shrink: 0; }
+.action-btn.primary {
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.action-btn.purple-btn {
+  background: color-mix(in srgb, var(--acc) 14%, transparent);
+  border-color: var(--acc);
+  color: color-mix(in srgb, var(--acc) 85%, white);
+}
+.action-btn.red-btn {
+  background: color-mix(in srgb, var(--rd) 12%, transparent);
+  border-color: color-mix(in srgb, var(--rd) 45%, transparent);
+  color: var(--rd);
+}
+
+/* Legacy in-scroll action bar (kept for any other callers) */
 .detail-action-bar {
   display: grid;
   gap: 8px;

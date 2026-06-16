@@ -1415,112 +1415,96 @@ function renderFigList() {
 function renderDetailStatusBlock(f, c) {
   const eId = esc(f.id);
   const jId = jsArg(f.id);
-  let h = `<div class="status-grid">
-    <div class="label text-upper text-dim text-xs">Status</div>
-    <div class="grid">`;
+  // v6.91: status row is now a horizontal scrollable pill bar (matches the
+  // showcase mock). Each pill is equal-flex; the active one takes its status
+  // color as a tint + border. Icons sit inline before the label.
+  let h = `<div class="status-bar">`;
   STATUSES.forEach(s => {
     const active = c.status === s;
-    // v5.06: per-status icon (audit recommended visual redundancy beyond
-    // color). Inactive buttons show a subtle outline icon, active shows
-    // the filled checkmark variant for the user's chosen status.
     const statIcon = {
       owned: ICO.check,
       wishlist: ICO.heart,
       ordered: ICO.box || ICO.cart || ICO.check,
       'for-sale': ICO.tag || ICO.dollar || ICO.check,
     }[s] || ICO.check;
-    h += `<button class="status-btn ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" data-action="set-status" data-fig-id="${eId}" data-status="${esc(s)}">${icon(statIcon, 16)} ${STATUS_LABEL[s]}</button>`;
+    h += `<button class="status-pill ${active?'active':''}" style="--status-color:${STATUS_HEX[s]}" data-action="set-status" data-fig-id="${eId}" data-status="${esc(s)}">${icon(statIcon, 16)}<span>${STATUS_LABEL[s]}</span></button>`;
   });
-  h += `</div></div>`;
+  h += `</div>`;
+
   if (c.status) {
-    // v6.89: the per-status data now lives inside a colored container tinted
-    // to the status (green owned, blue wishlist, orange ordered, red
-    // for-sale), so the eye lands on "your data for this figure" and the
-    // color reinforces the state. --status-color drives the tint via CSS.
-    const tint = STATUS_HEX[c.status] || 'var(--gold)';
-    h += `<div class="detail-databox" style="--status-color:${tint}">`;
     const showsCopies = c.status === 'owned' || c.status === 'for-sale';
     if (showsCopies) {
       // Ensure we always have at least one copy slot to edit.
       const copies = (isMigrated(c) && c.copies.length) ? c.copies : [{ id: 1 }];
       const isMulti = copies.length > 1;
-      h += `<div class="copies-section">
-        <div class="copies-header">
-          <div class="label text-upper databox-label text-xs">Collection Details${isMulti ? ` <span class="copies-count">${copies.length} copies</span>` : ''}</div>
-        </div>`;
-      // v6.89: Original Retail is a figure-level fact (same for every copy),
-      // so it shows ONCE at the top of the box rather than inside each copy
-      // card. Sits as a comparison anchor above the per-copy Price Paid.
-      if (f.retail) {
-        h += `<div class="databox-retail">Original Retail <span class="price">$${f.retail.toFixed(2)}</span></div>`;
-      }
       copies.forEach((cp, i) => {
-        h += renderCopyCard(f, cp, i, isMulti);
+        h += renderCopyCard(f, cp, i, isMulti, copies.length);
       });
-      h += `</div>`;
+      // v6.91: "Add another copy" is a standalone action below the databoxes.
+      h += `<button class="add-copy-btn" onclick="addCopy(${jId})">
+        <span class="add-copy-plus">+</span> ${isMulti ? 'Add another copy' : 'Add a second copy'}
+      </button>`;
     }
-    // v6.69: Price Watch — wishlist/ordered figures can carry a target
-    // price. When the cached asking drops to or below it, the figure gets
-    // a DEAL badge in lists and a green callout here.
+
+    // v6.69: Price Watch — wishlist/ordered figures can carry a target price.
     if (c.status === 'wishlist' || c.status === 'ordered') {
       const target = parseFloat(c.targetPrice);
       const askingNow = getCachedAskingPrice(f);
       const isDeal = Number.isFinite(target) && askingNow != null && askingNow <= target;
-      h += `<div class="copies-section">
-        <div class="copies-header">
-          <div class="label text-upper databox-label text-xs">Price Watch</div>
-        </div>
-        <div class="detail-fields copy-fields">
-          <div>
-            <div class="field-label text-dim text-sm">Target Price</div>
-            <input type="number" step="0.01" value="${esc(c.targetPrice || '')}" placeholder="Alert at or below…" onchange="updateOrderedField(${jId},'targetPrice',this.value)">
+      const stateCls = c.status === 'ordered' ? ' ordered-state' : '';
+      h += `<div class="databox${stateCls}">
+        <div class="databox-header">
+          <div class="databox-title-wrap">
+            <h3 class="databox-title">Price Watch</h3>
           </div>
-          ${Number.isFinite(target) ? `<div style="font-size:12px;color:${isDeal ? 'var(--gn)' : 'var(--t3)'};align-self:end;padding-bottom:8px">
+        </div>
+        <div class="ghost-grid" style="margin-bottom:0">
+          <div class="input-group">
+            <label>Target Price</label>
+            <input type="number" step="0.01" class="ghost-input" value="${esc(c.targetPrice || '')}" placeholder="Alert at or below…" onchange="updateOrderedField(${jId},'targetPrice',this.value)">
+          </div>
+          ${Number.isFinite(target) ? `<div class="input-group" style="justify-content:flex-end">
+            <div class="price-watch-note" style="color:${isDeal ? 'var(--gn)' : 'var(--t3)'}">
             ${askingNow != null
               ? (isDeal ? `✓ Deal! Asking $${askingNow.toFixed(2)} ≤ your $${target.toFixed(2)} target` : `Asking $${askingNow.toFixed(2)} — above your $${target.toFixed(2)} target`)
               : 'No asking price cached yet'}
+            </div>
           </div>` : ''}
         </div>
       </div>`;
     }
+
     if (c.status === 'ordered') {
-      h += `<div class="copies-section">
-        <div class="copies-header">
-          <div class="label text-upper databox-label text-xs">Order Details</div>
+      h += `<div class="databox ordered-state">
+        <div class="databox-header">
+          <div class="databox-title-wrap">
+            <h3 class="databox-title">Order Details</h3>
+          </div>
         </div>
-        <div class="detail-fields copy-fields">
-          <div>
-            <div class="field-label text-dim text-sm">Ordered From</div>
-            <input type="text" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, Amazon, BBTS…" onchange="updateOrderedField(${jId},'orderedFrom',this.value)">
+        <div class="ghost-grid" style="margin-bottom:0">
+          <div class="input-group">
+            <label>Ordered From</label>
+            <input type="text" class="ghost-input" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, BBTS…" onchange="updateOrderedField(${jId},'orderedFrom',this.value)">
           </div>
-          <div>
-            <div class="field-label text-dim text-sm">Expected Date</div>
-            <input type="month" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField(${jId},'orderedDate',this.value)">
+          <div class="input-group">
+            <label>Expected Date</label>
+            <input type="month" class="ghost-input" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField(${jId},'orderedDate',this.value)">
           </div>
-          <div>
-            <div class="field-label text-dim text-sm">Price Paid</div>
-            <input type="number" step="0.01" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField(${jId},'orderedPaid',this.value)">
+          <div class="input-group">
+            <label>Price Paid</label>
+            <input type="number" step="0.01" class="ghost-input" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField(${jId},'orderedPaid',this.value)">
           </div>
         </div>
       </div>`;
-    }
-    h += `</div>`; // .detail-databox
-    // v6.89: "Add a second copy" moved OUT of the data box to sit below it
-    // as a standalone action button, consistent with the other actions.
-    if (showsCopies) {
-      const copies = (isMigrated(c) && c.copies.length) ? c.copies : [{ id: 1 }];
-      const isMulti = copies.length > 1;
-      h += `<button class="add-copy-btn" onclick="addCopy(${jId})">
-        <span class="add-copy-plus">+</span> ${isMulti ? 'Add another copy' : 'Add a second copy'}
-      </button>`;
     }
   }
   return h;
 }
 
-// Renders a single copy's edit card. `i` is the visual index (0-based),
-// `isMulti` tells us whether to show the copy number header + delete button.
-function renderCopyCard(f, cp, i, isMulti) {
+// Renders a single copy as a "databox" card matching the showcase mock.
+// `i` is the visual index (0-based); `isMulti` flags multi-copy figures (shows
+// the drag handle + delete + per-copy photos); `total` is the copy count.
+function renderCopyCard(f, cp, i, isMulti, total) {
   const cond = cp.condition || '';
   const paid = cp.paid || '';
   const variant = cp.variant || '';
@@ -1529,95 +1513,102 @@ function renderCopyCard(f, cp, i, isMulti) {
   const location = cp.location || '';
   const eId = esc(f.id);
   const jId = jsArg(f.id);
-  // copyId is the stable internal id used by addCopy/removeCopy/updateCopy
   const cid = cp.id;
-  let h = `<div class="copy-card" data-copy-id="${cid}">`;
-  if (isMulti) {
-    h += `<div class="copy-card-head">
-      <div class="copy-num">Copy ${i + 1}</div>
-      <button class="copy-del-btn" title="Remove this copy" onclick="removeCopy(${jId},${cid})">${icon(ICO.trash, 14)}</button>
+  const status = S.coll[f.id]?.status;
+  const isForSale = status === 'for-sale';
+  // v6.91: a figure that IS a variant (has a parent) gets the gold
+  // "variant-showcase" databox + a Variant badge on its first copy, so the
+  // detail screen visually flags it the way the showcase mock does.
+  const isVariant = !!f.variantOf && i === 0;
+  // Status determines the databox tint class (owned = green title, for-sale =
+  // red border/title). Variant showcase overrides for the first card.
+  const stateCls = isVariant ? ' variant-showcase' : (isForSale ? ' for-sale-state' : '');
+  const stateWord = isForSale ? 'For Sale' : 'Owned';
+  const titleText = isMulti ? `Copy ${i + 1} — ${stateWord}` : stateWord;
+  const titleCls = (isForSale || isVariant) ? 'databox-title' : 'databox-title owned-title';
+
+  let h = `<div class="databox${stateCls}" data-copy-id="${cid}">
+    <div class="databox-header">
+      <div class="databox-title-wrap">
+        ${isMulti ? `<div class="drag-handle" title="Drag to reorder">${icon(ICO.menu,16)}</div>` : ''}
+        <h3 class="${titleCls}">${esc(titleText)}</h3>
+        ${isVariant ? `<span class="variant-badge">Variant</span>` : ''}
+      </div>
+      ${isMulti ? `<button class="delete-btn" title="Remove this copy" onclick="removeCopy(${jId},${cid})">${icon(ICO.trash,18)}</button>` : ''}
     </div>`;
+
+  // Original Retail anchor — a figure-level fact, shown once at the top of the
+  // first copy's box as a comparison point above Price Paid.
+  if (f.retail && i === 0) {
+    h += `<div class="databox-retail">Original Retail <span class="price">$${f.retail.toFixed(2)}</span></div>`;
   }
-  h += `<div class="detail-fields copy-fields">
-    <div>
-      <div class="field-label text-dim text-sm">Condition</div>
-      <select onchange="updateCopy(${jId},${cid},'condition',this.value)">
+
+  // Ghost-input field grid.
+  h += `<div class="ghost-grid">
+    <div class="input-group">
+      <label>Condition</label>
+      <select class="ghost-input" onchange="updateCopy(${jId},${cid},'condition',this.value)">
         <option value="">Select...</option>
         ${CONDITIONS.map(x => `<option value="${esc(x)}" ${cond===x?'selected':''}>${esc(x)}</option>`).join('')}
       </select>
     </div>
-    <div>
-      <div class="field-label text-dim text-sm">Price Paid</div>
-      <input type="number" step="0.01" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'paid',this.value)">
+    <div class="input-group">
+      <label>Price Paid</label>
+      <input type="number" step="0.01" class="ghost-input" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'paid',this.value)">
     </div>
-    ${S.coll[f.id]?.status === 'for-sale' ? `<div>
-      <div class="field-label text-dim text-sm">Asking Price</div>
-      <input type="number" step="0.01" value="${esc(cp.asking || '')}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'asking',this.value)">
+    ${isForSale ? `<div class="input-group">
+      <label>Asking Price</label>
+      <input type="number" step="0.01" class="ghost-input" value="${esc(cp.asking || '')}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'asking',this.value)">
     </div>` : ''}
-    <div>
-      <div class="field-label text-dim text-sm">Acquired</div>
-      <input type="text" inputmode="numeric" maxlength="7" value="${esc(cp.acquired || '')}"
+    <div class="input-group">
+      <label>Acquired</label>
+      <input type="text" inputmode="numeric" maxlength="7" class="ghost-input" value="${esc(cp.acquired || '')}"
         placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}"
         oninput="formatAcquired(this)"
         onchange="updateCopy(${jId},${cid},'acquired',this.value)">
     </div>
-    ${variant ? `<div>
-      <!-- v6.70: per-copy Variant free-text removed — superseded by the
-           structured variantOf model. Field only renders when a legacy
-           value exists so it stays editable/clearable; clearing it hides
-           the field for good. -->
-      <div class="field-label text-dim text-sm">Variant (legacy)</div>
-      <input type="text" value="${esc(variant)}" onchange="updateCopy(${jId},${cid},'variant',this.value)">
+    ${variant ? `<div class="input-group" style="grid-column:span 2">
+      <label>Variant (legacy)</label>
+      <input type="text" class="ghost-input" value="${esc(variant)}" onchange="updateCopy(${jId},${cid},'variant',this.value)">
     </div>` : ''}
-    <div>
-      <div class="field-label text-dim text-sm" style="display:flex;align-items:center;gap:8px">
-        <span>Accessories</span>
-        ${(() => {
-          // v6.03: Loadout completeness badge. Silent when no loadout exists.
-          const comp = getCopyCompleteness(f.id, cp);
-          if (!comp) return '';
-          if (comp.complete) return `<span class="acc-badge complete" title="All loadout items present">✓ Complete</span>`;
-          return `<span class="acc-badge partial" title="${comp.have}/${comp.total} loadout items present">Missing ${comp.missing.length}</span>`;
-        })()}
-      </div>
-      <div class="acc-chips">`;
+    <div class="input-group" style="grid-column:span 2">
+      <label>Location</label>
+      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, Storage bin A, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
+    </div>
+  </div>`;
+
+  // Accessories block with completeness badge + chips.
+  h += `<div class="acc-group">
+    <label><span>Accessories</span>${(() => {
+      const comp = getCopyCompleteness(f.id, cp);
+      if (!comp) return '';
+      if (comp.complete) return `<span class="badge-complete" title="All loadout items present">✓ Complete</span>`;
+      return `<span class="acc-badge partial" title="${comp.have}/${comp.total} loadout items present">Missing ${comp.missing.length}</span>`;
+    })()}</label>
+    <div class="chips">`;
   accessories.forEach((a, idx) => {
-    h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" onclick="removeAccessory(${jId},${cid},${idx})">×</button></span>`;
+    h += `<div class="chip"><span class="acc-chip-label">${esc(a)}</span><button class="chip-x" title="Remove" onclick="removeAccessory(${jId},${cid},${idx})">×</button></div>`;
   });
-  h += `<button class="acc-add" onclick="openAccessoryPicker(${jId},${cid})">+ Add</button>
-      </div>
-      ${(() => {
-        // v6.03: Missing-from-loadout row. Tap a missing item to add it.
-        // Hidden when complete (would be empty) or no loadout exists.
-        const comp = getCopyCompleteness(f.id, cp);
-        if (!comp || comp.complete || !comp.missing.length) return '';
-        const items = comp.missing.map(name =>
-          `<button class="acc-missing-pill" onclick="addAccessory(${jId},${cid},${esc(JSON.stringify(name))})" title="Mark as present">+ ${esc(name)}</button>`
-        ).join('');
-        return `<div class="acc-missing-row">
-          <span class="acc-missing-label text-dim">Missing:</span>
-          ${items}
-        </div>`;
-      })()}
+  h += `<button class="chip-add" onclick="openAccessoryPicker(${jId},${cid})">+ Add</button>
     </div>
-    <div>
-      <div class="field-label text-dim text-sm">Location</div>
-      <input type="text" value="${esc(location)}" placeholder="e.g. Display shelf, Storage bin A, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
-    </div>
-    <div>
-      <div class="field-label text-dim text-sm">Notes</div>
-      <textarea rows="3" placeholder="Notes…" oninput="updateCopyDebounced(${jId},${cid},'notes',this.value)" onblur="updateCopy(${jId},${cid},'notes',this.value)">${esc(notes)}</textarea>
-    </div>
-    ${S.coll[f.id]?.status === 'for-sale' ? `<div>
-      <button class="mark-sold-btn" onclick="markCopySold(${jId},${cid})" title="Record the sale and remove this copy">
-        ${icon(ICO.tag || ICO.check, 14)} Mark Sold…
-      </button>
-    </div>` : ''}`;
-  // Per-copy photos (multi-copy only — single-copy uses the main carousel)
+    ${(() => {
+      const comp = getCopyCompleteness(f.id, cp);
+      if (!comp || comp.complete || !comp.missing.length) return '';
+      const items = comp.missing.map(name =>
+        `<button class="acc-missing-pill" onclick="addAccessory(${jId},${cid},${esc(JSON.stringify(name))})" title="Mark as present">+ ${esc(name)}</button>`
+      ).join('');
+      return `<div class="acc-missing-row"><span class="acc-missing-label text-dim">Missing:</span>${items}</div>`;
+    })()}
+  </div>`;
+
+  // Collapsible "More details…" — per-copy photos (multi-copy) + notes.
+  const copyPhotos = isMulti ? photoStore.getForCopy(f.id, cid, false) : [];
+  h += `<details class="more-details">
+    <summary>More details…</summary>
+    <div class="details-content ghost-grid" style="margin-bottom:0">`;
   if (isMulti) {
-    const copyPhotos = photoStore.getForCopy(f.id, cid, false);  // exclude shared
-    h += `<div class="copy-photos-row">
-      <div class="field-label text-dim text-sm">Photos for this copy</div>
+    h += `<div class="input-group" style="grid-column:span 2">
+      <label>Photos for this copy</label>
       <div class="copy-photos-strip">`;
     copyPhotos.forEach(p => {
       h += `<div class="copy-photo-thumb" onclick="openCopyPhoto(${jId},${p.n})">
@@ -1626,12 +1617,27 @@ function renderCopyCard(f, cp, i, isMulti) {
       </div>`;
     });
     h += `<label class="copy-photo-add" title="Add photo to this copy">
-      ${icon(ICO.img, 18)}
-      <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,${jId},${cid})">
-    </label>
-    </div></div>`;
+        ${icon(ICO.img,18)}
+        <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,${jId},${cid})">
+      </label>
+      </div>
+    </div>`;
   }
-  h += `</div></div>`;
+  h += `<div class="input-group" style="grid-column:span 2">
+      <label>Notes</label>
+      <textarea class="ghost-input" rows="3" placeholder="Notes…" oninput="updateCopyDebounced(${jId},${cid},'notes',this.value)" onblur="updateCopy(${jId},${cid},'notes',this.value)">${esc(notes)}</textarea>
+    </div>
+    </div>
+  </details>`;
+
+  // Mark Sold action for for-sale copies.
+  if (isForSale) {
+    h += `<button class="mark-sold-btn" onclick="markCopySold(${jId},${cid})" title="Record the sale and remove this copy">
+      ${icon(ICO.tag || ICO.check, 16)} Mark Sold…
+    </button>`;
+  }
+
+  h += `</div>`;
   return h;
 }
 
@@ -1694,8 +1700,14 @@ function renderDetail() {
   userPhotos.forEach(p => slides.push({...p, stock: false}));
   if (stockImg) slides.push({n: -1, url: stockImg, label: 'Default', stock: true});
 
-  const carouselHtml = slides.length === 0
-    ? `<div class="photo-container"><span class="initial-large">${esc(f.name[0])}</span></div>`
+  // v6.91: detail redesign — the photo area is now a full-bleed 400px "hero"
+  // (matches the finalized showcase mock). Multi-photo figures keep the
+  // swipeable carousel; single-photo figures show one cover image. Floating
+  // circular FABs overlay the hero: back (top-left), a Default star badge
+  // (top-right, shown when the visible primary slide is the user's chosen
+  // default), and camera/gallery icon buttons (bottom-right).
+  const heroInner = slides.length === 0
+    ? `<div class="hero-empty"><span class="initial-large">${esc(f.name[0])}</span></div>`
     : `<div class="photo-carousel" id="photoCarousel">
         ${slides.map((s, si) => {
           const isDef = s.n === defaultN;
@@ -1704,30 +1716,26 @@ function renderDetail() {
             <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr(${jId})"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
             ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto(${jId},${s.n})">${icon(ICO.x,14)}</button>` : ''}
-            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto(${jId},${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">★</button>
+            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto(${jId},${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">${icon(ICO.star,16)}</button>
           </div>`;
         }).join('')}
       </div>
       ${slides.length > 1 ? `<div class="photo-dots">${slides.map((_,i) => `<div class="photo-dot" data-idx="${i}"></div>`).join('')}</div>` : ''}`;
 
+  // Is the user's chosen default photo a real (non-stock) custom photo? Only
+  // then does the gold "Default" hero badge make sense.
+  const hasChosenDefault = hasCustom && defaultN !== -1;
+
   let html = `
-  <div class="detail-header">
-    <button class="detail-back" onclick="closeDetail()">${icon(ICO.back,22)}</button>
-    <div class="detail-title-wrap">
-      <div class="detail-title">${esc(f.name)}</div>
-      ${pills.length ? `<div class="detail-subtitle">${pills.map(p => esc(p)).join(' · ')}</div>` : ''}
-    </div>
-  </div>
   <div class="detail-scroll">
-    <div class="photo-section">
-      ${carouselHtml}
+    <div class="hero-image">
+      <button class="back-fab" onclick="closeDetail()" title="Back">${icon(ICO.back,24,2.5)}</button>
+      ${hasChosenDefault ? `<div class="default-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="${ICO.star}"/></svg> Default</div>` : ''}
+      ${heroInner}
       <div class="photo-controls">
-        ${canAddMore ? `<button class="photo-btn" onclick="document.getElementById('photoCamera').click()">
-          ${icon(ICO.plus,14)} Camera
-        </button>
-        <button class="photo-btn" onclick="document.getElementById('photoGallery').click()">
-          ${icon(ICO.plus,14)} Gallery${userPhotos.length > 0 ? ` (${userPhotos.length}/${MAX_PHOTOS})` : ''}
-        </button>` : `<div class="photo-btn" style="opacity:0.5;cursor:default">Max ${MAX_PHOTOS} photos</div>`}
+        ${canAddMore ? `<button class="icon-fab" onclick="document.getElementById('photoCamera').click()" title="Camera">${icon(ICO.camera,20)}</button>
+        <button class="icon-fab" onclick="document.getElementById('photoGallery').click()" title="Gallery${userPhotos.length > 0 ? ` — ${userPhotos.length}/${MAX_PHOTOS}` : ''}">${icon(ICO.img,20)}</button>`
+        : `<div class="icon-fab" style="opacity:0.5;cursor:default" title="Max ${MAX_PHOTOS} photos">${icon(ICO.img,20)}</div>`}
       </div>
       <!-- v6.83: split capture. The camera input keeps capture="environment"
            to open the rear camera directly; the gallery input omits capture so
@@ -1735,15 +1743,24 @@ function renderDetail() {
       <input type="file" id="photoCamera" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,${jId})">
       <input type="file" id="photoGallery" accept="image/*" style="display:none" onchange="handlePhoto(this,${jId})">
     </div>
-    ${userPhotos.length > 0 ? `<div class="photo-labels">
+
+    <div class="detail-body">
+    <div class="sticky-title-bar">
+      <div class="detail-title">${esc(f.name)}</div>
+      ${pills.length ? `<div class="detail-subtitle">${pills.map(p => esc(p)).join(' · ')}</div>` : ''}
+    </div>
+    ${userPhotos.length > 0 ? `<details class="more-details photo-labels-details">
+      <summary>Photo labels (${userPhotos.length})</summary>
+      <div class="photo-labels">
       ${userPhotos.map(p => `
         <div class="photo-label-row">
           <span class="photo-label-num">#${userPhotos.indexOf(p)+1}</span>
-          <input type="text" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
+          <input type="text" class="ghost-input" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
                  onblur="setPhotoLabel(${jId},${p.n},this.value)" maxlength="20">
         </div>
       `).join('')}
-    </div>` : ''}
+      </div>
+    </details>` : ''}
     <!-- v6.89: metadata pills moved to the header subtitle line under the
          name; the floating pill band was removed here. -->
     ${(() => {
@@ -1793,31 +1810,30 @@ function renderDetail() {
       return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${asking}${renderSparkline(f.id)}</div>`;
     })()}
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
-    ${(() => {
-      // v6.89: reference/action buttons moved to the BOTTOM of the screen.
-      // This is a collection-management app, so status + collection data sit
-      // up top; AF411/Edit/Delete are utilities and belong below. "Add
-      // Variant" was removed from this bar — it already lives in the variant
-      // strip's "+" chip, so the duplicate here was redundant.
-      const btn = (onclick, label, ic, color) => `<button onclick="${onclick}" class="detail-action-btn${color ? ' ' + color : ''}">${icon(ic, 15)}<span>${label}</span></button>`;
-      const btns = [];
-      if (f.line !== 'kids-core' && f.line !== 'custom')
-        btns.push(btn(`event.preventDefault();openAF411(${jId})`, 'AF411', ICO.export));
-      btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
-      // v6.89.1: Add Variant back in the action bar (the strip now hides for
-      // solo figures, so this is the entry point to START a family). Skipped
-      // for kids-core/custom, which don't support the variant model.
-      if (f.line !== 'kids-core' && f.line !== 'custom')
-        btns.push(btn(`addVariant(${jId})`, 'Variant', ICO.plus, 'gold'));
-      if (f.source === 'custom-local')
-        btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.x, 'red'));
-      return `<div class="detail-action-bar" style="grid-template-columns:repeat(${btns.length},1fr)">${btns.join('')}</div>`;
-    })()}
     <datalist id="locationSuggestions">
       ${getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('')}
     </datalist>
     <div class="detail-spacer"></div>
-  </div>`;
+    </div>
+  </div>
+  ${(() => {
+    // v6.91: fixed bottom action bar (matches the showcase mock's structure:
+    // equal-width grid, utilities + a gold primary creation action). A
+    // collection app keeps status + data up top; AF411/Edit are utilities,
+    // Add Variant is the creation action from a figure's context (adding a
+    // brand-new unrelated figure happens from the list screen, not here).
+    const btn = (onclick, label, ic, cls) => `<button onclick="${onclick}" class="action-btn${cls ? ' ' + cls : ''}">${icon(ic, 16)}<span>${label}</span></button>`;
+    const btns = [];
+    const supportsVariants = f.line !== 'kids-core' && f.line !== 'custom';
+    if (supportsVariants)
+      btns.push(btn(`event.preventDefault();openAF411(${jId})`, 'AF411', ICO.export));
+    btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
+    if (f.source === 'custom-local')
+      btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.trash, 'red-btn'));
+    if (supportsVariants)
+      btns.push(btn(`addVariant(${jId})`, 'Add Variant', ICO.plus, 'primary'));
+    return `<div class="action-bar-bottom" style="grid-template-columns:repeat(${Math.min(btns.length,2)},1fr)">${btns.join('')}</div>`;
+  })()}`;
   if (S.photoViewer) html += renderPhotoViewer();
   if (S.sheet) html += renderSheet();
   app().innerHTML = html;
