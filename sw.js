@@ -1,7 +1,19 @@
-// MOTU Vault — Service Worker v6.92
+// MOTU Vault — Service Worker v6.93
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.93 changelog:
+//   • CACHE bumped to v6.93. SHELL: render.js + vault.css + pricing.js.
+//       – Accessory chips: render classes reverted to .acc-chip/.acc-chips/
+//         .acc-add with the exact v6.80 sizing, fully decoupled from the
+//         generic .chip rule that was inflating them (min-height:44).
+//       – eBay Asking now renders next to Original Retail INSIDE the For Sale
+//         copy databox (removed the orphaned header slot that wasn't showing).
+//       – Status pills no longer "bounce": patchDetailStatus preserves and
+//         restores the detail-scroll position across the state swap.
+//       – Removed the redundant "↳ Variant of …" text line above the variant
+//         strip (the strip already shows the family).
 //
 // v6.92 changelog:
 //   • CACHE bumped to v6.92. SHELL: render.js + vault.css + pricing.js.
@@ -756,7 +768,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.92';
+const CACHE = 'motu-vault-v6.93';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

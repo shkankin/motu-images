@@ -1495,33 +1495,42 @@ textarea.ghost-input { resize: vertical; min-height: 40px; }
   padding: 2px 8px; border-radius: 10px;
   font-size: 10px; font-weight: 700;
 }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.chips .chip {
+.acc-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center;
+}
+.acc-chip {
   display: inline-flex; align-items: center; gap: 4px;
-  min-height: 0;
-  background: color-mix(in srgb, var(--gold) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  padding: 4px 8px 4px 10px;
+  background: color-mix(in srgb, var(--acc) 14%, var(--bg3));
   color: var(--t1);
-  padding: 4px 8px 4px 10px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--acc) 30%, transparent);
+  border-radius: 999px;
   font-size: 12px; font-weight: 500; line-height: 1.2;
   max-width: 100%;
 }
-.chips .chip .acc-chip-label {
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+.acc-chip-label {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;
 }
-.chips .chip-x {
+.acc-chip-x {
   background: none; border: none; color: var(--t3);
-  font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
-  flex-shrink: 0;
+  padding: 6px 10px; margin: -6px -8px -6px 0;
+  font-size: 14px; line-height: 1; cursor: pointer; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
-.chips .chip-x:active { color: var(--rd); }
-.chips .chip-add {
-  background: transparent;
+.acc-chip-x:active { color: var(--rd); }
+.acc-add {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--acc) 6%, transparent);
   border: 1px dashed var(--bd);
-  color: var(--gold);
-  min-height: 0;
-  padding: 4px 12px; border-radius: 999px;
-  font-size: 12px; cursor: pointer;
+  color: var(--acc);
+  border-radius: 999px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.acc-add:active {
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+  border-color: var(--acc);
 }
 
 /* ── Collapsible "More details…" ─────────────────────────────────── */

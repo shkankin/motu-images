@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.92</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.93</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1538,8 +1538,22 @@ function renderCopyCard(f, cp, i, isMulti, total) {
 
   // Original Retail anchor — a figure-level fact, shown once at the top of the
   // first copy's box as a comparison point above Price Paid.
-  if (f.retail && i === 0) {
-    h += `<div class="databox-retail">Original Retail <span class="price">$${f.retail.toFixed(2)}</span></div>`;
+  // v6.92: on the For Sale screen, the eBay Asking (market median) sits right
+  // next to Original Retail here, as selling context.
+  if (i === 0) {
+    const retailPart = f.retail ? `Original Retail <span class="price">$${f.retail.toFixed(2)}</span>` : '';
+    let ebayPart = '';
+    if (isForSale) {
+      const cps = (S.coll[f.id] && Array.isArray(S.coll[f.id].copies)) ? S.coll[f.id].copies : [];
+      const paidArr = cps.map(x => x.paid).filter(Boolean);
+      renderMarketValueBlock._meta = { line: f.line, wave: f.wave, year: f.year };
+      const ebay = renderMarketValueBlock(f.id, paidArr, cp.condition || undefined);
+      if (ebay) ebayPart = `<span id="mvBlock_${eId}" data-mv-figid="${eId}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(cp.condition || '')}">${ebay}</span>`;
+    }
+    const sep = (retailPart && ebayPart) ? ` <span class="text-dim" style="margin:0 6px">·</span> ` : '';
+    if (retailPart || ebayPart) {
+      h += `<div class="databox-retail">${retailPart}${sep}${ebayPart}</div>`;
+    }
   }
 
   // Ghost-input field grid.
@@ -1587,11 +1601,11 @@ function renderCopyCard(f, cp, i, isMulti, total) {
       if (comp.complete) return `<span class="badge-complete" title="All loadout items present">✓ Complete</span>`;
       return `<span class="acc-badge partial" title="${comp.have}/${comp.total} loadout items present">Missing ${comp.missing.length}</span>`;
     })()}</label>
-    <div class="chips">`;
+    <div class="acc-chips">`;
   accessories.forEach((a, idx) => {
-    h += `<div class="chip"><span class="acc-chip-label">${esc(a)}</span><button class="chip-x" title="Remove" onclick="removeAccessory(${jId},${cid},${idx})">×</button></div>`;
+    h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" onclick="removeAccessory(${jId},${cid},${idx})">×</button></span>`;
   });
-  h += `<button class="chip-add" onclick="openAccessoryPicker(${jId},${cid})">+ Add</button>
+  h += `<button class="acc-add" onclick="openAccessoryPicker(${jId},${cid})">+ Add</button>
     </div>
     ${(() => {
       const comp = getCopyCompleteness(f.id, cp);
@@ -1647,8 +1661,22 @@ function patchDetailStatus() {
   if (S.screen !== 'figure' || !S.activeFig) return;
   const el = document.getElementById('detailStatusBlock');
   if (!el) return;
+  // v6.92: changing status swaps this block's contents, and the different
+  // states have very different heights (copy cards vs. price watch vs. order
+  // details). Without preserving scroll, the container clamps/relayouts and
+  // the status pills "bounce" under the user's finger. Save the scroll
+  // position of the actual scroller and restore it after the swap.
+  const scroller = document.querySelector('.detail-scroll');
+  const savedTop = scroller ? scroller.scrollTop : 0;
   const c = S.coll[S.activeFig.id] || {};
   el.innerHTML = renderDetailStatusBlock(S.activeFig, c);
+  if (scroller) {
+    // restore after layout settles; clamp to the new max so we never overscroll
+    requestAnimationFrame(() => {
+      const maxTop = scroller.scrollHeight - scroller.clientHeight;
+      scroller.scrollTop = Math.max(0, Math.min(savedTop, maxTop));
+    });
+  }
   // v4.91: also refresh the location datalist. Before this fix, the datalist
   // was built once in renderDetail() and never refreshed — so a location
   // typed into copy #1 wouldn't show up as a suggestion when typing into
@@ -1769,7 +1797,8 @@ function renderDetail() {
       // (it has variants, or it IS a variant), render a horizontal strip of
       // the whole family — parent first, then each variant — with thumbs.
       // Tapping a member opens its own detail screen; the current member is
-      // highlighted. Variants additionally get a "Variant of …" link line.
+      // highlighted. (v6.93: the "Variant of …" text line was removed — the
+      // strip itself already conveys the family relationship.)
       const parent = f.variantOf ? figById(f.variantOf) : null;
       const root = parent || f;
       const fam = [root, ...figVariants(root.id)];
@@ -1789,7 +1818,6 @@ function renderDetail() {
         </div>`;
       };
       return `<div class="variant-section">
-        ${parent ? `<div class="variant-of-line" data-action="open-fig" data-fig-id="${esc(parent.id)}">↳ Variant of <span>${esc(parent.name)}</span></div>` : ''}
         <div class="variant-strip">${fam.map(chip).join('')}<div class="variant-chip variant-chip-add" onclick="addVariant(${jsArg(root.id)})" title="Add a variant">
           <div class="variant-chip-thumb"><span style="font-size:28px;color:var(--gold)">+</span></div>
           <div class="variant-chip-label">Add</div>
@@ -1797,22 +1825,12 @@ function renderDetail() {
       </div>`;
     })()}
     ${(() => {
-      // v6.89: market value line (asking + sparkline) moved BELOW the status
-      // block. Original Retail now lives inside the Collection Details box
-      // (passed into renderDetailStatusBlock), so it's only the live asking
-      // price + sparkline that render here as market context.
-      // v6.91: this eBay-derived "eBay Asking" line is shown ONLY on the For
-      // Sale screen (it's pricing context for selling); other statuses don't
-      // show it above the pills.
-      if (c.status !== 'for-sale') return '';
-      const paidArr = [];
-      if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
-      const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
-      const condition = primaryCp?.condition || undefined;
-      renderMarketValueBlock._meta = { line: f.line, wave: f.wave, year: f.year };
-      const asking = renderMarketValueBlock(f.id, paidArr, condition);
-      if (!asking) return '';
-      return `<div class="detail-retail" id="mvBlock_${esc(f.id)}" data-mv-figid="${esc(f.id)}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(condition || '')}">${asking}${renderSparkline(f.id)}</div>`;
+      // v6.92: the eBay Asking line is no longer rendered here in the header.
+      // It now sits next to Original Retail INSIDE the For Sale copy databox
+      // (see renderDetailStatusBlock → databox-retail), which is where the
+      // user expects the selling context. Kept this slot empty so the rest of
+      // the detail layout is unchanged.
+      return '';
     })()}
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <datalist id="locationSuggestions">
