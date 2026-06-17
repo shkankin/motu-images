@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.90</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.91</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1440,10 +1440,8 @@ function renderDetailStatusBlock(f, c) {
       copies.forEach((cp, i) => {
         h += renderCopyCard(f, cp, i, isMulti, copies.length);
       });
-      // v6.91: "Add another copy" is a standalone action below the databoxes.
-      h += `<button class="add-copy-btn" onclick="addCopy(${jId})">
-        <span class="add-copy-plus">+</span> ${isMulti ? 'Add another copy' : 'Add a second copy'}
-      </button>`;
+      // v6.91: "Add a copy" lives in the bottom action bar next to Add Variant
+      // (see renderDetail), so it sits with the other figure-level actions.
     }
 
     // v6.69: Price Watch — wishlist/ordered figures can carry a target price.
@@ -1556,7 +1554,7 @@ function renderCopyCard(f, cp, i, isMulti, total) {
       <label>Price Paid</label>
       <input type="number" step="0.01" class="ghost-input" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'paid',this.value)">
     </div>
-    ${isForSale ? `<div class="input-group">
+    ${isForSale ? `<div class="input-group" style="grid-column:span 2">
       <label>Asking Price</label>
       <input type="number" step="0.01" class="ghost-input" value="${esc(cp.asking || '')}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'asking',this.value)">
     </div>` : ''}
@@ -1567,14 +1565,14 @@ function renderCopyCard(f, cp, i, isMulti, total) {
         oninput="formatAcquired(this)"
         onchange="updateCopy(${jId},${cid},'acquired',this.value)">
     </div>
+    <div class="input-group">
+      <label>Location</label>
+      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
+    </div>
     ${variant ? `<div class="input-group" style="grid-column:span 2">
       <label>Variant (legacy)</label>
       <input type="text" class="ghost-input" value="${esc(variant)}" onchange="updateCopy(${jId},${cid},'variant',this.value)">
     </div>` : ''}
-    <div class="input-group" style="grid-column:span 2">
-      <label>Location</label>
-      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, Storage bin A, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
-    </div>
   </div>`;
 
   // Accessories block with completeness badge + chips.
@@ -1830,9 +1828,16 @@ function renderDetail() {
     btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
     if (f.source === 'custom-local')
       btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.trash, 'red-btn'));
+    // v6.91: "Add Copy" joins the action bar (was a standalone button under the
+    // databoxes). Only meaningful when this status actually shows copies.
+    const showsCopies = c.status === 'owned' || c.status === 'for-sale';
+    if (showsCopies) {
+      btns.push(btn(`addCopy(${jId})`, 'Add Copy', ICO.plus, supportsVariants ? '' : 'primary'));
+    }
     if (supportsVariants)
       btns.push(btn(`addVariant(${jId})`, 'Add Variant', ICO.plus, 'primary'));
-    return `<div class="action-bar-bottom" style="grid-template-columns:repeat(${Math.min(btns.length,2)},1fr)">${btns.join('')}</div>`;
+    const cols = Math.min(btns.length, 4);
+    return `<div class="action-bar-bottom" style="grid-template-columns:repeat(${cols},1fr)">${btns.join('')}</div>`;
   })()}`;
   if (S.photoViewer) html += renderPhotoViewer();
   if (S.sheet) html += renderSheet();

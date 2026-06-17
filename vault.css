@@ -1188,8 +1188,10 @@ button:active { opacity: 0.7; transform: scale(0.97); }
      photo doesn't chain to the browser's back/forward gesture. */
   overscroll-behavior-x: contain;
   /* v6.85: claim horizontal panning for the carousel itself so an edge swipe
-     doesn't trigger the OS "back" gesture; pinch-zoom still allowed. */
-  touch-action: pan-x pinch-zoom;
+     doesn't trigger the OS "back" gesture; pinch-zoom still allowed.
+     v6.91: also allow pan-y so a vertical drag that starts on the hero image
+     scrolls the page instead of being swallowed by the (x-only) carousel. */
+  touch-action: pan-x pan-y pinch-zoom;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   background: var(--bg3);
@@ -1206,7 +1208,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .hero-image .photo-slide img {
   width: 100%; height: 100%;
   object-fit: cover;
-  object-position: top;
+  object-position: center;
 }
 .photo-slide-label {
   position: absolute; bottom: 64px; left: 12px;
@@ -1493,14 +1495,14 @@ textarea.ghost-input { resize: vertical; min-height: 40px; }
   padding: 2px 8px; border-radius: 10px;
   font-size: 10px; font-weight: 700;
 }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  display: flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: 4px;
   background: color-mix(in srgb, var(--gold) 15%, transparent);
   border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
   color: var(--t1);
-  padding: 6px 12px; border-radius: 20px;
-  font-size: 13px;
+  padding: 4px 8px 4px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; line-height: 1.2;
   max-width: 100%;
 }
 .chip .acc-chip-label {
@@ -1508,7 +1510,7 @@ textarea.ghost-input { resize: vertical; min-height: 40px; }
 }
 .chip-x {
   background: none; border: none; color: var(--t3);
-  font-size: 16px; line-height: 1; cursor: pointer; padding: 0;
+  font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
   flex-shrink: 0;
 }
 .chip-x:active { color: var(--rd); }
@@ -1516,27 +1518,29 @@ textarea.ghost-input { resize: vertical; min-height: 40px; }
   background: transparent;
   border: 1px dashed var(--bd);
   color: var(--gold);
-  padding: 6px 16px; border-radius: 20px;
-  font-size: 13px; cursor: pointer;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 12px; cursor: pointer;
 }
 
 /* ── Collapsible "More details…" ─────────────────────────────────── */
 details.more-details {
   background: rgba(255,255,255,.02);
   border-radius: 12px;
-  padding: 12px;
+  padding: 6px 12px;
   margin-top: 16px;
 }
 details.more-details summary {
   font-size: 13px; color: var(--gold); cursor: pointer; font-weight: 600;
   list-style: none; display: flex; align-items: center; gap: 8px;
+  padding: 2px 0;
 }
 details.more-details summary::-webkit-details-marker { display: none; }
 details.more-details summary::before {
-  content: "▾"; font-size: 16px; transition: transform .2s;
+  content: "▾"; font-size: 14px; transition: transform .2s;
 }
 details.more-details[open] summary::before { transform: rotate(180deg); }
-.details-content { margin-top: 16px; }
+details.more-details[open] { padding-bottom: 12px; }
+.details-content { margin-top: 12px; }
 
 /* Live market-value line (kept for parity, now unused on the main screen). */
 .detail-retail { font-size: 14px; color: var(--t2); margin-bottom: 16px; }
@@ -3385,6 +3389,13 @@ html {
   cursor: pointer;
 }
 .action-btn svg { flex-shrink: 0; }
+/* v6.91: when the bar carries 4 actions (AF411/Edit/Add Copy/Add Variant),
+   stack icon over a smaller label so each fits a quarter-width column. */
+.action-bar-bottom[style*="repeat(4"] .action-btn {
+  flex-direction: column; gap: 4px;
+  padding: 10px 4px;
+  font-size: 11px;
+}
 .action-btn.primary {
   background: color-mix(in srgb, var(--gold) 12%, transparent);
   border-color: var(--gold);

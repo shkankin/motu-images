@@ -1,7 +1,26 @@
-// MOTU Vault — Service Worker v6.90
+// MOTU Vault — Service Worker v6.91
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.91 changelog:
+//   • CACHE bumped to v6.91. SHELL: render.js + vault.css. "Showcase"
+//     detail-screen redesign (full-bleed 400px hero with floating FABs,
+//     sticky blurred title bar, status pill bar, per-copy ghost-input
+//     databoxes, variant-showcase styling, fixed bottom action bar), plus
+//     these refinements:
+//       – Add Copy moved into the bottom action bar beside Add Variant
+//         (was a standalone button under the databoxes); bar goes 4-up and
+//         stacks icon-over-label when it carries four actions.
+//       – Location now sits inline with Acquired in the field grid.
+//       – Asking Price (for-sale) grouped full-width with the money fields,
+//         out of the Condition/Acquired/Location flow.
+//       – Accessory chips returned to the prior compact size.
+//       – Hero image centered (object-position top→center) so the whole
+//         figure shows rather than the upper crop.
+//       – Hero carousel allows pan-y so a vertical drag on the photo scrolls
+//         the page (was pan-x only, which trapped scroll).
+//       – "More details…" disclosure trimmed to a shorter height.
 //
 // v6.90 changelog:
 //   • CACHE bumped to v6.90. SHELL: vault.css only. Detail-screen polish:
@@ -729,7 +748,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.90';
+const CACHE = 'motu-vault-v6.91';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
