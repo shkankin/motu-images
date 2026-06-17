@@ -474,7 +474,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.91</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.92</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1445,15 +1445,14 @@ function renderDetailStatusBlock(f, c) {
     }
 
     // v6.69: Price Watch — wishlist/ordered figures can carry a target price.
-    if (c.status === 'wishlist' || c.status === 'ordered') {
+    if (c.status === 'wishlist') {
       const target = parseFloat(c.targetPrice);
       const askingNow = getCachedAskingPrice(f);
       const isDeal = Number.isFinite(target) && askingNow != null && askingNow <= target;
-      const stateCls = c.status === 'ordered' ? ' ordered-state' : '';
-      h += `<div class="databox${stateCls}">
+      h += `<div class="databox">
         <div class="databox-header">
           <div class="databox-title-wrap">
-            <h3 class="databox-title">Price Watch</h3>
+            <h3 class="databox-title" style="color:${STATUS_HEX.wishlist}">Price Watch</h3>
           </div>
         </div>
         <div class="ghost-grid" style="margin-bottom:0">
@@ -1532,7 +1531,9 @@ function renderCopyCard(f, cp, i, isMulti, total) {
         <h3 class="${titleCls}">${esc(titleText)}</h3>
         ${isVariant ? `<span class="variant-badge">Variant</span>` : ''}
       </div>
-      ${isMulti ? `<button class="delete-btn" title="Remove this copy" onclick="removeCopy(${jId},${cid})">${icon(ICO.trash,18)}</button>` : ''}
+      ${isVariant
+        ? `<button class="delete-btn" title="Delete this variant" onclick="deleteCustomFig(${jId})">${icon(ICO.trash,18)}</button>`
+        : (isMulti ? `<button class="delete-btn" title="Remove this copy" onclick="removeCopy(${jId},${cid})">${icon(ICO.trash,18)}</button>` : '')}
     </div>`;
 
   // Original Retail anchor — a figure-level fact, shown once at the top of the
@@ -1554,11 +1555,14 @@ function renderCopyCard(f, cp, i, isMulti, total) {
       <label>Price Paid</label>
       <input type="number" step="0.01" class="ghost-input" value="${esc(paid)}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'paid',this.value)">
     </div>
-    ${isForSale ? `<div class="input-group" style="grid-column:span 2">
+    ${isForSale ? `<div class="input-group">
       <label>Asking Price</label>
       <input type="number" step="0.01" class="ghost-input" value="${esc(cp.asking || '')}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'asking',this.value)">
-    </div>` : ''}
+    </div>
     <div class="input-group">
+      <label>Location</label>
+      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
+    </div>` : `<div class="input-group">
       <label>Acquired</label>
       <input type="text" inputmode="numeric" maxlength="7" class="ghost-input" value="${esc(cp.acquired || '')}"
         placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}"
@@ -1568,7 +1572,7 @@ function renderCopyCard(f, cp, i, isMulti, total) {
     <div class="input-group">
       <label>Location</label>
       <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
-    </div>
+    </div>`}
     ${variant ? `<div class="input-group" style="grid-column:span 2">
       <label>Variant (legacy)</label>
       <input type="text" class="ghost-input" value="${esc(variant)}" onchange="updateCopy(${jId},${cid},'variant',this.value)">
@@ -1671,11 +1675,10 @@ function rerenderMVBlock(figId) {
   if (S.activeFig && S.activeFig.id === figId) {
     renderMarketValueBlock._meta = { line: S.activeFig.line, wave: S.activeFig.wave, year: S.activeFig.year };
   }
-  const f = S.activeFig;
-  const retailPart = (f && f.retail) ? `Original Retail: <span class="price">$${f.retail.toFixed(2)}</span>` : '';
+  // v6.91: Original Retail lives in the copy databox now; this header line is
+  // only the eBay Asking context (for-sale screen), so don't duplicate retail.
   const asking = renderMarketValueBlock(figId, paidArr, condition);
-  const sep = (retailPart && asking) ? ' <span class="text-dim" style="margin:0 4px">·</span> ' : '';
-  el.innerHTML = retailPart + sep + asking;
+  el.innerHTML = asking;
 }
 window.rerenderMVBlock = rerenderMVBlock;
 
@@ -1798,6 +1801,10 @@ function renderDetail() {
       // block. Original Retail now lives inside the Collection Details box
       // (passed into renderDetailStatusBlock), so it's only the live asking
       // price + sparkline that render here as market context.
+      // v6.91: this eBay-derived "eBay Asking" line is shown ONLY on the For
+      // Sale screen (it's pricing context for selling); other statuses don't
+      // show it above the pills.
+      if (c.status !== 'for-sale') return '';
       const paidArr = [];
       if (c && Array.isArray(c.copies)) for (const cp of c.copies) if (cp.paid) paidArr.push(cp.paid);
       const primaryCp = c && Array.isArray(c.copies) ? c.copies[0] : null;
@@ -1826,13 +1833,16 @@ function renderDetail() {
     if (supportsVariants)
       btns.push(btn(`event.preventDefault();openAF411(${jId})`, 'AF411', ICO.export));
     btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
-    if (f.source === 'custom-local')
+    // v6.91: variant figures (source custom-local + variantOf) get their
+    // Delete control in the databox header instead of the action bar, so
+    // exclude it here for those; non-variant custom-local figures keep it.
+    if (f.source === 'custom-local' && !f.variantOf)
       btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.trash, 'red-btn'));
     // v6.91: "Add Copy" joins the action bar (was a standalone button under the
     // databoxes). Only meaningful when this status actually shows copies.
     const showsCopies = c.status === 'owned' || c.status === 'for-sale';
     if (showsCopies) {
-      btns.push(btn(`addCopy(${jId})`, 'Add Copy', ICO.plus, supportsVariants ? '' : 'primary'));
+      btns.push(btn(`addCopy(${jId})`, 'Add Copy', ICO.plus, 'purple-btn'));
     }
     if (supportsVariants)
       btns.push(btn(`addVariant(${jId})`, 'Add Variant', ICO.plus, 'primary'));

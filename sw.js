@@ -1,26 +1,34 @@
-// MOTU Vault — Service Worker v6.91
+// MOTU Vault — Service Worker v6.92
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
 //
+// v6.92 changelog:
+//   • CACHE bumped to v6.92. SHELL: render.js + vault.css + pricing.js.
+//       – The eBay-derived market price line is renamed "eBay Asking" (to
+//         distinguish it from the user's editable per-copy Asking Price) and
+//         now renders ONLY on the For Sale screen, not above the status pills
+//         on every status.
+//       – Reverted the prior echo of the editable Asking onto the Original
+//         Retail line; that field stays in the copy grid only.
+//
 // v6.91 changelog:
 //   • CACHE bumped to v6.91. SHELL: render.js + vault.css. "Showcase"
-//     detail-screen redesign (full-bleed 400px hero with floating FABs,
-//     sticky blurred title bar, status pill bar, per-copy ghost-input
-//     databoxes, variant-showcase styling, fixed bottom action bar), plus
-//     these refinements:
-//       – Add Copy moved into the bottom action bar beside Add Variant
-//         (was a standalone button under the databoxes); bar goes 4-up and
-//         stacks icon-over-label when it carries four actions.
-//       – Location now sits inline with Acquired in the field grid.
-//       – Asking Price (for-sale) grouped full-width with the money fields,
-//         out of the Condition/Acquired/Location flow.
-//       – Accessory chips returned to the prior compact size.
-//       – Hero image centered (object-position top→center) so the whole
-//         figure shows rather than the upper crop.
-//       – Hero carousel allows pan-y so a vertical drag on the photo scrolls
-//         the page (was pan-x only, which trapped scroll).
-//       – "More details…" disclosure trimmed to a shorter height.
+//     detail-screen redesign, plus refinements:
+//       – Accessory chips: scoped to `.chips .chip` so the filter-sheet
+//         `.chip` rule (min-height 44) stops inflating them; back to compact.
+//       – Wishlist "Price Watch" title rendered in the wishlist blue.
+//       – Price Watch removed from the Ordered state (wishlist-only now).
+//       – For Sale copy grid drops Acquired and pairs Asking with Location;
+//         Asking Price is echoed next to Original Retail at the top.
+//       – Add Copy button styled purple in the action bar.
+//       – Extra spacing between "More details…" and the Mark Sold button.
+//       – Variant figures: per-card trash removed; Delete now lives in the
+//         databox header (and is dropped from the bottom action bar for them).
+//       – Add Copy moved into the bottom action bar beside Add Variant; bar
+//         goes 4-up and stacks icon-over-label when it carries four actions.
+//       – Location inline with Acquired (owned); hero centered; hero carousel
+//         allows pan-y so vertical drags scroll; "More details…" trimmed.
 //
 // v6.90 changelog:
 //   • CACHE bumped to v6.90. SHELL: vault.css only. Detail-screen polish:
@@ -748,7 +756,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.91';
+const CACHE = 'motu-vault-v6.92';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

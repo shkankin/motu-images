@@ -228,7 +228,7 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
         if (typeof window.rerenderMVBlock === 'function') window.rerenderMVBlock(figId);
       });
     }
-    return `<span class="mv-inline mv-loading text-dim">Asking: …</span>`;
+    return `<span class="mv-inline mv-loading text-dim">eBay Asking: …</span>`;
   }
   const d = cached.data;
   if (!d.sealed && !d.loose) return '';
@@ -245,7 +245,7 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
   const fmtMoney = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
   // Show low-sample as dim so users can tell it's an estimate without a badge.
   const dimClass = (bucket.confidence === 'low') ? ' mv-inline-dim' : '';
-  return `<span class="mv-inline${dimClass}" title="Median of ${bucket.n} eBay BIN listings">Asking: <span class="price">${fmtMoney(price)}</span></span>`;
+  return `<span class="mv-inline${dimClass}" title="Median of ${bucket.n} eBay BIN listings">eBay Asking: <span class="price">${fmtMoney(price)}</span></span>`;
 }
 
 // v6.67: synchronous cached asking price for a figure record. Mirrors the

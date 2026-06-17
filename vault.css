@@ -1495,9 +1495,10 @@ textarea.ghost-input { resize: vertical; min-height: 40px; }
   padding: 2px 8px; border-radius: 10px;
   font-size: 10px; font-weight: 700;
 }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip {
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chips .chip {
   display: inline-flex; align-items: center; gap: 4px;
+  min-height: 0;
   background: color-mix(in srgb, var(--gold) 15%, transparent);
   border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
   color: var(--t1);
@@ -1505,19 +1506,20 @@ textarea.ghost-input { resize: vertical; min-height: 40px; }
   font-size: 12px; font-weight: 500; line-height: 1.2;
   max-width: 100%;
 }
-.chip .acc-chip-label {
+.chips .chip .acc-chip-label {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
 }
-.chip-x {
+.chips .chip-x {
   background: none; border: none; color: var(--t3);
   font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
   flex-shrink: 0;
 }
-.chip-x:active { color: var(--rd); }
-.chip-add {
+.chips .chip-x:active { color: var(--rd); }
+.chips .chip-add {
   background: transparent;
   border: 1px dashed var(--bd);
   color: var(--gold);
+  min-height: 0;
   padding: 4px 12px; border-radius: 999px;
   font-size: 12px; cursor: pointer;
 }
@@ -3411,6 +3413,11 @@ html {
   border-color: color-mix(in srgb, var(--rd) 45%, transparent);
   color: var(--rd);
 }
+.action-btn.purple-btn {
+  background: color-mix(in srgb, #8b5cf6 14%, transparent);
+  border-color: color-mix(in srgb, #8b5cf6 50%, transparent);
+  color: #a78bfa;
+}
 
 /* Legacy in-scroll action bar (kept for any other callers) */
 .detail-action-bar {
@@ -3469,6 +3476,7 @@ html {
 /* Mark Sold button on copy cards */
 .mark-sold-btn {
   display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 14px;
   padding: 9px 14px; border-radius: 10px;
   border: 1px solid color-mix(in srgb, var(--gn) 45%, transparent);
   background: var(--bg3); color: var(--gn);
