@@ -1,0 +1,35 @@
+name: Handler Lint
+
+# v1.0 — guards against "dead button" regressions during the inline→delegation
+# migration: an inline onclick calling an unexposed global, or a data-action
+# with no register() handler, both fail silently at tap time. The linter uses
+# only Node built-ins (no install step). It currently passes on main, so this
+# is a hard gate.
+run-name: "Handler Lint · ${{ github.event_name }}"
+
+on:
+  push:
+    paths:
+      - 'js/**'
+      - 'scripts/lint_handlers.mjs'
+      - '.github/workflows/lint.yml'
+  pull_request:
+    paths:
+      - 'js/**'
+      - 'scripts/lint_handlers.mjs'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Lint inline handlers & data-actions
+        run: node scripts/lint_handlers.mjs js
