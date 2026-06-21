@@ -11,6 +11,17 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.7 (2026-06-21) — security/reliability audit
+    - Atomic JSON writes. figures.json and figures-pending.json are now
+      written via a temp file + os.replace() (see atomic_write_text), so a
+      crash or CI-runner eviction mid-write can no longer leave a truncated
+      file for the workflow's commit step to push.
+    - Startup banner prints SCRIPT_VERSION for visual confirmation in CI logs.
+    - Companion workflow bumped to v1.8: the commit/push and Discord steps
+      gained a success() guard, and workflow_dispatch string inputs are now
+      passed through env vars instead of being interpolated into the shell
+      (script-injection hardening).
+
   v1.6 (2026-06-14)
     - UPC capture. New --upc flag fetches each figure's AF411 detail page and
       extracts its UPC barcode (the checklist pages used for normal scraping
@@ -102,8 +113,30 @@ from pathlib import Path
 
 # ─── Configuration ────────────────────────────────────────────────
 
+# AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
+# startup banner below) and to ship atomic JSON writes — see atomic_write_text.
+SCRIPT_VERSION = "v1.7"
+
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
+
+
+def atomic_write_text(path, text):
+    """AUDIT FIX v1.7: write to a sibling temp file, fsync, then os.replace().
+
+    The previous Path.write_text() was non-atomic: a process kill (or CI
+    runner eviction) mid-write could leave a truncated figures.json on disk,
+    which the workflow's commit step would then push. os.replace() is atomic
+    on POSIX, so readers/committers only ever see the complete old file or the
+    complete new file — never a partial one.
+    """
+    path = Path(path)
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(text)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, path)
 
 # Each line: (line_id for our app, AF411 checklist URL slug, AF411 series path segment)
 LINES = [
@@ -544,7 +577,7 @@ def main():
     args = parser.parse_args()
 
     print("═" * 60)
-    print("  MOTU Vault — AF411 Catalog Sync")
+    print(f"  MOTU Vault — AF411 Catalog Sync  {SCRIPT_VERSION}")
     print("═" * 60)
 
     # Load existing figures.json
@@ -807,8 +840,8 @@ def main():
     line_order = {l[0]: i for i, l in enumerate(LINES)}
     merged.sort(key=lambda f: (line_order.get(f.get("line", ""), 99), f.get("name", "")))
 
-    # Write figures.json
-    FIGURES_JSON.write_text(json.dumps(merged, indent=2, ensure_ascii=False))
+    # Write figures.json (AUDIT FIX v1.7: atomic — temp file + os.replace)
+    atomic_write_text(FIGURES_JSON, json.dumps(merged, indent=2, ensure_ascii=False))
     print(f"\n  ✓ Wrote {len(merged)} figures to figures.json")
 
     # v1.4: write pending queue (only if it changed). When no new figures
@@ -816,7 +849,7 @@ def main():
     # avoid spurious git churn.
     if new_for_pending or pending_refresh:
         new_pending.sort(key=lambda f: (line_order.get(f.get("line", ""), 99), f.get("name", "")))
-        PENDING_JSON.write_text(json.dumps(new_pending, indent=2, ensure_ascii=False))
+        atomic_write_text(PENDING_JSON, json.dumps(new_pending, indent=2, ensure_ascii=False))
         print(f"  ✓ Wrote {len(new_pending)} figures to figures-pending.json")
 
     print(f"  ✓ Downloaded {img_downloaded} images ({img_failed} failed)")

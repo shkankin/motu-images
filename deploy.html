@@ -3,7 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- AUDIT FIX: Content-Security-Policy. 'unsafe-inline' stays in script-src
+     because this tool uses inline onclick + an inline <script> block, but the
+     critical lever here is connect-src: even if a script were somehow
+     subverted, network egress is constrained to GitHub's API and this origin,
+     so a stolen PAT cannot be POSTed to an attacker-controlled host. Combined
+     with the SRI hash on the JSZip tag below, this materially reduces the
+     token-exfiltration risk for this page. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
+<!-- ════════════════════════════════════════════════════════════════
+     deploy.html  v1.1  (security audit)
+       • Subresource Integrity (SHA-512) + crossorigin pinned on the JSZip
+         CDN tag so a tampered/MITM'd CDN response cannot run in this
+         PAT-bearing origin.
+       • Added a Content-Security-Policy; connect-src is constrained to
+         GitHub's API + self, so a stolen token cannot be exfiltrated to an
+         arbitrary host.
+       • (Unchanged) Token still lives in localStorage — prefer a
+         fine-grained PAT scoped to motu-images with contents:write, and
+         avoid serving this admin tool from the public Pages site.
+     ════════════════════════════════════════════════════════════════ -->
 <style>
   :root {
     --bg:  #0f0f13;
@@ -219,12 +239,22 @@
   a { color: var(--acc); text-decoration: none; }
   a:hover { text-decoration: underline; }
 </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- AUDIT FIX: Subresource Integrity pins the exact JSZip 3.10.1 bytes.
+       This page holds a write-scoped GitHub PAT in localStorage, so a
+       compromised/MITM'd CDN response would otherwise be able to run
+       arbitrary JS in this origin and exfiltrate that token. The hash below
+       is the cdnjs-published SHA-512 for jszip 3.10.1; crossorigin enables
+       the integrity check on a cross-origin resource. If the file fails the
+       integrity check the browser refuses to execute it. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+          integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer"></script>
 </head>
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy</h1>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.1</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>.</p>
 </header>
 

