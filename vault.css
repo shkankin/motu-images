@@ -45,6 +45,29 @@
   --acc: #a3e635; --gold: #b8e070; --gn: #4ade80;
   --t1: #f0fdf4; --t2: #86a693; --t3: #5b7a67; --btn-t: #022c22;
 }
+/* v6.94: Daylight — the first LIGHT theme. The whole palette is token-driven
+   (~480 var(--…) refs), so flipping the surface/text tokens inverts the app
+   cleanly. Hardcoded white-alpha values elsewhere sit on figure-photo / line-
+   card image overlays (dark by nature) and are intentionally left white.
+   Status + accent colors are deepened one step so they clear WCAG AA on the
+   light surfaces (the dark-tuned emerald/blue/orange are too light on white).
+   --t3 (#71717a on #ffffff ≈ 4.7:1) and --t2 (#52525b ≈ 7:1) both pass AA. */
+[data-theme="light"] {
+  --bg:  #f4f4f7;       /* soft off-white page — easier on the eyes than pure white */
+  --bg2: #ffffff;       /* cards pop bright white against the page */
+  --bg3: #ececef;       /* inputs / elevated, a hair darker than cards */
+  --bd:  #d6d6dd;       /* light hairline borders */
+  --acc: #6d28d9;       /* violet-700 — deepened for AA on white */
+  --gold:#b45309;       /* amber-700 reads as "gold" on light (pure #facc15 fails as text) */
+  --t1:  #18181b;       /* near-black primary text */
+  --t2:  #52525b;       /* secondary */
+  --t3:  #71717a;       /* tertiary — still AA on bg/bg2 */
+  --btn-t:#ffffff;      /* white on the violet primary */
+  --gn:  #15803d;       /* green-700 */
+  --rd:  #dc2626;       /* red-600 */
+  --bl:  #2563eb;       /* blue-600 */
+  --or:  #ea580c;       /* orange-600 */
+}
 
 /* ── Reset & Base ────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }

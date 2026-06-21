@@ -1,7 +1,17 @@
-// MOTU Vault — Service Worker v6.93
+// MOTU Vault — Service Worker v6.94
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.94 changelog:
+//   • CACHE bumped to v6.94. SHELL: vault.css + state.js + ui-sheets.js +
+//     eggs.js + app.js + render.js. Adds the first LIGHT theme ("Daylight"):
+//       – New [data-theme="light"] palette in vault.css (token-driven; status
+//         + accent colors deepened one step to clear WCAG AA on light surfaces).
+//       – THEMES gains the light entry plus per-theme fg/fg2 text colors so the
+//         theme picker renders every option legibly regardless of active theme.
+//       – setTheme + boot now sync <meta name="theme-color"> to the active
+//         theme so the mobile browser chrome matches (esp. in light mode).
 //
 // v6.93 changelog:
 //   • CACHE bumped to v6.93. SHELL: render.js + vault.css + pricing.js.
@@ -768,7 +778,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.93';
+const CACHE = 'motu-vault-v6.94';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -13,13 +13,15 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.1  (security audit)
-       • Subresource Integrity (SHA-512) + crossorigin pinned on the JSZip
-         CDN tag so a tampered/MITM'd CDN response cannot run in this
-         PAT-bearing origin.
-       • Added a Content-Security-Policy; connect-src is constrained to
-         GitHub's API + self, so a stolen token cannot be exfiltrated to an
-         arbitrary host.
+     deploy.html  v1.2  (security audit + pre-flight token check)
+       • v1.2: Token pre-flight — on save/load the token is checked against
+         GET /repos/<repo>; the status line shows whether it actually has
+         push access (and to which repo/branch) before you spend a deploy on
+         a wrong/expired/under-scoped token.
+       • v1.1: Subresource Integrity (SHA-512) + crossorigin pinned on the
+         JSZip CDN tag so a tampered/MITM'd CDN response cannot run in this
+         PAT-bearing origin; added a Content-Security-Policy whose connect-src
+         is constrained to GitHub's API + self.
        • (Unchanged) Token still lives in localStorage — prefer a
          fine-grained PAT scoped to motu-images with contents:write, and
          avoid serving this admin tool from the public Pages site.
@@ -254,7 +256,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.1</span></h1>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.2</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>.</p>
 </header>
 
@@ -337,8 +339,10 @@ const PATH_MAP = {
   'loadouts.json':        'loadouts.json',
   // /scripts
   'sync_af411.py':        'scripts/sync_af411.py',
+  'lint_handlers.mjs':    'scripts/lint_handlers.mjs',   // v1.2: handler-lint (CI)
   // /.github/workflows
   'sync-af411.yml':       '.github/workflows/sync-af411.yml',
+  'lint.yml':             '.github/workflows/lint.yml',   // v1.2: handler-lint workflow
 };
 
 // ── State ──────────────────────────────────────────────────────────
@@ -350,6 +354,7 @@ function loadToken() {
   if (t) {
     document.getElementById('tokenInput').value = t;
     setTokenStatus('ok', '✓ Token saved');
+    verifyToken(t);                 // v1.2: confirm scope/repo on load
   }
   updateDeployBtn();
 }
@@ -360,11 +365,40 @@ function saveToken() {
   const t = document.getElementById('tokenInput').value.trim();
   if (!t) { alert('Enter a token first.'); return; }
   localStorage.setItem(TOKEN_KEY, t);
-  setTokenStatus('ok', '✓ Token saved');
+  setTokenStatus('ok', '✓ Token saved — verifying…');
   updateDeployBtn();
+  verifyToken(t);                   // v1.2: confirm scope/repo on save
+}
+
+// v1.2: pre-flight check. Hits GET /repos/<repo> with the token and reports
+// whether it can actually push BEFORE the user wastes a deploy on a wrong /
+// expired / under-scoped token. GitHub returns a `permissions` object on
+// authenticated repo reads; `push` is the bit that matters for committing.
+// Surfacing this here also makes an over-scoped classic PAT obvious (you want
+// a fine-grained token limited to this one repo with contents:write).
+let _verifySeq = 0;
+async function verifyToken(token) {
+  const seq = ++_verifySeq;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' },
+    });
+    if (seq !== _verifySeq) return;          // a newer verify started; ignore stale
+    if (res.status === 401) { setTokenStatus('bad', '✗ Token invalid or expired'); return; }
+    if (res.status === 404) { setTokenStatus('bad', `✗ Can't see ${REPO} — wrong repo or token lacks access`); return; }
+    if (!res.ok)            { setTokenStatus('bad', `⚠ Verify failed (HTTP ${res.status})`); return; }
+    const repo = await res.json();
+    const canPush = !!(repo.permissions && (repo.permissions.push || repo.permissions.admin || repo.permissions.maintain));
+    if (canPush) setTokenStatus('ok',  `✓ Push access to ${repo.full_name} (${repo.default_branch})`);
+    else         setTokenStatus('bad', `⚠ Token is valid but read-only on ${repo.full_name} — needs contents:write`);
+  } catch (e) {
+    if (seq !== _verifySeq) return;
+    setTokenStatus('', '⚠ Saved — could not verify (offline?)');
+  }
 }
 
 function clearToken() {
+  _verifySeq++;                     // cancel any in-flight verify
   localStorage.removeItem(TOKEN_KEY);
   document.getElementById('tokenInput').value = '';
   setTokenStatus('', 'No token saved');

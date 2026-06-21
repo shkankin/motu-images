@@ -4,18 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- ════════════════════════════════════════════════════════════════
-     figures-editor.html  v1.13.0  (security audit)
-       • External link to github.com/settings/tokens now carries
-         rel="noopener noreferrer" (reverse-tabnabbing hardening on a
-         page that handles a GitHub PAT).
-       • EDITOR_VERSION bumped to v1.13.0 (badge in the header).
-     NOTE (not applied here): a Content-Security-Policy with
-     connect-src constrained to api.github.com is recommended for the
-     HOSTED (GitHub Pages) deployment as defense-in-depth for the stored
-     token. It is intentionally NOT baked into this file because the
-     editor also supports being opened via file:// with relative image
-     paths, and a strict img-src can break that local workflow in some
-     browsers. Add the CSP at the hosting layer (or a hosted-only copy).
+     figures-editor.html  v1.14.0  (security audit + pre-flight token check)
+       • v1.14.0: Token pre-flight — _doCommit() now confirms the token has
+         push access to the repo (GET /repos/<repo> → permissions.push) before
+         uploading any blobs, so a wrong/expired/read-only token fails fast
+         with a clear line in the commit log instead of dying mid-commit.
+       • v1.13.0: external link to github.com/settings/tokens now carries
+         rel="noopener noreferrer" (reverse-tabnabbing hardening on a page
+         that handles a GitHub PAT). EDITOR_VERSION badge bumped.
+     NOTE (not applied here): a Content-Security-Policy with connect-src
+     constrained to api.github.com is recommended for the HOSTED (GitHub
+     Pages) deployment as defense-in-depth for the stored token. It is
+     intentionally NOT baked into this file because the editor also supports
+     being opened via file:// with relative image paths, and a strict img-src
+     can break that local workflow in some browsers. Add the CSP at the
+     hosting layer (or ship a hosted-only copy).
      ════════════════════════════════════════════════════════════════ -->
 <title>MOTU Vault — Figures Editor</title>
 <!-- Standalone editor for the figures-pending review queue.
@@ -536,7 +539,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.13.0';
+const EDITOR_VERSION = 'v1.14.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -2288,6 +2291,20 @@ async function _doCommit(token) {
 
   try {
     _commitLog('inf', `Connecting to ${GH_REPO}…`);
+
+    // v1.14.0: pre-flight token check. Confirm the token can actually PUSH to
+    // this repo before we start uploading blobs — a read-only / expired /
+    // wrong-repo token now fails fast with a clear message instead of dying
+    // partway through the commit. GitHub returns a `permissions` object on an
+    // authenticated repo read; `push` is the bit that gates committing.
+    const repoRes = await fetch(api, { headers });
+    if (repoRes.status === 401) throw new Error('401 Bad credentials — token invalid or expired');
+    if (repoRes.status === 404) throw new Error(`Cannot see ${GH_REPO} (404) — wrong repo or token lacks access`);
+    if (!repoRes.ok) throw new Error(`Repo check failed: ${repoRes.status}`);
+    const repoInfo = await repoRes.json();
+    const canPush = !!(repoInfo.permissions && (repoInfo.permissions.push || repoInfo.permissions.admin || repoInfo.permissions.maintain));
+    if (!canPush) throw new Error(`Token is read-only on ${repoInfo.full_name} — needs contents:write`);
+    _commitLog('ok', `✓ Push access to ${repoInfo.full_name} (${repoInfo.default_branch})`);
 
     const refRes = await fetch(`${api}/git/ref/heads/${GH_BRANCH}`, { headers });
     if (!refRes.ok) throw new Error(`Branch read failed: ${refRes.status}`);

@@ -552,7 +552,17 @@ window.openSheet = name => { S.sheet = name; pushNav(); render();
   requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
 };
 window.closeSheet = () => { history.back(); };
-window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconOverride = null; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); history.back(); };
+window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconOverride = null; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); _syncThemeColor(t); history.back(); };
+// v6.94: keep <meta name="theme-color"> aligned with the active theme so the
+// mobile browser chrome matches — most noticeable for the light theme, where a
+// stale dark status bar over a light app looks broken. Exported so boot can
+// call it too (a saved light theme should paint light chrome from first frame).
+export function _syncThemeColor(t) {
+  try {
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if (mc && THEMES[t]?.bg) mc.setAttribute('content', THEMES[t].bg);
+  } catch {}
+}
 window.imgErr = id => { S.imgErrors[id] = true; };
 
 // ── Exports ─────────────────────────────────────────────────

@@ -26,7 +26,7 @@ import {
   checkShareLink, checkShortcutAction,
 } from './share.js';
 import {
-  SND, preloadSound, preloadImage, getThemeSounds,
+  SND, preloadSound, preloadImage, getThemeSounds, _syncThemeColor,
 } from './eggs.js';
 import './handlers.js';
 import './ui-sheets.js';
@@ -194,6 +194,7 @@ async function init() {
   }
   // Apply theme
   document.documentElement.setAttribute('data-theme', S.theme);
+  _syncThemeColor(S.theme);   // v6.94: align browser chrome with a saved theme
   // Preload sounds so first play is buffer-ready, not mid-download
   Object.values(SND).forEach(preloadSound);
   const themeSounds = getThemeSounds().filter(Boolean);

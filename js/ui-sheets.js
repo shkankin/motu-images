@@ -804,8 +804,8 @@ function renderThemeSheet() {
     `<button class="theme-option" style="border-color:${S.theme===key?th.acc:'var(--bd)'};background:${th.bg}" onclick="setTheme('${key}')">
       <div class="swatch" style="background:linear-gradient(135deg,${th.gold},${th.acc})"></div>
       <div style="flex:1">
-        <div class="font-display" style="font-size:15px;color:var(--t1)">${th.name}</div>
-        <div class="text-sm" style="color:var(--t2);margin-top:2px">${th.bg} · ${th.acc}</div>
+        <div class="font-display" style="font-size:15px;color:${th.fg||'var(--t1)'}">${th.name}</div>
+        <div class="text-sm" style="color:${th.fg2||'var(--t2)'};margin-top:2px">${th.bg} · ${th.acc}</div>
       </div>
       ${S.theme===key ? `<div style="color:${th.acc}">${icon(ICO.check,20)}</div>` : ''}
     </button>`
