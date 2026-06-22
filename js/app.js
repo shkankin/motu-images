@@ -97,8 +97,33 @@ async function init() {
     if (ok) localStorage.removeItem('motu-storage-probe');
   } catch {}
 
-  // Load collection
-  const c = store.get('motu-c2');
+  // v6.96: hydrate the IndexedDB-backed stores into the in-memory mirror before
+  // anything reads them. This single await covers the collection (motu-c2) and
+  // the catalog cache (motu-figs-cache + its loadouts companion), performs a
+  // one-time migration of any copy still in localStorage, and transparently
+  // falls back to localStorage if IndexedDB is unavailable. After it resolves,
+  // bigGet()/bigSet() are synchronous, so the rest of boot is unchanged.
+  await idbHydrate(['motu-c2', CACHE_KEY, LOADOUTS_CACHE_KEY]);
+
+  // Load collection (from the IndexedDB mirror)
+  let c = bigGet('motu-c2');
+  // v6.96: journal recovery. flushSaveColl() writes a synchronous localStorage
+  // "journal" snapshot of S.coll on tab-hide, because an IndexedDB write started
+  // in a pagehide handler isn't guaranteed to finish before the page is killed.
+  // The journal is cleared on resume (visibilitychange→visible) during normal
+  // use, so a NON-EMPTY journal still present at a cold boot specifically means
+  // the app was killed while backgrounded before its IDB write committed — the
+  // journal is then the most-recent snapshot. Prefer it, re-persist to IDB, then
+  // consume it. The non-empty guard ensures a stray/empty journal can never
+  // clobber a good collection.
+  try {
+    const journal = store.get('motu-c2-journal');
+    if (journal && typeof journal === 'object' && Object.keys(journal).length) {
+      c = journal;
+      bigSet('motu-c2', c);
+    }
+  } catch {}
+  try { localStorage.removeItem('motu-c2-journal'); } catch {}
   if (c) {
     let loaded = Object.fromEntries(Object.entries(c).map(([id, entry]) => {
       if (entry?.variants !== undefined && !/\w/.test(entry.variants)) {
@@ -145,14 +170,8 @@ async function init() {
   }
   // Load all photos into URL cache (OPFS + localStorage fallback)
   await photoStore.loadAll();
-  // Load cached figs.
-  // v6.95: the catalog cache (~1,200 figures) and its loadouts companion now
-  // live in IndexedDB instead of localStorage, to relieve the ~5 MB localStorage
-  // ceiling. Hydrate them into the in-memory mirror first (this also performs a
-  // one-time migration of any copy still sitting in localStorage, and falls back
-  // to localStorage transparently if IndexedDB is unavailable). After this await,
-  // bigGet()/bigSet() are synchronous, so the rest of the cache code is unchanged.
-  await idbHydrate([CACHE_KEY, LOADOUTS_CACHE_KEY]);
+  // Load cached figs (already hydrated into the mirror in the unified
+  // idbHydrate() call near the top of boot — see v6.96 note above).
   const cached = bigGet(CACHE_KEY);
   if (cached?.rows?.length) {
     // v6.75 BUG FIX: custom figures/variants (CUSTOM_FIGS_KEY) were only

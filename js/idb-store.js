@@ -191,14 +191,15 @@ export function isHydrated() { return _hydrated; }
 /** Subscribe to "an IndexedDB write failed and we fell back to localStorage". */
 export function onPersistFail(fn) { _failListeners.add(fn); return () => _failListeners.delete(fn); }
 
-// ── PHASE 2 (collection) — design note, not yet wired ────────────────
+// ── PHASE 2 (collection) — IMPLEMENTED in v6.96 ──────────────────────
 // The collection (motu-c2) is irreplaceable and is flushed *synchronously*
 // from data.js on pagehide/visibilitychange. An IndexedDB write started in a
-// pagehide handler is not guaranteed to finish before the page is killed.
-// The planned approach: write the collection through bigSet() on every
-// (debounced) change so IDB is essentially always current, call bigFlush() on
-// hide, and on the next boot reconcile against a small synchronous localStorage
-// "journal" written on hide (cleared once IDB is confirmed current) so the very
-// last change can never be lost. That belongs in its own change with focused
-// tests — this module already exposes the primitives (bigFlush, onPersistFail)
-// it will need.
+// pagehide handler is not guaranteed to finish before the page is killed, so
+// the collection uses bigSet() on every (debounced) change (IDB stays current
+// within ~80ms) plus bigFlush() on hide, backed by a small SYNCHRONOUS
+// localStorage "journal" written on hide and reconciled on the next boot — so
+// the last change can't be lost even if the async IDB write didn't commit. The
+// journal is cleared on resume and only written when IndexedDB is the active
+// backend (in localStorage-fallback mode the collection is already written
+// synchronously, so no journal is needed). See data.js saveColl/flushSaveColl
+// and the journal recovery in app.js boot.

@@ -1,7 +1,21 @@
-// MOTU Vault — Service Worker v6.95
+// MOTU Vault — Service Worker v6.96
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.96 changelog:
+//   • CACHE bumped to v6.96. SHELL: app.js + data.js + render.js updated.
+//     Storage headroom (phase 2): the COLLECTION (motu-c2) now persists to
+//     IndexedDB instead of localStorage — the blob that actually grows over
+//     time. The in-memory S.coll stays the live source of truth and mirrors to
+//     IndexedDB on every (debounced) change; on tab-hide a synchronous
+//     localStorage "journal" snapshot is written as a crash-safety net (an
+//     async IDB write started in pagehide may not commit before the page is
+//     killed) and reconciled on the next boot, so the last change can't be
+//     lost. The journal is cleared on resume and only used when IndexedDB is
+//     the active backend; localStorage-fallback behavior is unchanged. A
+//     one-time migration moves any existing motu-c2 out of localStorage on
+//     first boot. The _collLoaded wipe-guard is preserved.
 //
 // v6.95 changelog:
 //   • CACHE bumped to v6.95. SHELL gains js/idb-store.js, and app.js + data.js
@@ -788,7 +802,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.95';
+const CACHE = 'motu-vault-v6.96';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

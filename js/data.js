@@ -23,7 +23,7 @@ import {
   THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP,
   ln, normalize, esc, jsArg, isSelecting, _clone,
 } from './state.js';
-import { bigGet, bigSet } from './idb-store.js';
+import { bigGet, bigSet, bigFlush, idbAvailable } from './idb-store.js';
 import {
   MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY,
   photoStore, photoURLs, photoCopyOf, setPhotoCopy,
@@ -428,17 +428,32 @@ function deleteWishlistHistoryEntry(idx) {
   saveWishlistHistory(arr);
 }
 
+// v6.96: the collection (motu-c2) now persists to IndexedDB (via the in-memory
+// mirror) instead of localStorage, to relieve the ~5 MB localStorage ceiling.
+// The in-memory S.coll remains the live source of truth; bigSet mirrors it to
+// IndexedDB. See flushSaveColl for the tab-hide crash-safety journal.
+const COLL_KEY = 'motu-c2';
+const COLL_JOURNAL_KEY = 'motu-c2-journal';
+let _collTouched = false;   // has the user changed the collection this session?
+
 let _saveCollTimer = null;
 function saveColl() {
-  // Debounce localStorage writes (~80ms) to coalesce rapid taps (batch select,
+  // Debounce IndexedDB writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
   // v4.86: bump version counter so _derived cache key invalidates without
   // having to re-hash Object.keys(S.coll) on every render.
   S._collVersion++;
+  _collTouched = true;
   _bumpBackupChanges();
   if (_saveCollTimer) clearTimeout(_saveCollTimer);
   _saveCollTimer = setTimeout(() => {
-    if (S._collLoaded) store.set('motu-c2', S.coll);  // v6.72: see flushSaveColl
+    if (S._collLoaded) {
+      bigSet(COLL_KEY, S.coll);              // v6.96: → IndexedDB (mirrored)
+      // Fresh state is now headed to IDB, so any tab-hide journal is obsolete.
+      // Clearing it here means a stale journal can't survive to mislead the
+      // next cold boot. (No-op if none exists.)
+      try { localStorage.removeItem(COLL_JOURNAL_KEY); } catch {}
+    }
     _saveCollTimer = null;
   }, 80);
 }
@@ -498,8 +513,30 @@ function flushSaveColl() {
   // collection into S.coll. See the _collLoaded comment in app.js — this
   // guard is what prevents a failed boot from wiping motu-c2 on tab-hide.
   if (!S._collLoaded) return;
-  store.set('motu-c2', S.coll);
+  // v6.96: best-effort async write to IndexedDB...
+  bigFlush(COLL_KEY, S.coll);
+  // ...plus a SYNCHRONOUS localStorage journal as a crash-safety net. An async
+  // IndexedDB write started here may not finish before the page is killed; the
+  // localStorage write is synchronous and reliable. We only journal when (a)
+  // IndexedDB is the active backend (in localStorage-fallback mode the line
+  // above already wrote S.coll synchronously to localStorage, so a journal
+  // would just be a wasteful duplicate that doubles quota use), and (b) the
+  // user actually changed something this session. store.set returns false if
+  // the journal doesn't fit (very large collection + full localStorage); that
+  // degrades gracefully to the best-effort IDB write above. The journal is
+  // consumed/cleared on the next resume or cold boot (see app.js + below).
+  if (idbAvailable() && _collTouched) {
+    try { store.set(COLL_JOURNAL_KEY, S.coll); } catch {}
+  }
 }
+// v6.96: on resume, the killed-while-backgrounded scenario the journal guards
+// against did NOT happen, so discard the journal — otherwise it could go stale
+// relative to subsequent in-session IDB writes and mislead the next cold boot.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    try { localStorage.removeItem(COLL_JOURNAL_KEY); } catch {}
+  }
+});
 // Unload: apply pending field debounces first, then persist collection.
 // Order matters — field flushes write into S.coll, saveColl flushes S.coll to localStorage.
 function flushAllPending() {
