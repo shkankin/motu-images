@@ -1,7 +1,17 @@
-// MOTU Vault — Service Worker v6.94
+// MOTU Vault — Service Worker v6.95
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.95 changelog:
+//   • CACHE bumped to v6.95. SHELL gains js/idb-store.js, and app.js + data.js
+//     + ui-sheets.js updated. Storage headroom (phase 1): the catalog cache
+//     (motu-figs-cache, ~1,200 figures) and its loadouts companion
+//     (motu-loadouts-cache) now persist in IndexedDB instead of localStorage,
+//     relieving the ~5 MB localStorage ceiling. A one-time migration moves any
+//     existing copy out of localStorage on first boot; if IndexedDB is
+//     unavailable the app falls back to localStorage transparently. (The
+//     collection itself, motu-c2, is a separate phase — see idb-store.js.)
 //
 // v6.94 changelog:
 //   • CACHE bumped to v6.94. SHELL: vault.css + state.js + ui-sheets.js +
@@ -778,7 +788,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.94';
+const CACHE = 'motu-vault-v6.95';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -796,6 +806,7 @@ const SHELL = [
   'vault.css',
   'js/app.js',
   'js/state.js',
+  'js/idb-store.js',
   'js/photos.js',
   'js/data.js',
   'js/render.js',

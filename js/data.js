@@ -23,6 +23,7 @@ import {
   THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP,
   ln, normalize, esc, jsArg, isSelecting, _clone,
 } from './state.js';
+import { bigGet, bigSet } from './idb-store.js';
 import {
   MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY,
   photoStore, photoURLs, photoCopyOf, setPhotoCopy,
@@ -281,7 +282,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
       rebuildFigIndex();
       _derived.invalidate();
       S.syncTs = Date.now();
-      store.set(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
+      bigSet(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
       // v6.24: persist loadouts so cached cold-start renders show complete badges
       // v6.33: bundle customAccessories into the same cache entry. Schema-on-demand:
       // {loadouts: {...}, customAccessories: [...]}; legacy plain-object cache
@@ -290,7 +291,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
       // original hardcoded SUBLINES snapshot would be a custom one, but the
       // simplest approach: re-read from the parsed ld object if available).
       if (Object.keys(S._repoLoadouts).length || (S._repoCustomAccessories || []).length) {
-        store.set(LOADOUTS_CACHE_KEY, {
+        bigSet(LOADOUTS_CACHE_KEY, {
           loadouts: S._repoLoadouts,
           customAccessories: S._repoCustomAccessories || [],
           customSublines: S._repoCustomSublines || {},
@@ -600,7 +601,7 @@ function clearOverrides(figId) {
   delete _overrides[figId];
   saveOverrides();
   // Reload figs from cache to wipe the in-memory overridden values
-  const cached = store.get(CACHE_KEY);
+  const cached = bigGet(CACHE_KEY);
   if (cached?.rows?.length) {
     S.figs = cached.rows.map(f => ({...f, image: f.image || (f.slug ? `${IMG}/${f.slug}.jpg` : '')}));
   }

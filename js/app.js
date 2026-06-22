@@ -10,6 +10,7 @@
 // build on it; render.js exposes window.render which data.js + photos.js
 // call lazily to break circular refs).
 import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL, IMG, SUBLINES } from './state.js';
+import { hydrate as idbHydrate, bigGet } from './idb-store.js';
 import {
   initOPFS, loadPhotoLabels, loadPhotoCopyMap,
   photoStore, _opfsReady,
@@ -144,8 +145,15 @@ async function init() {
   }
   // Load all photos into URL cache (OPFS + localStorage fallback)
   await photoStore.loadAll();
-  // Load cached figs
-  const cached = store.get(CACHE_KEY);
+  // Load cached figs.
+  // v6.95: the catalog cache (~1,200 figures) and its loadouts companion now
+  // live in IndexedDB instead of localStorage, to relieve the ~5 MB localStorage
+  // ceiling. Hydrate them into the in-memory mirror first (this also performs a
+  // one-time migration of any copy still sitting in localStorage, and falls back
+  // to localStorage transparently if IndexedDB is unavailable). After this await,
+  // bigGet()/bigSet() are synchronous, so the rest of the cache code is unchanged.
+  await idbHydrate([CACHE_KEY, LOADOUTS_CACHE_KEY]);
+  const cached = bigGet(CACHE_KEY);
   if (cached?.rows?.length) {
     // v6.75 BUG FIX: custom figures/variants (CUSTOM_FIGS_KEY) were only
     // merged into S.figs during a full network sync. Adding a variant
@@ -171,7 +179,7 @@ async function init() {
     // v6.24: restore loadouts so complete badges render correctly before fetch
     // v6.33: cache shape is now {loadouts, customAccessories} but legacy entries
     // are a plain {[figId]: [...]} object — detect and migrate inline.
-    const cachedLoadouts = store.get(LOADOUTS_CACHE_KEY);
+    const cachedLoadouts = bigGet(LOADOUTS_CACHE_KEY);
     if (cachedLoadouts && typeof cachedLoadouts === 'object') {
       if (cachedLoadouts.loadouts && typeof cachedLoadouts.loadouts === 'object') {
         S._repoLoadouts = cachedLoadouts.loadouts;

@@ -17,6 +17,7 @@ import {
   SUBLINES, SERIES_MAP, GROUP_MAP, CACHE_KEY,
   ln, normalize, esc, jsArg, _clone, getThemeTitles,
 } from './state.js';
+import { bigGet } from './idb-store.js';
 import {
   MAX_PHOTOS, photoStore, photoURLs,
 } from './photos.js';
@@ -755,7 +756,7 @@ function renderEditFigureSheet() {
   // Name
   let sourceName = '';
   if (ov.name) {
-    const cached = store.get(CACHE_KEY);
+    const cached = bigGet(CACHE_KEY);
     const src = cached?.rows?.find(r => r.id === figId);
     if (src && src.name && src.name !== ov.name) sourceName = src.name;
   }
