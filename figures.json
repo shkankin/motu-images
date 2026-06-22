@@ -12337,6 +12337,18 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-comet-cat-mqps3epj",
+    "name": "Comet Cat",
+    "sourceName": "Comet Cat",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "year": 1986,
+    "slug": "manual-comet-cat",
+    "source": "manual"
+  },
+  {
     "id": "crystal-castle-5479",
     "name": "Crystal Castle",
     "line": "original",
