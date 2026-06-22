@@ -106,20 +106,28 @@ const OPTIONAL_ACCESSORIES = new Set([
   'Comic', 'Minicomic', 'Info Card', 'Accessory Card', 'Instructions',
 ]);
 
-// v6.94: each entry now carries fg/fg2 (its own primary/secondary text color,
-// mirroring the --t1/--t2 in vault.css). The theme picker uses these so every
-// option button is legible regardless of the active theme — previously the
-// picker painted each option's own bg but used the *active* theme's text
-// color, which made a light-bg option unreadable from a dark theme (and vice
-// versa once a light theme existed).
+// v6.94: each entry carries fg/fg2 (its own primary/secondary text color,
+// mirroring the --t1/--t2 in vault.css) so the picker renders every option
+// legibly regardless of the active theme.
+// v6.97: theme reshuffle. The display NAMES and palettes changed but the KEYS
+// are intentionally unchanged, so saved `motu-theme` values keep working with
+// no migration and the title-tap egg dispatch (keyed on S.theme==='eternia')
+// still fires for the right theme:
+//   • key `eternia` → now shown as "Snake Mountain" (the dark default, :root in
+//     vault.css; its Orko title-tap egg is now the Snake Mountain egg). Palette
+//     from snake.html.
+//   • key `light`   → now shown as "Eternia" (a light theme themed after the
+//     Filmation Sorceress — sky blue + falcon orange). Palette from
+//     sorcespreview.html.
 const THEMES = {
-  eternia:  {name:'Eternia',       bg:'#090e1c', acc:'#38bdf8', gold:'#e8c577', fg:'#ffffff', fg2:'#b3b9c4', icons:['eternia1-icon.png']},
+  eternia:  {name:'Snake Mountain', bg:'#11131a', acc:'#a855f7', gold:'#3b82f6', fg:'#f8fafc', fg2:'#94a3b8', icons:['eternia1-icon.png']},
   skeletor: {name:'Skeletor',      bg:'#090212', acc:'#b14eff', gold:'#f2e162', fg:'#faf5ff', fg2:'#c0a8e6', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
   heman:    {name:'He-Man',        bg:'#140803', acc:'#cbd5e1', gold:'#ff8a1f', fg:'#fff7ed', fg2:'#d6c5b3', icons:['he-man-icon.png']},
   grayskull:{name:'Grayskull',     bg:'#030d06', acc:'#a3e635', gold:'#b8e070', fg:'#f0fdf4', fg2:'#86a693', icons:['grayskull-icon.png']},
-  // v6.94: first light theme. bg matches vault.css [data-theme="light"] --bg so
-  // the picker preview and the dynamic <meta name="theme-color"> stay accurate.
-  light:    {name:'Daylight',      bg:'#f4f4f7', acc:'#6d28d9', gold:'#b45309', fg:'#18181b', fg2:'#52525b', icons:['eternia1-icon.png']},
+  // Light theme (Filmation Sorceress palette). bg matches vault.css
+  // [data-theme="light"] --bg so the picker preview and the dynamic
+  // <meta name="theme-color"> stay accurate.
+  light:    {name:'Eternia',       bg:'#f0f6fc', acc:'#0284c7', gold:'#ea580c', fg:'#0f172a', fg2:'#334155', icons:['eternia1-icon.png']},
 };
 
 const SUBLINES = {

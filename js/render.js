@@ -439,7 +439,25 @@ function renderMain() {
   const _prevListKey = S._lastListKey || '';
   const _scopeMatches = _listKey === _prevListKey;
   S._lastListKey = _listKey;
-  const _preservedScroll = (!S.sheet && _prevCa && !_returningFromDetail && _scopeMatches) ? _prevCa.scrollTop : 0;
+  // v6.97: per-scope scroll memory. The scope-match check resets scroll to top
+  // whenever the scope key changes — right when drilling INTO a new scope (a
+  // subline should open at the top), but wrong when popping BACK out (lines →
+  // line → subline → back should land where you left the parent list). So we
+  // remember each scope's scrollTop as we leave it and restore it on return; a
+  // brand-new scope has no memory and still opens at the top. (This is what the
+  // detail-screen savedScroll already does for figure→list; it never covered
+  // the line→subline drill-down within the main screen, hence the lines tab not
+  // holding position while the flat tabs did.)
+  S._scrollMemory = S._scrollMemory || {};
+  if (_prevCa && _prevListKey && !S.sheet && !_returningFromDetail) {
+    S._scrollMemory[_prevListKey] = _prevCa.scrollTop;
+  }
+  const _returningToKnownScope = !_scopeMatches &&
+    Object.prototype.hasOwnProperty.call(S._scrollMemory, _listKey);
+  const _preservedScroll = (!S.sheet && _prevCa && !_returningFromDetail)
+    ? (_scopeMatches ? _prevCa.scrollTop
+                     : (_returningToKnownScope ? S._scrollMemory[_listKey] : 0))
+    : 0;
 
   const stats = getStats();
   const sortLabel = S.sortBy === 'added-desc' ? 'Added' : S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
@@ -474,7 +492,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.96</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.97</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -585,7 +603,11 @@ function renderMain() {
           setTimeout(() => figEl.classList.remove('fig-return-highlight'), 1600);
         });
       }
-    } else if (_preservedScroll > 0 && !S.sheet && !S._justNavigated) {
+    } else if (_preservedScroll > 0 && !S.sheet && (!S._justNavigated || _returningToKnownScope)) {
+      // v6.97: normally suppressed during a navigation (_justNavigated) so a
+      // forward drill-down starts at the top — but when we're returning to a
+      // scope we have a remembered position for, apply it even though the
+      // back-nav set _justNavigated. _preservedScroll is already scope-correct.
       ca.scrollTop = Math.min(_preservedScroll, maxScroll);
     }
     S._justNavigated = false;

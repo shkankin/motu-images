@@ -221,8 +221,15 @@ window.triggerGrayskullEgg = () => {
   setTimeout(() => { overlay.remove(); }, 4250);
 };
 
-// ─── Eternia Easter Egg (Orko) ────────────────────────────────────
-// Trigger: title tap (eternia theme). Unstable portal zaps open,
+// ─── Snake Mountain Easter Egg (Orko) ─────────────────────────────
+// v6.97: the theme formerly shown as "Eternia" is now "Snake Mountain"
+// (its key is still `eternia` — see THEMES in state.js — so this title-tap egg
+// still fires for it). The function name + `eternia` key are kept aligned to
+// avoid touching the inline-handler dispatch / saved theme values; only the
+// user-facing theme name changed. The animation itself is unchanged (Orko's
+// portal); swapping it for a Snake-Mountain-specific visual would be a separate
+// art change.
+// Trigger: title tap (Snake Mountain theme). Unstable portal zaps open,
 // Orko materialises — hovers, looks around confused, portal collapses.
 // Second flash fires at 3.1s. Icon swaps to Orko for session. ~4s total.
 window.triggerEterniaEgg = () => {

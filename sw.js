@@ -1,7 +1,20 @@
-// MOTU Vault — Service Worker v6.96
+// MOTU Vault — Service Worker v6.97
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first
+//
+// v6.97 changelog:
+//   • CACHE bumped to v6.97. SHELL: state.js + vault.css + eggs.js + render.js
+//     updated. Theme reshuffle + a scroll fix:
+//       – The dark default theme (key `eternia`) is renamed "Snake Mountain"
+//         with a new purple/blue palette (snake.html); its Orko title-tap egg
+//         is now the Snake Mountain egg. The light theme (key `light`) is
+//         renamed "Eternia" with a Filmation-Sorceress sky-blue/orange palette
+//         (sorcespreview.html). Theme KEYS are unchanged, so saved preferences
+//         keep working with no migration.
+//       – Lines tab now preserves scroll position when popping back out of a
+//         subline (per-scope scroll memory in render.js); previously only the
+//         flat tabs held position because the drill-down changed the scope key.
 //
 // v6.96 changelog:
 //   • CACHE bumped to v6.96. SHELL: app.js + data.js + render.js updated.
@@ -802,7 +815,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.96';
+const CACHE = 'motu-vault-v6.97';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
