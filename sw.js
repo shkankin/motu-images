@@ -1,7 +1,27 @@
-// MOTU Vault — Service Worker v6.97
+// MOTU Vault — Service Worker v6.99
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
-// Images: cache-first
+// Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v6.99 changelog:
+//   • CACHE bumped to v6.99. Catalog data-model update in state.js (and mirrored
+//     in figures-editor.html): the "Original" line is renamed "Vintage" (display
+//     name only — id stays 'original', so all figures keep working); two new
+//     sublines, Meteorbs and Commemorative Series, are added under it; and a new
+//     "Mighty Masters" line is added (appended for users with a saved line
+//     order). render.js version stamp bumped to v6.99.
+//
+// v6.98 changelog:
+//   • CACHE bumped to v6.98. Image cache revalidation (fixes the "corrected art
+//     never propagates" gap): figure images are still served cache-first and
+//     instantly, but a cached entry older than 7 days now triggers a BACKGROUND
+//     refresh, so a re-uploaded image (same slug, new bytes) eventually reaches
+//     users who already cached the old one. Last-fetch times are tracked in a
+//     small SW-owned IndexedDB store (image responses are opaque); revalidation
+//     re-fetches with CORS and only replaces the cache on a real 200, so a
+//     transient error can't clobber a good image. Fails safe + bandwidth-bounded
+//     (each image refreshes at most weekly, only when actually viewed). No SHELL
+//     change; render.js version stamp bumped to v6.98.
 //
 // v6.97 changelog:
 //   • CACHE bumped to v6.97. SHELL: state.js + vault.css + eggs.js + render.js
@@ -815,7 +835,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.97';
+const CACHE = 'motu-vault-v6.99';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -824,6 +844,72 @@ const CACHE = 'motu-vault-v6.97';
 // (content-addressed by slug on raw.githubusercontent.com), so they never
 // need eviction on app updates. Keeping them here makes them survive bumps.
 const IMG_CACHE = 'motu-vault-images';
+
+// ─── Image freshness (v6.98) ──────────────────────────────────────────
+// Images are cached cache-first in the unversioned IMG_CACHE so they survive
+// app updates (above). But slugs are name-based, not content-hashed, so a
+// CORRECTED re-upload (same slug, new bytes) would never reach a user who
+// already cached the old image. Fix: time-bucketed revalidation. When a cached
+// image is served, we kick off a BACKGROUND refresh if its entry is older than
+// IMG_MAX_AGE. The cached image is always served instantly — revalidation never
+// blocks the response and fails safe (a failed/again-stale refresh just keeps
+// the existing entry). Image responses are opaque (the <img> request is
+// no-cors), so we can't read their headers; instead we track each image's last
+// fetch time in a tiny SW-owned IndexedDB store. We deliberately use a SEPARATE
+// database from the window's idb-store ('motu-vault') so the two never collide
+// on version upgrades.
+const IMG_TS_DB = 'motu-vault-img';
+const IMG_TS_STORE = 'ts';
+const IMG_MAX_AGE = 7 * 24 * 60 * 60 * 1000;   // 7 days
+
+let _imgTsDbPromise = null;
+function _imgTsDb() {
+  if (_imgTsDbPromise) return _imgTsDbPromise;
+  _imgTsDbPromise = new Promise(resolve => {
+    if (typeof indexedDB === 'undefined') { resolve(null); return; }
+    let req;
+    try { req = indexedDB.open(IMG_TS_DB, 1); } catch { resolve(null); return; }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IMG_TS_STORE)) db.createObjectStore(IMG_TS_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+    req.onblocked = () => resolve(null);
+  });
+  return _imgTsDbPromise;
+}
+// Resolves to the last-fetch timestamp (ms), 0 if untracked, or -1 if IndexedDB
+// is unavailable (so the caller can skip revalidation rather than hammer it).
+function _imgTsGet(url) {
+  return _imgTsDb().then(db => {
+    if (!db) return -1;
+    return new Promise(res => {
+      let tx; try { tx = db.transaction(IMG_TS_STORE, 'readonly'); } catch { res(0); return; }
+      const r = tx.objectStore(IMG_TS_STORE).get(url);
+      r.onsuccess = () => res(r.result || 0);
+      r.onerror = () => res(0);
+    });
+  });
+}
+function _imgTsSet(url) {
+  return _imgTsDb().then(db => {
+    if (!db) return;
+    try { db.transaction(IMG_TS_STORE, 'readwrite').objectStore(IMG_TS_STORE).put(Date.now(), url); } catch {}
+  });
+}
+// Re-fetch with CORS so we can read the real status (the cached <img> request
+// is no-cors/opaque, status hidden). raw.githubusercontent.com sends ACAO — the
+// app fetches figures.json from it the same way — so this succeeds; if it ever
+// didn't, the fetch rejects and we keep the existing cached image. Only a real
+// 200 replaces the cache entry, so a transient 404/error can't clobber a good
+// image. cache:'no-cache' forces a fresh conditional fetch past the HTTP cache.
+function _revalidateImage(request) {
+  return fetch(request.url, { mode: 'cors', cache: 'no-cache' }).then(res => {
+    if (!res || res.status !== 200) return;
+    return caches.open(IMG_CACHE).then(c => c.put(request, res)).then(() => _imgTsSet(request.url));
+  }).catch(() => {});
+}
 
 const SHELL = [
   'motu-vault.html',
@@ -910,14 +996,23 @@ self.addEventListener('fetch', e => {
   }
 
   // Figure images & sounds — cache first, network fallback. Stored in the
-  // unversioned IMG_CACHE so they survive app version bumps (v6.84).
+  // unversioned IMG_CACHE so they survive app version bumps (v6.84). v6.98: a
+  // cached image is served instantly, then revalidated in the background if its
+  // entry is older than IMG_MAX_AGE (so corrected re-uploads eventually reach
+  // everyone) — see the image-freshness helpers above.
   if (url.hostname === 'raw.githubusercontent.com' && (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.png') || url.pathname.endsWith('.mp3'))) {
     e.respondWith(
       caches.match(e.request).then(cached => {
-        if (cached) return cached;
+        if (cached) {
+          // Serve the cache now; check freshness + refresh off the response path.
+          e.waitUntil(_imgTsGet(e.request.url).then(ts => {
+            if (ts >= 0 && Date.now() - ts > IMG_MAX_AGE) return _revalidateImage(e.request);
+          }));
+          return cached;
+        }
         return fetch(e.request).then(res => {
           const clone = res.clone();
-          caches.open(IMG_CACHE).then(c => c.put(e.request, clone));
+          e.waitUntil(caches.open(IMG_CACHE).then(c => c.put(e.request, clone)).then(() => _imgTsSet(e.request.url)));
           return res;
         });
       })

@@ -72,11 +72,16 @@ const LINES = [
   {id:'cross-brand',name:'Cross-Brand & Collabs', yr:'2020–', mfr:'Various', sc:'Various'},
   {id:'classics',   name:'Mattel Classics', yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
   {id:'200x',       name:'Mattel 200x',     yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
-  {id:'original',   name:'Original',        yr:'1981–1988', mfr:'Mattel',  sc:'5.5"'},
+  // v6.99: "Original" renamed to "Vintage" — display name only; the id stays
+  // 'original' so all 1,194 figures (which reference the line by id) and the
+  // scraper/AF411 mapping keep working unchanged.
+  {id:'original',   name:'Vintage',         yr:'1981–1988', mfr:'Mattel',  sc:'5.5"'},
   {id:'new-adventures', name:'New Adventures', yr:'1989–1992', mfr:'Mattel', sc:'5.5"'},
   {id:'mondo',      name:'Mondo',           yr:'2018–2025', mfr:'Mondo',   sc:'1/6'},
   {id:'super7',     name:'Super7',          yr:'2016–2020', mfr:'Super7',  sc:'7"'},
   {id:'eternia-minis', name:'Eternia Minis', yr:'2013–2022', mfr:'Mattel', sc:'2"'},
+  // v6.99: new line. yr/mfr/sc are placeholders — set them once known.
+  {id:'mighty-masters', name:'Mighty Masters', yr:'—', mfr:'Mattel', sc:'—'},
 ];
 
 const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
@@ -176,6 +181,8 @@ const SUBLINES = {
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles and Playsets','Vehicles & Playsets']},
     {key:'sheera',label:'She-Ra / Princess of Power',groups:['She-Ra / Princess of Power']},
+    {key:'meteorbs',label:'Meteorbs',groups:['Meteorbs']},
+    {key:'commemorative',label:'Commemorative Series',groups:['Commemorative Series']},
   ],
   '200x': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
@@ -221,6 +228,9 @@ const SERIES_MAP = {
   'Mattel 200x':'200x','Eternia Minis':'eternia-minis','Mondo':'mondo',
   'Super7':'super7','The New Adventures of He-Man':'new-adventures','Original':'original',
   'Kids Core':'kids-core',
+  // v6.99: 'Original' line renamed to 'Vintage' (id unchanged). Keep 'Original'
+  // so older backups/imports still resolve; add 'Vintage' and the new line.
+  'Vintage':'original','Mighty Masters':'mighty-masters',
   // v6.61: cross-brand accepts a couple of common spellings from imports.
   'Cross-Brand & Collabs':'cross-brand','Cross-Brand':'cross-brand',
 };

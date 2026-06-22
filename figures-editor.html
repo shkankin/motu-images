@@ -539,7 +539,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.14.0';
+const EDITOR_VERSION = 'v1.15.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -573,11 +573,12 @@ const LINES = [
   {id:'cross-brand',    name:'Cross-Brand & Collabs'},
   {id:'classics',       name:'Mattel Classics'},
   {id:'200x',           name:'Mattel 200x'},
-  {id:'original',       name:'Original'},
+  {id:'original',       name:'Vintage'},
   {id:'new-adventures', name:'New Adventures'},
   {id:'mondo',          name:'Mondo'},
   {id:'super7',         name:'Super7'},
   {id:'eternia-minis',  name:'Eternia Minis'},
+  {id:'mighty-masters', name:'Mighty Masters'},
 ];
 
 // SUBLINES structure mirrors state.js exactly: each line maps to an
@@ -634,6 +635,8 @@ const SUBLINES = {
     {key:'action',   label:'Action Figures',                 groups:['Action Figures']},
     {key:'vehicles', label:'Vehicles & Playsets',            groups:['Vehicles and Playsets','Vehicles & Playsets']},
     {key:'sheera',   label:'She-Ra / Princess of Power',     groups:['She-Ra / Princess of Power']},
+    {key:'meteorbs', label:'Meteorbs',                       groups:['Meteorbs']},
+    {key:'commemorative', label:'Commemorative Series',      groups:['Commemorative Series']},
   ],
   '200x': [
     {key:'action',    label:'Action Figures',         groups:['Action Figures']},
