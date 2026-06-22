@@ -539,7 +539,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.15.0';
+const EDITOR_VERSION = 'v1.16.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -857,6 +857,12 @@ function removeCustomSubline(lineId, key) {
 
 // ── v1.9: Add / Delete Figures ────────────────────────────────────
 
+// v1.16: timestamp suffix appended to auto-generated manual slugs so two
+// figures with the same name don't collide on the image filename. Captured
+// once when the add-figure modal opens so the live preview, the success
+// message, and the committed filename all use the same value.
+let afTimeSuffix = Date.now().toString(36);
+
 function _slugify(name) {
   return 'manual-' + name.toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -865,8 +871,7 @@ function _slugify(name) {
 
 function _makeManualId(name) {
   const base = _slugify(name);
-  const suffix = Date.now().toString(36);
-  return { id: base + '-' + suffix, slug: base };
+  return { id: base + '-' + afTimeSuffix, slug: base + '-' + afTimeSuffix };
 }
 
 // v1.11: in-memory store of pending images for new figures. Keyed by fig.id
@@ -959,7 +964,7 @@ function afUpdateSlugPreview() {
   const prev   = document.getElementById('afSlugPreview');
   if (!prev) return;
   if (!name && !custom) { prev.textContent = '— enter name to generate —'; return; }
-  const base = custom || _slugify(name);
+  const base = custom || (_slugify(name) + '-' + afTimeSuffix);
   // v1.11: use the actual extension of the staged image if one is loaded;
   // otherwise default to .jpg as before (consistent with prior behavior).
   const staged = document.getElementById('afImage')?._stagedImage;
@@ -969,6 +974,7 @@ function afUpdateSlugPreview() {
 
 function openAddFigModal() {
   const modal = document.getElementById('addFigModal');
+  afTimeSuffix = Date.now().toString(36);
   const lineSel = document.getElementById('afLine');
   lineSel.innerHTML = LINES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
   afLineChange();
@@ -1046,7 +1052,8 @@ function submitAddFig() {
   const { id, slug } = slugIn
     ? { id: slugIn + '-' + Date.now().toString(36), slug: slugIn }
     : _makeManualId(name);
-  // id carries the timestamp suffix for uniqueness; slug is always clean (no timestamp)
+  // id and slug both carry the timestamp suffix for uniqueness (v1.16); a
+  // user-supplied custom slug is used verbatim (their explicit choice).
   const line = LINES.find(l => l.id === lineId);
 
   // v1.11: capture staged image (if any). The slug+extension becomes the filename;
