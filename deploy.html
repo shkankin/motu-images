@@ -316,6 +316,7 @@
 </div>
 
 
+<button class="primary" id="deployBtn" onclick="deploy()" disabled>⬆ Commit to GitHub</button>
 <button class="secondary" id="downloadBtn" onclick="downloadFromRepo()" style="margin-left:8px">⬇ Download from repo</button>
 
 <div id="progressWrap"><div id="progressBar"></div></div>
@@ -756,9 +757,9 @@ async function checkPagesStatus() {
         shaKnown ? `Commit ${liveRef} is live · HEAD is ${shortLatest}` : `Build complete · HEAD is ${shortLatest}`);
       stopPolling();
     } else if (status === 'building' || (status === 'built' && !isCurrentCommit)) {
-      const lag = status === 'building' ? 'building…' : `built ${shortBuild}, HEAD is ${shortLatest} — new build pending`;
-      setPagesStatus('yellow', `Building — ${lag}`,
-        `Status: ${status} · updated ${updatedAt}`);
+      const lag = status === 'building' ? `${shortLatest} building…` : `${shortLatest} deploying… (last live: ${shortBuild})`;
+      setPagesStatus('yellow', lag,
+        `Status: ${status} · updated ${updatedAt} (Pages only rebuilds for web file changes)`);
     } else if (status === 'errored') {
       setPagesStatus('red', `Build errored — ${shortBuild || shortLatest}`,
         `Error: ${build.error?.message || 'unknown'} · ${updatedAt}`);
