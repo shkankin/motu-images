@@ -492,7 +492,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.101</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.102</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -778,7 +778,7 @@ function renderSelectActionbar() {
         ${allSelected ? 'None' : 'All'}
       </button>
       <button class="primary" ${dis} onclick="openBatchEditor()" style="flex:1">
-        ${icon(ICO.edit, 14)} Add Copy…
+        ${icon(ICO.edit, 14)} Batch Edit…
       </button>
       ${anySelectedHasPhotos ? `<button onclick="batchDeletePhotos()" title="Remove user photos from selected"
         style="padding:9px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--rd) 35%,var(--bd));background:color-mix(in srgb,var(--rd) 6%,var(--bg3));color:var(--rd);font-size:12px;font-weight:600;flex-shrink:0">

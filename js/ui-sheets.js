@@ -1,5 +1,6 @@
 // ── Lazy shims for window-only handlers (resolve at call time) ──
 const batchAddCopy = (...a) => window.batchAddCopy?.(...a);
+const batchUpdateExisting = (...a) => window.batchUpdateExisting?.(...a);
 const closeSheet = (...a) => window.closeSheet?.(...a);
 const refreshEditSheet = (...a) => window.refreshEditSheet?.(...a);
 
@@ -613,18 +614,36 @@ function renderImportSheet() {
 function renderBatchEditSheet() {
   const n = S.selected.size;
   if (!n) return '<div class="text-sm text-dim">No figures selected.</div>';
-  const be = S.batchEdit || (S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned', acquired: '', location: '' });
+  const be = S.batchEdit || (S.batchEdit = { mode: 'update', condition: '', variant: '', paid: '', notes: '', status: '', acquired: '', location: '' });
+  if (!be.mode) be.mode = 'update';
+  const isUpdate = be.mode === 'update';
 
-  const h = `<div style="margin-bottom:12px">
+  const seg = (val, label) => `<button onclick="S.batchEdit.mode='${val}';refreshBatchSheet()" style="flex:1;padding:9px 8px;border-radius:9px;border:1px solid ${be.mode===val?'var(--acc)':'var(--bd)'};background:${be.mode===val?'color-mix(in srgb,var(--acc) 16%,var(--bg3))':'var(--bg3)'};color:${be.mode===val?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:${be.mode===val?'700':'500'}">${label}</button>`;
+
+  // Status: update mode can leave it alone; add mode always assigns one.
+  const statusOpts = (isUpdate ? `<option value="" ${!be.status?'selected':''}>— Keep current —</option>` : '') +
+    STATUSES.map(s => `<option value="${s}" ${be.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('');
+
+  const h = `
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      ${seg('update','Update existing')}
+      ${seg('add','Add new copy')}
+    </div>
+    <div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
+      ${isUpdate
+        ? `Writes the filled-in fields onto each selected figure's existing copy — no duplicates. Blank fields are left as-is. A figure with no copy yet is marked Owned so the details can attach.`
+        : `Adds one new copy to each of the ${n} selected figure${n===1?'':'s'} with the fields below.`}
+    </div>
+    <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Status</div>
       <select onchange="S.batchEdit.status=this.value">
-        ${STATUSES.map(s => `<option value="${s}" ${be.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}
+        ${statusOpts}
       </select>
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Condition (optional)</div>
       <select onchange="S.batchEdit.condition=this.value">
-        <option value="">— No condition —</option>
+        <option value="">${isUpdate ? '— Leave unchanged —' : '— No condition —'}</option>
         ${CONDITIONS.map(c => `<option value="${esc(c)}" ${be.condition===c?'selected':''}>${esc(c)}</option>`).join('')}
       </select>
     </div>
@@ -648,13 +667,10 @@ function renderBatchEditSheet() {
       <div class="field-label text-dim text-sm">Notes (optional)</div>
       <textarea rows="3" placeholder="Notes…" oninput="S.batchEdit.notes=this.value">${esc(be.notes)}</textarea>
     </div>
-    <div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
-      Adds one copy to each of the ${n} selected figure${n===1?'':'s'} with the fields above.
-    </div>
     <div style="height:1px;background:var(--bd);margin:8px 0 16px"></div>
     <div style="display:flex;gap:10px">
       <button onclick="closeSheet()" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
-      <button onclick="applyBatchEdit()" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">Add to ${n}</button>
+      <button onclick="applyBatchEdit()" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">${isUpdate ? 'Apply to' : 'Add to'} ${n}</button>
     </div>`;
   return h;
 }
@@ -663,7 +679,7 @@ function renderBatchEditSheet() {
 
 window.openBatchEditor = () => {
   if (!S.selected.size) return;
-  S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned', acquired: '', location: '' };
+  S.batchEdit = { mode: 'update', condition: '', variant: '', paid: '', notes: '', status: '', acquired: '', location: '' };
   S.sheet = 'batch';
   pushNav();
   render();
@@ -671,8 +687,17 @@ window.openBatchEditor = () => {
 
 window.applyBatchEdit = () => {
   const be = S.batchEdit; if (!be) return;
-  batchAddCopy(be.condition, { variant: be.variant, paid: be.paid, notes: be.notes, status: be.status, acquired: be.acquired, location: be.location });
+  const extras = { variant: be.variant, paid: be.paid, notes: be.notes, status: be.status, acquired: be.acquired, location: be.location };
+  if (be.mode === 'add') batchAddCopy(be.condition, extras);
+  else batchUpdateExisting(be.condition, extras);   // 'update' (default)
   closeSheet();
+};
+
+// v6.102: re-render just the batch sheet body so the mode toggle swaps the
+// field set without a full re-render (no flicker, keeps the sheet scrolled).
+window.refreshBatchSheet = () => {
+  const body = document.querySelector('.sheet-body');
+  if (body && S.sheet === 'batch') body.innerHTML = renderBatchEditSheet();
 };
 
 

@@ -1121,6 +1121,82 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
 // v6.28: bulk-delete user photos for the selected figures. Stock images
 // are untouched. Useful when reorganizing — previously the only delete
 // path was per-figure on the detail screen.
+// v6.102: batch UPDATE — write filled fields onto each selected figure's
+// existing (first) copy rather than appending a new one, so bulk-editing a
+// selection never creates duplicate copies. Blank fields are left untouched.
+// A figure with no copy yet is promoted to Owned so the details can attach
+// (unless the user explicitly picked a non-owned status). Status is changed
+// only when explicitly chosen.
+window.batchUpdateExisting = (presetCondition = '', extras = {}) => {
+  const ids = Array.from(S.selected);
+  if (!ids.length) return;
+  const _todayMMYYYY = () => { const d = new Date(); return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); };
+  const stamp = _todayMMYYYY();
+
+  const copyFields = {};
+  if (presetCondition) copyFields.condition = presetCondition;
+  if (extras.variant)  copyFields.variant  = extras.variant;
+  if (extras.paid)     copyFields.paid     = extras.paid;
+  if (extras.acquired) copyFields.acquired = extras.acquired;
+  if (extras.location) copyFields.location = extras.location;
+  if (extras.notes)    copyFields.notes    = extras.notes;
+  const hasCopyFields = Object.keys(copyFields).length > 0;
+  const explicit = extras.status || '';
+
+  let updated = 0, promoted = 0, skipped = 0;
+  ids.forEach(id => {
+    let cur = S.coll[id];
+    const wasStatus = cur?.status;
+    cur = cur ? (isMigrated(cur) ? { ...cur, copies: [...cur.copies] } : migrateEntry(cur)) : { copies: [] };
+    let touched = false;
+
+    // 1) Explicit status change (mirrors batchSetStatus semantics).
+    if (explicit) {
+      cur.status = explicit;
+      if ((explicit === 'owned' || explicit === 'for-sale') && (!cur.copies || !cur.copies.length)) cur.copies = [{ id: 1 }];
+      if (explicit === 'owned' && wasStatus !== 'owned' && cur.copies?.[0] && !cur.copies[0].acquired && !copyFields.acquired) {
+        cur.copies[0] = { ...cur.copies[0], acquired: stamp };
+      }
+      touched = true;
+    }
+
+    // 2) Copy-field updates — only meaningful for owned / for-sale figures.
+    if (hasCopyFields) {
+      let ownedish = cur.status === 'owned' || cur.status === 'for-sale';
+      // No explicit status + not owned yet ⇒ infer Owned so details can attach.
+      if (!ownedish && !explicit) {
+        cur.status = 'owned';
+        ownedish = true;
+        promoted++;
+        if (!cur.copies || !cur.copies.length) cur.copies = [{ id: 1 }];
+        if (wasStatus !== 'owned' && cur.copies[0] && !cur.copies[0].acquired && !copyFields.acquired) {
+          cur.copies[0] = { ...cur.copies[0], acquired: stamp };
+        }
+      }
+      if (ownedish) {
+        if (!cur.copies || !cur.copies.length) cur.copies = [{ id: 1 }];
+        cur.copies[0] = { ...cur.copies[0], ...copyFields };
+        touched = true;
+      }
+    }
+
+    if (!touched) { skipped++; return; }
+    S.coll[id] = cur;
+    if (wasStatus === 'ordered' && cur.status === 'owned') migrateOrderedToOwned(id);
+    S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
+    updated++;
+  });
+
+  saveColl();
+  store.set('motu-recent', S._recentChanges);
+  haptic && haptic(25);
+  let msg = `✓ Updated ${updated} figure${updated === 1 ? '' : 's'}`;
+  if (promoted) msg += ` · ${promoted} marked owned`;
+  if (skipped)  msg += ` · ${skipped} skipped`;
+  toast(msg);
+  render();
+};
+
 window.batchDeletePhotos = async () => {
   const ids = Array.from(S.selected);
   if (!ids.length) return;

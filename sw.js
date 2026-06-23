@@ -1,7 +1,16 @@
-// MOTU Vault — Service Worker v6.101
+// MOTU Vault — Service Worker v6.102
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v6.102 changelog:
+//   • CACHE bumped to v6.102. Multi-select batch editing reworked: the action
+//     bar's button is now "Batch Edit…" and its sheet has a mode toggle —
+//     "Update existing" (default) writes the filled-in fields (status,
+//     condition, price, date acquired, location, notes) onto each selected
+//     figure's existing copy with NO duplicate copies, vs "Add new copy" which
+//     keeps the old append behavior. So condition/price/date/etc. can be set on
+//     the current selection directly, not only by adding a copy.
 //
 // v6.101 changelog:
 //   • CACHE bumped to v6.101. Three detail/multi-select improvements:
@@ -851,7 +860,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.101';
+const CACHE = 'motu-vault-v6.102';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
