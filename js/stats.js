@@ -99,11 +99,11 @@ function renderStatsSheet() {
       ${stats.sale ? `<div class="seg for-sale" style="width:${pct(stats.sale)}%"></div>` : ''}
     </div>
     <div class="stats-legend">
-      <button class="stat-item" onclick="goToFiltered('owned')"><div class="stat-dot owned"></div><span class="stat-val">${stats.owned}</span> owned</button>
-      <button class="stat-item" onclick="goToFiltered('wishlist')"><div class="stat-dot wishlist"></div><span class="stat-val">${stats.wish}</span> wish</button>
-      <button class="stat-item" onclick="goToFiltered('ordered')"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ord</button>
-      ${stats.sale ? `<button class="stat-item" onclick="goToFiltered('for-sale')"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> sale</button>` : ''}
-      <button class="stat-item" onclick="goToFiltered('unowned')"><div class="stat-dot unowned"></div><span class="stat-val">${unowned}</span> unowned</button>
+      <button class="stat-item" data-action="go-to-filtered" data-status="owned"><div class="stat-dot owned"></div><span class="stat-val">${stats.owned}</span> owned</button>
+      <button class="stat-item" data-action="go-to-filtered" data-status="wishlist"><div class="stat-dot wishlist"></div><span class="stat-val">${stats.wish}</span> wish</button>
+      <button class="stat-item" data-action="go-to-filtered" data-status="ordered"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ord</button>
+      ${stats.sale ? `<button class="stat-item" data-action="go-to-filtered" data-status="for-sale"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> sale</button>` : ''}
+      <button class="stat-item" data-action="go-to-filtered" data-status="unowned"><div class="stat-dot unowned"></div><span class="stat-val">${unowned}</span> unowned</button>
     </div>
     ${totalSpent > 0 ? `<div style="margin-top:10px;font-size:13px;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent${avgStr ? ` · ${avgStr}` : ''}</div>` : ''}
   </div>`;
@@ -148,7 +148,7 @@ function renderStatsSheet() {
         html += `<div style="font-size:12px;color:var(--t3)">No cached prices yet — fetch below.</div>`;
       }
       if (isPricingConfigured() && priced < haveTotal) {
-        html += `<button id="fetchAllPricesBtn" onclick="fetchAllOwnedPricing()" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:12px;font-weight:600">
+        html += `<button id="fetchAllPricesBtn" data-action="fetch-all-pricing" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:12px;font-weight:600">
           ${icon(ICO.refresh || ICO.sort, 13)} Fetch prices for ${haveTotal - priced} unpriced
         </button>`;
       }
@@ -220,7 +220,7 @@ function renderStatsSheet() {
           .map(m => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(m.id)}" title="${esc(m.name)}">${esc(m.name)}</button>`)
           .join('');
         html += `<div class="wave-row">
-          <button class="wave-row-head" onclick="toggleWaveExpand('${wid}')">
+          <button class="wave-row-head" data-action="toggle-wave-expand" data-wave-id="${wid}">
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(ln(a.line))} · Wave ${esc(a.wave)}</div>
               <div style="height:3px;background:var(--bd);border-radius:2px;overflow:hidden">
@@ -237,7 +237,7 @@ function renderStatsSheet() {
           </button>
           <div class="wave-missing" id="${wid}" style="display:none">
             <div class="wave-missing-chips">${missList}</div>
-            <button class="wave-viewall" onclick="goToWave(${jsArg(a.line)},${jsArg(a.wave)})">View whole wave →</button>
+            <button class="wave-viewall" data-action="go-to-wave" data-line="${esc(a.line)}" data-wave="${esc(a.wave)}">View whole wave →</button>
           </div>
         </div>`;
       });
@@ -375,7 +375,7 @@ function renderStatsSheet() {
           <div style="font-size:12px;color:var(--acc);font-weight:700;width:90px;text-align:right;flex-shrink:0">${n} missing</div>
         </div>`;
       }
-      html += `<button onclick="exportGaps()" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer">
+      html += `<button data-action="export-gaps" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer">
         ${icon(ICO.export, 15)} Export gaps to CSV
       </button>
       <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Fill the blanks in any spreadsheet, then re-import (Menu → Import). Rows match by ID, so nothing else is touched.</div>`;

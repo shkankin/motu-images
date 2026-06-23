@@ -1,10 +1,18 @@
-// MOTU Vault — Service Worker v7.01
+// MOTU Vault — Service Worker v7.02
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
-// v7.01 changelog:
-//   • CACHE bumped to v7.01. Catalog and line updates:
+// v7.02 changelog:
+//   • Fixed: Export/Backup, Settings (menu), Stats sheet, Share sheet,
+//     and Accessory Picker were all broken by the v7.00 strict CSP —
+//     inline onclick handlers in data.js, stats.js, and share.js were
+//     missed in the original migration and silently blocked by
+//     script-src 'self'. All migrated to data-action delegation.
+//     152 registered actions total (was 131).
+//   • deploy.html v1.3: Pages status card added; deploy button restored
+//     (was accidentally dropped when Pages card was inserted).
+//
 //     – New line: MOTU Giants (id: motu-giants, 2014, Mattel, 12")
 //     – Mighty Masters year corrected: — → 2026
 //     – "Mattel Classics" renamed to "Classics" (id unchanged)
@@ -868,7 +876,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.01';
+const CACHE = 'motu-vault-v7.02';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

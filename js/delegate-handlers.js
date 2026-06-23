@@ -531,3 +531,45 @@ registerAll({
   'go-home':             () => window.goHome?.(),
 
 });
+
+// ── v7.02: Export/backup, stats, share, and accessory picker ────────
+
+registerAll({
+
+  // Export sheet
+  'export-csv':       (e, el, d) => { window.exportCSV?.(d.filter); window.closeSheet?.(); },
+  'export-json':      () => { window.exportJSON?.(); window.closeSheet?.(); },
+  'export-insurance': () => window.buildInsuranceReport?.(),
+  'export-photos-zip':() => { window.exportPhotosZip?.(); window.closeSheet?.(); },
+  'export-settings':  () => { window.exportSettings?.(); window.closeSheet?.(); },
+
+  // Stats sheet
+  'go-to-filtered':    (e, el, d) => window.goToFiltered?.(d.status),
+  'fetch-all-pricing': () => window.fetchAllOwnedPricing?.(),
+  'export-gaps':       () => window.exportGaps?.(),
+  'toggle-wave-expand':(e, el, d) => window.toggleWaveExpand?.(d.waveId),
+  'go-to-wave':        (e, el, d) => window.goToWave?.(d.line, d.wave),
+
+  // Share sheet
+  'copy-share-url':  () => window.copyShareURL?.(),
+  'native-share':    () => window.nativeShare?.(),
+  'share-trade-list':() => window.shareTradeList?.(),
+
+  // Accessory picker
+  'acc-picker-back':        () => { window.S._accPickAdmin = false; window.renderSheetBody?.(); },
+  'acc-picker-edit-loadout':() => { window.S._accPickAdmin = true;  window.renderSheetBody?.(); },
+  'acc-picker-done':        () => { window.S._accPickAdmin = false; window.closeSheet?.(); },
+  'acc-reset-avail':        (e, el, d) => window.resetAccAvail?.(d.figId),
+  'acc-toggle-avail':       (e, el, d) => window.toggleAccAvail?.(d.accName),
+  'acc-toggle-in-picker':   (e, el, d) => window.toggleAccessoryInPicker?.(d.accName),
+  'acc-picker-add-custom':  () => window.addCustomAccessory?.(),
+
+});
+
+// Keydown — accessory picker custom input: add on Enter
+registerAll({
+  'acc-picker-add-on-enter': (e, el) => {
+    if (e.key === 'Enter') { e.preventDefault(); window.addCustomAccessory?.(); }
+  },
+}, 'keydown');
+

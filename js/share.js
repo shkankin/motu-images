@@ -259,9 +259,9 @@ function renderShareSheet() {
     </div>
     <div style="background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
       <div style="flex:1;font-size:11px;color:var(--t3);word-break:break-all;font-family:monospace;line-height:1.4">${esc(url)}</div>
-      <button onclick="copyShareURL()" style="flex-shrink:0;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--acc);font-size:12px;font-weight:600">Copy</button>
+      <button data-action="copy-share-url" style="flex-shrink:0;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--acc);font-size:12px;font-weight:600">Copy</button>
     </div>
-    ${canShare ? `<button onclick="nativeShare()" style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;margin-bottom:10px">
+    ${canShare ? `<button data-action="native-share" style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;margin-bottom:10px">
       ${icon(ICO.share,16)} Share…
     </button>` : ''}
     ${(() => {
@@ -279,7 +279,7 @@ function renderShareSheet() {
       return `<div style="height:1px;background:var(--bd);margin:14px 0"></div>
       <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Trade List</div>
       <div style="font-size:12px;color:var(--t3);margin-bottom:10px">${sale ? `${sale} for sale` : ''}${sale && extras ? ' · ' : ''}${extras ? `${extras} with extra copies` : ''}</div>
-      <button onclick="shareTradeList()" style="width:100%;padding:13px;border-radius:12px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:14px;font-weight:600">
+      <button data-action="share-trade-list" style="width:100%;padding:13px;border-radius:12px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:14px;font-weight:600">
         ${icon(ICO.export,15)} ${navigator.share ? 'Share' : 'Copy'} trade list as text
       </button>`;
     })()}

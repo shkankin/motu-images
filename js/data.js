@@ -1297,41 +1297,30 @@ function renderAccessoryPickerSheet() {
       Editing the shipped-with loadout for this figure. Selected items are tracked for completeness on every copy and limit what's offered when checking off accessories. Leave all unchecked to allow everything (no completeness tracking).
     </div>
     <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button onclick="S._accPickAdmin=false;renderSheetBody()" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:12px">‹ Back to Picker</button>
-      <button onclick="resetAccAvail(${jsArg(figId)})" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:12px">Reset to All</button>
+      <button data-action="acc-picker-back" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:12px">‹ Back to Picker</button>
+      <button data-action="acc-reset-avail" data-fig-id="${esc(figId)}" style="padding:7px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:12px">Reset to All</button>
     </div>`;
   } else {
     h += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
       <div class="text-dim text-sm">Tap to toggle. ${figLoadout ? '<span style="color:var(--acc)">Loadout active — completeness tracked.</span>' : 'Added items apply to this copy only.'}</div>
-      <button onclick="S._accPickAdmin=true;renderSheetBody()" title="Edit shipped-with loadout" style="padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:11px;font-weight:600">⚙ Edit Loadout</button>
+      <button data-action="acc-picker-edit-loadout" title="Edit shipped-with loadout" style="padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:11px;font-weight:600">⚙ Edit Loadout</button>
     </div>`;
   }
 
   h += `<div class="acc-picker-list">`;
   if (adminMode) {
-    // Admin mode: list ALL global accessories. Checked = part of figure's
-    // LOCAL override (what admin is editing). The repo loadout is shown as
-    // a hint above when present, but admin tap toggles the local override
-    // only — repo defaults stay untouched.
     const figAvailSet = new Set(figAvailLocal || []);
     ACCESSORIES.forEach(name => {
       const on = figAvailSet.has(name);
-      h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccAvail(${jsArg(name)})">
+      h += `<button class="acc-picker-item${on ? ' selected' : ''}" data-action="acc-toggle-avail" data-acc-name="${esc(name)}">
         <span>${esc(name)}</span>
         ${on ? '<span class="acc-picker-check">✓</span>' : ''}
       </button>`;
     });
   } else {
-    // Normal mode: show only the figure's loadout (merged local-or-repo),
-    // or all accessories if no loadout is set. Custom-already-on-copy
-    // entries surface at top so they can be removed.
-    // v6.33: when there's no per-figure loadout, the offer list combines
-    // the canonical ACCESSORIES with the repo's customAccessories master
-    // list (admin-added names). De-duped by canonical first; customs land
-    // at the bottom so the common items stay quick to find.
     const customSelected = current.filter(a => !ACCESSORIES.includes(a) && !(S._repoCustomAccessories || []).includes(a));
     customSelected.forEach(name => {
-      h += `<button class="acc-picker-item selected" onclick="toggleAccessoryInPicker(${jsArg(name)})">
+      h += `<button class="acc-picker-item selected" data-action="acc-toggle-in-picker" data-acc-name="${esc(name)}">
         <span>${esc(name)}</span>
         <span class="acc-picker-check">✓</span>
       </button>`;
@@ -1345,7 +1334,7 @@ function renderAccessoryPickerSheet() {
     }
     offerList.forEach(name => {
       const on = currentSet.has(name);
-      h += `<button class="acc-picker-item${on ? ' selected' : ''}" onclick="toggleAccessoryInPicker(${jsArg(name)})">
+      h += `<button class="acc-picker-item${on ? ' selected' : ''}" data-action="acc-toggle-in-picker" data-acc-name="${esc(name)}">
         <span>${esc(name)}</span>
         ${on ? '<span class="acc-picker-check">✓</span>' : ''}
       </button>`;
@@ -1355,12 +1344,12 @@ function renderAccessoryPickerSheet() {
   if (!adminMode) {
     h += `<div class="acc-picker-custom">
       <input type="text" id="accPickerCustomInput" placeholder="Custom accessory…" maxlength="60"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomAccessory()}">
-      <button onclick="addCustomAccessory()">Add</button>
+             data-keydown-action="acc-picker-add-on-enter">
+      <button data-action="acc-picker-add-custom">Add</button>
     </div>`;
   }
   h += `<div style="margin-top:14px;display:flex;justify-content:flex-end">
-    <button onclick="S._accPickAdmin=false;closeSheet()" style="padding:10px 18px;border-radius:10px;background:var(--bg3);border:1px solid var(--bd);color:var(--t1);font-size:13px;font-weight:600">Done</button>
+    <button data-action="acc-picker-done" style="padding:10px 18px;border-radius:10px;background:var(--bg3);border:1px solid var(--bd);color:var(--t1);font-size:13px;font-weight:600">Done</button>
   </div>`;
   return h;
 }
@@ -2339,21 +2328,20 @@ function renderExportSheet() {
   ];
   let html = '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">CSV Export</div>';
   html += opts.map(o => `
-    <button onclick="exportCSV('${o.filter}');closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+    <button data-action="export-csv" data-filter="${o.filter}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
       <span>${o.label}</span>
       <span style="color:var(--t3);font-size:12px">${o.count} figures</span>
     </button>`).join('');
   html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
   html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Full Backup (JSON)</div>';
-  html += `<button onclick="exportJSON();closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--gold);background:color-mix(in srgb, var(--gold) 8%, transparent);margin-bottom:8px;text-align:left;font-size:15px;color:var(--gold)">
+  html += `<button data-action="export-json" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--gold);background:color-mix(in srgb, var(--gold) 8%, transparent);margin-bottom:8px;text-align:left;font-size:15px;color:var(--gold)">
     <span>Backup Collection + Photos</span>
     <span style="color:var(--t3);font-size:12px">${anyStatus} entries · ${photoCount} photos</span>
   </button>`;
   html += '<div class="text-sm text-dim" style="line-height:1.5">Includes all statuses, conditions, notes, variants, and custom photos. Use to restore your full collection.</div>';
-  // v6.69: insurance report
   html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
   html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Insurance Report</div>';
-  html += `<button onclick="buildInsuranceReport()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+  html += `<button data-action="export-insurance" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
     <span>Itemized Report (HTML)</span>
     <span style="color:var(--t3);font-size:12px">${stats.owned + sale} figures</span>
   </button>`;
@@ -2361,17 +2349,15 @@ function renderExportSheet() {
   if (photoCount > 0) {
     html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
     html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Photos Only (ZIP)</div>';
-    html += `<button onclick="exportPhotosZip();closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+    html += `<button data-action="export-photos-zip" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
       <span>Download Photos as ZIP</span>
       <span style="color:var(--t3);font-size:12px">${photoCount} photos</span>
     </button>`;
     html += '<div class="text-sm text-dim" style="line-height:1.5">Downloads all custom photos as a ZIP archive, organized by figure folder. Useful for backing up to cloud storage (Drive, Dropbox, etc.) or transferring to another device.</div>';
   }
-  // v4.99: settings export — separate from collection data, useful for
-  // moving theme/sort/view/line-order preferences to another device.
   html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
   html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Settings Only</div>';
-  html += `<button onclick="exportSettings();closeSheet()" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+  html += `<button data-action="export-settings" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
     <span>Export App Settings</span>
     <span style="color:var(--t3);font-size:12px">theme · sort · order</span>
   </button>`;
