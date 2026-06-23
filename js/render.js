@@ -305,8 +305,8 @@ function patchFigRow(id) {
       actions.innerHTML =
         (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
         (c.status
-          ? `<button class="quick-own" onclick="cycleStatus(event,${jId})" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
-          : `<button class="quick-own" onclick="event.stopPropagation();setStatus(${jId},'owned')" title="Mark owned">${icon(ICO.check,16)}</button>`);
+          ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${id}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
+          : `<button class="quick-own" data-action="set-status-owned" data-fig-id="${id}" title="Mark owned">${icon(ICO.check,16)}</button>`);
     }
     updateNavBadge();
     return true;
@@ -385,7 +385,7 @@ function render() {
       <div style="font-size:48px;margin-bottom:12px">⚠️</div>
       <div style="color:var(--rd);font-size:16px;font-weight:600;margin-bottom:8px">Something went wrong</div>
       <div class="text-dim text-sm" style="margin-bottom:16px;line-height:1.6">${esc(e.message)}</div>
-      <button class="retry-btn" onclick="S.screen='main';S.sheet=null;render()">Recover</button>
+      <button class="retry-btn" data-action="recover-to-main">Recover</button>
     </div>`;
   }
 }
@@ -463,17 +463,19 @@ function renderMain() {
   const sortLabel = S.sortBy === 'added-desc' ? 'Added' : S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
   const hf = hasFilters();
   const syncCls = S.isOffline ? 'offline' : (S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '');
-  const syncClick = S.isOffline ? `toast('✗ No connection')` : `fetchFigs(true)`;
+  const syncClick = S.isOffline ? 'sync-offline' : 'sync-now';
   const syncTitle = S.isOffline ? 'Offline' : 'Sync';
 
   const themeTitles = getThemeTitles();
   const themeIcon = getThemeIcon();
   const hasTitleCycle = themeTitles.length > 1;
   const titleClick = hasTitleCycle
-    ? `S.titleIdx=(S.titleIdx+1)%${themeTitles.length};playTitleSound(S.titleIdx);render()`
-    : (S.theme === 'eternia'   ? 'triggerEterniaEgg()'   :
-       S.theme === 'heman'     ? 'triggerHeManEgg()'     :
-       S.theme === 'grayskull' ? 'triggerGrayskullEgg()' : 'goHome()');
+    ? 'title-cycle'
+    : (S.theme === 'eternia'   ? 'title-tap-eternia'   :
+       S.theme === 'heman'     ? 'title-tap-heman'     :
+       S.theme === 'grayskull' ? 'title-tap-grayskull' :
+       S.theme === 'skeletor'  ? 'title-tap-skeletor'  :
+       S.theme === 'light'     ? 'title-tap-light'     : 'go-home');
 
   let html = `
   <div class="offline-banner${S.isOffline ? ' visible' : ''}" id="offlineBanner">
@@ -489,29 +491,29 @@ function renderMain() {
   <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
-        <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
+        <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
-          <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.102</span></div>
+          <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.103</span></div>
         </div>
       </div>
       <div class="header-actions">
-        <button class="icon-btn ${syncCls}" title="${syncTitle}" onclick="${syncClick}">${icon(ICO.sync,16)}</button>
-        <button class="icon-btn" title="Menu" onclick="openSheet('menu')">${icon(ICO.menu,20)}</button>
+        <button class="icon-btn ${syncCls}" title="${syncTitle}" data-action="${syncClick}">${icon(ICO.sync,16)}</button>
+        <button class="icon-btn" title="Menu" data-action="open-sheet" data-sheet="menu">${icon(ICO.menu,20)}</button>
       </div>
     </div>
     <div class="search-bar-wrap${S.searchBarHidden?' hidden':''}" id="searchBar">
     <div class="search-row">
       <div class="search-wrap">
         <span class="search-icon">${icon(ICO.search,16)}</span>
-        <input id="searchInput" value="${esc(S.search)}" placeholder="${S.activeLine ? 'Search '+ln(S.activeLine)+'…' : 'Search figures…'}" oninput="onSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input id="searchInput" value="${esc(S.search)}" placeholder="${S.activeLine ? 'Search '+ln(S.activeLine)+'…' : 'Search figures…'}" data-input-action="on-search" data-keydown-action="search-blur-on-enter" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         ${S.search ? `<button class="search-clear" data-action="clear-search">${icon(ICO.x,14)}</button>` : ''}
-        <button class="search-scan" onclick="openBarcodeScanner()" title="Scan a barcode" aria-label="Scan barcode">${icon(ICO.qr,16)}</button>
+        <button class="search-scan" data-action="open-barcode-scanner" title="Scan a barcode" aria-label="Scan barcode">${icon(ICO.qr,16)}</button>
       </div>
-      <button class="filter-btn ${hf?'active':''}" onclick="openSheet('filter')">
+      <button class="filter-btn ${hf?'active':''}" data-action="open-sheet" data-sheet="filter">
         ${icon(ICO.filter,18)}${hf ? '<span class="filter-dot"></span>' : ''}
       </button>
-      <button class="sort-btn" onclick="openSheet('sort')">
+      <button class="sort-btn" data-action="open-sheet" data-sheet="sort">
         ${icon(ICO.sort,18)}<span class="sort-label">${sortLabel}</span>
       </button>
     </div>
@@ -749,11 +751,11 @@ function renderSelectActionbar() {
     return `<div class="select-actionbar visible">
       <div class="sa-row" style="flex:1">
         <span style="flex:1;font-size:13px;font-weight:600;color:var(--t1)">Remove status from ${n} figure${n===1?'':'s'}?</span>
-        <button onclick="S.confirmClear=false;document.querySelector('.select-actionbar').outerHTML=renderSelectActionbar()"
+        <button data-action="cancel-confirm-clear"
           style="padding:10px 16px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:600">
           Cancel
         </button>
-        <button onclick="S.confirmClear=false;batchSetStatus('')"
+        <button data-action="confirm-batch-clear"
           style="padding:10px 18px;border-radius:10px;border:2px solid var(--rd);background:color-mix(in srgb,var(--rd) 18%,var(--bg3));color:var(--rd);font-size:13px;font-weight:800">
           Clear
         </button>
@@ -763,10 +765,8 @@ function renderSelectActionbar() {
 
   const statusRow = STATUSES.map(s =>
     `<button class="sa-status-btn" ${dis} style="--st-c:${STATUS_HEX[s]}"
-      onclick="batchSetStatus('${s}')">${STATUS_LABEL[s]}</button>`
+      data-action="batch-set-status" data-status="${s}">${STATUS_LABEL[s]}</button>`
   ).join('');
-  // v6.28: show "Photos" delete affordance only if at least one selected
-  // figure actually has user photos. Avoids cluttering the bar otherwise.
   let anySelectedHasPhotos = false;
   for (const id of S.selected) {
     if ((S.customPhotos[id] || []).length) { anySelectedHasPhotos = true; break; }
@@ -774,21 +774,21 @@ function renderSelectActionbar() {
   return `<div class="select-actionbar visible">
     <div class="sa-row">
       <span class="count">${n}</span>
-      <button onclick="selectAllVisible()" title="${allSelected ? 'Deselect all' : 'Select all'}">
+      <button data-action="select-all-visible" title="${allSelected ? 'Deselect all' : 'Select all'}">
         ${allSelected ? 'None' : 'All'}
       </button>
-      <button class="primary" ${dis} onclick="openBatchEditor()" style="flex:1">
+      <button class="primary" ${dis} data-action="open-batch-editor" style="flex:1">
         ${icon(ICO.edit, 14)} Batch Edit…
       </button>
-      ${anySelectedHasPhotos ? `<button onclick="batchDeletePhotos()" title="Remove user photos from selected"
+      ${anySelectedHasPhotos ? `<button data-action="batch-delete-photos"
         style="padding:9px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--rd) 35%,var(--bd));background:color-mix(in srgb,var(--rd) 6%,var(--bg3));color:var(--rd);font-size:12px;font-weight:600;flex-shrink:0">
         ${icon(ICO.trash,12)} Photos
       </button>` : ''}
-      <button ${dis} onclick="S.confirmClear=true;document.querySelector('.select-actionbar').outerHTML=renderSelectActionbar()"
+      <button ${dis} data-action="begin-confirm-clear"
         style="padding:9px 14px;border-radius:10px;border:2px solid color-mix(in srgb,var(--rd) 50%,var(--bd));background:color-mix(in srgb,var(--rd) 10%,var(--bg3));color:var(--rd);font-size:13px;font-weight:800;flex-shrink:0">
         Clear
       </button>
-      <button onclick="exitSelectMode()"
+      <button data-action="exit-select"
         style="padding:9px 14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--gn) 40%,var(--bd));background:color-mix(in srgb,var(--gn) 12%,var(--bg3));color:var(--gn);font-size:13px;font-weight:800;flex-shrink:0">
         Done
       </button>
@@ -835,7 +835,7 @@ function renderKidsCoreAdminSheet() {
     `<div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">${label}</div>
       <input type="${type}" value="${esc(v[key]||existing?.[key]||'')}" placeholder="${placeholder}"
-        oninput="S._kcForm=S._kcForm||{};S._kcForm['${key}']=this.value" ${extra}>
+        data-input-action="kc-set-field" data-field="${esc(key)}" ${extra}>
     </div>`;
 
   // Group pills for kids-core
@@ -855,11 +855,10 @@ function renderKidsCoreAdminSheet() {
   h += field('Retail Price', 'retail', 'number', '0.00');
   // v4.93: faction is a dropdown (FACTIONS list) instead of free text — keeps
   // values consistent with the rest of the catalog and prevents typos that
-  // would split the Faction filter into separate buckets.
   const curFaction = v.faction != null ? v.faction : (existing?.faction || '');
   h += `<div style="margin-bottom:12px">
     <div class="field-label text-dim text-sm">Faction</div>
-    <select onchange="S._kcForm=S._kcForm||{};S._kcForm.faction=this.value">
+    <select data-change-action="kc-set-faction">
       <option value="">— Select —</option>
       ${FACTIONS.map(f => `<option value="${esc(f)}" ${curFaction===f?'selected':''}>${esc(f)}</option>`).join('')}
     </select>
@@ -869,16 +868,16 @@ function renderKidsCoreAdminSheet() {
   h += `<div style="margin-bottom:12px">
     <div class="field-label text-dim text-sm">Group *</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${groups.map(g => `<button type="button" onclick="S._kcForm=S._kcForm||{};S._kcForm.group='${g}';render()" style="padding:6px 14px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:500">${g}</button>`).join('')}
+      ${groups.map(g => `<button type="button" data-action="kc-set-group" data-group="${esc(g)}" style="padding:6px 14px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:500">${g}</button>`).join('')}
     </div>
   </div>`;
 
-  h += `<button onclick="saveKidsCoreAdminFig()" style="width:100%;padding:14px;border-radius:12px;background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;margin-bottom:10px">
+  h += `<button data-action="save-kc-fig" style="width:100%;padding:14px;border-radius:12px;background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;margin-bottom:10px">
     ${editing ? 'Save Changes' : 'Add Figure'}
   </button>`;
 
   if (editing) {
-    h += `<button onclick="deleteKidsCoreAdminFig(${jsArg(editing)})" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
+    h += `<button data-action="delete-kc-fig" data-fig-id="${esc(editing)}" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
       Delete Figure
     </button>`;
   }
@@ -894,7 +893,7 @@ function renderKidsCoreAdminSheet() {
           <div class="text-sm" style="color:var(--t1);font-weight:600">${esc(f.name)}</div>
           <div class="text-sm text-dim">${esc(f.group||'')}${f.year?' · '+f.year:''}</div>
         </div>
-        <button onclick="S._kcEditId=${jsArg(f.id)};S._kcForm=null;render()" style="padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px">Edit</button>
+        <button data-action="kc-edit-fig" data-fig-id="${esc(f.id)}" style="padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px">Edit</button>
       </div>`;
     });
     h += '</div>';
@@ -930,13 +929,13 @@ function renderLinesGrid() {
     const tState = (typeof window.tutorialState === 'function') ? window.tutorialState() : { seen: false };
     const tourLabel = tState.seen ? '🎓 Replay tour' : '🎓 Take a 1-minute tour';
     html += `<div class="onboard-banner">
-      <div style="flex:1;position:relative;z-index:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Wishlist, or For Sale — it'll appear in your Collection tab.<br><button onclick="startTutorial()" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
+      <div style="flex:1;position:relative;z-index:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Wishlist, or For Sale — it'll appear in your Collection tab.<br><button data-action="start-tutorial" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
       <img class="onboard-mascot" src="${IMG}/he-man-icon.png" alt="" aria-hidden="true" onerror="this.style.display='none'">
-      <button class="onboard-dismiss" onclick="S.onboarded=true;store.set('motu-onboarded',1);render()" title="Dismiss">×</button>
+      <button class="onboard-dismiss" data-action="dismiss-onboard" title="Dismiss">×</button>
     </div>`;
   }
   if (S.editingOrder) {
-    html += `<div class="reorder-toggle"><button class="active" onclick="toggleReorder()">✓ Done</button></div>`;
+    html += `<div class="reorder-toggle"><button class="active" data-action="toggle-reorder">✓ Done</button></div>`;
   }
 
   if (S.editingOrder) {
@@ -945,14 +944,14 @@ function renderLinesGrid() {
       const hidden = isLineFullyHidden(l.id);
       html += `<div class="reorder-item" style="${hidden?'opacity:0.4':''}">
         <div class="reorder-arrows">
-          <button ${i===0?'disabled':''} onclick="moveLine('${l.id}',-1)">↑</button>
-          <button ${i===ordered.length-1?'disabled':''} onclick="moveLine('${l.id}',1)">↓</button>
+          <button ${i===0?'disabled':''} data-action="move-line-up" data-line-id="${esc(l.id)}">↑</button>
+          <button ${i===ordered.length-1?'disabled':''} data-action="move-line-down" data-line-id="${esc(l.id)}">↓</button>
         </div>
         <div style="flex:1;min-width:0">
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(l.name)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">${l.yr} · ${l.total} figures · ${l.owned} owned</div>
         </div>
-        <button onclick="event.stopPropagation();toggleHidden('${l.id}')" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
+        <button data-action="toggle-line-hidden" data-line-id="${esc(l.id)}" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
           ${hidden?'Hidden':'Hide'}
         </button>
         <div style="font-size:12px;font-weight:600;color:${l.pct===100?'var(--gn)':'var(--gold)'};flex-shrink:0">${l.pct}%</div>
@@ -971,8 +970,8 @@ function renderLinesGrid() {
     html += `<div class="lines-header">
       <div class="lines-header-count">${visibleOrdered.length} ${visibleOrdered.length === 1 ? 'Line' : 'Lines'}</div>
       <div class="lines-view-toggle" role="group" aria-label="View mode">
-        <button class="${linesView==='list'?'active':''}" onclick="store.set('motu-lines-view','list');render()" title="List view" aria-label="List view">${icon(ICO.list,15)}</button>
-        <button class="${linesView==='grid'?'active':''}" onclick="store.set('motu-lines-view','grid');render()" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
+        <button class="${linesView==='list'?'active':''}" data-action="set-lines-view" data-view="list" title="List view" aria-label="List view">${icon(ICO.list,15)}</button>
+        <button class="${linesView==='grid'?'active':''}" data-action="set-lines-view" data-view="grid" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
       </div>
     </div>`;
     if (linesView === 'list') {
@@ -1322,12 +1321,12 @@ function renderFigList() {
   const gridActive = isGrid ? 'active' : '';
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px;gap:8px">
     <div class="fig-count" style="margin-bottom:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
-    <button class="select-btn${S.selectMode ? ' active' : ''}" onclick="${S.selectMode ? 'exitSelectMode()' : 'enterSelectMode()'}" title="Select mode">
+    <button class="select-btn${S.selectMode ? ' active' : ''}" data-action="${S.selectMode ? 'exit-select' : 'enter-select'}" title="Select mode">
       ${S.selectMode ? 'Done' : 'Select'}
     </button>
     <div class="view-toggle">
-      <button class="${listActive}" onclick="setViewMode('list')" title="List view">${icon(ICO.list,14)}</button>
-      <button class="${gridActive}" onclick="setViewMode('grid')" title="Grid view">${icon(ICO.lines,14)}</button>
+      <button class="${listActive}" data-action="set-view" data-view="list" title="List view">${icon(ICO.list,14)}</button>
+      <button class="${gridActive}" data-action="set-view" data-view="grid" title="Grid view">${icon(ICO.lines,14)}</button>
     </div>
   </div>`;
   if (!figs.length) {
@@ -1496,7 +1495,7 @@ function renderDetailStatusBlock(f, c) {
         <div class="ghost-grid" style="margin-bottom:0">
           <div class="input-group">
             <label>Target Price</label>
-            <input type="number" step="0.01" class="ghost-input" value="${esc(c.targetPrice || '')}" placeholder="Alert at or below…" onchange="updateOrderedField(${jId},'targetPrice',this.value)">
+            <input type="number" step="0.01" class="ghost-input" value="${esc(c.targetPrice || '')}" placeholder="Alert at or below…" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="targetPrice">
           </div>
           ${Number.isFinite(target) ? `<div class="input-group" style="justify-content:flex-end">
             <div class="price-watch-note" style="color:${isDeal ? 'var(--gn)' : 'var(--t3)'}">
@@ -1519,15 +1518,15 @@ function renderDetailStatusBlock(f, c) {
         <div class="ghost-grid" style="margin-bottom:0">
           <div class="input-group">
             <label>Ordered From</label>
-            <input type="text" class="ghost-input" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, BBTS…" onchange="updateOrderedField(${jId},'orderedFrom',this.value)">
+            <input type="text" class="ghost-input" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, BBTS…" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedFrom">
           </div>
           <div class="input-group">
             <label>Expected Date</label>
-            <input type="month" class="ghost-input" value="${esc(c.orderedDate||'')}" onchange="updateOrderedField(${jId},'orderedDate',this.value)">
+            <input type="month" class="ghost-input" value="${esc(c.orderedDate||'')}" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedDate">
           </div>
           <div class="input-group">
             <label>Price Paid</label>
-            <input type="number" step="0.01" class="ghost-input" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" onchange="updateOrderedField(${jId},'orderedPaid',this.value)">
+            <input type="number" step="0.01" class="ghost-input" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedPaid">
           </div>
         </div>
       </div>`;
@@ -1570,8 +1569,8 @@ function renderCopyCard(f, cp, i, isMulti, total) {
         ${isVariant ? `<span class="variant-badge">Variant</span>` : ''}
       </div>
       ${isVariant
-        ? `<button class="delete-btn" title="Delete this variant" onclick="deleteCustomFig(${jId})">${icon(ICO.trash,18)}</button>`
-        : (isMulti ? `<button class="delete-btn" title="Remove this copy" onclick="removeCopy(${jId},${cid})">${icon(ICO.trash,18)}</button>` : '')}
+        ? `<button class="delete-btn" title="Delete this variant" data-action="delete-custom-fig" data-fig-id="${eId}">${icon(ICO.trash,18)}</button>`
+        : (isMulti ? `<button class="delete-btn" title="Remove this copy" data-action="remove-copy" data-fig-id="${eId}" data-copy-id="${cid}">${icon(ICO.trash,18)}</button>` : '')}
     </div>`;
 
   // Original Retail anchor — a figure-level fact, shown once at the top of the
@@ -1598,36 +1597,36 @@ function renderCopyCard(f, cp, i, isMulti, total) {
   h += `<div class="ghost-grid">
     <div class="input-group">
       <label>Condition</label>
-      <select class="ghost-input" onchange="updateCopy(${jId},${cid},'condition',this.value)">
+      <select class="ghost-input" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="condition">
         <option value="">Select...</option>
         ${CONDITIONS.map(x => `<option value="${esc(x)}" ${cond===x?'selected':''}>${esc(x)}</option>`).join('')}
       </select>
     </div>
     <div class="input-group">
       <label>Price Paid</label>
-      <input type="number" step="0.01" class="ghost-input" value="${esc(paid || (f.retail != null ? f.retail : ''))}" placeholder="${f.retail != null ? esc(f.retail.toFixed(2)) : '0.00'}" onfocus="this.select()" onchange="updateCopy(${jId},${cid},'paid',this.value)">
+      <input type="number" step="0.01" class="ghost-input" value="${esc(paid || (f.retail != null ? f.retail : ''))}" placeholder="${f.retail != null ? esc(f.retail.toFixed(2)) : '0.00'}" data-focus-action="select-all" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="paid">
     </div>
     ${isForSale ? `<div class="input-group">
       <label>Asking Price</label>
-      <input type="number" step="0.01" class="ghost-input" value="${esc(cp.asking || '')}" placeholder="$0.00" onchange="updateCopy(${jId},${cid},'asking',this.value)">
+      <input type="number" step="0.01" class="ghost-input" value="${esc(cp.asking || '')}" placeholder="$0.00" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="asking">
     </div>
     <div class="input-group">
       <label>Location</label>
-      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
+      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="location">
     </div>` : `<div class="input-group">
       <label>Acquired</label>
       <input type="text" inputmode="numeric" maxlength="7" class="ghost-input" value="${esc(cp.acquired || '')}"
         placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}"
-        oninput="formatAcquired(this)"
-        onchange="updateCopy(${jId},${cid},'acquired',this.value)">
+        data-input-action="format-acquired"
+        data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="acquired">
     </div>
     <div class="input-group">
       <label>Location</label>
-      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" onchange="updateCopy(${jId},${cid},'location',this.value)">
+      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="location">
     </div>`}
     ${variant ? `<div class="input-group" style="grid-column:span 2">
       <label>Variant (legacy)</label>
-      <input type="text" class="ghost-input" value="${esc(variant)}" onchange="updateCopy(${jId},${cid},'variant',this.value)">
+      <input type="text" class="ghost-input" value="${esc(variant)}" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="variant">
     </div>` : ''}
   </div>`;
 
@@ -1641,15 +1640,15 @@ function renderCopyCard(f, cp, i, isMulti, total) {
     })()}</label>
     <div class="acc-chips">`;
   accessories.forEach((a, idx) => {
-    h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" onclick="removeAccessory(${jId},${cid},${idx})">×</button></span>`;
+    h += `<span class="acc-chip"><span class="acc-chip-label">${esc(a)}</span><button class="acc-chip-x" title="Remove" data-action="remove-accessory" data-fig-id="${eId}" data-copy-id="${cid}" data-acc-idx="${idx}">×</button></span>`;
   });
-  h += `<button class="acc-add" onclick="openAccessoryPicker(${jId},${cid})">+ Add</button>
+  h += `<button class="acc-add" data-action="open-accessory-picker" data-fig-id="${eId}" data-copy-id="${cid}">+ Add</button>
     </div>
     ${(() => {
       const comp = getCopyCompleteness(f.id, cp);
       if (!comp || comp.complete || !comp.missing.length) return '';
       const items = comp.missing.map(name =>
-        `<button class="acc-missing-pill" onclick="addAccessory(${jId},${cid},${esc(JSON.stringify(name))})" title="Mark as present">+ ${esc(name)}</button>`
+        `<button class="acc-missing-pill" data-action="add-accessory" data-fig-id="${eId}" data-copy-id="${cid}" data-acc-name="${esc(name)}" title="Mark as present">+ ${esc(name)}</button>`
       ).join('');
       return `<div class="acc-missing-row"><span class="acc-missing-label text-dim">Missing:</span>${items}</div>`;
     })()}
@@ -1665,28 +1664,28 @@ function renderCopyCard(f, cp, i, isMulti, total) {
       <label>Photos for this copy</label>
       <div class="copy-photos-strip">`;
     copyPhotos.forEach(p => {
-      h += `<div class="copy-photo-thumb" onclick="openCopyPhoto(${jId},${p.n})">
+      h += `<div class="copy-photo-thumb" data-action="open-copy-photo" data-fig-id="${eId}" data-photo-n="${p.n}">
         <img src="${esc(p.url)}" alt="${esc(p.label || '')}" loading="lazy">
-        <button class="copy-photo-unlink" title="Make shared" onclick="event.stopPropagation();unlinkCopyPhoto(${jId},${p.n})">⌫</button>
+        <button class="copy-photo-unlink" title="Make shared" data-action="unlink-copy-photo" data-fig-id="${eId}" data-photo-n="${p.n}">⌫</button>
       </div>`;
     });
     h += `<label class="copy-photo-add" title="Add photo to this copy">
         ${icon(ICO.img,18)}
-        <input type="file" accept="image/*" style="display:none" onchange="handleCopyPhoto(this,${jId},${cid})">
+        <input type="file" accept="image/*" style="display:none" data-change-action="handle-copy-photo" data-fig-id="${eId}" data-copy-id="${cid}">
       </label>
       </div>
     </div>`;
   }
   h += `<div class="input-group" style="grid-column:span 2">
       <label>Notes</label>
-      <textarea class="ghost-input" rows="3" placeholder="Notes…" oninput="updateCopyDebounced(${jId},${cid},'notes',this.value)" onblur="updateCopy(${jId},${cid},'notes',this.value)">${esc(notes)}</textarea>
+      <textarea class="ghost-input" rows="3" placeholder="Notes…" data-input-action="update-copy-notes-debounced" data-blur-action="update-copy-notes" data-fig-id="${eId}" data-copy-id="${cid}">${esc(notes)}</textarea>
     </div>
     </div>
   </details>`;
 
   // Mark Sold action for for-sale copies.
   if (isForSale) {
-    h += `<button class="mark-sold-btn" onclick="markCopySold(${jId},${cid})" title="Record the sale and remove this copy">
+    h += `<button class="mark-sold-btn" data-action="mark-copy-sold" data-fig-id="${eId}" data-copy-id="${cid}" title="Record the sale and remove this copy">
       ${icon(ICO.tag || ICO.check, 16)} Mark Sold…
     </button>`;
   }
@@ -1779,11 +1778,11 @@ function renderDetail() {
         ${slides.map((s, si) => {
           const isDef = s.n === defaultN;
           return `
-          <div class="photo-slide" onclick="openSlideViewer(${jId},${si})">
-            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `onerror="imgErr(${jId})"` : ''}>
+          <div class="photo-slide" data-action="open-slide-viewer" data-fig-id="${eId}" data-slide-idx="${si}">
+            <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `data-error-action="img-error" data-fig-id="${eId}"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
-            ${!s.stock ? `<button class="photo-slide-remove" onclick="event.stopPropagation();removePhoto(${jId},${s.n})">${icon(ICO.x,14)}</button>` : ''}
-            <button class="photo-slide-default${isDef ? ' active' : ''}" onclick="event.stopPropagation();setDefaultPhoto(${jId},${s.n})" title="${isDef ? 'Primary photo' : 'Set as primary'}">${icon(ICO.star,16)}</button>
+            ${!s.stock ? `<button class="photo-slide-remove" data-action="remove-photo" data-fig-id="${eId}" data-photo-n="${s.n}">${icon(ICO.x,14)}</button>` : ''}
+            <button class="photo-slide-default${isDef ? ' active' : ''}" data-action="set-default-photo" data-fig-id="${eId}" data-photo-n="${s.n}" title="${isDef ? 'Primary photo' : 'Set as primary'}">${icon(ICO.star,16)}</button>
           </div>`;
         }).join('')}
       </div>
@@ -1796,19 +1795,16 @@ function renderDetail() {
   let html = `
   <div class="detail-scroll">
     <div class="hero-image">
-      <button class="back-fab" onclick="closeDetail()" title="Back">${icon(ICO.back,24,2.5)}</button>
+      <button class="back-fab" data-action="close-detail" title="Back">${icon(ICO.back,24,2.5)}</button>
       ${hasChosenDefault ? `<div class="default-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="${ICO.star}"/></svg> Default</div>` : ''}
       ${heroInner}
       <div class="photo-controls">
-        ${canAddMore ? `<button class="icon-fab" onclick="document.getElementById('photoCamera').click()" title="Camera">${icon(ICO.camera,20)}</button>
-        <button class="icon-fab" onclick="document.getElementById('photoGallery').click()" title="Gallery${userPhotos.length > 0 ? ` — ${userPhotos.length}/${MAX_PHOTOS}` : ''}">${icon(ICO.img,20)}</button>`
+        ${canAddMore ? `<button class="icon-fab" data-action="trigger-camera" title="Camera">${icon(ICO.camera,20)}</button>
+        <button class="icon-fab" data-action="trigger-gallery" title="Gallery${userPhotos.length > 0 ? ` — ${userPhotos.length}/${MAX_PHOTOS}` : ''}">${icon(ICO.img,20)}</button>`
         : `<div class="icon-fab" style="opacity:0.5;cursor:default" title="Max ${MAX_PHOTOS} photos">${icon(ICO.img,20)}</div>`}
       </div>
-      <!-- v6.83: split capture. The camera input keeps capture="environment"
-           to open the rear camera directly; the gallery input omits capture so
-           the OS shows the photo library / files picker. Both feed handlePhoto. -->
-      <input type="file" id="photoCamera" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this,${jId})">
-      <input type="file" id="photoGallery" accept="image/*" style="display:none" onchange="handlePhoto(this,${jId})">
+      <input type="file" id="photoCamera" accept="image/*" capture="environment" style="display:none" data-change-action="handle-photo" data-fig-id="${eId}">
+      <input type="file" id="photoGallery" accept="image/*" style="display:none" data-change-action="handle-photo" data-fig-id="${eId}">
     </div>
 
     <div class="detail-body">
@@ -1823,7 +1819,7 @@ function renderDetail() {
         <div class="photo-label-row">
           <span class="photo-label-num">#${userPhotos.indexOf(p)+1}</span>
           <input type="text" class="ghost-input" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
-                 onblur="setPhotoLabel(${jId},${p.n},this.value)" maxlength="20">
+                 data-blur-action="save-photo-label" data-fig-id="${eId}" data-photo-n="${p.n}" maxlength="20">
         </div>
       `).join('')}
       </div>
@@ -1856,7 +1852,7 @@ function renderDetail() {
         </div>`;
       };
       return `<div class="variant-section">
-        <div class="variant-strip">${fam.map(chip).join('')}<div class="variant-chip variant-chip-add" onclick="addVariant(${jsArg(root.id)})" title="Add a variant">
+        <div class="variant-strip">${fam.map(chip).join('')}<div class="variant-chip variant-chip-add" data-action="add-variant" data-fig-id="${esc(root.id)}" title="Add a variant">
           <div class="variant-chip-thumb"><span style="font-size:28px;color:var(--gold)">+</span></div>
           <div class="variant-chip-label">Add</div>
         </div></div>
@@ -1883,25 +1879,19 @@ function renderDetail() {
     // collection app keeps status + data up top; AF411/Edit are utilities,
     // Add Variant is the creation action from a figure's context (adding a
     // brand-new unrelated figure happens from the list screen, not here).
-    const btn = (onclick, label, ic, cls) => `<button onclick="${onclick}" class="action-btn${cls ? ' ' + cls : ''}">${icon(ic, 16)}<span>${label}</span></button>`;
+    const btn = (action, label, ic, cls, extra='') => `<button data-action="${action}" ${extra} class="action-btn${cls ? ' ' + cls : ''}">${icon(ic, 16)}<span>${label}</span></button>`;
     const btns = [];
     const supportsVariants = f.line !== 'kids-core' && f.line !== 'custom';
     if (supportsVariants)
-      btns.push(btn(`event.preventDefault();openAF411(${jId})`, 'AF411', ICO.export));
-    btns.push(btn(`openFigureEditor(${jId})`, 'Edit', ICO.edit));
-    // v6.91: variant figures (source custom-local + variantOf) get their
-    // Delete control in the databox header instead of the action bar, so
-    // exclude it here for those; non-variant custom-local figures keep it.
+      btns.push(btn('open-af411', 'AF411', ICO.export, '', `data-fig-id="${eId}"`));
+    btns.push(btn('open-figure-editor', 'Edit', ICO.edit, '', `data-fig-id="${eId}"`));
     if (f.source === 'custom-local' && !f.variantOf)
-      btns.push(btn(`deleteCustomFig(${jId})`, 'Delete', ICO.trash, 'red-btn'));
-    // v6.91: "Add Copy" joins the action bar (was a standalone button under the
-    // databoxes). Only meaningful when this status actually shows copies.
+      btns.push(btn('delete-custom-fig', 'Delete', ICO.trash, 'red-btn', `data-fig-id="${eId}"`));
     const showsCopies = c.status === 'owned' || c.status === 'for-sale';
-    if (showsCopies) {
-      btns.push(btn(`addCopy(${jId})`, 'Add Copy', ICO.plus, 'purple-btn'));
-    }
+    if (showsCopies)
+      btns.push(btn('add-copy', 'Add Copy', ICO.plus, 'purple-btn', `data-fig-id="${eId}"`));
     if (supportsVariants)
-      btns.push(btn(`addVariant(${jId})`, 'Add Variant', ICO.plus, 'primary'));
+      btns.push(btn('add-variant', 'Add Variant', ICO.plus, 'primary', `data-fig-id="${eId}"`));
     const cols = Math.min(btns.length, 4);
     return `<div class="action-bar-bottom" style="grid-template-columns:repeat(${cols},1fr)">${btns.join('')}</div>`;
   })()}`;
@@ -1962,17 +1952,17 @@ function renderPhotoViewer() {
     : (userNs.length ? userNs[0] : -1);
   const isAlreadyDefault = !isStock && effectiveDefault === p.n;
   const showSetDefault = !isStock && figId && !isAlreadyDefault;
-  return `<div class="photo-viewer" onclick="if(event.target===this)closePhotoViewer()">
-    <button class="photo-viewer-close" onclick="closePhotoViewer()">${icon(ICO.x,28)}</button>
-    ${multi ? `<button class="photo-viewer-nav prev" onclick="event.stopPropagation();photoViewerNav(-1)">${icon(ICO.back,28)}</button>` : ''}
-    <div class="photo-viewer-img-wrap" onclick="event.stopPropagation()">
+  return `<div class="photo-viewer" data-action="close-photo-viewer-bg">
+    <button class="photo-viewer-close" data-action="close-photo-viewer">${icon(ICO.x,28)}</button>
+    ${multi ? `<button class="photo-viewer-nav prev" data-action="photo-viewer-nav" data-dir="-1">${icon(ICO.back,28)}</button>` : ''}
+    <div class="photo-viewer-img-wrap" data-action="photo-viewer-noop">
       <img src="${esc(p.url)}" alt="${esc(p.label || '')}">
       ${p.label ? `<div class="photo-viewer-label">${esc(p.label)}</div>` : ''}
       ${multi ? `<div class="photo-viewer-counter">${v.idx + 1} / ${v.photos.length}</div>` : ''}
-      ${showSetDefault ? `<button class="photo-viewer-default" onclick="event.stopPropagation();setDefaultPhoto(${jsArg(figId)},${p.n});window.toast&&window.toast('★ Set as default')" title="Use this as the list/grid thumbnail">★ Set as default</button>` : ''}
+      ${showSetDefault ? `<button class="photo-viewer-default" data-action="set-default-photo" data-fig-id="${esc(figId)}" data-photo-n="${p.n}" title="Use this as the list/grid thumbnail">★ Set as default</button>` : ''}
       ${isAlreadyDefault ? `<div class="photo-viewer-default-badge">★ Default</div>` : ''}
     </div>
-    ${multi ? `<button class="photo-viewer-nav next" onclick="event.stopPropagation();photoViewerNav(1)">${icon(ICO.chevR,28)}</button>` : ''}
+    ${multi ? `<button class="photo-viewer-nav next" data-action="photo-viewer-nav" data-dir="1">${icon(ICO.chevR,28)}</button>` : ''}
   </div>`;
 }
 

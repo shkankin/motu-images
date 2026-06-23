@@ -569,16 +569,21 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.19.0';
+const EDITOR_VERSION = 'v1.20.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
 });
 
-// ── Constants — MIRRORED FROM state.js ─────────────────────────────
-// These MUST stay in sync with /js/state.js. The audit harness at the
-// bottom of this <script> block will verify against state.js if it can
-// be fetched from the same origin.
+// ── Constants — derived from state.js ──────────────────────────────
+// v1.20.0 (C-3 fix): LINES, SUBLINES, and FACTIONS are no longer hardcoded
+// duplicates. They are parsed directly from js/state.js at boot by
+// syncConstantsFromStateJs() and hot-patched in place, so they can never
+// drift. The values below are FALLBACKS only — used when the editor is
+// opened via file:// or from a host that can't serve js/state.js (in which
+// case the editor works but will warn in the console if anything is stale).
+// ACCESSORIES remains hardcoded because it has extra grouping comments for
+// the editor UI and the audit still verifies it matches state.js.
 
 // v6.40: merge helper — appends custom subline entries into SUBLINES without
 // clobbering existing arrays for a given line key.
@@ -595,7 +600,7 @@ function _mergeCustomSublines(target, custom) {
 }
 
 // Display names match state.js LINES[].name. ID order matches the array.
-const LINES = [
+let LINES = [
   {id:'origins',        name:'Origins'},
   {id:'masterverse',    name:'Masterverse'},
   {id:'kids-core',      name:'Kids Core'},
@@ -619,7 +624,7 @@ const LINES = [
 //
 // Lines with no SUBLINES entry (mondo) are flat — figures from those
 // lines get a free-text group field in the editor.
-const SUBLINES = {
+let SUBLINES = {
   origins: [
     {key:'action',     label:'Action Figures',           groups:['Action Figures']},
     {key:'deluxe',     label:'Deluxe',                   groups:['Deluxe']},
@@ -704,7 +709,7 @@ const SUBLINES = {
   // mondo: no sublines — flat free-text group field
 };
 
-const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
+let FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
 
 // ── Accessories ────────────────────────────────────────────────────
 // Master list of accessories the editor shows as toggleable chips when
@@ -2571,42 +2576,91 @@ async function _doCommit(token) {
 
 // ── Audit harness ──────────────────────────────────────────────────
 // On startup, attempt to fetch /js/state.js and verify our embedded
-// LINES + SUBLINES are in sync. Logs a console warning if they drift —
-// catches the case where state.js gets a new line/subline added but
-// nobody updated this editor.
-async function auditAgainstStateJs() {
+// v1.20.0 (C-3 fix): parse LINES, SUBLINES, and FACTIONS directly from
+// state.js and hot-patch the module-level variables. This eliminates the
+// hardcoded duplicates — the fallback values above are only ever used if
+// this fetch fails (file:// / cross-origin hosting / network error).
+//
+// ACCESSORIES is verified-not-replaced: it has editor-specific grouping
+// comments in the hardcoded block, and divergence there is a real bug we
+// want to surface loudly (the app won't recognize mismatched accessories).
+async function syncConstantsFromStateJs() {
   try {
     const r = await fetch('js/state.js');
     if (!r.ok) return;
     const src = await r.text();
 
-    // Extract the LINES array's id values
+    // ── LINES ──────────────────────────────────────────────────────
+    // Parse every {id:'...', name:'...'} entry from the LINES array.
+    // We only need id + name for the editor (yr/mfr/sc are app-only).
     const linesBlock = src.match(/const LINES\s*=\s*\[([\s\S]*?)\];/);
     if (linesBlock) {
-      const realIds = [...linesBlock[1].matchAll(/id:\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
-      const ourIds = LINES.map(l => l.id);
-      const missing = realIds.filter(id => !ourIds.includes(id));
-      const extra = ourIds.filter(id => !realIds.includes(id));
-      if (missing.length) console.warn('[editor audit] LINES missing from editor:', missing);
-      if (extra.length) console.warn('[editor audit] LINES in editor but not state.js:', extra);
+      const parsed = [];
+      // Match each object literal in the array
+      const objRe = /\{[^}]*id\s*:\s*['"]([^'"]+)['"][^}]*name\s*:\s*['"]([^'"]+)['"][^}]*\}/g;
+      let m;
+      while ((m = objRe.exec(linesBlock[1])) !== null) {
+        parsed.push({ id: m[1], name: m[2] });
+      }
+      if (parsed.length >= LINES.length) {
+        LINES = parsed;
+      } else {
+        console.warn('[editor] syncConstantsFromStateJs: LINES parse yielded fewer entries than fallback — keeping fallback');
+      }
     }
 
-    // Extract SUBLINES top-level keys
+    // ── SUBLINES ───────────────────────────────────────────────────
+    // Reconstruct the SUBLINES object by extracting each top-level key
+    // and its array of {key, label, groups} entries. This is done with
+    // a two-pass approach: first split into per-line chunks, then parse
+    // each chunk's entries. Handles both 'key': and key: syntaxes.
     const subBlock = src.match(/const SUBLINES\s*=\s*\{([\s\S]*?)\n\};/);
     if (subBlock) {
-      // Match keys at start of line (top-level only). Handles 'kids-core': [
-      const realKeys = [...subBlock[1].matchAll(/^\s*['"]?([\w-]+)['"]?\s*:\s*\[/gm)].map(m => m[1]);
-      const ourKeys = Object.keys(SUBLINES);
-      const missing = realKeys.filter(k => !ourKeys.includes(k));
-      // v1.8: extra keys may be runtime-injected custom sublines — don't warn for those
-      const customKeys = new Set(Object.keys(customSublines));
-      const extra = ourKeys.filter(k => !realKeys.includes(k) && !customKeys.has(k));
-      if (missing.length) console.warn('[editor audit] SUBLINES missing from editor:', missing);
-      if (extra.length) console.warn('[editor audit] SUBLINES in editor but not state.js:', extra);
+      const parsed = {};
+      // Split on top-level keys: match lines like "  origins: [" or "  'kids-core': ["
+      // Each chunk runs from one key's "[" to the next key's "  <key>:".
+      const text = subBlock[1];
+      // Find all line-key positions
+      const keyRe = /^\s{2}['"]?([\w-]+)['"]?\s*:\s*\[/gm;
+      const keyPositions = [];
+      let km;
+      while ((km = keyRe.exec(text)) !== null) {
+        keyPositions.push({ lineId: km[1], start: km.index, contentStart: km.index + km[0].length });
+      }
+      for (let i = 0; i < keyPositions.length; i++) {
+        const { lineId, contentStart } = keyPositions[i];
+        const end = i + 1 < keyPositions.length ? keyPositions[i + 1].start : text.length;
+        const chunk = text.slice(contentStart, end);
+        const entries = [];
+        // Match each entry object: {key:'...', label:'...', groups:['...',...]}
+        const entryRe = /\{key\s*:\s*['"]([^'"]+)['"]\s*,\s*label\s*:\s*['"]([^'"]+)['"]\s*,\s*groups\s*:\s*(\[[^\]]+\])/g;
+        let em;
+        while ((em = entryRe.exec(chunk)) !== null) {
+          const groups = em[3].match(/['"]([^'"]+)['"]/g)?.map(s => s.replace(/['"]/g, '')) || [];
+          entries.push({ key: em[1], label: em[2], groups });
+        }
+        if (entries.length) parsed[lineId] = entries;
+        // Lines with no entries (e.g. mondo) are intentionally omitted — flat free-text
+      }
+      if (Object.keys(parsed).length > 0) {
+        // Merge parsed state.js sublines with any live custom sublines already loaded
+        // (custom sublines are user-defined, not in state.js, so we preserve them).
+        const merged = { ...parsed };
+        _mergeCustomSublines(merged, customSublines);
+        SUBLINES = merged;
+      } else {
+        console.warn('[editor] syncConstantsFromStateJs: SUBLINES parse yielded no entries — keeping fallback');
+      }
     }
 
-    // v1.6: extract ACCESSORIES list — must be identical or app won't
-    // recognize accessories saved from the editor.
+    // ── FACTIONS ───────────────────────────────────────────────────
+    const factBlock = src.match(/const FACTIONS\s*=\s*\[([^\]]+)\]/);
+    if (factBlock) {
+      const factions = factBlock[1].match(/['"]([^'"]+)['"]/g)?.map(s => s.replace(/['"]/g, '')) || [];
+      if (factions.length) FACTIONS = factions;
+    }
+
+    // ── ACCESSORIES audit (unchanged behaviour) ────────────────────
     const accBlock = src.match(/const ACCESSORIES\s*=\s*\[([\s\S]*?)\];/);
     if (accBlock) {
       const realAccs = [...accBlock[1].matchAll(/['"]([^'"]+)['"]/g)].map(m => m[1]);
@@ -2614,18 +2668,18 @@ async function auditAgainstStateJs() {
       const ourSet = new Set(ACCESSORIES);
       const missing = realAccs.filter(a => !ourSet.has(a));
       const extra = ACCESSORIES.filter(a => !realSet.has(a));
-      if (missing.length) console.warn('[editor audit] ACCESSORIES in state.js but not editor:', missing);
-      if (extra.length) console.warn('[editor audit] ACCESSORIES in editor but not state.js:', extra);
+      if (missing.length) console.warn('[editor] ACCESSORIES in state.js but not editor:', missing);
+      if (extra.length)   console.warn('[editor] ACCESSORIES in editor but not state.js:', extra);
       if (!missing.length && !extra.length) {
-        console.log('[editor audit] LINES + SUBLINES + ACCESSORIES match state.js ✓');
+        console.log('[editor] Constants synced from state.js ✓  (LINES, SUBLINES, FACTIONS live; ACCESSORIES matched)');
       }
     }
   } catch (e) {
-    // Same-origin fetch may fail if editor opened via file:// or hosted
-    // separately — that's fine, audit is best-effort.
+    // fetch failed (file:// / cross-origin / network) — fallback values stay, no disruption.
+    console.log('[editor] syncConstantsFromStateJs: could not reach js/state.js, using built-in fallbacks.');
   }
 }
-auditAgainstStateJs();
+syncConstantsFromStateJs();
 </script>
 </body>
 </html>

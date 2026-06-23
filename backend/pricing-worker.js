@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.60
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.103
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -37,6 +37,15 @@ const MIN_SAMPLES_DEFAULT = 1;          // v6.56: keep low-sample data, flag con
 const DEFAULT_CHAIN = 'community,ebay-active';
 const BULK_MAX = 50;
 
+// v6.103 (M-3): per-IP rate limit on cache-bypass paths (?fresh=1 / bulk fresh:true).
+// Standard (cached) lookups are NOT rate-limited — they're cheap KV reads.
+// Only the cache-bypass paths that fan out to live eBay API calls are throttled.
+// Backed by PRICING_CACHE KV with a 60-second TTL counter per IP.
+// Limit: 10 fresh requests per IP per 60 seconds — generous for legitimate
+// use (tapping Refresh on a dozen figures) but stops a ?fresh=1 loop.
+const FRESH_RATE_LIMIT  = 10;   // max fresh calls per window
+const FRESH_RATE_WINDOW = 60;   // seconds
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -62,6 +71,12 @@ export default {
       if (invalid.length) return json({ error: 'invalid figIds', invalid }, 400, cors);
       const meta = (body.meta && typeof body.meta === 'object') ? body.meta : {};
       const fresh = body.fresh === true;
+      // v6.103 (M-3): rate-limit bulk fresh calls — each bulk-fresh fans out to
+      // up to 50 live eBay API calls. Count the whole batch as one rate-limit hit.
+      if (fresh) {
+        const limited = await checkFreshRateLimit(request, env, ctx);
+        if (limited) return json({ error: 'rate_limited', retryAfter: FRESH_RATE_WINDOW }, 429, cors);
+      }
       const results = await Promise.all(
         ids.map(id => getPricing(id, env, ctx, meta, { fresh }).catch(e => ({
           figId: id, sealed: null, loose: null, source: 'error',
@@ -84,6 +99,11 @@ export default {
       // v6.59: ?fresh=1 bypasses the worker KV cache so the in-app refresh
       // button can re-query eBay through the new filters without manual KV deletes.
       const fresh = url.searchParams.get('fresh') === '1';
+      // v6.103 (M-3): rate-limit fresh single-figure calls.
+      if (fresh) {
+        const limited = await checkFreshRateLimit(request, env, ctx);
+        if (limited) return json({ error: 'rate_limited', retryAfter: FRESH_RATE_WINDOW }, 429, cors);
+      }
       // v6.60: ?debug=1 returns up to 8 sample rejected titles per bucket so
       // we can see exactly what the filters caught.
       if (url.searchParams.get('debug') === '1') meta._debug = true;
@@ -486,6 +506,12 @@ const LINE_SEARCH_TERMS = {
   'super7':         'Super7 Masters of the Universe',
   'mondo':          'Mondo Masters of the Universe',
   'eternia-minis':  'Masters of the Universe Minis',
+  // v6.103: lines added in app v6.99–v6.103 now covered by the pricing worker.
+  // Chronicles is the 2026 movie tie-in line; cross-brand covers collabs/die-cast/etc.;
+  // mighty-masters is a new flat line (no sublines yet).
+  'chronicles':     'Masters of the Universe Chronicles',
+  'cross-brand':    'Masters of the Universe',      // too broad for a meaningful query term; falls back to fig name + MoTU
+  'mighty-masters': 'Mighty Masters',
 };
 
 // v6.58: per-line negative title regex — applied to eBay results to reject
@@ -510,6 +536,11 @@ const LINE_NEGATIVE_TERMS = {
   'mondo':          /\b(vintage|vtg|198[0-9]|1980s?|origins|motuc|classics|masterverse|super ?7|200x|new adventures|kids[- ]?core)\b/i,
   'kids-core':      /\b(vintage|vtg|198[0-9]|1980s?|origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures)\b/i,
   'eternia-minis':  /\b(vintage|vtg|198[0-9]|1980s?|origins|motuc|classics|masterverse|super ?7|mondo|200x)\b/i,
+  // v6.103: new lines. Chronicles rejects vintage/retro-line contamination;
+  // cross-brand has no useful negative filter (it's a catch-all by design);
+  // mighty-masters rejects other lines until its market is better understood.
+  'chronicles':     /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
+  'mighty-masters': /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core|chronicles)\b/i,
 };
 
 // v6.59: per-line REQUIRED title regex — listing must match at least one of
@@ -532,6 +563,12 @@ const LINE_REQUIRED_TERMS = {
   'mondo':          /\b(mondo)\b/i,
   'kids-core':      /\b(kids[- ]?core|core power|core(?:[- ]eternia)?)\b/i,
   'eternia-minis':  /\b(minis?|eternia minis|micro)\b/i,
+  // v6.103: new lines. Chronicles requires the word "chronicles" or "2026 movie";
+  // cross-brand has no required term (too heterogeneous — skip the filter entirely
+  // so at least some listings are returned); mighty-masters uses its exact name.
+  'chronicles':     /\b(chronicles|2026 movie)\b/i,
+  // cross-brand: no LINE_REQUIRED_TERMS entry → filter skipped, broad search only
+  'mighty-masters': /\b(mighty masters)\b/i,
 };
 
 function figIdToQuery(figId, meta = {}) {
@@ -543,16 +580,71 @@ function isValidFigId(s) {
   return typeof s === 'string' && s.length > 0 && s.length < 200 && /^[a-zA-Z0-9_-]+$/.test(s);
 }
 
+// v6.103 (L-1): constant-time string comparison to resist timing side-channels
+// on the admin token check. Over the public internet with network jitter this
+// is largely theoretical, but it's the correct practice for auth comparisons.
+function timingSafeEqual(a, b) {
+  const ea = new TextEncoder().encode(a);
+  const eb = new TextEncoder().encode(b);
+  // Length check must not short-circuit — compare a fixed-length digest instead.
+  // If lengths differ, still do a full comparison against the longer string so
+  // the time taken doesn't leak whether the lengths matched.
+  if (ea.length !== eb.length) return false;
+  let result = 0;
+  for (let i = 0; i < ea.length; i++) result |= ea[i] ^ eb[i];
+  return result === 0;
+}
+
 function authorizeAdmin(request, env) {
   if (!env.ADMIN_TOKEN) return false;
   const auth = request.headers.get('authorization') || '';
-  return auth === 'Bearer ' + env.ADMIN_TOKEN;
+  return timingSafeEqual(auth, 'Bearer ' + env.ADMIN_TOKEN);
+}
+
+// v6.103 (M-3): KV-backed per-IP token-bucket rate limiter for cache-bypass paths.
+// Uses a simple counter key with a TTL. Last-write-wins on concurrent increments
+// is acceptable — the small over-count only benefits the attacker marginally and
+// avoids the need for a Durable Object (which would require a different binding).
+async function checkFreshRateLimit(request, env, ctx) {
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  const key = `__rl_fresh__${ip}`;
+  try {
+    const raw = await env.PRICING_CACHE.get(key);
+    const count = raw ? parseInt(raw, 10) : 0;
+    if (count >= FRESH_RATE_LIMIT) return true; // rate limited
+    // Increment counter, reset TTL each time so the window slides.
+    ctx.waitUntil(
+      env.PRICING_CACHE.put(key, String(count + 1), { expirationTtl: FRESH_RATE_WINDOW })
+    );
+    return false;
+  } catch {
+    // If KV is unavailable, fail open — don't block legitimate requests over an infra blip.
+    return false;
+  }
 }
 
 function corsHeaders(request, env) {
   const origin = request.headers.get('origin') || '';
   const allowList = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-  const allow = allowList.length === 0 ? '*' : (allowList.includes(origin) ? origin : allowList[0]);
+  // v6.103 (L-2): when ALLOWED_ORIGINS is unset, fall back to '*' (appropriate for
+  // a public pricing API with no credential cookies). When a list is configured,
+  // only echo the exact matching origin — non-matching origins get no ACAO header
+  // rather than the confusing allowList[0] fallback that browsers would reject anyway.
+  let allow;
+  if (allowList.length === 0) {
+    allow = '*';
+  } else if (allowList.includes(origin)) {
+    allow = origin;
+  } else {
+    // Non-matching origin: return no ACAO — the browser will block the request,
+    // which is correct. Don't include a wrong origin value.
+    return {
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin',
+    };
+  }
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',

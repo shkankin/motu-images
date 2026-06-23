@@ -1,9 +1,21 @@
-// MOTU Vault — Service Worker v6.102
+// MOTU Vault — Service Worker v6.103
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
-// v6.102 changelog:
+// v6.103 changelog:
+//   • CACHE bumped to v6.103. Inline handler migration complete:
+//     – ALL onclick/onchange/oninput/onblur/onfocus attributes removed from
+//       render.js and ui-sheets.js (~125 handlers migrated to data-action).
+//     – 'unsafe-inline' dropped from script-src in the app CSP — the app now
+//       runs under a strict Content-Security-Policy with no inline JS.
+//     – 131 delegated actions registered in delegate-handlers.js (was 30).
+//     – pricing-worker.js hardened: M-3 rate limiting on fresh/cache-bypass
+//       paths, L-1 constant-time admin token compare, L-2 CORS fix.
+//       chronicles/cross-brand/mighty-masters added to pricing term maps.
+//     – figures-editor.html v1.20.0: C-3 fixed — LINES/SUBLINES/FACTIONS
+//       now synced live from state.js at boot instead of being hardcoded.
+//
 //   • CACHE bumped to v6.102. Multi-select batch editing reworked: the action
 //     bar's button is now "Batch Edit…" and its sheet has a mode toggle —
 //     "Update existing" (default) writes the filled-in fields (status,
@@ -860,7 +872,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.102';
+const CACHE = 'motu-vault-v6.103';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

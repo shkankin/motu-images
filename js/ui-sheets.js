@@ -75,13 +75,13 @@ function renderSheet() {
     </div>`;
   }
 
-  return `<div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this||event.target.classList.contains('sheet-backdrop'))closeSheet()">
+  return `<div class="sheet-overlay" id="sheetOverlay" data-action="close-sheet-bg">
     <div class="sheet-backdrop"></div>
     <div class="sheet-panel">
       <div class="sheet-handle"><div class="sheet-handle-bar"></div></div>
       <div class="sheet-header">
         <div class="sheet-title">${titles[S.sheet]||'Options'}</div>
-        <button class="sheet-close" onclick="closeSheet()">${icon(ICO.x,20)}</button>
+        <button class="sheet-close" data-action="close-sheet">${icon(ICO.x,20)}</button>
       </div>
       <div class="sheet-body">${body}</div>
       ${S.sheet === 'wantListView' ? `<div class="sheet-footer" style="text-align:center">
@@ -122,12 +122,12 @@ function renderLocationsSheet() {
   const idx = _locIndex();
   if (S._locView && idx.has(S._locView)) {
     const entries = idx.get(S._locView).sort((a, b) => a.fig.name.localeCompare(b.fig.name));
-    let h = `<button onclick="patchLocSheet(null)" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;margin-bottom:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:600">‹ All locations</button>
+    let h = `<button data-action="loc-sheet-back" style="display:inline-flex;align-items:center;gap:6px;padding:8px 12px;margin-bottom:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:600">‹ All locations</button>
       <div style="font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold);margin-bottom:10px">${esc(S._locView)}</div>`;
     entries.forEach(({ fig, copies }) => {
       const img = (S.customPhotos[fig.id] && photoStore.get(fig.id)) || (!S.imgErrors[fig.id] && fig.image) || '';
       const condStr = copies.map(cp => cp.condition).filter(Boolean).join(', ');
-      h += `<button onclick="closeSheet();openFig(${jsArg(fig.id)})" style="width:100%;display:flex;align-items:center;gap:12px;padding:9px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
+      h += `<button data-action="loc-open-fig" data-fig-id="${esc(fig.id)}" style="width:100%;display:flex;align-items:center;gap:12px;padding:9px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
         <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center">
           ${img ? `<img src="${esc(img)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">` : `<span style="font-family:'Cinzel',serif;color:var(--t3);font-size:16px">${esc(fig.name[0])}</span>`}
         </div>
@@ -149,7 +149,7 @@ function renderLocationsSheet() {
   locs.forEach(loc => {
     const entries = idx.get(loc);
     const copies = entries.reduce((n, e) => n + e.copies.length, 0);
-    h += `<button onclick="patchLocSheet(${jsArg(loc)})" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
+    h += `<button data-action="loc-drill" data-loc="${esc(loc)}" style="width:100%;display:flex;align-items:center;gap:12px;padding:13px 0;border:none;background:none;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);text-align:left;cursor:pointer">
       <span style="color:var(--acc)">${icon(ICO.box || ICO.tag, 18)}</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(loc)}</div>
@@ -170,13 +170,13 @@ window.patchLocSheet = (loc) => {
 
 function renderMenuSheet() {
   const menuItems = [
-    {label:'Collection Stats',    icon:ICO.heart,   action:"openSheet('stats')"},
-    {label:'Share Want List',     icon:ICO.share,   action:"openSheet('share')"},
-    {label:'Theme',               icon:ICO.palette, action:"openSheet('theme')"},
-    {label:'Manage Collections',  icon:ICO.sort,    action:"closeSheet();S.editingOrder=true;S.tab='lines';S.activeLine=null;S.activeSubline=null;render()"},
-    {label:'Import',              icon:ICO.import,  action:"openSheet('import')"},
-    {label:'Export / Backup' + (backupDue() ? ` <span style="font-size:9px;font-weight:700;color:var(--bg);background:var(--gold);padding:2px 7px;border-radius:99px;vertical-align:1px">${getBackupMeta().changes} UNSAVED</span>` : ''), icon:ICO.export,  action:"openSheet('export')"},
-    {label:'Pricing Backend',     icon:ICO.tag,     action:"openSheet('pricing')"},
+    {label:'Collection Stats',    icon:ICO.heart,   action:'open-sheet', sheet:'stats'},
+    {label:'Share Want List',     icon:ICO.share,   action:'open-sheet', sheet:'share'},
+    {label:'Theme',               icon:ICO.palette, action:'open-sheet', sheet:'theme'},
+    {label:'Manage Collections',  icon:ICO.sort,    action:'menu-manage-collections'},
+    {label:'Import',              icon:ICO.import,  action:'open-sheet', sheet:'import'},
+    {label:'Export / Backup' + (backupDue() ? ` <span style="font-size:9px;font-weight:700;color:var(--bg);background:var(--gold);padding:2px 7px;border-radius:99px;vertical-align:1px">${getBackupMeta().changes} UNSAVED</span>` : ''), icon:ICO.export, action:'open-sheet', sheet:'export'},
+    {label:'Pricing Backend',     icon:ICO.tag,     action:'open-sheet', sheet:'pricing'},
   ];
   // v6.68: Locations browser — only shown once at least one copy has a
   // location set, mirroring the Viewed Wishlists pattern below.
@@ -185,7 +185,7 @@ function renderMenuSheet() {
     menuItems.splice(3, 0, {
       label: `Locations (${_locs.length})`,
       icon: ICO.box || ICO.tag,
-      action: "S._locView=null;openSheet('locations')",
+      action: 'menu-open-locations',
     });
   }
   // v6.31: insert "Viewed Wishlists" only when there's at least one entry,
@@ -195,21 +195,19 @@ function renderMenuSheet() {
     menuItems.push({
       label: `Viewed Wishlists (${wlHistory.length})`,
       icon: ICO.box || ICO.heart,
-      action: "openSheet('wishlistHistory')",
+      action: 'open-sheet', sheet: 'wishlistHistory',
     });
   }
   let html = menuItems.map(m => `
-    <button onclick="${m.action}" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+    <button data-action="${esc(m.action)}" ${m.sheet ? `data-sheet="${esc(m.sheet)}"` : ''} style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc)">${icon(m.icon, 20)}</span>
       ${m.label}
       <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
     </button>`).join('');
-  // v5.00: PTR toggle. Default off — sync runs on page load and visibility
-  // change anyway, and PTR can fire spuriously on sensitive touch hardware.
   const ptrOn = !!store.get('motu-ptr-enabled');
   html += `<div style="height:1px;background:var(--bd);margin:14px 4px"></div>
     <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">Sync</div>
-    <button onclick="store.set('motu-ptr-enabled',${ptrOn?'false':'true'});render()" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+    <button data-action="toggle-ptr" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc)">${icon(ICO.refresh || ICO.sort, 20)}</span>
       <span style="flex:1">Pull-to-refresh
         <span style="display:block;font-size:11px;color:var(--t3);font-weight:400;margin-top:2px;line-height:1.4">Pull down at the top of the list to sync. Off by default to avoid accidental refreshes.</span>
@@ -224,12 +222,12 @@ function renderMenuSheet() {
   const tourLabel = tState.seen ? 'Replay 1-minute tour' : 'Take the 1-minute tour';
   html += `<div style="height:1px;background:var(--bd);margin:14px 4px"></div>
     <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">Help</div>
-    <button onclick="closeSheet();window.startTutorial && window.startTutorial()" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+    <button data-action="menu-start-tutorial" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc);font-size:18px">🎓</span>
       <span style="flex:1">${tourLabel}</span>
       <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
     </button>
-    <button onclick="openSheet('about')" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+    <button data-action="open-sheet" data-sheet="about" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
       <span style="color:var(--acc);font-size:18px">ⓘ</span>
       <span style="flex:1">About MOTU Collector</span>
       <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
@@ -256,10 +254,10 @@ function renderPricingSheet() {
   <input id="pricingBackendKey" type="password" autocomplete="off" placeholder="${configured && cfg.hasKey ? '••••••••' : 'Leave blank if your backend is public'}"
     style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-family:ui-monospace,monospace;font-size:13px;margin-bottom:14px">
   <div style="display:flex;gap:8px">
-    <button onclick="savePricingBackend()" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">Save & test</button>
-    ${configured ? `<button onclick="disconnectPricingBackend()" style="padding:12px 16px;border-radius:10px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">Disconnect</button>` : ''}
+    <button data-action="save-pricing-backend" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">Save & test</button>
+    ${configured ? `<button data-action="disconnect-pricing-backend" style="padding:12px 16px;border-radius:10px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">Disconnect</button>` : ''}
   </div>
-  ${configured ? `<button onclick="window.clearPricingCache && window.clearPricingCache();window.toast && window.toast('✓ Pricing cache cleared')" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">Clear pricing cache</button>` : ''}`;
+  ${configured ? `<button data-action="clear-pricing-cache" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:500">Clear pricing cache</button>` : ''}`;
 }
 
 window.savePricingBackend = async () => {
@@ -493,7 +491,7 @@ function renderFilterSheet() {
   const lineExpanded = S._filterLineExpanded || !!lineFilter;
   let html = '';
   if (hasFilters()) {
-    html += `<button class="clear-all-btn" onclick="patchFilter('clear')" style="width:100%;margin-bottom:14px">Reset all filters</button>`;
+    html += `<button class="clear-all-btn" data-action="filter" data-filter-op="clear" style="width:100%;margin-bottom:14px">Reset all filters</button>`;
   }
 
   // Line — collapsed by default, expand via chevron. Active line shown
@@ -501,14 +499,14 @@ function renderFilterSheet() {
   const activeLineName = lineFilter
     ? (LINES.find(l => l.id === lineFilter)?.name || lineFilter)
     : 'All Lines';
-  html += `<button class="filter-section-header" onclick="patchFilter('toggleLineExpand')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;background:none;border:none;color:var(--t1);text-align:left;cursor:pointer">
+  html += `<button class="filter-section-header" data-action="filter" data-filter-op="toggleLineExpand" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 0 8px;background:none;border:none;color:var(--t1);text-align:left;cursor:pointer">
     <span class="text-upper text-dim text-xs" style="letter-spacing:1.2px">Line · <span style="color:var(--t1);font-weight:600;letter-spacing:0">${esc(activeLineName)}</span></span>
     <span style="color:var(--t3);font-size:14px;transform:rotate(${lineExpanded?'90':'0'}deg);transition:transform 0.15s">›</span>
   </button>`;
   if (lineExpanded) {
     html += '<div class="chip-group" style="margin-bottom:14px">';
     [{id:'',name:'All Lines'}, ...LINES].forEach(l => {
-      html += `<button class="chip ${lineFilter===l.id?'active':''}" onclick="patchFilter('line','${l.id}')">${esc(l.name)}</button>`;
+      html += `<button class="chip ${lineFilter===l.id?'active':''}" data-action="filter" data-filter-op="line" data-filter-val="${esc(l.id)}">${esc(l.name)}</button>`;
     });
     html += '</div>';
   }
@@ -519,28 +517,28 @@ function renderFilterSheet() {
   ];
   statusOpts.forEach(s => {
     const active = S.filterStatus === s.v;
-    html += `<button class="chip ${active?'active':''}" onclick="patchFilter('status','${s.v}')">${s.l}</button>`;
+    html += `<button class="chip ${active?'active':''}" data-action="filter" data-filter-op="status" data-filter-val="${esc(s.v)}">${s.l}</button>`;
   });
 
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Faction</div><div class="chip-group">';
   ['', ...FACTIONS].forEach(f => {
-    html += `<button class="chip ${S.filterFaction===f?'active':''}" onclick="patchFilter('faction',${jsArg(f)})">${f||'All'}</button>`;
+    html += `<button class="chip ${S.filterFaction===f?'active':''}" data-action="filter" data-filter-op="faction" data-filter-val="${esc(f)}">${f||'All'}</button>`;
   });
 
   // Loadout filter — implicit-owned, only meaningful for figures with
   // a loadout defined. v6.37.
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Loadout (Owned only)</div><div class="chip-group">';
   const lo = S.filterLoadout || '';
-  html += `<button class="chip ${lo===''?'active':''}" onclick="patchFilter('loadout','')">All</button>`;
-  html += `<button class="chip ${lo==='complete'?'active':''}" onclick="patchFilter('loadout','complete')">Complete</button>`;
-  html += `<button class="chip ${lo==='incomplete'?'active':''}" onclick="patchFilter('loadout','incomplete')">Incomplete</button>`;
+  html += `<button class="chip ${lo===''?'active':''}" data-action="filter" data-filter-op="loadout" data-filter-val="">All</button>`;
+  html += `<button class="chip ${lo==='complete'?'active':''}" data-action="filter" data-filter-op="loadout" data-filter-val="complete">Complete</button>`;
+  html += `<button class="chip ${lo==='incomplete'?'active':''}" data-action="filter" data-filter-op="loadout" data-filter-val="incomplete">Incomplete</button>`;
 
   // Misc binary toggles in a single row — Variants + Search Scope.
   // Reduces the section count and surfaces both as small toggles.
   html += '</div><div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Misc</div><div class="chip-group">';
-  html += `<button class="chip ${S.filterVariants?'active':''}" onclick="patchFilter('variants',${!S.filterVariants})">${S.filterVariants?'☑':'☐'} Has variants</button>`;
+  html += `<button class="chip ${S.filterVariants?'active':''}" data-action="filter" data-filter-op="variants" data-filter-val="${!S.filterVariants}">${S.filterVariants?'☑':'☐'} Has variants</button>`;
   const scope = S.searchScope || 'all';
-  html += `<button class="chip ${scope==='name'?'active':''}" onclick="patchFilter('searchScope',${scope==='name'?"'all'":"'name'"})">${scope==='name'?'☑':'☐'} Name-only search</button>`;
+  html += `<button class="chip ${scope==='name'?'active':''}" data-action="filter" data-filter-op="searchScope" data-filter-val="${scope==='name'?'all':'name'}">${scope==='name'?'☑':'☐'} Name-only search</button>`;
   html += '</div>';
 
   return html;
@@ -583,7 +581,7 @@ function renderSortSheet() {
     {v:'wave',l:'Wave'},{v:'name',l:'Name A → Z'},{v:'name-desc',l:'Name Z → A'},
     {v:'retail',l:'Price (low → high)'},{v:'retail-desc',l:'Price (high → low)'},
   ];
-  return opts.map(o => `<button class="sort-option ${S.sortBy===o.v?'active':''}" onclick="S.sortBy='${o.v}';store.set('motu-sort',S.sortBy);closeSheet()">
+  return opts.map(o => `<button class="sort-option ${S.sortBy===o.v?'active':''}" data-action="set-sort" data-sort="${esc(o.v)}">
     ${o.l}${S.sortBy===o.v ? icon(ICO.check,18) : ''}
   </button>`).join('');
 }
@@ -592,18 +590,18 @@ function renderImportSheet() {
   return `<p class="text-md text-muted" style="margin-bottom:16px;line-height:1.6">
     Import from ActionFigure411.com CSV, a MOTU Collector CSV export, a JSON collection backup, or an app settings file. The format is auto-detected.
   </p>
-  <div class="overwrite-toggle" onclick="this.querySelector('.checkbox').classList.toggle('checked')">
+  <div class="overwrite-toggle" data-action="toggle-overwrite">
     <div class="checkbox"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
     <div>
       <div class="text-md" style="font-weight:500">Overwrite existing</div>
       <div class="text-sm text-dim">Re-import figures already marked as owned</div>
     </div>
   </div>
-  <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvInput').click()">
+  <div class="drop-zone" id="dropZone" data-action="trigger-file-import">
     <div style="font-size:48px;margin-bottom:12px">📂</div>
     <div class="text-md" style="font-weight:500;margin-bottom:4px">Drop CSV or JSON backup here</div>
     <div class="text-sm text-dim">or tap to browse files</div>
-    <input type="file" id="csvInput" accept=".csv,.json,text/csv,application/json,application/vnd.ms-excel,text/comma-separated-values,text/plain" style="display:none" onchange="handleImportFile(this)">
+    <input type="file" id="csvInput" accept=".csv,.json,text/csv,application/json,application/vnd.ms-excel,text/comma-separated-values,text/plain" style="display:none" data-change-action="handle-import-file">
   </div>`;
 }
 
@@ -618,7 +616,7 @@ function renderBatchEditSheet() {
   if (!be.mode) be.mode = 'update';
   const isUpdate = be.mode === 'update';
 
-  const seg = (val, label) => `<button onclick="S.batchEdit.mode='${val}';refreshBatchSheet()" style="flex:1;padding:9px 8px;border-radius:9px;border:1px solid ${be.mode===val?'var(--acc)':'var(--bd)'};background:${be.mode===val?'color-mix(in srgb,var(--acc) 16%,var(--bg3))':'var(--bg3)'};color:${be.mode===val?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:${be.mode===val?'700':'500'}">${label}</button>`;
+  const seg = (val, label) => `<button data-action="batch-set-mode" data-mode="${val}" style="flex:1;padding:9px 8px;border-radius:9px;border:1px solid ${be.mode===val?'var(--acc)':'var(--bd)'};background:${be.mode===val?'color-mix(in srgb,var(--acc) 16%,var(--bg3))':'var(--bg3)'};color:${be.mode===val?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:${be.mode===val?'700':'500'}">${label}</button>`;
 
   // Status: update mode can leave it alone; add mode always assigns one.
   const statusOpts = (isUpdate ? `<option value="" ${!be.status?'selected':''}>— Keep current —</option>` : '') +
@@ -636,41 +634,41 @@ function renderBatchEditSheet() {
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Status</div>
-      <select onchange="S.batchEdit.status=this.value">
+      <select data-change-action="batch-set-status-field">
         ${statusOpts}
       </select>
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Condition (optional)</div>
-      <select onchange="S.batchEdit.condition=this.value">
+      <select data-change-action="batch-set-condition">
         <option value="">${isUpdate ? '— Leave unchanged —' : '— No condition —'}</option>
         ${CONDITIONS.map(c => `<option value="${esc(c)}" ${be.condition===c?'selected':''}>${esc(c)}</option>`).join('')}
       </select>
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Variant (optional)</div>
-      <input type="text" value="${esc(be.variant)}" placeholder="e.g. Dark Face" oninput="S.batchEdit.variant=this.value">
+      <input type="text" value="${esc(be.variant)}" placeholder="e.g. Dark Face" data-input-action="batch-set-variant">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Price Paid (optional)</div>
-      <input type="number" step="0.01" value="${esc(be.paid)}" placeholder="$0.00" oninput="S.batchEdit.paid=this.value">
+      <input type="number" step="0.01" value="${esc(be.paid)}" placeholder="$0.00" data-input-action="batch-set-paid">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Date Acquired (optional)</div>
-      <input type="text" inputmode="numeric" maxlength="7" value="${esc(be.acquired || '')}" placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}" oninput="formatAcquired(this);S.batchEdit.acquired=this.value">
+      <input type="text" inputmode="numeric" maxlength="7" value="${esc(be.acquired || '')}" placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}" data-input-action="batch-format-acquired">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Location (optional)</div>
-      <input type="text" value="${esc(be.location || '')}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" oninput="S.batchEdit.location=this.value">
+      <input type="text" value="${esc(be.location || '')}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-input-action="batch-set-location">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Notes (optional)</div>
-      <textarea rows="3" placeholder="Notes…" oninput="S.batchEdit.notes=this.value">${esc(be.notes)}</textarea>
+      <textarea rows="3" placeholder="Notes…" data-input-action="batch-set-notes">${esc(be.notes)}</textarea>
     </div>
     <div style="height:1px;background:var(--bd);margin:8px 0 16px"></div>
     <div style="display:flex;gap:10px">
-      <button onclick="closeSheet()" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
-      <button onclick="applyBatchEdit()" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">${isUpdate ? 'Apply to' : 'Add to'} ${n}</button>
+      <button data-action="close-sheet" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
+      <button data-action="apply-batch-edit" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">${isUpdate ? 'Apply to' : 'Add to'} ${n}</button>
     </div>`;
   return h;
 }
@@ -732,16 +730,15 @@ function renderEditFigureSheet() {
   // This override survives sync since applyOverrides runs after every fetch.
   const curLine = ov.line || f.line || '';
   h += row('line', 'Line',
-    `<select onchange="setOverrideField(${jFigId},'line',this.value);refreshEditSheet()">
+    `<select data-change-action="edit-set-line" data-fig-id="${esc(figId)}">
       <option value="">— Use source —</option>
       ${LINES.map(l => `<option value="${esc(l.id)}" ${curLine===l.id?'selected':''}>${esc(l.name)}</option>`).join('')}
     </select>`,
     f.line && !ov.line ? `Source: ${esc(ln(f.line))}` : (ov.line ? `Overrides source: ${esc(ln(f.line))}` : '')
   );
 
-  // Faction
   h += row('faction', 'Faction',
-    `<select onchange="setOverrideField(${jFigId},'faction',this.value);refreshEditSheet()">
+    `<select data-change-action="edit-set-faction" data-fig-id="${esc(figId)}">
       <option value="">— Use source —</option>
       ${FACTIONS.map(opt => `<option value="${esc(opt)}" ${(ov.faction||f.faction)===opt?'selected':''}>${esc(opt)}</option>`).join('')}
     </select>`,
@@ -761,47 +758,36 @@ function renderEditFigureSheet() {
   const curGroup = ov.group || f.group || '';
   const groupInput = `
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      ${lineGroups.map(g => `<button type="button" onclick="setOverrideField(${jFigId},'group',${jsArg(g)});refreshEditSheet()" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
+      ${lineGroups.map(g => `<button type="button" data-action="edit-set-group" data-fig-id="${esc(figId)}" data-group="${esc(g)}" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
     </div>
-    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" onchange="setOverrideField(${jFigId},'group',this.value);refreshEditSheet()">`;
+    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" data-change-action="edit-set-group-text" data-fig-id="${esc(figId)}">`;
   h += row('group', 'Group', groupInput,
     f.group && !ov.group ? `Source: ${esc(f.group)}` : ''
   );
 
-  // Wave
   h += row('wave', 'Wave',
-    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" onchange="setOverrideField(${jFigId},'wave',this.value);refreshEditSheet()">`,
+    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" data-change-action="edit-set-wave" data-fig-id="${esc(figId)}">`,
     f.wave && !ov.wave ? `Source: ${esc(f.wave)}` : ''
   );
 
-  // Year
   h += row('year', 'Year',
-    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" onchange="setOverrideField(${jFigId},'year',this.value?Number(this.value):'');refreshEditSheet()">`,
+    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" data-change-action="edit-set-year" data-fig-id="${esc(figId)}">`,
     f.year && !ov.year ? `Source: ${esc(f.year)}` : ''
   );
 
-  // Retail price
   h += row('retail', 'Retail Price',
-    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" onchange="setOverrideField(${jFigId},'retail',this.value?Number(this.value):'');refreshEditSheet()">`,
+    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" data-change-action="edit-set-retail" data-fig-id="${esc(figId)}">`,
     f.retail && !ov.retail ? `Source: $${Number(f.retail).toFixed(2)}` : ''
   );
 
-  // Name
-  let sourceName = '';
-  if (ov.name) {
-    const cached = bigGet(CACHE_KEY);
-    const src = cached?.rows?.find(r => r.id === figId);
-    if (src && src.name && src.name !== ov.name) sourceName = src.name;
-  }
   h += row('name', 'Name',
-    `<input type="text" value="${esc(ov.name || f.name || '')}" onchange="setOverrideField(${jFigId},'name',this.value);refreshEditSheet()">`,
+    `<input type="text" value="${esc(ov.name || f.name || '')}" data-change-action="edit-set-name" data-fig-id="${esc(figId)}">`,
     sourceName ? `Source: ${esc(sourceName)}` : ''
   );
 
-  // Reset button — only meaningful when there's something to reset
   if (has) {
     h += `<div style="height:1px;background:var(--bd);margin:18px 0"></div>
-    <button onclick="resetFigureOverrides(${jFigId})" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
+    <button data-action="reset-fig-overrides" data-fig-id="${esc(figId)}" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;border:1px solid var(--rd);background:color-mix(in srgb,var(--rd) 10%,transparent);color:var(--rd);font-size:14px;font-weight:600">
       Reset all edits to source
     </button>`;
   }
@@ -835,7 +821,7 @@ window.openFigureEditor = figId => {
 
 function renderThemeSheet() {
   return Object.entries(THEMES).map(([key, th]) =>
-    `<button class="theme-option" style="border-color:${S.theme===key?th.acc:'var(--bd)'};background:${th.bg}" onclick="setTheme('${key}')">
+    `<button class="theme-option" style="border-color:${S.theme===key?th.acc:'var(--bd)'};background:${th.bg}" data-action="set-theme" data-theme="${esc(key)}">
       <div class="swatch" style="background:linear-gradient(135deg,${th.gold},${th.acc})"></div>
       <div style="flex:1">
         <div class="font-display" style="font-size:15px;color:${th.fg||'var(--t1)'}">${th.name}</div>

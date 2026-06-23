@@ -7,18 +7,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#06060c">
 <meta name="color-scheme" content="dark light">
-<!-- v6.26: transitional Content-Security-Policy. 'unsafe-inline' for script
-     stays for now because the app uses inline onclick everywhere; once that's
-     migrated to event delegation, drop 'unsafe-inline' from script-src. The
-     other directives still provide meaningful protection: img/connect/font
-     sources are tightly scoped, frame-ancestors blocks clickjacking, base-uri
-     prevents <base href> hijacking, form-action denies submissions.
-     v6.27: no policy changes — directives remain valid.
-     v6.28: connect-src widened to https: so the user can configure any
-     pricing backend URL (Cloudflare Worker on workers.dev, custom domain,
-     etc.) without needing to edit the CSP. The backend URL is stored
-     locally and only used for /pricing/<figId> reads. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
+<!-- v6.103: strict Content-Security-Policy. 'unsafe-inline' removed from
+     script-src — all event handlers now use data-action delegation
+     (delegate.js + delegate-handlers.js). Inline onclick/onchange/oninput
+     attributes have been fully eliminated from render.js and ui-sheets.js.
+     The backend URL is stored in localStorage so it never needs to be
+     inlined, and no CDN scripts are loaded from the main app shell.
+     style-src retains 'unsafe-inline' because the theming system relies
+     heavily on CSS custom properties set via inline style attributes on
+     elements (e.g. --st-c, background gradients, dynamic widths), which
+     are distinct from inline <style> blocks and <style> attributes; these
+     are already a controlled pattern with no user-controlled data. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
+
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="description" content="Track your Masters of the Universe action figure collection — works offline, no account needed.">
