@@ -12599,6 +12599,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-evil-lyn-mqqapftg",
+    "name": "Evil-Lyn",
+    "sourceName": "Evil-Lyn",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-evil-lyn-mqqapftg",
+    "source": "manual"
+  },
+  {
     "id": "extendar-3777",
     "name": "Extendar",
     "line": "original",
@@ -12625,6 +12639,20 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-faker-mqqaqsez",
+    "name": "Faker",
+    "sourceName": "Faker",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-faker-mqqaqsez",
+    "source": "manual"
   },
   {
     "id": "faker-hard-head-4244",
@@ -13124,6 +13152,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-man-at-arms-mqqaroz6",
+    "name": "Man-At-Arms",
+    "sourceName": "Man-At-Arms",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-man-at-arms-mqqaroz6",
+    "source": "manual"
+  },
+  {
     "id": "man-e-faces-2839",
     "name": "Man-E-Faces",
     "line": "original",
@@ -13207,6 +13249,20 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-mer-man-mqqassls",
+    "name": "Mer-Man",
+    "sourceName": "Mer-Man",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-mer-man-mqqassls",
+    "source": "manual"
   },
   {
     "id": "mermista-5494",
@@ -13769,6 +13825,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-skeletor-mqqatvmb",
+    "name": "Skeletor",
+    "sourceName": "Skeletor",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-skeletor-mqqatvmb",
+    "source": "manual"
+  },
+  {
     "id": "skeletor-the-original-3235",
     "name": "Skeletor (The Original)",
     "line": "original",
@@ -14141,6 +14211,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-teela-mqqauhlm",
+    "name": "Teela",
+    "sourceName": "Teela",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-teela-mqqauhlm",
+    "source": "manual"
+  },
+  {
     "id": "teela-and-zoar-2848",
     "name": "Teela and Zoar",
     "line": "original",
@@ -14211,6 +14295,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-trap-jaw-mqqav52r",
+    "name": "Trap Jaw",
+    "sourceName": "Trap Jaw",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-trap-jaw-mqqav52r",
+    "source": "manual"
+  },
+  {
     "id": "tri-klops-2842",
     "name": "Tri-Klops",
     "line": "original",
@@ -14223,6 +14321,20 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-tri-klops-mqqavra1",
+    "name": "Tri-Klops",
+    "sourceName": "Tri-Klops",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-tri-klops-mqqavra1",
+    "source": "manual"
   },
   {
     "id": "tung-lashor-3790",
