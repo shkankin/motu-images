@@ -738,27 +738,33 @@ async function checkPagesStatus() {
 
     if (!buildsRes.ok) throw new Error(`Pages API failed: ${buildsRes.status}`);
     const build = await buildsRes.json();
-    const buildSha   = build.commit?.sha  || '';
-    const status     = build.status       || 'unknown';
+    // The Pages builds API returns commit as a plain SHA string, not an object.
+    // build.commit?.sha always evaluates to undefined — check both forms.
+    const buildSha   = (typeof build.commit === 'string' ? build.commit : (build.commit?.sha || '')) || '';
+    const status     = build.status || 'unknown';
     const shortBuild  = buildSha.slice(0, 7);
     const shortLatest = latestSha.slice(0, 7);
-    const isCurrentCommit = buildSha === latestSha;
+    // If the API returned a SHA, compare it. If not (some token scopes omit it),
+    // trust the status field — a recent 'built' response is almost certainly current.
+    const shaKnown        = buildSha.length > 0;
+    const isCurrentCommit = !shaKnown || buildSha === latestSha;
     const updatedAt  = build.updated_at ? new Date(build.updated_at).toLocaleTimeString() : '';
 
     if (status === 'built' && isCurrentCommit) {
-      setPagesStatus('green', `✓ Live — ${shortBuild} at ${updatedAt}`,
-        `Commit ${shortBuild} is live · HEAD is ${shortLatest}`);
+      const liveRef = shaKnown ? shortBuild : shortLatest;
+      setPagesStatus('green', `✓ Live — ${liveRef} at ${updatedAt}`,
+        shaKnown ? `Commit ${liveRef} is live · HEAD is ${shortLatest}` : `Build complete · HEAD is ${shortLatest}`);
       stopPolling();
-    } else if (status === 'building' || !isCurrentCommit) {
-      const lag = isCurrentCommit ? 'building current commit' : `building ${shortBuild}, HEAD is ${shortLatest}`;
+    } else if (status === 'building' || (status === 'built' && !isCurrentCommit)) {
+      const lag = status === 'building' ? 'building…' : `built ${shortBuild}, HEAD is ${shortLatest} — new build pending`;
       setPagesStatus('yellow', `Building — ${lag}`,
         `Status: ${status} · updated ${updatedAt}`);
     } else if (status === 'errored') {
-      setPagesStatus('red', `Build errored — ${shortBuild}`,
+      setPagesStatus('red', `Build errored — ${shortBuild || shortLatest}`,
         `Error: ${build.error?.message || 'unknown'} · ${updatedAt}`);
       stopPolling();
     } else {
-      setPagesStatus('grey', `${status} — ${shortBuild}`,
+      setPagesStatus('grey', `${status} — ${shortBuild || shortLatest}`,
         `HEAD: ${shortLatest} · ${updatedAt}`);
     }
 
