@@ -462,6 +462,15 @@
           "Vehicles & Playsets"
         ]
       }
+    ],
+    "mighty-masters": [
+      {
+        "key": "action-figures",
+        "label": "Action Figures",
+        "groups": [
+          "Action Figures"
+        ]
+      }
     ]
   },
   "sublineOrder": {
@@ -495,6 +504,9 @@
       "vehicles",
       "playsets",
       "vehicles-playset"
+    ],
+    "mighty-masters": [
+      "action-figures"
     ]
   }
 }

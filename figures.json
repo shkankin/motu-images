@@ -12745,6 +12745,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-he-man-mqpyqjak",
+    "name": "He-Man",
+    "sourceName": "He-Man",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "1",
+    "year": 2000,
+    "slug": "manual-he-man-mqpyqjak",
+    "source": "manual"
+  },
+  {
     "id": "he-man-the-original-3234",
     "name": "He-Man (The Original)",
     "line": "original",
@@ -17792,7 +17806,8 @@
     "source": "manual",
     "group": "Action Figures",
     "faction": "Evil Warriors",
-    "retail": 4.99
+    "retail": 4.99,
+    "upc": "194735422555"
   },
   {
     "id": "manual-he-man-mqpsslfi",
@@ -17805,7 +17820,8 @@
     "slug": "manual-he-man",
     "source": "manual",
     "group": "Action Figures",
-    "retail": 4.99
+    "retail": 4.99,
+    "upc": "194735422616"
   },
   {
     "id": "manual-man-at-arms-mqpxj5a6",
@@ -17818,7 +17834,8 @@
     "retail": 4.99,
     "slug": "manual-man-at-arms-mqpxj5a6",
     "source": "manual",
-    "group": "Action Figures"
+    "group": "Action Figures",
+    "upc": "194735422593"
   },
   {
     "id": "manual-skeletor-mqpxh15m",
@@ -17832,6 +17849,7 @@
     "slug": "manual-skeletor-mqpxh15m",
     "source": "manual",
     "group": "Action Figures",
-    "faction": "Evil Warriors"
+    "faction": "Evil Warriors",
+    "upc": "194735422562"
   }
 ]
