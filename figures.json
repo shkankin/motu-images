@@ -17817,7 +17817,8 @@
     "year": 2026,
     "retail": 4.99,
     "slug": "manual-man-at-arms-mqpxj5a6",
-    "source": "manual"
+    "source": "manual",
+    "group": "Action Figures"
   },
   {
     "id": "manual-skeletor-mqpxh15m",
@@ -17829,6 +17830,8 @@
     "year": 2026,
     "retail": 4.99,
     "slug": "manual-skeletor-mqpxh15m",
-    "source": "manual"
+    "source": "manual",
+    "group": "Action Figures",
+    "faction": "Evil Warriors"
   }
 ]
