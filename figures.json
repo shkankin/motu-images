@@ -17789,7 +17789,10 @@
     "wave": "1",
     "year": 2026,
     "slug": "manual-beast-man-mqptisfy",
-    "source": "manual"
+    "source": "manual",
+    "group": "Action Figures",
+    "faction": "Evil Warriors",
+    "retail": 4.99
   },
   {
     "id": "manual-he-man-mqpsslfi",
@@ -17800,6 +17803,32 @@
     "wave": "1",
     "year": 2026,
     "slug": "manual-he-man",
+    "source": "manual",
+    "group": "Action Figures",
+    "retail": 4.99
+  },
+  {
+    "id": "manual-man-at-arms-mqpxj5a6",
+    "name": "Man-At-Arms",
+    "sourceName": "Man-At-Arms",
+    "line": "mighty-masters",
+    "sourceLine": "mighty-masters",
+    "wave": "1",
+    "year": 2026,
+    "retail": 4.99,
+    "slug": "manual-man-at-arms-mqpxj5a6",
+    "source": "manual"
+  },
+  {
+    "id": "manual-skeletor-mqpxh15m",
+    "name": "Skeletor",
+    "sourceName": "Skeletor",
+    "line": "mighty-masters",
+    "sourceLine": "mighty-masters",
+    "wave": "1",
+    "year": 2026,
+    "retail": 4.99,
+    "slug": "manual-skeletor-mqpxh15m",
     "source": "manual"
   }
 ]
