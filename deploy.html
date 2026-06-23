@@ -13,7 +13,17 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.2  (security audit + pre-flight token check)
+     deploy.html  v1.3
+       • v1.3: Pages live status card. After a deploy, the tool polls
+         GET /repos/{repo}/pages/builds/latest every 10s (first check
+         after 15s) and updates a coloured indicator — grey (unknown),
+         yellow (building), green (live), red (errored). Compares the
+         build's commit SHA against HEAD so "live" means THIS commit,
+         not just any recent build. Falls back to the Deployments API
+         if the token lacks the pages scope. A manual "Check" button
+         lets you query at any time without triggering a deploy.
+         Also added sync_figurerealm.py and sync-figurerealm.yml to
+         PATH_MAP.
        • v1.2: Token pre-flight — on save/load the token is checked against
          GET /repos/<repo>; the status line shows whether it actually has
          push access (and to which repo/branch) before you spend a deploy on
@@ -256,8 +266,8 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.2</span></h1>
-  <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>.</p>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.3</span></h1>
+  <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts deploy to <code>scripts/</code>. Workflows deploy to <code>.github/workflows/</code>.</p>
 </header>
 
 <!-- Token -->
@@ -295,7 +305,17 @@
     style="width:100%;background:var(--bg3);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font-size:13px;padding:8px 12px;outline:none">
 </div>
 
-<button class="primary" id="deployBtn" onclick="deploy()" disabled>⬆ Commit to GitHub</button>
+<div class="card" id="pagesCard">
+  <h2>Pages Status</h2>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div id="pagesIndicator" style="width:10px;height:10px;border-radius:50%;background:var(--t3);flex-shrink:0"></div>
+    <div id="pagesStatusText" style="flex:1;color:var(--t2);font-size:13px">–</div>
+    <button id="pagesCheckBtn" onclick="checkPagesStatus()" style="padding:6px 14px;font-size:12px;flex-shrink:0">Check</button>
+  </div>
+  <div id="pagesDetail" style="font-size:11px;color:var(--t3);font-family:monospace;margin-top:8px;display:none"></div>
+</div>
+
+
 <button class="secondary" id="downloadBtn" onclick="downloadFromRepo()" style="margin-left:8px">⬇ Download from repo</button>
 
 <div id="progressWrap"><div id="progressBar"></div></div>
@@ -339,10 +359,12 @@ const PATH_MAP = {
   'loadouts.json':        'loadouts.json',
   // /scripts
   'sync_af411.py':        'scripts/sync_af411.py',
-  'lint_handlers.mjs':    'scripts/lint_handlers.mjs',   // v1.2: handler-lint (CI)
+  'sync_figurerealm.py':  'scripts/sync_figurerealm.py',
+  'lint_handlers.mjs':    'scripts/lint_handlers.mjs',
   // /.github/workflows
-  'sync-af411.yml':       '.github/workflows/sync-af411.yml',
-  'lint.yml':             '.github/workflows/lint.yml',   // v1.2: handler-lint workflow
+  'sync-af411.yml':           '.github/workflows/sync-af411.yml',
+  'sync-figurerealm.yml':     '.github/workflows/sync-figurerealm.yml',
+  'lint.yml':                 '.github/workflows/lint.yml',
 };
 
 // ── State ──────────────────────────────────────────────────────────
@@ -571,9 +593,11 @@ async function deploy() {
     setProgress(100);
 
     log('ok', `✓ Committed ${treeItems.length} file(s): ${newCommitSha.slice(0,7)}`);
-    log('ok', `  Pages deployment triggered — live in ~45s`);
     btn.textContent = `✓ Deployed ${treeItems.length} file(s)`;
     setTimeout(() => { btn.textContent = '⬆ Commit to GitHub'; btn.disabled = false; updateDeployBtn(); }, 4000);
+
+    // Start polling Pages for this specific commit going live
+    pollPagesUntilLive(newCommitSha);
 
   } catch (err) {
     setProgress(0, false);
@@ -635,10 +659,159 @@ function setProgress(pct, show = true) {
   bar.style.width = pct + '%';
 }
 
+// ── Pages live status ──────────────────────────────────────────────
+// GitHub Pages API: GET /repos/{repo}/pages/builds/latest
+// Returns { status: 'building'|'built'|'errored', commit: {sha}, created_at, updated_at }
+// We compare the build's commit SHA against the SHA we just pushed to know
+// whether the live site has caught up yet.
+
+let _pagesPoller = null;   // setInterval handle
+let _targetSha   = null;   // SHA we're waiting for Pages to deploy
+
+function setPagesStatus(indicator, text, detail) {
+  const colors = { grey: 'var(--t3)', yellow: '#f5c842', green: 'var(--green)', red: 'var(--red)', blue: 'var(--blue)' };
+  document.getElementById('pagesIndicator').style.background = colors[indicator] || colors.grey;
+  document.getElementById('pagesStatusText').textContent = text;
+  const detailEl = document.getElementById('pagesDetail');
+  if (detail) {
+    detailEl.textContent = detail;
+    detailEl.style.display = 'block';
+  } else {
+    detailEl.style.display = 'none';
+  }
+}
+
+async function checkPagesStatus() {
+  const token = getToken();
+  if (!token) { setPagesStatus('grey', 'No token — save a token first'); return; }
+
+  const btn = document.getElementById('pagesCheckBtn');
+  btn.disabled = true;
+  btn.textContent = '…';
+
+  try {
+    // Try the Deployments API first — it's more reliable for Pages and
+    // returns environment + deployment status without needing Pages enabled.
+    // Falls back to the Pages builds API if needed.
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+    const api = `https://api.github.com/repos/${REPO}`;
+
+    // 1. Latest commit on main
+    const refRes = await fetch(`${api}/git/ref/heads/${BRANCH}`, { headers });
+    if (!refRes.ok) throw new Error(`Branch read failed: ${refRes.status}`);
+    const latestSha = (await refRes.json()).object.sha;
+
+    // 2. Pages builds/latest
+    const buildsRes = await fetch(`${api}/pages/builds/latest`, { headers });
+
+    if (buildsRes.status === 404) {
+      // Pages not enabled or token lacks pages read scope — fall back to deployments
+      const deplRes = await fetch(`${api}/deployments?environment=github-pages&per_page=1`, { headers });
+      if (!deplRes.ok) throw new Error(`Deployments read failed: ${deplRes.status}`);
+      const depls = await deplRes.json();
+      if (!depls.length) { setPagesStatus('grey', 'No Pages deployments found'); return; }
+      const depl = depls[0];
+      const statusRes = await fetch(depl.statuses_url, { headers });
+      const statuses  = statusRes.ok ? await statusRes.json() : [];
+      const st = statuses[0]?.state || 'unknown';
+      const deplSha = depl.sha;
+      const shortSha = deplSha.slice(0, 7);
+      const shortLatest = latestSha.slice(0, 7);
+      const isCurrentCommit = deplSha === latestSha;
+      const timestamp = depl.updated_at ? new Date(depl.updated_at).toLocaleTimeString() : '';
+      if (st === 'success' && isCurrentCommit) {
+        setPagesStatus('green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`);
+        stopPolling();
+      } else if (st === 'pending' || st === 'in_progress' || !isCurrentCommit) {
+        setPagesStatus('yellow', `Building — deployed ${shortSha}, HEAD is ${shortLatest}`, `State: ${st} · updated ${timestamp}`);
+      } else if (st === 'failure' || st === 'error') {
+        setPagesStatus('red', `Build failed — ${shortSha}`, `State: ${st} · ${timestamp}`);
+        stopPolling();
+      } else {
+        setPagesStatus('grey', `${st} — ${shortSha}`, `HEAD: ${shortLatest} · ${timestamp}`);
+      }
+      return;
+    }
+
+    if (!buildsRes.ok) throw new Error(`Pages API failed: ${buildsRes.status}`);
+    const build = await buildsRes.json();
+    const buildSha   = build.commit?.sha  || '';
+    const status     = build.status       || 'unknown';
+    const shortBuild  = buildSha.slice(0, 7);
+    const shortLatest = latestSha.slice(0, 7);
+    const isCurrentCommit = buildSha === latestSha;
+    const updatedAt  = build.updated_at ? new Date(build.updated_at).toLocaleTimeString() : '';
+
+    if (status === 'built' && isCurrentCommit) {
+      setPagesStatus('green', `✓ Live — ${shortBuild} at ${updatedAt}`,
+        `Commit ${shortBuild} is live · HEAD is ${shortLatest}`);
+      stopPolling();
+    } else if (status === 'building' || !isCurrentCommit) {
+      const lag = isCurrentCommit ? 'building current commit' : `building ${shortBuild}, HEAD is ${shortLatest}`;
+      setPagesStatus('yellow', `Building — ${lag}`,
+        `Status: ${status} · updated ${updatedAt}`);
+    } else if (status === 'errored') {
+      setPagesStatus('red', `Build errored — ${shortBuild}`,
+        `Error: ${build.error?.message || 'unknown'} · ${updatedAt}`);
+      stopPolling();
+    } else {
+      setPagesStatus('grey', `${status} — ${shortBuild}`,
+        `HEAD: ${shortLatest} · ${updatedAt}`);
+    }
+
+  } catch (e) {
+    setPagesStatus('red', `Check failed: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Check';
+  }
+}
+
+function pollPagesUntilLive(commitSha) {
+  _targetSha = commitSha;
+  stopPolling();
+  setPagesStatus('yellow', 'Waiting for Pages build to start…');
+  log('inf', '  Watching Pages — will update when live…');
+
+  // First check after 15s (Pages needs time to queue), then every 10s
+  let elapsed = 0;
+  const FIRST_DELAY = 15000;
+  const POLL_INTERVAL = 10000;
+  const MAX_WAIT = 300000; // 5 min timeout
+
+  setTimeout(async () => {
+    await checkPagesStatus();
+    _pagesPoller = setInterval(async () => {
+      elapsed += POLL_INTERVAL;
+      await checkPagesStatus();
+      const indicator = document.getElementById('pagesIndicator').style.background;
+      // Stop if live (green) or errored (red) — checkPagesStatus calls stopPolling() in those cases
+      if (elapsed >= MAX_WAIT) {
+        stopPolling();
+        setPagesStatus('grey', 'Timed out waiting for Pages build', 'Try the Check button manually');
+        log('err', '  Pages build did not complete within 5 minutes');
+      }
+    }, POLL_INTERVAL);
+  }, FIRST_DELAY);
+}
+
+function stopPolling() {
+  if (_pagesPoller) { clearInterval(_pagesPoller); _pagesPoller = null; }
+}
+
+// Check Pages status on load so the card shows current state immediately
+window.addEventListener('load', () => {
+  const t = localStorage.getItem(TOKEN_KEY);
+  if (t) setTimeout(checkPagesStatus, 500);
+});
+
+
+
 // ── Init ───────────────────────────────────────────────────────────
 loadToken();
-
-// ── Download from repo ─────────────────────────────────────────────
 // Fetches every file in PATH_MAP from GitHub and zips them client-side.
 async function downloadFromRepo() {
   const token = getToken();
