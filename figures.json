@@ -12362,6 +12362,32 @@
     "source": "manual"
   },
   {
+    "id": "manual-cometroid-mqq0jd8k",
+    "name": "Cometroid",
+    "sourceName": "Cometroid",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "faction": "Other",
+    "year": 1986,
+    "slug": "manual-cometroid-mqq0jd8k",
+    "source": "manual"
+  },
+  {
+    "id": "manual-crocobite-mqq0uo77",
+    "name": "Crocobite",
+    "sourceName": "Crocobite",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "faction": "Other",
+    "year": 1986,
+    "slug": "manual-crocobite-mqq0uo77",
+    "source": "manual"
+  },
+  {
     "id": "crystal-castle-5479",
     "name": "Crystal Castle",
     "line": "original",
@@ -12416,6 +12442,19 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-dinosorb-mqq0vld6",
+    "name": "Dinosorb",
+    "sourceName": "Dinosorb",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "faction": "Other",
+    "year": 1986,
+    "slug": "manual-dinosorb-mqq0vld6",
+    "source": "manual"
   },
   {
     "id": "double-trouble-5458",
@@ -12700,6 +12739,19 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-gore-illa-mqq0webn",
+    "name": "Gore-Illa",
+    "sourceName": "Gore-Illa",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "faction": "Other",
+    "year": 1986,
+    "slug": "manual-gore-illa-mqq0webn",
+    "source": "manual"
   },
   {
     "id": "grizzlor-3757",
@@ -13288,6 +13340,19 @@
     "slug": "manual-oo-lar",
     "source": "manual",
     "wave": "Deposito"
+  },
+  {
+    "id": "manual-orbear-mqq0xmwx",
+    "name": "Orbear",
+    "sourceName": "Orbear",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "faction": "Other",
+    "year": 1986,
+    "slug": "manual-orbear-mqq0xmwx",
+    "source": "manual"
   },
   {
     "id": "orko-3229",
