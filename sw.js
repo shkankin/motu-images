@@ -1,25 +1,16 @@
-// MOTU Vault — Service Worker v7.00
+// MOTU Vault — Service Worker v7.01
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
-// v7.00 changelog:
-//   • CACHE bumped to v7.00. Inline handler migration complete:
-//     – ALL onclick/onchange/oninput/onblur/onfocus attributes removed from
-//       render.js and ui-sheets.js (~125 handlers migrated to data-action).
-//     – 'unsafe-inline' dropped from script-src in the app CSP — the app now
-//       runs under a strict Content-Security-Policy with no inline JS.
-//     – 131 delegated actions registered in delegate-handlers.js (was 30).
-//     – Font loading fixed: the async preload/onload trick was blocked by the
-//       strict CSP; replaced with a direct <link rel="stylesheet"> load.
-//     – HTML fetch strategy changed from stale-while-revalidate to
-//       network-first: updates now take effect immediately on next load
-//       rather than requiring a second reload after the new SW activates.
-//     – pricing-worker.js hardened: M-3 rate limiting on fresh/cache-bypass
-//       paths, L-1 constant-time admin token compare, L-2 CORS fix.
-//       chronicles/cross-brand/mighty-masters added to pricing term maps.
-//     – figures-editor.html v1.20.0: C-3 fixed — LINES/SUBLINES/FACTIONS
-//       now synced live from state.js at boot instead of being hardcoded.
+// v7.01 changelog:
+//   • CACHE bumped to v7.01. Catalog and line updates:
+//     – New line: MOTU Giants (id: motu-giants, 2014, Mattel, 12")
+//     – Mighty Masters year corrected: — → 2026
+//     – "Mattel Classics" renamed to "Classics" (id unchanged)
+//     – "Mattel 200x" renamed to "200x" (id unchanged)
+//     – SERIES_MAP updated with new aliases; legacy names kept for import compat
+//     – motu-giants added to pricing worker term maps
 //
 //   • CACHE bumped to v6.102. Multi-select batch editing reworked: the action
 //     bar's button is now "Batch Edit…" and its sheet has a mode toggle —
@@ -877,7 +868,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.00';
+const CACHE = 'motu-vault-v7.01';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

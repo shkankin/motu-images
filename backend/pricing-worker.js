@@ -339,7 +339,7 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   const sealed = [], loose = [];
   let rejJunk = 0, rejLine = 0, rejAmbig = 0;
   const keptSealed = [], keptLoose = [];
-  const isModernLine = ['origins', 'masterverse', 'classics', 'super7', 'mondo', 'kids-core', 'eternia-minis', 'chronicles', 'cross-brand'].includes(meta.line);
+  const isModernLine = ['origins', 'masterverse', 'classics', 'super7', 'mondo', 'kids-core', 'eternia-minis', 'chronicles', 'cross-brand', 'mighty-masters', 'motu-giants'].includes(meta.line);
   for (const it of items) {
     const price = parseFloat(it?.price?.value);
     const rawTitle = it?.title || '';
@@ -512,6 +512,8 @@ const LINE_SEARCH_TERMS = {
   'chronicles':     'Masters of the Universe Chronicles',
   'cross-brand':    'Masters of the Universe',      // too broad for a meaningful query term; falls back to fig name + MoTU
   'mighty-masters': 'Mighty Masters',
+  // v7.00
+  'motu-giants':    'Masters of the Universe Giants',
 };
 
 // v6.58: per-line negative title regex — applied to eBay results to reject
@@ -541,6 +543,7 @@ const LINE_NEGATIVE_TERMS = {
   // mighty-masters rejects other lines until its market is better understood.
   'chronicles':     /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core)\b/i,
   'mighty-masters': /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core|chronicles)\b/i,
+  'motu-giants':    /\b(vintage|vtg|198[0-9]|1980s?|filmation|origins|motuc|classics|masterverse|super ?7|mondo|200x|new adventures|kids[- ]?core|chronicles)\b/i,
 };
 
 // v6.59: per-line REQUIRED title regex — listing must match at least one of
@@ -569,6 +572,7 @@ const LINE_REQUIRED_TERMS = {
   'chronicles':     /\b(chronicles|2026 movie)\b/i,
   // cross-brand: no LINE_REQUIRED_TERMS entry → filter skipped, broad search only
   'mighty-masters': /\b(mighty masters)\b/i,
+  'motu-giants':    /\b(giants?|motu giants?)\b/i,
 };
 
 function figIdToQuery(figId, meta = {}) {

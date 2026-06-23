@@ -600,20 +600,25 @@ function _mergeCustomSublines(target, custom) {
 }
 
 // Display names match state.js LINES[].name. ID order matches the array.
+// v7.00: "Mattel Classics" → "Classics", "Mattel 200x" → "200x",
+//        Mighty Masters yr corrected to 2026, MOTU Giants added.
+// Note: syncConstantsFromStateJs() overwrites these at runtime when hosted
+// same-origin; these are fallbacks for file:// / offline use only.
 let LINES = [
   {id:'origins',        name:'Origins'},
   {id:'masterverse',    name:'Masterverse'},
   {id:'kids-core',      name:'Kids Core'},
   {id:'chronicles',     name:'Chronicles'},
   {id:'cross-brand',    name:'Cross-Brand & Collabs'},
-  {id:'classics',       name:'Mattel Classics'},
-  {id:'200x',           name:'Mattel 200x'},
+  {id:'classics',       name:'Classics'},
+  {id:'200x',           name:'200x'},
   {id:'original',       name:'Vintage'},
   {id:'new-adventures', name:'New Adventures'},
   {id:'mondo',          name:'Mondo'},
   {id:'super7',         name:'Super7'},
   {id:'eternia-minis',  name:'Eternia Minis'},
   {id:'mighty-masters', name:'Mighty Masters'},
+  {id:'motu-giants',    name:'MOTU Giants'},
 ];
 
 // SUBLINES structure mirrors state.js exactly: each line maps to an

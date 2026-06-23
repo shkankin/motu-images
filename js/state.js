@@ -70,8 +70,9 @@ const LINES = [
   // Clue, Operation, Loyal Subjects minis, etc.). Manufacturer "Various" since
   // these span Mattel, Hasbro partnerships, Hot Wheels, Mega, USAopoly, etc.
   {id:'cross-brand',name:'Cross-Brand & Collabs', yr:'2020–', mfr:'Various', sc:'Various'},
-  {id:'classics',   name:'Mattel Classics', yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
-  {id:'200x',       name:'Mattel 200x',     yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
+  // v7.01: "Mattel Classics" → "Classics", "Mattel 200x" → "200x" (display names only; ids unchanged)
+  {id:'classics',   name:'Classics',        yr:'2008–2016', mfr:'Mattel',  sc:'6"'},
+  {id:'200x',       name:'200x',            yr:'2002–2004', mfr:'Mattel',  sc:'6"'},
   // v6.99: "Original" renamed to "Vintage" — display name only; the id stays
   // 'original' so all 1,194 figures (which reference the line by id) and the
   // scraper/AF411 mapping keep working unchanged.
@@ -80,8 +81,11 @@ const LINES = [
   {id:'mondo',      name:'Mondo',           yr:'2018–2025', mfr:'Mondo',   sc:'1/6'},
   {id:'super7',     name:'Super7',          yr:'2016–2020', mfr:'Super7',  sc:'7"'},
   {id:'eternia-minis', name:'Eternia Minis', yr:'2013–2022', mfr:'Mattel', sc:'2"'},
-  // v6.99: new line. yr/mfr/sc are placeholders — set them once known.
-  {id:'mighty-masters', name:'Mighty Masters', yr:'—', mfr:'Mattel', sc:'—'},
+  // v6.99: new flat line (no sublines).
+  // v7.01: year corrected to 2026.
+  {id:'mighty-masters', name:'Mighty Masters', yr:'2026', mfr:'Mattel', sc:'—'},
+  // v7.01: new line.
+  {id:'motu-giants', name:'MOTU Giants', yr:'2014', mfr:'Mattel', sc:'12"'},
 ];
 
 const FACTIONS = ['Heroic Warriors','Evil Warriors','Evil Horde','Snake Men','Great Rebellion','Other'];
@@ -224,13 +228,18 @@ const SUBLINES = {
 };
 
 const SERIES_MAP = {
-  'Origins':'origins','Masterverse':'masterverse','Mattel Classics':'classics',
-  'Mattel 200x':'200x','Eternia Minis':'eternia-minis','Mondo':'mondo',
+  'Origins':'origins','Masterverse':'masterverse',
+  // Legacy names kept for backup/import compatibility; new display names also mapped.
+  'Mattel Classics':'classics','Classics':'classics',
+  'Mattel 200x':'200x','200x':'200x',
+  'Eternia Minis':'eternia-minis','Mondo':'mondo',
   'Super7':'super7','The New Adventures of He-Man':'new-adventures','Original':'original',
-  'Kids Core':'kids-core',
+  'Kids Core':'kids-core','Chronicles':'chronicles',
   // v6.99: 'Original' line renamed to 'Vintage' (id unchanged). Keep 'Original'
-  // so older backups/imports still resolve; add 'Vintage' and the new line.
+  // so older backups/imports still resolve; add 'Vintage' and the new lines.
   'Vintage':'original','Mighty Masters':'mighty-masters',
+  // v7.01: new line.
+  'MOTU Giants':'motu-giants',
   // v6.61: cross-brand accepts a couple of common spellings from imports.
   'Cross-Brand & Collabs':'cross-brand','Cross-Brand':'cross-brand',
 };
