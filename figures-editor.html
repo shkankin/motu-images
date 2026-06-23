@@ -412,7 +412,7 @@
     <strong style="display:block;margin-bottom:10px;font-size:14px">Custom Sublines</strong>
     <p style="color:var(--t3);margin:0 0 12px">Add sublines not in the hardcoded list. These are saved into <code>loadouts.json</code> and injected at runtime.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
-      <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Line ID (e.g. <code>masterverse</code>)<input id="cslLineId" placeholder="line-id" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:140px"></label>
+      <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Line<select id="cslLineId" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:200px"><option value="">— pick a line —</option></select></label>
       <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Subline key (e.g. <code>cosmic</code>)<input id="cslKey" placeholder="subline-key" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:140px"></label>
       <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Display label<input id="cslLabel" placeholder="Cosmic Series" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:160px"></label>
       <label style="display:flex;flex-direction:column;gap:4px;color:var(--t2)">Group name(s) — comma-separated<input id="cslGroups" placeholder="Cosmic Series" style="font-size:13px;padding:5px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);width:220px"></label>
@@ -483,6 +483,11 @@
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Group / Subline
         <select id="afGroup" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)"></select>
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Faction (optional)
+        <select id="afFaction" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+          ${'' /* populated by openAddFigModal */}
+        </select>
+      </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Year
         <input id="afYear" type="number" placeholder="2024" min="1980" max="2040" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
@@ -548,7 +553,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.17.0';
+const EDITOR_VERSION = 'v1.18.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -994,7 +999,10 @@ function openAddFigModal() {
   const lineSel = document.getElementById('afLine');
   lineSel.innerHTML = LINES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
   afLineChange();
-  ['afName','afYear','afWave','afUpc','afRetail','afSlug','afVariantOf','afVariantName'].forEach(id => document.getElementById(id).value = '');
+  // v1.18: populate faction options (static HTML can't evaluate the template)
+  document.getElementById('afFaction').innerHTML =
+    '<option value="">— none —</option>' + FACTIONS.map(fac => `<option value="${esc(fac)}">${esc(fac)}</option>`).join('');
+  ['afName','afYear','afWave','afUpc','afRetail','afSlug','afVariantOf','afVariantName','afFaction'].forEach(id => document.getElementById(id).value = '');
   // v1.17: reset the staged accessory selection and render the chip panel
   figAccessories['__addfig__'] = [];
   afRenderAccPanel();
@@ -1056,6 +1064,7 @@ function submitAddFig() {
   const name  = document.getElementById('afName').value.trim();
   const lineId= document.getElementById('afLine').value;
   const group = document.getElementById('afGroup').value;
+  const faction = document.getElementById('afFaction').value;
   const year  = document.getElementById('afYear').value.trim();
   const wave  = document.getElementById('afWave').value.trim();
   const upc   = document.getElementById('afUpc').value.replace(/[^0-9]/g, '');
@@ -1096,6 +1105,7 @@ function submitAddFig() {
     line: lineId,
     sourceLine: lineId,
     ...(group   ? { group, sourceGroup: group } : {}),
+    ...(faction ? { faction } : {}),
     ...(wave    ? { wave } : {}),
     ...(year    ? { year: parseInt(year) } : {}),
     ...(upc     ? { upc } : {}),
@@ -1154,15 +1164,19 @@ function _getEditorOrderedSublines(lineId) {
   return [...ordered, ...remaining];
 }
 
+// v1.18: line <option>s for the custom-subline selectors. Lists EVERY line
+// (including flat ones like Mighty Masters / Mondo that have no sublines yet)
+// so a custom subline can be added to any of them and the reorder picker shows
+// them all — and so the Line field is a real picker, not a typed-id guess.
+function _lineOptionsHtml(current) {
+  return '<option value="">— pick a line —</option>' +
+    LINES.map(l => `<option value="${esc(l.id)}"${l.id===current?' selected':''}>${esc(l.name)} (${esc(l.id)})</option>`).join('');
+}
 function _populateReorderLineSelect() {
   const sel = document.getElementById('reorderLineSelect');
-  if (!sel) return;
-  const lineIds = Object.keys(SUBLINES).filter(id => (SUBLINES[id] || []).length > 0);
-  const lineNames = {};
-  for (const l of LINES) lineNames[l.id] = l.name;
-  const current = sel.value;
-  sel.innerHTML = '<option value="">— pick a line —</option>' +
-    lineIds.map(id => `<option value="${esc(id)}"${id===current?' selected':''}>${esc(lineNames[id] || id)}</option>`).join('');
+  if (sel) sel.innerHTML = _lineOptionsHtml(sel.value);
+  const csl = document.getElementById('cslLineId');   // the add-custom-subline picker
+  if (csl) csl.innerHTML = _lineOptionsHtml(csl.value);
 }
 
 function renderSublineReorderList() {
