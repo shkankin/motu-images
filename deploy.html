@@ -668,6 +668,7 @@ function setProgress(pct, show = true) {
 
 let _pagesPoller = null;   // setInterval handle
 let _targetSha   = null;   // SHA we're waiting for Pages to deploy
+let _checkSeq    = 0;      // incremented on each checkPagesStatus call + on pollPagesUntilLive start
 
 function setPagesStatus(indicator, text, detail) {
   const colors = { grey: 'var(--t3)', yellow: '#f5c842', green: 'var(--green)', red: 'var(--red)', blue: 'var(--blue)' };
@@ -686,6 +687,7 @@ async function checkPagesStatus() {
   const token = getToken();
   if (!token) { setPagesStatus('grey', 'No token — save a token first'); return; }
 
+  const seq = ++_checkSeq;  // capture this call's sequence number
   const btn = document.getElementById('pagesCheckBtn');
   btn.disabled = true;
   btn.textContent = '…';
@@ -708,6 +710,7 @@ async function checkPagesStatus() {
     // 2. Pages builds/latest
     const buildsRes = await fetch(`${api}/pages/builds/latest`, { headers });
 
+    if (seq !== _checkSeq) { btn.disabled = false; btn.textContent = 'Check'; return; } // stale — a newer check started
     if (buildsRes.status === 404) {
       // Pages not enabled or token lacks pages read scope — fall back to deployments
       const deplRes = await fetch(`${api}/deployments?environment=github-pages&per_page=1`, { headers });
@@ -779,6 +782,7 @@ async function checkPagesStatus() {
 
 function pollPagesUntilLive(commitSha) {
   _targetSha = commitSha;
+  _checkSeq++;  // invalidate any in-flight checkPagesStatus from page load or prior poll
   stopPolling();
   setPagesStatus('yellow', 'Waiting for Pages build to start…');
   log('inf', '  Watching Pages — will update when live…');
