@@ -1,5 +1,5 @@
 // MOTU Vault — Service Worker v7.00
-// HTML: stale-while-revalidate (fast load, background update)
+// HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
@@ -10,6 +10,11 @@
 //     – 'unsafe-inline' dropped from script-src in the app CSP — the app now
 //       runs under a strict Content-Security-Policy with no inline JS.
 //     – 131 delegated actions registered in delegate-handlers.js (was 30).
+//     – Font loading fixed: the async preload/onload trick was blocked by the
+//       strict CSP; replaced with a direct <link rel="stylesheet"> load.
+//     – HTML fetch strategy changed from stale-while-revalidate to
+//       network-first: updates now take effect immediately on next load
+//       rather than requiring a second reload after the new SW activates.
 //     – pricing-worker.js hardened: M-3 rate limiting on fresh/cache-bypass
 //       paths, L-1 constant-time admin token compare, L-2 CORS fix.
 //       chronicles/cross-brand/mighty-masters added to pricing term maps.
@@ -1057,41 +1062,23 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // HTML & app shell — stale-while-revalidate
-  // Serve cached version immediately, fetch fresh in background.
+  // HTML & app shell — network-first with cache fallback
+  // Always try the network so users get the current version immediately on
+  // each load. The stale-while-revalidate strategy was causing update lag:
+  // users saw the old cached HTML on first load after a deploy, requiring a
+  // second reload to get the new version even when the new SW had activated.
+  // Network-first means a brief extra round-trip on each navigation, but for
+  // a PWA installed on-device this is negligible, and the cache still
+  // provides full offline support when the network is unavailable.
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
     e.respondWith(
-      caches.match(e.request).then(cached => {
-        const fetchPromise = fetch(e.request).then(res => {
-          if (res.ok) {
-            // IMPORTANT: clone TWICE up-front. cache.put() consumes the
-            // response body it's given. If we only cloned once and then
-            // tried `clone.clone().text()` below, the body would already
-            // be locked/disturbed and .clone() would throw — which is
-            // exactly what was happening in v4.69 and why the page was
-            // never being told an update was available.
-            const cacheClone = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, cacheClone));
-
-            if (cached) {
-              const compareClone = res.clone();
-              Promise.all([
-                cached.clone().text(),
-                compareClone.text(),
-              ]).then(([oldText, newText]) => {
-                if (oldText !== newText) {
-                  self.clients.matchAll().then(clients => {
-                    clients.forEach(c => c.postMessage({type: 'UPDATE_AVAILABLE'}));
-                  });
-                }
-              }).catch(() => { /* if we can't read either body, skip notify */ });
-            }
-          }
-          return res;
-        }).catch(() => cached);
-
-        return cached || fetchPromise;
-      })
+      fetch(e.request).then(res => {
+        if (res.ok) {
+          const cacheClone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, cacheClone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request))
     );
     return;
   }
