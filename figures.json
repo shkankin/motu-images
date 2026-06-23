@@ -11947,6 +11947,20 @@
     "upc": "074299073025"
   },
   {
+    "id": "manual-battle-armor-he-man-mqqb8wnj",
+    "name": "Battle Armor He-Man",
+    "sourceName": "Battle Armor He-Man",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "2",
+    "year": 2001,
+    "slug": "manual-battle-armor-he-man-mqqb8wnj",
+    "source": "manual"
+  },
+  {
     "id": "battle-armor-he-man-man-e-faces-11331",
     "name": "Battle Armor He-Man & Man-E-Faces",
     "line": "original",
@@ -11987,6 +12001,20 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-battle-armor-skeletor-mqqbafay",
+    "name": "Battle Armor Skeletor",
+    "sourceName": "Battle Armor Skeletor",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "2",
+    "year": 2001,
+    "slug": "manual-battle-armor-skeletor-mqqbafay",
+    "source": "manual"
   },
   {
     "id": "battle-armor-skeletor-and-screeech-3237",
@@ -12217,6 +12245,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-buzz-off-mqqbb4un",
+    "name": "Buzz Off",
+    "sourceName": "Buzz Off",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "2",
+    "year": 2001,
+    "slug": "manual-buzz-off-mqqbb4un",
+    "source": "manual"
+  },
+  {
     "id": "buzz-saw-hordak-3979",
     "name": "Buzz Saw Hordak",
     "line": "original",
@@ -12361,6 +12403,20 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-clawful-mqqbbpxt",
+    "name": "Clawful",
+    "sourceName": "Clawful",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Evil Warriors",
+    "wave": "2",
+    "year": 2001,
+    "slug": "manual-clawful-mqqbbpxt",
+    "source": "manual"
   },
   {
     "id": "manual-comet-cat-mqps3epj",
@@ -13523,6 +13579,20 @@
     "upc": "074299073535"
   },
   {
+    "id": "manual-prince-adam-mqqbca8l",
+    "name": "Prince Adam",
+    "sourceName": "Prince Adam",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "2",
+    "year": 2001,
+    "slug": "manual-prince-adam-mqqbca8l",
+    "source": "manual"
+  },
+  {
     "id": "ram-man-2840",
     "name": "Ram Man",
     "line": "original",
@@ -14125,6 +14195,20 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-stratos-mqqbd403",
+    "name": "Stratos",
+    "sourceName": "Stratos",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "2",
+    "year": 2001,
+    "slug": "manual-stratos-mqqbd403",
+    "source": "manual"
+  },
+  {
     "id": "stridor-6812",
     "name": "Stridor",
     "line": "original",
@@ -14530,6 +14614,20 @@
     "source": "af411",
     "sourceLine": "original",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-zodac-mqqbdv0z",
+    "name": "Zodac",
+    "sourceName": "Zodac",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Commemorative Series",
+    "sourceGroup": "Commemorative Series",
+    "faction": "Heroic Warriors",
+    "wave": "2",
+    "year": 2001,
+    "slug": "manual-zodac-mqqbdv0z",
+    "source": "manual"
   },
   {
     "id": "artilla-12959",
