@@ -492,6 +492,9 @@
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">UPC / barcode (optional)
         <input id="afUpc" type="text" inputmode="numeric" placeholder="scan or type digits" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Retail $ (optional)
+        <input id="afRetail" type="number" step="0.01" min="0" placeholder="e.g. 24.99" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+      </label>
       <!-- v1.12: variant linkage. Pick a parent figure to make this a variant
            that nests under it in the app (variantOf = parent id). -->
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Variant of (optional)
@@ -516,9 +519,15 @@
         <div id="afImageInfo" style="font-size:11px;color:var(--t3);min-height:14px"></div>
         <div id="afImagePreviewWrap" style="display:none;margin-top:6px"><img id="afImagePreview" style="max-width:140px;max-height:140px;border-radius:6px;border:1px solid var(--bd)"></div>
       </label>
+      <!-- v1.17: accessories / loadout. Selections are staged under the
+           '__addfig__' key and moved onto the real figure id on submit, so
+           they commit into loadouts.json like any edited figure's loadout. -->
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2);grid-column:1/-1">Accessories / Loadout (optional)
+        <div id="afAccPanel"></div>
+      </label>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
-      <button class="secondary" onclick="document.getElementById('addFigModal').style.display='none'">Cancel</button>
+      <button class="secondary" onclick="document.getElementById('addFigModal').style.display='none';delete figAccessories['__addfig__']">Cancel</button>
       <button onclick="submitAddFig()">Add Figure</button>
     </div>
   </div>
@@ -539,7 +548,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.16.0';
+const EDITOR_VERSION = 'v1.17.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -972,13 +981,23 @@ function afUpdateSlugPreview() {
   prev.textContent = base + '.' + ext;
 }
 
+// v1.17: (re)render the Add-Figure accessory chips. Reuses renderAccessoriesPanel
+// (same chips/customs as the edit cards) keyed by the '__addfig__' staging id.
+function afRenderAccPanel() {
+  const el = document.getElementById('afAccPanel');
+  if (el) el.innerHTML = renderAccessoriesPanel('__addfig__', figAccessories['__addfig__'] || []);
+}
+
 function openAddFigModal() {
   const modal = document.getElementById('addFigModal');
   afTimeSuffix = Date.now().toString(36);
   const lineSel = document.getElementById('afLine');
   lineSel.innerHTML = LINES.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
   afLineChange();
-  ['afName','afYear','afWave','afUpc','afSlug','afVariantOf','afVariantName'].forEach(id => document.getElementById(id).value = '');
+  ['afName','afYear','afWave','afUpc','afRetail','afSlug','afVariantOf','afVariantName'].forEach(id => document.getElementById(id).value = '');
+  // v1.17: reset the staged accessory selection and render the chip panel
+  figAccessories['__addfig__'] = [];
+  afRenderAccPanel();
   // v1.12: populate parent-figure datalist (name → id) from current merged set.
   const dl = document.getElementById('afParentList');
   const pool = [...approvedFigs, ...manualFigs].filter(f => !f.variantOf);
@@ -1040,6 +1059,7 @@ function submitAddFig() {
   const year  = document.getElementById('afYear').value.trim();
   const wave  = document.getElementById('afWave').value.trim();
   const upc   = document.getElementById('afUpc').value.replace(/[^0-9]/g, '');
+  const retail = document.getElementById('afRetail').value.trim();
   if (!name) { alert('Name is required.'); return; }
 
   // v1.12: variant linkage
@@ -1079,18 +1099,27 @@ function submitAddFig() {
     ...(wave    ? { wave } : {}),
     ...(year    ? { year: parseInt(year) } : {}),
     ...(upc     ? { upc } : {}),
+    ...(retail !== '' ? { retail: Number(retail) } : {}),
     ...(parentFig ? { variantOf: parentFig.id } : {}),
     ...(parentFig && variantName ? { variantName } : {}),
     slug,
     source: 'manual',
   };
 
+  // v1.17: move the staged accessory selection onto the real figure id so it
+  // commits into loadouts.json (same path the commit uses for any new figure's
+  // loadout — see the approvedNew loop in the commit builder).
+  const stagedAccs = figAccessories['__addfig__'] || [];
+  if (stagedAccs.length) figAccessories[id] = [...stagedAccs];
+  delete figAccessories['__addfig__'];
+
   manualFigs.push(fig);
   approvedFigs.push(fig);
   document.getElementById('addFigModal').style.display = 'none';
+  const accNote = stagedAccs.length ? `\nAccessories: ${stagedAccs.length} selected` : '';
   const msg = imageFilename
-    ? `✓ Added "${fig.name}"\nImage staged: ${imageFilename}\nWill be committed with the next push.`
-    : `✓ Added "${fig.name}"\nImage filename: ${fig.slug}.jpg\nUpload this file to the repo root.`;
+    ? `✓ Added "${fig.name}"${accNote}\nImage staged: ${imageFilename}\nWill be committed with the next push.`
+    : `✓ Added "${fig.name}"${accNote}\nImage filename: ${fig.slug}.jpg\nUpload this file to the repo root.`;
   alert(msg);
   refreshUI();
 }
@@ -1849,6 +1878,9 @@ function handleAddCustom(inputEl, figId) {
   if (!figAccessories[figId]) figAccessories[figId] = [];
   if (!figAccessories[figId].includes(added)) figAccessories[figId].push(added);
   inputEl.value = '';
+  // v1.17: the Add-Figure modal panel isn't part of the main list, so refresh
+  // it directly; renderList() still updates the cards behind the modal.
+  if (figId === '__addfig__') afRenderAccPanel();
   // Re-render the list so every visible card sees the new chip.
   // Don't use refreshChromeOnly — chip lists need to rebuild.
   renderList();
@@ -2013,9 +2045,11 @@ function toggleAcc(id, acc, el) {
     figAccessories[id].push(acc);
     el.classList.add('checked');
   }
-  // Update the count in the details summary without full re-render
+  // Update the count in the details summary without full re-render.
+  // v1.17: null-safe — the Add-Figure modal renders this panel outside any
+  // .fig-card (no <details> summary to update there).
   const card = el.closest('.fig-card');
-  const summary = card.querySelector('details summary');
+  const summary = card ? card.querySelector('details summary') : null;
   if (summary) {
     const changed = hasLoadoutChange(id) ? ' · changed' : '';
     summary.textContent = `Accessories / Loadout (${figAccessories[id].length} selected${changed})`;

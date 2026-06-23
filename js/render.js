@@ -492,7 +492,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" onclick="homeIconClick()" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" onclick="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.99</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v6.100</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1410,19 +1410,35 @@ function renderFigList() {
       if (rest.length) html += `<div id="figListRest"></div>`;
     }
     if (rest.length) {
-      requestAnimationFrame(() => {
-        const container = document.getElementById('figListRest');
-        if (!container) return;
-        if (isGrid) {
-          container.innerHTML = rest.map(f => renderFigCard(f)).join('');
-        } else {
-          container.innerHTML = renderFigsWithHeaders(rest, renderFigItem);
-        }
-        // Bind long-press to newly rendered items
-        container.querySelectorAll('[data-fig-id]').forEach(el => {
-          if (!el._lpBound) { el._lpBound = true; initLongPress(el, el.dataset.figId); }
-        });
+      // Bind long-press to rendered rows (idempotent via the _lpBound guard).
+      const bindLongPress = (root) => root.querySelectorAll('[data-fig-id]').forEach(el => {
+        if (!el._lpBound) { el._lpBound = true; initLongPress(el, el.dataset.figId); }
       });
+      if (isGrid) {
+        // v6.100: render the deferred remainder in frame-sized chunks rather
+        // than one big innerHTML, so opening a large line (e.g. origins = 326
+        // figures) doesn't hitch on a single long frame after the first 80.
+        // Grid rows are a flat card list and chunk cleanly; the header-
+        // interleaved list path below stays single-pass (headers span the set).
+        const REST_CHUNK = 80;
+        let i = 0;
+        const step = () => {
+          const container = document.getElementById('figListRest');
+          if (!container) return;  // navigated away mid-render — abort
+          container.insertAdjacentHTML('beforeend', rest.slice(i, i + REST_CHUNK).map(f => renderFigCard(f)).join(''));
+          bindLongPress(container);
+          i += REST_CHUNK;
+          if (i < rest.length) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      } else {
+        requestAnimationFrame(() => {
+          const container = document.getElementById('figListRest');
+          if (!container) return;
+          container.innerHTML = renderFigsWithHeaders(rest, renderFigItem);
+          bindLongPress(container);
+        });
+      }
     }
   }
   html += '<div class="bottom-spacer"></div></div>';

@@ -1,7 +1,13 @@
-// MOTU Vault — Service Worker v6.99
+// MOTU Vault — Service Worker v6.100
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v6.100 changelog:
+//   • CACHE bumped to v6.100. render.js: the deferred remainder of a large
+//     figure grid (everything past the first 80) now renders in frame-sized
+//     chunks instead of one big innerHTML, so opening a big line no longer
+//     hitches on a single long frame. No data/shell-list change otherwise.
 //
 // v6.99 changelog:
 //   • CACHE bumped to v6.99. Catalog data-model update in state.js (and mirrored
@@ -835,7 +841,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.99';
+const CACHE = 'motu-vault-v6.100';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
