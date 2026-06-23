@@ -495,7 +495,10 @@
         <input id="afWave" type="text" placeholder="1" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">UPC / barcode (optional)
-        <input id="afUpc" type="text" inputmode="numeric" placeholder="scan or type digits" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+        <div style="display:flex;gap:6px;align-items:stretch">
+          <input id="afUpc" type="text" inputmode="numeric" placeholder="scan or type digits" style="flex:1;min-width:0;font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
+          <button type="button" onclick="startUpcScan()" title="Scan a barcode with the camera" style="flex-shrink:0;font-size:13px;padding:6px 10px;border-radius:5px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 15%,var(--bg3));color:var(--acc);font-weight:600">⧉ Scan</button>
+        </div>
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2)">Retail $ (optional)
         <input id="afRetail" type="number" step="0.01" min="0" placeholder="e.g. 24.99" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
@@ -538,6 +541,19 @@
   </div>
 </div>
 
+<!-- v1.19: UPC barcode scanner modal (uses the native BarcodeDetector API) -->
+<div id="upcScanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:10000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:18px;max-width:420px;width:92%;display:flex;flex-direction:column;gap:12px;align-items:center">
+    <strong style="font-size:15px;align-self:flex-start">Scan barcode</strong>
+    <div style="position:relative;width:100%;aspect-ratio:4/3;background:#000;border-radius:10px;overflow:hidden">
+      <video id="upcScanVideo" playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+      <div style="position:absolute;inset:18% 10%;border:2px solid var(--acc);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,0.25);pointer-events:none"></div>
+    </div>
+    <div id="upcScanStatus" style="font-size:12px;color:var(--t2);min-height:16px;text-align:center">Point the camera at a UPC / EAN barcode…</div>
+    <button type="button" onclick="stopUpcScan()" style="align-self:stretch;font-size:14px;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-weight:600">Cancel</button>
+  </div>
+</div>
+
 <!-- v1.9: Delete Confirm Modal -->
 <div id="deleteFigModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:380px;width:90%;display:flex;flex-direction:column;gap:14px">
@@ -553,7 +569,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.18.0';
+const EDITOR_VERSION = 'v1.19.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -991,6 +1007,79 @@ function afUpdateSlugPreview() {
 function afRenderAccPanel() {
   const el = document.getElementById('afAccPanel');
   if (el) el.innerHTML = renderAccessoriesPanel('__addfig__', figAccessories['__addfig__'] || []);
+}
+
+// ── v1.19: UPC barcode scanner ────────────────────────────────────
+// Uses the native BarcodeDetector API (Chrome / Edge on Android & desktop).
+// On other browsers it explains that scanning isn't available and the user can
+// type the digits. The detected digits drop straight into the afUpc field.
+let _upcScanStream = null;
+let _upcScanRAF = null;
+
+async function startUpcScan() {
+  if (!('BarcodeDetector' in window)) {
+    alert("This browser can't scan barcodes (no BarcodeDetector support — Chrome or Edge on Android works best). You can type the digits instead.");
+    return;
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    alert('Camera access is unavailable in this browser. Type the digits instead.');
+    return;
+  }
+  let detector;
+  try {
+    const wanted = ['upc_a', 'upc_e', 'ean_13', 'ean_8', 'code_128'];
+    let formats = wanted;
+    try {
+      const supported = await BarcodeDetector.getSupportedFormats();
+      formats = wanted.filter(f => supported.includes(f));
+      if (!formats.length) formats = supported;
+    } catch {}
+    detector = new BarcodeDetector({ formats });
+  } catch (e) {
+    alert('Could not start the scanner: ' + (e?.message || e));
+    return;
+  }
+  const modal = document.getElementById('upcScanModal');
+  const video = document.getElementById('upcScanVideo');
+  const status = document.getElementById('upcScanStatus');
+  modal.style.display = 'flex';
+  status.textContent = 'Point the camera at a UPC / EAN barcode…';
+  try {
+    _upcScanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+  } catch (e) {
+    stopUpcScan();
+    alert('Camera access was denied or unavailable (' + (e?.name || e) + '). Type the digits instead.');
+    return;
+  }
+  video.srcObject = _upcScanStream;
+  try { await video.play(); } catch {}
+
+  const tick = async () => {
+    if (!_upcScanStream) return;   // cancelled
+    try {
+      const codes = await detector.detect(video);
+      const hit = codes.map(c => (c.rawValue || '').trim()).find(v => /^[0-9]{6,14}$/.test(v));
+      if (hit) {
+        const upc = document.getElementById('afUpc');
+        if (upc) upc.value = hit;
+        if (navigator.vibrate) navigator.vibrate(40);
+        status.textContent = '✓ ' + hit;
+        stopUpcScan();
+        return;
+      }
+    } catch {}
+    _upcScanRAF = requestAnimationFrame(tick);
+  };
+  _upcScanRAF = requestAnimationFrame(tick);
+}
+
+function stopUpcScan() {
+  if (_upcScanRAF) { cancelAnimationFrame(_upcScanRAF); _upcScanRAF = null; }
+  if (_upcScanStream) { _upcScanStream.getTracks().forEach(t => t.stop()); _upcScanStream = null; }
+  const video = document.getElementById('upcScanVideo');
+  if (video) { try { video.pause(); } catch {} video.srcObject = null; }
+  const modal = document.getElementById('upcScanModal');
+  if (modal) modal.style.display = 'none';
 }
 
 function openAddFigModal() {

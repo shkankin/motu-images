@@ -1,7 +1,17 @@
-// MOTU Vault — Service Worker v6.100
+// MOTU Vault — Service Worker v6.101
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v6.101 changelog:
+//   • CACHE bumped to v6.101. Three detail/multi-select improvements:
+//     – Multi-select batch editor (Add Copy…) now also sets Date Acquired and
+//       Location, not just status/condition/price/notes.
+//     – Detail Price Paid prepopulates with the figure's Original Retail and
+//       selects-all on focus, so it's a one-tap default that's easy to override.
+//     – Acquired (MM/YYYY) editing fixed: backspacing a month digit no longer
+//       cascades the year or jumps the caret to the end (formatAcquired now
+//       respects the slash boundary and preserves caret position).
 //
 // v6.100 changelog:
 //   • CACHE bumped to v6.100. render.js: the deferred remainder of a large
@@ -841,7 +851,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.100';
+const CACHE = 'motu-vault-v6.101';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

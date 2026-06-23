@@ -1099,6 +1099,8 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
     if (presetCondition) copy.condition = presetCondition;
     if (extras.variant) copy.variant = extras.variant;
     if (extras.paid) copy.paid = extras.paid;
+    if (extras.acquired) copy.acquired = extras.acquired;
+    if (extras.location) copy.location = extras.location;
     if (extras.notes) copy.notes = extras.notes;
     cur.copies.push(copy);
     S.coll[id] = cur;
@@ -1296,20 +1298,41 @@ document.addEventListener('keydown', e => {
 // digit just shifts the partial date one place left.
 window.formatAcquired = (el) => {
   if (!el) return;
-  // Strip everything except digits.
-  const digits = (el.value || '').replace(/\D/g, '').slice(0, 6);
-  let next;
-  if (digits.length === 0) next = '';
-  else if (digits.length <= 2) next = digits;                                // "0", "04"
-  else next = digits.slice(0, 2) + '/' + digits.slice(2);                    // "04/", "04/2", … "04/2026"
-  if (next === el.value) return;
-  // Preserve caret position roughly — after a digit was typed, caret moves
-  // forward; after backspace, it stays where deletion put it.
-  const wasAtEnd = el.selectionStart === el.value.length;
-  el.value = next;
-  if (wasAtEnd) {
-    try { el.setSelectionRange(next.length, next.length); } catch {}
+  const oldVal = el.value || '';
+  const oldCaret = el.selectionStart ?? oldVal.length;
+  // v6.101: split on the existing slash so editing one segment never cascades
+  // into the other. Previously we stripped ALL non-digits and re-split at index
+  // 2, so backspacing a month digit ("04/2026" → "0/2026") pulled a year digit
+  // into the month ("02/026"); now the two segments stay independent and the
+  // slash is only auto-inserted while you're first typing past two month digits.
+  const slashIdx = oldVal.indexOf('/');
+  const hadSlash = slashIdx >= 0;
+  let mm, yyyy;
+  if (hadSlash) {
+    mm   = oldVal.slice(0, slashIdx).replace(/\D/g, '').slice(0, 2);
+    yyyy = oldVal.slice(slashIdx + 1).replace(/\D/g, '').slice(0, 4);
+  } else {
+    const d = oldVal.replace(/\D/g, '').slice(0, 6);
+    mm = d.slice(0, 2);
+    yyyy = d.slice(2);
   }
+  let next;
+  if (hadSlash)           next = mm + '/' + yyyy;   // keep both segments as-is
+  else if (mm.length < 2) next = mm;                // still entering the month
+  else                    next = mm + '/' + yyyy;   // auto-insert slash after 2 digits
+  if (next === oldVal) return;
+  // Keep the caret after the same number of digits the user had before it, so a
+  // mid-field edit doesn't jump to the end.
+  const digitsBefore = oldVal.slice(0, oldCaret).replace(/\D/g, '').length;
+  let pos = 0, seen = 0;
+  while (pos < next.length && seen < digitsBefore) {
+    const cc = next.charCodeAt(pos);
+    if (cc >= 48 && cc <= 57) seen++;
+    pos++;
+  }
+  if (next[pos] === '/') pos++;   // don't land just before the slash
+  el.value = next;
+  try { el.setSelectionRange(pos, pos); } catch {}
 };
 
 // ── Exports ─────────────────────────────────────────────────

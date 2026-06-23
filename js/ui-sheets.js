@@ -613,7 +613,7 @@ function renderImportSheet() {
 function renderBatchEditSheet() {
   const n = S.selected.size;
   if (!n) return '<div class="text-sm text-dim">No figures selected.</div>';
-  const be = S.batchEdit || (S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned' });
+  const be = S.batchEdit || (S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned', acquired: '', location: '' });
 
   const h = `<div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Status</div>
@@ -637,6 +637,14 @@ function renderBatchEditSheet() {
       <input type="number" step="0.01" value="${esc(be.paid)}" placeholder="$0.00" oninput="S.batchEdit.paid=this.value">
     </div>
     <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Date Acquired (optional)</div>
+      <input type="text" inputmode="numeric" maxlength="7" value="${esc(be.acquired || '')}" placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}" oninput="formatAcquired(this);S.batchEdit.acquired=this.value">
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Location (optional)</div>
+      <input type="text" value="${esc(be.location || '')}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" oninput="S.batchEdit.location=this.value">
+    </div>
+    <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Notes (optional)</div>
       <textarea rows="3" placeholder="Notes…" oninput="S.batchEdit.notes=this.value">${esc(be.notes)}</textarea>
     </div>
@@ -655,7 +663,7 @@ function renderBatchEditSheet() {
 
 window.openBatchEditor = () => {
   if (!S.selected.size) return;
-  S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned' };
+  S.batchEdit = { condition: '', variant: '', paid: '', notes: '', status: 'owned', acquired: '', location: '' };
   S.sheet = 'batch';
   pushNav();
   render();
@@ -663,7 +671,7 @@ window.openBatchEditor = () => {
 
 window.applyBatchEdit = () => {
   const be = S.batchEdit; if (!be) return;
-  batchAddCopy(be.condition, { variant: be.variant, paid: be.paid, notes: be.notes, status: be.status });
+  batchAddCopy(be.condition, { variant: be.variant, paid: be.paid, notes: be.notes, status: be.status, acquired: be.acquired, location: be.location });
   closeSheet();
 };
 
