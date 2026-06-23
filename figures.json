@@ -12742,7 +12742,7 @@
   },
   {
     "id": "manual-gore-illa-mqq0webn",
-    "name": "Gore-Illa",
+    "name": "Gore-illa",
     "sourceName": "Gore-Illa",
     "line": "original",
     "sourceLine": "original",
@@ -13481,6 +13481,19 @@
     "sourceLine": "original",
     "sourceGroup": "",
     "upc": "0074299020360"
+  },
+  {
+    "id": "manual-rhinorb-mqq1m6yn",
+    "name": "Rhinorb",
+    "sourceName": "Rhinorb",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "faction": "Other",
+    "year": 1986,
+    "slug": "manual-rhinorb-mqq1m6yn",
+    "source": "manual"
   },
   {
     "id": "rio-blast-3779",
@@ -14228,6 +14241,18 @@
     "sourceGroup": ""
   },
   {
+    "id": "manual-tuskor-mqq1negl",
+    "name": "Tuskor",
+    "sourceName": "Tuskor",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "year": 1986,
+    "slug": "manual-tuskor-mqq1negl",
+    "source": "manual"
+  },
+  {
     "id": "twistoid-3984",
     "name": "Twistoid",
     "line": "original",
@@ -14256,6 +14281,19 @@
     "sourceLine": "original",
     "sourceGroup": "",
     "upc": "0074299090400"
+  },
+  {
+    "id": "manual-ty-grrr-mqq1o9nl",
+    "name": "Ty-Grrr",
+    "sourceName": "Ty-Grrr",
+    "line": "original",
+    "sourceLine": "original",
+    "group": "Meteorbs",
+    "sourceGroup": "Meteorbs",
+    "faction": "Other",
+    "year": 1986,
+    "slug": "manual-ty-grrr-mqq1o9nl",
+    "source": "manual"
   },
   {
     "id": "tyrantisaurus-rex-7158",
