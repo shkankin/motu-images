@@ -1,10 +1,10 @@
-// MOTU Vault — Service Worker v6.103
+// MOTU Vault — Service Worker v7.00
 // HTML: stale-while-revalidate (fast load, background update)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
-// v6.103 changelog:
-//   • CACHE bumped to v6.103. Inline handler migration complete:
+// v7.00 changelog:
+//   • CACHE bumped to v7.00. Inline handler migration complete:
 //     – ALL onclick/onchange/oninput/onblur/onfocus attributes removed from
 //       render.js and ui-sheets.js (~125 handlers migrated to data-action).
 //     – 'unsafe-inline' dropped from script-src in the app CSP — the app now
@@ -872,7 +872,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v6.103';
+const CACHE = 'motu-vault-v7.00';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

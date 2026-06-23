@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#06060c">
 <meta name="color-scheme" content="dark light">
-<!-- v6.103: strict Content-Security-Policy. 'unsafe-inline' removed from
+<!-- v7.00: strict Content-Security-Policy. 'unsafe-inline' removed from
      script-src — all event handlers now use data-action delegation
      (delegate.js + delegate-handlers.js). Inline onclick/onchange/oninput
      attributes have been fully eliminated from render.js and ui-sheets.js.
@@ -63,9 +63,11 @@ html,body{background:#000;margin:0}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
 <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
-<!-- Load fonts CSS without blocking first paint; applies when ready. -->
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap"></noscript>
+<!-- Fonts loaded as a standard stylesheet. The previous async-preload trick
+     used an inline onload attribute which is blocked by the strict script-src
+     CSP added in v7.00. Direct link has negligible perf difference for a PWA
+     that caches on first load anyway. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="vault.css">
 <!-- v6.01: parallel ES module fetch + pre-parse -->
 <link rel="modulepreload" href="./js/state.js">
