@@ -569,7 +569,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.21.0';
+const EDITOR_VERSION = 'v1.22.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1871,7 +1871,7 @@ function renderCard(f) {
   }
 
   // Image: <slug>.jpg in same directory as the editor
-  const imgSrc = f.slug ? `${f.slug}.jpg` : '';
+  const imgSrc = f.slug ? `${RAW_IMG}/${f.slug}.jpg` : '';
 
   return `<div class="${cls}" data-id="${esc(f.id)}">
     <div class="fig-img">
@@ -2038,7 +2038,7 @@ function renderExistingCard(f) {
     if (match) canonicalGroup = match.groups[0];
   }
 
-  const imgSrc = f.slug ? `${f.slug}.jpg` : '';
+  const imgSrc = f.slug ? `${RAW_IMG}/${f.slug}.jpg` : '';
 
   return `<div class="${cls}" data-id="${esc(f.id)}">
     <div class="fig-img">
@@ -2323,6 +2323,7 @@ function downloadJSON(filename, data) {
 const GH_REPO   = 'shkankin/motu-images';
 const GH_BRANCH = 'main';
 const GH_TOKEN_KEY = 'motu-editor-gh-token';
+const RAW_IMG = `https://raw.githubusercontent.com/${GH_REPO}/${GH_BRANCH}/images`;
 
 // Shared payload builder used by both download and commit flows.
 function buildPayloads() {
