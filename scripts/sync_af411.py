@@ -189,13 +189,27 @@ KIDS_CORE_GROUP_MAP = {
     "2026 Movie": "Movie (2026)",
 }
 
+# v1.3: Chronicles group normalization.
+# AF411 URL path segments for Chronicles sublines:
+#   movie-action-figures  → "Movie"      (matches chronicles subline key 'movie')
+#   anything else         → "Core (Non-Movie)"
+# The canonical group names come from state.js SUBLINES['chronicles'].
+CHRONICLES_GROUP_MAP = {
+    "movie-action-figures": "Movie",
+    "movie":                "Movie",
+    "movie-figures":        "Movie",
+    # Everything else (action-figures, etc.) → Core (Non-Movie)
+}
+
 def normalize_group(line_id, raw_group):
     """v1.2: Map AF411-scraped group strings to canonical app group names.
-    Currently only Kids Core needs this — other lines' groups pass through."""
+    v1.3: Chronicles group normalization added."""
     if not raw_group:
         return raw_group
     if line_id == "kids-core":
         return KIDS_CORE_GROUP_MAP.get(raw_group.strip(), raw_group.strip())
+    if line_id == "chronicles":
+        return CHRONICLES_GROUP_MAP.get(raw_group.strip().lower(), "Core (Non-Movie)")
     return raw_group
 
 # Faction keywords to auto-classify (best-effort from name/group)
@@ -225,7 +239,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent  # assumes scripts/ is one le
 FIGURES_JSON = REPO_ROOT / "figures.json"
 PENDING_JSON = REPO_ROOT / "figures-pending.json"   # v1.4: review queue for new figures
 REJECTED_JSON = REPO_ROOT / "figures-rejected.json" # v1.4: slugs the editor said no to
-IMAGES_DIR = REPO_ROOT  # images sit at repo root as {slug}.jpg
+IMAGES_DIR = REPO_ROOT / "images"  # v1.3: images moved to images/ subdirectory
 
 # v1.1: fields that the scraper KNOWS about. Anything else on an existing entry
 # (overrides, app-specific flags, manual annotations) is preserved verbatim
@@ -434,6 +448,8 @@ def download_image(slug, af411_url):
     # Build image URL from the figure's page URL path
     img_url = f"{BASE}{MOTU}/images/{slug}.jpg"
     dest = IMAGES_DIR / f"{slug}.jpg"
+
+    IMAGES_DIR.mkdir(exist_ok=True)  # v1.3: create images/ if it doesn't exist yet
 
     if dest.exists():
         return True  # Already have it
