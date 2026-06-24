@@ -1,7 +1,19 @@
-// MOTU Vault — Service Worker v7.09
+// MOTU Vault — Service Worker v7.11
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v7.11 changelog:
+//   • state.js SUBLINES: pruned 8 sublines that match zero figures in the
+//     current catalog — origins Deluxe, classics Filmation + Other, kids-core
+//     Vehicles & Playsets, chronicles Core (Non-Movie), new-adventures Vehicles
+//     + Playsets (superseded by the combined entry), cross-brand minis-games.
+//
+// v7.10 changelog:
+//   • state.js SUBLINES: rebuilt the per-line subline definitions that had
+//     lived in local storage and were lost — origins (+6), chronicles (+1),
+//     new-adventures (+1), cross-brand (+1 Loyal Subjects), and a new
+//     mighty-masters entry. Group strings verified against figures.json.
 //
 // v7.09 changelog:
 //   • Finished the v7.00 CSP migration: the long-press context menu and a
@@ -895,7 +907,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.09';
+const CACHE = 'motu-vault-v7.11';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

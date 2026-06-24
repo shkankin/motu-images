@@ -143,12 +143,17 @@ const THEMES = {
 const SUBLINES = {
   origins: [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
-    {key:'deluxe',label:'Deluxe',groups:['Deluxe']},
     {key:'exclusives',label:'Exclusives',groups:['Exclusives']},
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
     {key:'turtles',label:'Turtles of Grayskull',groups:['Turtles of Grayskull']},
     {key:'crossovers',label:'Crossovers',groups:['Crossovers']},
     {key:'wwe',label:'WWE',groups:['WWE']},
+    {key:'movie',label:'Movie (2026)',groups:['Movie (2026)']},
+    {key:'rulers',label:'Rulers of the Sun',groups:['Rulers of the Sun']},
+    {key:'cartoon',label:'Cartoon Collection',groups:['Cartoon Collection']},
+    {key:'powers',label:'Powers of Grayskull',groups:['Powers of Grayskull']},
+    {key:'thundercats',label:'MOTU x Thundercats',groups:['MOTU x Thundercats']},
+    {key:'sketchbook',label:'Sketchbook Series',groups:['Sketchbook Series']},
   ],
   masterverse: [
     {key:'revelation',label:'Revelation',groups:['Revelation','Revelation Deluxe']},
@@ -171,15 +176,12 @@ const SUBLINES = {
     {key:'rebellion',label:'Great Rebellion',groups:['Great Rebellion']},
     {key:'galactic',label:'Galactic Protectors',groups:['Galactic Protectors']},
     {key:'mutants',label:'Evil Mutants',groups:['Evil Mutants']},
-    {key:'filmation',label:'Filmation',groups:['Filmation']},
     {key:'packs',label:'Packs',groups:['Packs']},
     {key:'creatures',label:'Creatures',groups:['Creatures']},
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
-    {key:'other',label:'Other',groups:['Other','Battle Sets']},
   ],
   'kids-core': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
-    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets','Vehicles and Playsets']},
     {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
   ],
   original: [
@@ -202,16 +204,18 @@ const SUBLINES = {
   ],
   chronicles: [
     {key:'movie',label:'Movie',groups:['Movie']},
-    {key:'core',label:'Core (Non-Movie)',groups:['Core (Non-Movie)']},
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
   ],
   'new-adventures': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
-    {key:'vehicles',label:'Vehicles',groups:['Vehicles']},
-    {key:'playsets',label:'Playsets',groups:['Playsets']},
+    {key:'veh-playsets',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
   ],
   'eternia-minis': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
+  ],
+  'mighty-masters': [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
   ],
   // v6.61: Cross-Brand & Collabs sublines.
   //  - designer:    artist/designer collabs and limited-run art toys (e.g. Mondo
@@ -224,7 +228,7 @@ const SUBLINES = {
     {key:'designer',label:'Designer & Artist Collaborations',groups:['Designer & Artist Collaborations']},
     {key:'dolls',label:'Fashion & Collector Dolls',groups:['Fashion & Collector Dolls']},
     {key:'hot-wheels',label:'Hot Wheels & Die-Cast',groups:['Hot Wheels & Die-Cast']},
-    {key:'minis-games',label:'Mini Figures, Building Sets, & Games',groups:['Mini Figures, Building Sets, & Games']},
+    {key:'loyal-subjects',label:'Loyal Subjects',groups:['Loyal Subjects']},
   ],
 };
 
