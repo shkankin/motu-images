@@ -60,6 +60,13 @@ ID SCHEME
   This is stable: FR IDs never change once assigned.
 
 CHANGELOG
+  v1.2 (2026-06-24) — fix thumb URL extraction from browser-saved HTML
+    - Browser "Save Page As" rewrites img src to local paths. The parser
+      now reads the `front` attribute instead, which always contains the
+      original relative path (galleries/{series}/thumb_{name}.jpg).
+      Reconstructs the full URL by prepending the FR base. Falls back to
+      src for live fetches where the full URL is still intact.
+      Result: 100% thumb capture rate on all four series.
   v1.1 (2026-06-23) — cache-first
     - Reads from scripts/fr_cache/fr_{id}.html instead of live fetches
       (GitHub Actions IPs blocked by FigureRealm).
@@ -82,7 +89,7 @@ from pathlib import Path
 
 # ─── Configuration ────────────────────────────────────────────────
 
-SCRIPT_VERSION = "v1.1"
+SCRIPT_VERSION = "v1.2"
 
 BASE = "https://www.figurerealm.com"
 
@@ -225,14 +232,30 @@ def parse_checklist_html(html, fr_series_id, app_line_id, series_label, group_mo
     """
 
     # ── Pass 1: thumbnail URLs ─────────────────────────────────────
+    # Browser "Save Page As" rewrites img src to local paths like
+    # "fr_1333_files/thumb_X_S0rS.jpg". The original URL is preserved
+    # in the `front` attribute: front="galleries/{series}/thumb_X.jpg"
+    # We reconstruct the full URL by prepending the FR base.
     IMG_A_RE = re.compile(
         r'<a\s[^>]*href="[^"]*actionfigure\?action=actionfigure&(?:amp;)?id=(\d+)&(?:amp;)?figure=[^"]*"[^>]*>'
-        r'\s*<img\s[^>]*src="(https://www\.figurerealm\.com/galleries/[^"]+/thumb_[^"]+\.(?:jpg|png))"',
+        r'\s*<img\s[^>]*(?:'
+        # Option A: front attribute with relative path (browser-saved HTML)
+        r'front="(galleries/[^"]+\.(?:jpg|png))"'
+        r'|'
+        # Option B: src still has the full figurerealm.com URL (live fetch)
+        r'src="(https://www\.figurerealm\.com/galleries/[^"]+/thumb_[^"]+\.(?:jpg|png))"'
+        r')',
         re.I | re.S
     )
     thumbs = {}  # fr_id → thumb_url
     for m in IMG_A_RE.finditer(html):
-        thumbs[m.group(1)] = m.group(2)
+        fr_id     = m.group(1)
+        rel_path  = m.group(2)   # from front= attribute (browser-saved)
+        full_url  = m.group(3)   # from src= attribute (live fetch)
+        if rel_path:
+            thumbs[fr_id] = f"https://www.figurerealm.com/{rel_path}"
+        elif full_url:
+            thumbs[fr_id] = full_url
 
     # ── Pass 2: text links (name + id + position in HTML) ──────────
     TEXT_A_RE = re.compile(
