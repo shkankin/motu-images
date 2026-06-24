@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.103
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.104
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -118,7 +118,7 @@ export default {
     // POST /admin/community/<figId>  body: {sealed?, loose?, note?}
     const am = url.pathname.match(/^\/admin\/community\/([^\/]+)$/);
     if (am && request.method === 'POST') {
-      if (!authorizeAdmin(request, env)) return json({ error: 'unauthorized' }, 401, cors);
+      if (!(await authorizeAdmin(request, env))) return json({ error: 'unauthorized' }, 401, cors);
       const figId = decodeURIComponent(am[1]);
       if (!isValidFigId(figId)) return json({ error: 'invalid figId' }, 400, cors);
       let body;
@@ -587,19 +587,27 @@ function isValidFigId(s) {
 // v6.103 (L-1): constant-time string comparison to resist timing side-channels
 // on the admin token check. Over the public internet with network jitter this
 // is largely theoretical, but it's the correct practice for auth comparisons.
-function timingSafeEqual(a, b) {
-  const ea = new TextEncoder().encode(a);
-  const eb = new TextEncoder().encode(b);
-  // Length check must not short-circuit — compare a fixed-length digest instead.
-  // If lengths differ, still do a full comparison against the longer string so
-  // the time taken doesn't leak whether the lengths matched.
-  if (ea.length !== eb.length) return false;
+// v6.104: genuinely constant-time compare. The previous version early-returned
+// on a length mismatch (`if (ea.length !== eb.length) return false;`), which
+// leaked the secret's length through timing — the exact side-channel the
+// function claimed to close. Hashing both inputs to a fixed-length SHA-256
+// digest first means the byte loop always runs over 32 bytes regardless of
+// input length, so neither the token's length nor its contents are observable
+// from how long the check takes. SHA-256 is preimage-resistant, so digesting
+// attacker-supplied input is safe.
+async function timingSafeEqual(a, b) {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(a)),
+    crypto.subtle.digest('SHA-256', enc.encode(b)),
+  ]);
+  const va = new Uint8Array(da), vb = new Uint8Array(db);
   let result = 0;
-  for (let i = 0; i < ea.length; i++) result |= ea[i] ^ eb[i];
+  for (let i = 0; i < va.length; i++) result |= va[i] ^ vb[i];
   return result === 0;
 }
 
-function authorizeAdmin(request, env) {
+async function authorizeAdmin(request, env) {
   if (!env.ADMIN_TOKEN) return false;
   const auth = request.headers.get('authorization') || '';
   return timingSafeEqual(auth, 'Bearer ' + env.ADMIN_TOKEN);
