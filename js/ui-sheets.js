@@ -366,7 +366,7 @@ function renderAboutSheet() {
       style="position:absolute;top:0;right:0;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;z-index:1">
       ${userMuted ? '🔇 Unmute' : '🔊 Mute'}
     </button>
-    <img src="masters_logo.png" alt="Masters of the Universe"
+    <img src="${IMG}/masters_logo.png" alt="Masters of the Universe"
       onerror="this.style.display='none'"
       style="max-width:240px;width:75%;height:auto;margin:0 auto 16px;display:block;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5))">
     <div class="font-display text-gold" style="font-size:24px;letter-spacing:1.5px;margin-bottom:4px">MOTU COLLECTOR</div>
