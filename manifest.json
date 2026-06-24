@@ -18,13 +18,13 @@
   ],
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "images/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "images/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
@@ -38,7 +38,7 @@
       "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=share-wantlist",
       "icons": [
         {
-          "src": "icon-192.png",
+          "src": "images/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -51,7 +51,7 @@
       "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=stats",
       "icons": [
         {
-          "src": "icon-192.png",
+          "src": "images/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -64,7 +64,7 @@
       "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=sync",
       "icons": [
         {
-          "src": "icon-192.png",
+          "src": "images/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -77,7 +77,7 @@
       "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=menu",
       "icons": [
         {
-          "src": "icon-192.png",
+          "src": "images/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }

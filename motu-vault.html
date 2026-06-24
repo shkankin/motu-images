@@ -21,11 +21,11 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
 
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="images/icon-192.png">
 <meta name="description" content="Track your Masters of the Universe action figure collection — works offline, no account needed.">
 <title>MOTU Collector</title>
 <!-- Preload the splash logo in parallel with HTML parse -->
-<link rel="preload" as="image" href="masters_logo.png" fetchpriority="high">
+<link rel="preload" as="image" href="images/masters_logo.png" fetchpriority="high">
 <!-- Paint black immediately + define splash styles inline so they apply at
      first paint (independent of external stylesheet loading). -->
 <style>
@@ -88,7 +88,7 @@ html,body{background:#000;margin:0}
   <div id="routeAnnouncer" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
 <!-- v5.01: splash temporarily disabled per user request. Restore by removing the comment markers.
 <div class="splash" id="splash">
-  <img class="splash-logo" src="masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
+  <img class="splash-logo" src="images/masters_logo.png" alt="Masters of the Universe" onerror="this.parentElement.remove()">
   <div class="splash-flash"></div>
 </div>
 -->
