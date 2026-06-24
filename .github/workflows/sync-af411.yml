@@ -111,7 +111,7 @@ jobs:
           git add figures.json
           git add figures-pending.json 2>/dev/null || true
           git add figures-rejected.json 2>/dev/null || true
-          git add "*.jpg" 2>/dev/null || true
+          git add "images/*.jpg" "images/*.png" 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
