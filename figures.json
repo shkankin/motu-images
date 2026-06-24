@@ -18190,5 +18190,16 @@
     "group": "Action Figures",
     "faction": "Evil Warriors",
     "upc": "194735422562"
+  },
+  {
+    "id": "manual-he-man-mqroode8",
+    "name": "He-Man",
+    "sourceName": "He-Man",
+    "line": "motu-giants",
+    "sourceLine": "motu-giants",
+    "faction": "Heroic Warriors",
+    "year": 2014,
+    "slug": "manual-he-man-mqroode8",
+    "source": "manual"
   }
 ]
