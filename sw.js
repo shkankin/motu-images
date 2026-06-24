@@ -1,9 +1,9 @@
-// MOTU Vault — Service Worker v7.06
+// MOTU Vault — Service Worker v7.07
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
-// v7.06 changelog:
+// v7.07 changelog:
 //   • Critical fix: IMG constant pointed to images/ subdir, breaking
 //     figures.json, loadouts.json, kids-core.json, and audio file fetches.
 //     Split into ROOT (repo root) and IMG (images/ subdir). Data files
@@ -888,7 +888,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.06';
+const CACHE = 'motu-vault-v7.07';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

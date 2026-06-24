@@ -190,15 +190,18 @@ KIDS_CORE_GROUP_MAP = {
 }
 
 # v1.3: Chronicles group normalization.
-# AF411 URL path segments for Chronicles sublines:
-#   movie-action-figures  → "Movie"      (matches chronicles subline key 'movie')
-#   anything else         → "Core (Non-Movie)"
+# AF411 checklist bold headers (after stripping " Checklist" suffix):
+#   "Movie Action Figures"  → "Movie"
+#   "Core Action Figures"   → "Core (Non-Movie)"
+#   "Action Figures"        → "Core (Non-Movie)"  (fallback)
 # The canonical group names come from state.js SUBLINES['chronicles'].
 CHRONICLES_GROUP_MAP = {
-    "movie-action-figures": "Movie",
+    "movie action figures": "Movie",
+    "movie figures":        "Movie",
     "movie":                "Movie",
-    "movie-figures":        "Movie",
-    # Everything else (action-figures, etc.) → Core (Non-Movie)
+    "core action figures":  "Core (Non-Movie)",
+    "core figures":         "Core (Non-Movie)",
+    "action figures":       "Core (Non-Movie)",
 }
 
 def normalize_group(line_id, raw_group):
@@ -324,9 +327,13 @@ class ChecklistParser(HTMLParser):
         if tag in ("b", "strong") and self._in_bold:
             self._in_bold = False
             text = self._bold_text.strip()
+            # v1.3: Strip trailing "Checklist" suffix — AF411 uses headers like
+            # "Movie Action Figures Checklist" which the old filter excluded entirely.
+            import re as _re
+            text = _re.sub(r'\s*Checklist\s*$', '', text, flags=_re.I).strip()
             # Group headers are bold text inside table header-style rows
-            # They look like "Origins Action Figures" or "Deluxe" etc.
-            if text and "Checklist" not in text and len(text) > 1:
+            # They look like "Movie Action Figures" or "Origins Action Figures" etc.
+            if text and len(text) > 1:
                 self._in_header_row = True
                 self.current_group = text
         if tag == "td":
