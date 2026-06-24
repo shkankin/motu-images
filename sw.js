@@ -4,6 +4,10 @@
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
 // v7.04 changelog:
+//   • Critical fix: IMG constant pointed to images/ subdir, breaking
+//     figures.json, loadouts.json, kids-core.json, and audio file fetches.
+//     Split into ROOT (repo root) and IMG (images/ subdir). Data files
+//     and audio now use ROOT; figure thumbnails still use IMG.
 //   • Removed FigureRealm scraper (sync_figurerealm.py, sync-figurerealm.yml,
 //     scripts/fr_cache/, download_fr_images.ps1) — scraping abandoned.
 //   • Deploy tool: FigureRealm entries removed from PATH_MAP; Pages status

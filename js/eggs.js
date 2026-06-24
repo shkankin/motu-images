@@ -7,7 +7,7 @@
 // ════════════════════════════════════════════════════════════════════
 
 import {
-  S, ICO, icon, IMG, THEMES, store,
+  S, ICO, icon, ROOT, IMG, THEMES, store,
   esc, normalize, getThemeTitles, ln, SUBLINES,
 } from './state.js';
 import {
@@ -21,8 +21,8 @@ import { photoStore } from './photos.js';
 // § AUDIO ── SND urls, AudioContext, playSound, preloadSound ─────
 // Shared sound URLs (resolved relative to the motu-images repo).
 const SND = {
-  powerGrayskull: IMG + '/power_grayskull.mp3',
-  iHaveThePower:  IMG + '/i_have_the_power.mp3',
+  powerGrayskull: ROOT + '/power_grayskull.mp3',
+  iHaveThePower:  ROOT + '/i_have_the_power.mp3',
 };
 
 // Web Audio API playback — avoids the crackle that HTMLAudioElement produces

@@ -45,13 +45,14 @@ function icon(d, size = 20, strokeW = 2) {
 }
 
 // § CONSTANTS ── IMG, URLs, LINES, FACTIONS, STATUS_*, THEMES, SUBLINES, maps ──
-const IMG = 'https://raw.githubusercontent.com/shkankin/motu-images/main/images';
-const FIGS_URL = IMG + '/figures.json';
-const KIDS_CORE_URL = IMG + '/kids-core.json';
+const ROOT = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
+const IMG  = ROOT + '/images';
+const FIGS_URL     = ROOT + '/figures.json';
+const LOADOUTS_URL = ROOT + '/loadouts.json';
+const KIDS_CORE_URL = ROOT + '/kids-core.json';
 // v6.03: shared loadouts (what each figure shipped with). Local override
 // in motu-acc-avail beats repo default for the same figId — same merge
 // model as kids-core. File is optional; 404 is fine.
-const LOADOUTS_URL = IMG + '/loadouts.json';
 const CACHE_KEY = 'motu-figs-cache';
 const LOADOUTS_CACHE_KEY = 'motu-loadouts-cache'; // v6.24: persisted alongside figs cache
 const KIDS_CORE_KEY = 'motu-kids-core';  // localStorage key for local Kids Core figures
@@ -414,5 +415,5 @@ function getThemeTitles() {
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  ICO, icon, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
+  ICO, icon, ROOT, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
 };
