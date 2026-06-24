@@ -442,7 +442,7 @@ function renderWantListViewSheet() {
     const owned = entry?.status === 'owned' || entry?.status === 'for-sale';
     const imgSrc = safeImgSrc(f.image);
     h += `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border:1px solid ${owned?'var(--gn)':'var(--bd)'};border-radius:10px;margin-bottom:8px">
-      ${imgSrc ? `<img src="${imgSrc}" alt="" onerror="this.style.display='none'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd)">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
+      ${imgSrc ? `<img src="${imgSrc}" alt="" data-error-action="img-hide" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd)">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
         <div style="font-size:11px;color:var(--t3)">${esc([f.line, f.wave].filter(Boolean).join(' · '))}</div>

@@ -494,7 +494,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.08</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.09</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -930,7 +930,7 @@ function renderLinesGrid() {
     const tourLabel = tState.seen ? '🎓 Replay tour' : '🎓 Take a 1-minute tour';
     html += `<div class="onboard-banner">
       <div style="flex:1;position:relative;z-index:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Wishlist, or For Sale — it'll appear in your Collection tab.<br><button data-action="start-tutorial" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
-      <img class="onboard-mascot" src="${IMG}/he-man-icon.png" alt="" aria-hidden="true" onerror="this.style.display='none'">
+      <img class="onboard-mascot" src="${IMG}/he-man-icon.png" alt="" aria-hidden="true" data-error-action="img-hide">
       <button class="onboard-dismiss" data-action="dismiss-onboard" title="Dismiss">×</button>
     </div>`;
   }
@@ -990,7 +990,7 @@ function renderLinesGrid() {
           : '';
         html += `<button class="line-row${newCount>0?' has-new':''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
           <div class="line-row-thumb">
-            <img src="${IMG}/${l.id}.jpg" alt="" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
+            <img src="${IMG}/${l.id}.jpg" alt="" data-error-action="img-fallback" data-fallback-src="${IMG}/${l.id}.png" loading="lazy">
           </div>
           <div class="line-row-info">
             <div class="line-row-name font-display">${esc(l.name)}</div>
@@ -1018,7 +1018,7 @@ function renderLinesGrid() {
           ? `<div class="new-count-badge" title="${newCount} new figure${newCount===1?'':'s'} in this line">${newCount} NEW</div>`
           : '';
         html += `<div class="line-card${newCount > 0 ? ' has-new' : ''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
-          <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" onerror="this.src='${IMG}/${l.id}.png';this.onerror=function(){this.style.display='none'}" loading="lazy">
+          <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" data-error-action="img-fallback" data-fallback-src="${IMG}/${l.id}.png" loading="lazy">
           <div class="overlay"></div>
           ${newBadge}
           <div class="card-info">

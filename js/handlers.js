@@ -16,7 +16,7 @@ const onSearch = (...a) => window.onSearch?.(...a);
 import {
   S, store, ICO, icon, IMG, LINES, FACTIONS, KIDS_CORE_KEY, CUSTOM_FIGS_KEY,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, SUBLINES,
-  ln, normalize, esc, jsArg, _clone, isSelecting,
+  ln, normalize, esc, _clone, isSelecting,
 } from './state.js';
 import {
   MAX_PHOTOS, photoStore, photoCopyOf,
@@ -272,7 +272,6 @@ function showContextMenu(figId, x, y) {
   // alphanumeric+hyphens in practice, but the pattern is unsafe — any future
   // ID source (import, manual edit) could carry a quote and break out.
   const eFigId = esc(figId);
-  const jFigId = jsArg(figId);
   const overlay = document.createElement('div');
   overlay.className = 'ctx-menu-overlay';
   overlay.id = 'ctxOverlay';
@@ -289,16 +288,20 @@ function showContextMenu(figId, x, y) {
     items += ` <span class="ctx-copy-count">×${copyN}</span>`;
   }
   items += `</div>`;
+  // v7.09: data-action delegation (was inline onclick="…"). The v7.00 strict
+  // CSP (script-src 'self', no 'unsafe-inline') blocks inline handlers, so the
+  // entire long-press menu was dead at tap time. eFigId is HTML-escaped; the
+  // ctx-* handlers live in delegate-handlers.js.
   STATUSES.forEach(s => {
     const active = c.status === s;
     const dotColor = STATUS_HEX[s];
-    items += `<button class="ctx-menu-item ${active ? 'active' : ''}" onclick="ctxSetStatus(${jFigId},'${s}')">
+    items += `<button class="ctx-menu-item ${active ? 'active' : ''}" data-action="ctx-set-status" data-fig-id="${eFigId}" data-status="${s}">
       <span class="ctx-dot" style="background:${dotColor}"></span>
       ${active ? '✓ ' : ''}${STATUS_LABEL[s]}
     </button>`;
   });
   if (c.status) {
-    items += `<button class="ctx-menu-item" onclick="ctxSetStatus(${jFigId},'clear')" style="color:var(--t3)">
+    items += `<button class="ctx-menu-item" data-action="ctx-set-status" data-fig-id="${eFigId}" data-status="clear" style="color:var(--t3)">
       <span class="ctx-dot" style="background:var(--bd)"></span>Clear status
     </button>`;
   }
@@ -306,27 +309,27 @@ function showContextMenu(figId, x, y) {
   // Quick "Add copy" shortcut for figures that already have at least one copy.
   // Skips opening the detail screen for power users adding multiples in bulk.
   if (c.status === 'owned' || c.status === 'for-sale') {
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addCopy(${jFigId});toast('✓ Copy added')">
+    items += `<button class="ctx-menu-item" data-action="ctx-add-copy" data-fig-id="${eFigId}">
       ${icon(ICO.import, 16)} Add another copy
     </button>`;
   }
   if (fig.line !== 'kids-core' && fig.line !== 'custom') {
-    items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openAF411(${jFigId})">
+    items += `<button class="ctx-menu-item" data-action="ctx-af411" data-fig-id="${eFigId}">
       ${icon(ICO.export, 16)} View on AF411
     </button>`;
   }
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFig(${jFigId})">
+  items += `<button class="ctx-menu-item" data-action="ctx-open" data-fig-id="${eFigId}">
     ${icon(ICO.edit, 16)} ${copyN > 1 ? 'Manage copies' : 'Open details'}
   </button>`;
   // Local edit (override) — for fixing missing/wrong AF411 metadata
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();openFigureEditor(${jFigId})">
+  items += `<button class="ctx-menu-item" data-action="ctx-edit-info" data-fig-id="${eFigId}">
     ${icon(ICO.menu, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
   </button>`;
   // v6.66: in-app variant creation from long-press
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();addVariant(${jFigId})">
+  items += `<button class="ctx-menu-item" data-action="ctx-add-variant" data-fig-id="${eFigId}">
     ${icon(ICO.plus, 16)} Add variant…
   </button>`;
-  items += `<button class="ctx-menu-item" onclick="dismissContextMenu();enterSelectModeWith(${jFigId})">
+  items += `<button class="ctx-menu-item" data-action="ctx-select" data-fig-id="${eFigId}">
     ${icon(ICO.check, 16)} Select
   </button>`;
   menu.innerHTML = items;

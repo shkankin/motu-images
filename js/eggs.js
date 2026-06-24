@@ -91,7 +91,11 @@ function playSound(url, volume = 0.9) {
 }
 
 function getThemeSounds() {
-  return (THEMES[S.theme]?.sounds || [null]).map(s => s ? IMG + s : null);
+  // v7.09: theme sounds live at the repo ROOT, not the images/ subdir. The
+  // SND object above already uses ROOT; this was missed in the v7.08 path
+  // split, so the Skeletor title sounds (nyaaah.mp3 / i-must-possess-all.mp3)
+  // 404'd. The stored values keep their leading slash, so ROOT + s is correct.
+  return (THEMES[S.theme]?.sounds || [null]).map(s => s ? ROOT + s : null);
 }
 function getThemeIcon() {
   if (S.iconOverride) return IMG + '/' + S.iconOverride;

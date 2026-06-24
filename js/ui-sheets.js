@@ -367,7 +367,7 @@ function renderAboutSheet() {
       ${userMuted ? '🔇 Unmute' : '🔊 Mute'}
     </button>
     <img src="${IMG}/masters_logo.png" alt="Masters of the Universe"
-      onerror="this.style.display='none'"
+      data-error-action="img-hide"
       style="max-width:240px;width:75%;height:auto;margin:0 auto 16px;display:block;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5))">
     <div class="font-display text-gold" style="font-size:24px;letter-spacing:1.5px;margin-bottom:4px">MOTU COLLECTOR</div>
     <div style="font-size:12px;color:var(--t3);letter-spacing:0.5px">Version ${esc(version)}</div>

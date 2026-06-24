@@ -179,12 +179,39 @@ registerAll({
   },
 });
 
+// ── Context-menu actions (long-press popup) ──────────────────────
+// v7.09: these were inline onclick="…" in handlers.js showContextMenu and
+// were silently dead under the v7.00 strict CSP (script-src 'self'). The
+// whole long-press menu — set status, add copy, AF411, open, edit, variant,
+// select — did nothing on tap. Now routed through delegation like the rest.
+registerAll({
+  'ctx-set-status':  (e, el, d) => window.ctxSetStatus?.(d.figId, d.status),
+  'ctx-add-copy':    (e, el, d) => { window.dismissContextMenu?.(); window.addCopy?.(d.figId); window.toast?.('✓ Copy added'); },
+  'ctx-af411':       (e, el, d) => { window.dismissContextMenu?.(); window.openAF411?.(d.figId); },
+  'ctx-open':        (e, el, d) => { window.dismissContextMenu?.(); window.openFig?.(d.figId); },
+  'ctx-edit-info':   (e, el, d) => { window.dismissContextMenu?.(); window.openFigureEditor?.(d.figId); },
+  'ctx-add-variant': (e, el, d) => { window.dismissContextMenu?.(); window.addVariant?.(d.figId); },
+  'ctx-select':      (e, el, d) => { window.dismissContextMenu?.(); window.enterSelectModeWith?.(d.figId); },
+});
+
 // ── Error actions (capture phase — events don't bubble) ───────────
 // Image load failures still need a per-row hook so the broken-image
 // fallback fires. Use data-error-action="img-error" on the <img>.
+//
+// v7.09: img-hide / img-fallback replace inline onerror="…" attributes the
+// v7.00 strict CSP blocked, so broken images showed the browser's broken
+// glyph instead of hiding. img-hide removes the element; img-fallback swaps
+// to data-fallback-src once and hides if that also fails.
 
 registerAll({
   'img-error': (e, el, d) => window.imgErr?.(d.figId),
+  'img-hide':  (e, el) => { el.style.display = 'none'; },
+  'img-fallback': (e, el, d) => {
+    if (el.dataset.fellBack) { el.style.display = 'none'; return; }
+    el.dataset.fellBack = '1';
+    if (d.fallbackSrc) el.src = d.fallbackSrc;
+    else el.style.display = 'none';
+  },
 }, 'error');
 
 // ── Change/input/blur actions ───────────────────────────────────────

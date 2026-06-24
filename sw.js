@@ -1,7 +1,14 @@
-// MOTU Vault — Service Worker v7.08
+// MOTU Vault — Service Worker v7.09
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v7.09 changelog:
+//   • Finished the v7.00 CSP migration: the long-press context menu and a
+//     handful of image onerror fallbacks were still inline handlers (blocked
+//     by script-src 'self') — now delegated. getThemeSounds() now resolves
+//     theme audio against ROOT (was IMG), fixing the Skeletor title sounds.
+//   • Image/sound fetch now caches only res.ok responses (was caching 404s).
 //
 // v7.08 changelog:
 //   • Critical fix: IMG constant pointed to images/ subdir, breaking
@@ -888,7 +895,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.08';
+const CACHE = 'motu-vault-v7.09';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -1064,8 +1071,14 @@ self.addEventListener('fetch', e => {
           return cached;
         }
         return fetch(e.request).then(res => {
-          const clone = res.clone();
-          e.waitUntil(caches.open(IMG_CACHE).then(c => c.put(e.request, clone)).then(() => _imgTsSet(e.request.url)));
+          // v7.09: only cache successful responses. A 404/5xx (e.g. a
+          // mis-pathed sound, or a transient network blip) was previously
+          // cached and then served from cache indefinitely. Every other
+          // handler in this file already gates its put on res.ok.
+          if (res.ok) {
+            const clone = res.clone();
+            e.waitUntil(caches.open(IMG_CACHE).then(c => c.put(e.request, clone)).then(() => _imgTsSet(e.request.url)));
+          }
           return res;
         });
       })
