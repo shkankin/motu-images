@@ -471,6 +471,15 @@
           "Action Figures"
         ]
       }
+    ],
+    "cross-brand": [
+      {
+        "key": "loyal-subjects",
+        "label": "Loyal Subjects",
+        "groups": [
+          "Loyal Subjects"
+        ]
+      }
     ]
   },
   "sublineOrder": {
