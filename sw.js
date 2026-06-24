@@ -1,9 +1,13 @@
-// MOTU Vault — Service Worker v7.03
+// MOTU Vault — Service Worker v7.04
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
-// v7.03 changelog:
+// v7.04 changelog:
+//   • Removed FigureRealm scraper (sync_figurerealm.py, sync-figurerealm.yml,
+//     scripts/fr_cache/, download_fr_images.ps1) — scraping abandoned.
+//   • Deploy tool: FigureRealm entries removed from PATH_MAP; Pages status
+//     now shows green for non-web commits that do not trigger a Pages rebuild.
 //   • IMG path updated: images now served from /images/ subdirectory
 //     in the motu-images repo (was repo root). One-line change to the
 //     IMG constant in state.js — all figure thumbnails, line cards,
@@ -880,7 +884,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.03';
+const CACHE = 'motu-vault-v7.04';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

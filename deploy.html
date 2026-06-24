@@ -22,8 +22,6 @@
          not just any recent build. Falls back to the Deployments API
          if the token lacks the pages scope. A manual "Check" button
          lets you query at any time without triggering a deploy.
-         Also added sync_figurerealm.py and sync-figurerealm.yml to
-         PATH_MAP.
        • v1.2: Token pre-flight — on save/load the token is checked against
          GET /repos/<repo>; the status line shows whether it actually has
          push access (and to which repo/branch) before you spend a deploy on
@@ -360,11 +358,9 @@ const PATH_MAP = {
   'loadouts.json':        'loadouts.json',
   // /scripts
   'sync_af411.py':        'scripts/sync_af411.py',
-  'sync_figurerealm.py':  'scripts/sync_figurerealm.py',
   'lint_handlers.mjs':    'scripts/lint_handlers.mjs',
   // /.github/workflows
   'sync-af411.yml':           '.github/workflows/sync-af411.yml',
-  'sync-figurerealm.yml':     '.github/workflows/sync-figurerealm.yml',
   'lint.yml':                 '.github/workflows/lint.yml',
 };
 
@@ -757,11 +753,14 @@ async function checkPagesStatus() {
     if (status === 'built' && isCurrentCommit) {
       const liveRef = shaKnown ? shortBuild : shortLatest;
       setPagesStatus('green', `✓ Live — ${liveRef} at ${updatedAt}`,
-        shaKnown ? `Commit ${liveRef} is live · HEAD is ${shortLatest}` : `Build complete · HEAD is ${shortLatest}`);
+        `HEAD ${shortLatest} is live`);
       stopPolling();
     } else if (status === 'building' || (status === 'built' && !isCurrentCommit)) {
-      const lag = status === 'building' ? `${shortLatest} building…` : `${shortLatest} deploying… (last live: ${shortBuild})`;
-      setPagesStatus('yellow', lag,
+      const lag = status === 'building' ? `${shortLatest} building…` : `✓ Live — HEAD is ${shortLatest}`;
+      // Non-web commits don't trigger a Pages rebuild — if status is 'built'
+      // the site is live even if the build SHA predates HEAD.
+      const stateColor = (status === 'built') ? 'green' : 'yellow';
+      setPagesStatus(stateColor, lag,
         `Status: ${status} · updated ${updatedAt} (Pages only rebuilds for web file changes)`);
     } else if (status === 'errored') {
       setPagesStatus('red', `Build errored — ${shortBuild || shortLatest}`,
