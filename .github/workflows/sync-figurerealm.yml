@@ -33,6 +33,11 @@ on:
         required: false
         default: false
         type: boolean
+      allow_fetch:
+        description: 'Fall back to live fetch if cache file missing (will 403 on Actions — local use only)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -59,6 +64,7 @@ jobs:
           EVENT_NAME:    ${{ github.event_name }}
           IN_LINE:       ${{ inputs.line }}
           IN_AUDIT_ONLY: ${{ inputs.audit_only }}
+          IN_ALLOW_FETCH: ${{ inputs.allow_fetch }}
         run: |
           cd "$GITHUB_WORKSPACE"
           set -- python scripts/sync_figurerealm.py
@@ -69,6 +75,9 @@ jobs:
           fi
           if [ -n "$IN_LINE" ]; then
             set -- "$@" --line "$IN_LINE"
+          fi
+          if [ "$IN_ALLOW_FETCH" = "true" ]; then
+            set -- "$@" --allow-fetch
           fi
           echo "Running: $*"
           "$@"

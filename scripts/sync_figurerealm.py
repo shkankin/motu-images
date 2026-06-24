@@ -8,6 +8,29 @@ outputs updated figures.json / figures-pending.json.
 The output schema is identical to sync_af411.py so both scrapers feed
 the same pending queue and editor workflow unchanged.
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CACHE-FIRST: GitHub Actions IPs are blocked by FigureRealm (403).
+  The script reads from pre-saved HTML files instead of live fetches.
+
+  One-time setup (do from a desktop browser):
+    1. Open each URL below and File → Save Page As → "Webpage, HTML Only"
+    2. Name the files exactly as shown and commit to scripts/fr_cache/
+
+    URL                                                    → filename
+    ─────────────────────────────────────────────────────────────────
+    …seriesitemlist&id=3342&ssid=-1  (Loyal Subjects)  → fr_3342.html
+    …seriesitemlist&id=3343&ssid=-1  (Hot Wheels etc.) → fr_3343.html
+    …seriesitemlist&id=3344&ssid=-1  (Mega Construx)   → fr_3344.html
+    …seriesitemlist&id=1333&ssid=-1  (DC vs MOTU)      → fr_1333.html
+
+  Base URL for all:
+    https://www.figurerealm.com/actionfigure?action=seriesitemlist
+
+  Refreshing the cache: re-save the page from a browser and re-commit.
+  The scraper prints a warning if a cache file is missing and skips
+  that series rather than failing the whole workflow.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Usage:
   python sync_figurerealm.py                    # dry run — shows what's new
   python sync_figurerealm.py --commit           # updates figures.json + downloads images
@@ -26,27 +49,24 @@ SERIES CONFIG
   3344    → cross-brand      Mega Construx
   1333    → cross-brand      DC Universe vs MOTU
 
-  Adding more series later: append a tuple to FR_SERIES below and
-  re-run.  No other changes needed.
+  Adding more series later: append a tuple to FR_SERIES below, save
+  the HTML to scripts/fr_cache/fr_{id}.html, and re-run.
 
 ID SCHEME
   FigureRealm figure IDs are numeric.  To avoid any collision with
-  AF411 IDs (which embed a numeric suffix too), all FR-sourced figures
-  get the prefix "fr-" in their app ID:
+  AF411 IDs, all FR-sourced figures get the prefix "fr-":
     fr-{fr_id}-{name_slug}
   e.g.  fr-52342-beastmanred
   This is stable: FR IDs never change once assigned.
 
 CHANGELOG
+  v1.1 (2026-06-23) — cache-first
+    - Reads from scripts/fr_cache/fr_{id}.html instead of live fetches
+      (GitHub Actions IPs blocked by FigureRealm).
+    - Falls back to live fetch if cache file missing and --allow-fetch
+      flag is set (for local runs where your IP isn't blocked).
+    - Cache file age displayed in output so you know when to refresh.
   v1.0 (2026-06-23) — initial release
-    - Loyal Subjects (id=3342), Mattel misc/Hot Wheels (id=3343),
-      Mega Construx (id=3344), DC vs MOTU (id=1333) supported.
-    - Markdown-based parser (uses web_fetch-style text extraction via
-      a browser User-Agent that works against FR's CDN).
-    - Same atomic writes, pending queue, rejection list, faction
-      guessing, and --commit/--audit/--dry-run flags as sync_af411.py.
-    - Images downloaded as {slug}.jpg to repo root (same dir as AF411
-      images) so the app's ${IMG}/${id}.jpg pattern finds them.
 """
 
 import argparse
@@ -62,9 +82,13 @@ from pathlib import Path
 
 # ─── Configuration ────────────────────────────────────────────────
 
-SCRIPT_VERSION = "v1.0"
+SCRIPT_VERSION = "v1.1"
 
 BASE = "https://www.figurerealm.com"
+
+# Cache directory — pre-saved HTML files live here.
+# Path: scripts/fr_cache/fr_{series_id}.html
+CACHE_DIR = Path(__file__).resolve().parent / "fr_cache"
 
 # (fr_series_id, app_line_id, series_label, group_mode)
 # group_mode:
@@ -294,14 +318,54 @@ def parse_checklist_html(html, fr_series_id, app_line_id, series_label, group_mo
     return figures
 
 
-def scrape_series(fr_series_id, app_line_id, series_label, group_mode, delay=1.5):
-    """Fetch and parse one FigureRealm series checklist."""
-    url = f"{BASE}/actionfigure?action=seriesitemlist&id={fr_series_id}&ssid=-1"
-    print(f"  Fetching [{series_label}]: {url}")
-    html = fetch_page(url)
+def load_series_html(fr_series_id, allow_fetch=False):
+    """
+    Return HTML for a FigureRealm series checklist.
+
+    Priority:
+      1. scripts/fr_cache/fr_{id}.html  — always tried first
+      2. Live fetch                      — only if --allow-fetch flag is set
+
+    Prints the cache file age so you know when to refresh.
+    Returns (html_string, source_label) or (None, None) on failure.
+    """
+    cache_file = CACHE_DIR / f"fr_{fr_series_id}.html"
+
+    if cache_file.exists():
+        try:
+            html = cache_file.read_text(encoding="utf-8", errors="replace")
+            # Show file age
+            age_s = int(time.time() - cache_file.stat().st_mtime)
+            if age_s < 3600:
+                age_str = f"{age_s // 60}m ago"
+            elif age_s < 86400:
+                age_str = f"{age_s // 3600}h ago"
+            else:
+                age_str = f"{age_s // 86400}d ago"
+            return html, f"cache ({age_str})"
+        except Exception as e:
+            print(f"  ⚠ Cache read failed for {cache_file.name}: {e}")
+
+    if allow_fetch:
+        url = f"{BASE}/actionfigure?action=seriesitemlist&id={fr_series_id}&ssid=-1"
+        print(f"  ↳ Cache miss — fetching live: {url}")
+        html = fetch_page(url)
+        if html:
+            return html, "live fetch"
+        return None, None
+
+    print(f"  ✗ Cache file not found: {cache_file}")
+    print(f"    → Save the page from a browser and commit it to scripts/fr_cache/")
+    print(f"    → URL: {BASE}/actionfigure?action=seriesitemlist&id={fr_series_id}&ssid=-1")
+    return None, None
+
+
+def scrape_series(fr_series_id, app_line_id, series_label, group_mode, allow_fetch=False, delay=1.5):
+    """Load and parse one FigureRealm series checklist."""
+    html, source = load_series_html(fr_series_id, allow_fetch=allow_fetch)
     if not html:
-        print(f"  ✗ Could not fetch series {fr_series_id}")
         return []
+    print(f"  Parsing [{series_label}] from {source}")
     figs = parse_checklist_html(html, fr_series_id, app_line_id, series_label, group_mode)
     print(f"  ✓ Found {len(figs)} figures in [{series_label}]")
     return figs
@@ -354,6 +418,10 @@ def main():
                              "or the numeric FR series id")
     parser.add_argument("--delay", type=float, default=1.5,
                         help="Seconds between page fetches (default: 1.5)")
+    parser.add_argument("--allow-fetch", action="store_true",
+                        help="Fall back to live HTTP fetch if cache file is missing "
+                             "(only works if your IP isn't blocked by FigureRealm — "
+                             "GitHub Actions IPs will get 403)")
     parser.add_argument("--no-pending", action="store_true",
                         help="Write new figures directly to figures.json "
                              "instead of routing them to the review queue")
@@ -361,6 +429,13 @@ def main():
 
     print("═" * 60)
     print(f"  MOTU Vault — FigureRealm Sync  {SCRIPT_VERSION}")
+    print(f"  Cache dir: {CACHE_DIR}")
+    cache_files = list(CACHE_DIR.glob("fr_*.html")) if CACHE_DIR.exists() else []
+    if cache_files:
+        print(f"  Cached series: {', '.join(f.stem for f in sorted(cache_files))}")
+    else:
+        print(f"  ⚠ No cache files found in {CACHE_DIR}")
+        print(f"    Run workflow after committing fr_XXXX.html files to scripts/fr_cache/")
     print("═" * 60)
 
     # ── Load existing data ─────────────────────────────────────────
@@ -408,10 +483,11 @@ def main():
     print(f"\n🔍 Scraping FigureRealm…\n")
     all_scraped = []
     for i, (fr_id, line_id, label, mode) in enumerate(series_to_scrape):
-        figs = scrape_series(fr_id, line_id, label, mode, delay=args.delay)
+        figs = scrape_series(fr_id, line_id, label, mode,
+                             allow_fetch=args.allow_fetch, delay=args.delay)
         all_scraped.extend(figs)
         if i < len(series_to_scrape) - 1:
-            time.sleep(args.delay)
+            time.sleep(0.2)  # brief pause between cache reads (no rate limit needed)
 
     scraped_by_id  = {f["id"]: f for f in all_scraped}
     scraped_ids    = set(scraped_by_id)
