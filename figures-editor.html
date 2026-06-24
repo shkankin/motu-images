@@ -1342,6 +1342,7 @@ function renderSublineReorderList() {
 }
 let pendingFigs = [];      // figures awaiting review (from figures-pending.json)
 let approvedFigs = [];     // current figures.json contents
+let mode = 'pending';      // 'pending' | 'existing'
 let loadouts = {};         // {figId: ['Power Sword', ...]}
 let rejectedSet = new Set(); // slug strings that are permanently rejected
 let customAccessories = loadCustomAccessories(); // v1.7: cross-figure custom list
