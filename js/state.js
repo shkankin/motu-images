@@ -45,7 +45,7 @@ function icon(d, size = 20, strokeW = 2) {
 }
 
 // § CONSTANTS ── IMG, URLs, LINES, FACTIONS, STATUS_*, THEMES, SUBLINES, maps ──
-const IMG = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
+const IMG = 'https://raw.githubusercontent.com/shkankin/motu-images/main/images';
 const FIGS_URL = IMG + '/figures.json';
 const KIDS_CORE_URL = IMG + '/kids-core.json';
 // v6.03: shared loadouts (what each figure shipped with). Local override

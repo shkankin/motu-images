@@ -494,7 +494,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.02</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.03</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -922,7 +922,7 @@ function renderLinesGrid() {
 
   let html = '';
   if (!S.onboarded) {
-    // v7.02: show the tour button on every render so users who skipped
+    // v7.03: show the tour button on every render so users who skipped
     // or completed can replay. Label switches between Take / Replay
     // based on tour state read via window.tutorialState() (exposed
     // from tutorial.js).

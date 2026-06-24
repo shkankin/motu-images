@@ -1,10 +1,14 @@
-// MOTU Vault — Service Worker v7.02
+// MOTU Vault — Service Worker v7.03
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
-// v7.02 changelog:
-//   • Fixed: Export/Backup, Settings (menu), Stats sheet, Share sheet,
+// v7.03 changelog:
+//   • IMG path updated: images now served from /images/ subdirectory
+//     in the motu-images repo (was repo root). One-line change to the
+//     IMG constant in state.js — all figure thumbnails, line cards,
+//     theme icons, and photo references inherit this automatically.
+//
 //     and Accessory Picker were all broken by the v7.00 strict CSP —
 //     inline onclick handlers in data.js, stats.js, and share.js were
 //     missed in the original migration and silently blocked by
@@ -876,7 +880,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.02';
+const CACHE = 'motu-vault-v7.03';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
