@@ -156,8 +156,17 @@
     background: var(--bg3); border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden; color: var(--t3); font-size: 11px;
+    position: relative;
   }
   .fig-img img { width: 100%; height: 100%; object-fit: cover; }
+  .fig-img .noimg { color: var(--t3); font-size: 11px; }
+  .fig-img .imgbtn {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.62); color: #fff; font-size: 10px; line-height: 1;
+    text-align: center; padding: 4px 2px; cursor: pointer; user-select: none;
+  }
+  .fig-img .imgbtn:hover { background: rgba(0,0,0,0.78); }
+  .fig-img .imgbtn input { display: none; }
 
   .fig-body { display: flex; flex-direction: column; gap: 10px; }
   .fig-header {
@@ -592,7 +601,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.23.0';
+const EDITOR_VERSION = 'v1.24.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1019,6 +1028,79 @@ function _fmtSize(n) {
   if (n < 1024) return n + ' B';
   if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
   return (n/1024/1024).toFixed(2) + ' MB';
+}
+
+// ── v1.24: per-card photo upload (review queue + existing figures) ───────────
+// Lets you set/replace a figure's catalog photo right on its card instead of
+// renaming a file to <slug>.jpg and uploading it separately. It stages into the
+// SAME pendingImages[figId] map the commit uploader already drains, so the photo
+// is committed as images/<slug>.jpg in the same atomic push as the figure data.
+// (Pending figures only push their image once approved — same rule as the data.)
+function _imageFileToJpeg(file) {
+  // Resolves {dataUrl, size}. JPEGs pass through untouched; anything else is
+  // canvas-reencoded to JPEG so the <slug>.jpg URL contract in data.js holds.
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target.result;
+      const m = /^data:([^;]+);base64,/.exec(src);
+      const mime = m ? m[1] : (file.type || 'image/jpeg');
+      if (mime === 'image/jpeg' || mime === 'image/jpg') { resolve({ dataUrl: src, size: file.size }); return; }
+      const tmp = new Image();
+      tmp.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = tmp.naturalWidth || tmp.width;
+        c.height = tmp.naturalHeight || tmp.height;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);  // JPEG has no alpha
+        ctx.drawImage(tmp, 0, 0);
+        const jpg = c.toDataURL('image/jpeg', 0.9);
+        const bytes = Math.floor((jpg.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
+        resolve({ dataUrl: jpg, size: bytes });
+      };
+      tmp.onerror = () => reject(new Error('decode failed'));
+      tmp.src = src;
+    };
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// HTML for a card's image box: a staged (uncommitted) photo previews from
+// pendingImages; otherwise the committed <slug>.jpg shows, falling back to a
+// "no image" placeholder on 404. The placeholder no longer clobbers the button.
+function figImgBlock(f) {
+  const id = esc(f.id);
+  const staged = pendingImages[f.id];
+  const src = staged ? staged.dataUrl : (f.slug ? `${RAW_IMG}/${f.slug}.jpg` : '');
+  const canUpload = !!f.slug;
+  return `
+      <img id="cardimg-${id}"${src ? ` src="${esc(src)}"` : ' style="display:none"'} onerror="this.style.display='none';var p=document.getElementById('noimg-${id}');if(p)p.style.display=''">
+      <span id="noimg-${id}" class="noimg"${src ? ' style="display:none"' : ''}>no image</span>
+      ${canUpload ? `<label class="imgbtn" title="Set or replace photo — commits as ${esc(f.slug)}.jpg">
+        <input type="file" accept="image/*" onchange="cardImageChange(event,'${id}')">
+        <span id="imgbtnlbl-${id}">${staged ? '\u2713 staged' : '\uD83D\uDCF7 photo'}</span></label>` : ''}`;
+}
+
+// Stage a chosen photo for figId under its current slug, then re-render so the
+// preview and the "image(s) staged" badge update. Scroll is preserved so a long
+// review session doesn't jump on every photo.
+async function cardImageChange(ev, figId) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { alert('That is not an image file.'); ev.target.value = ''; return; }
+  const fig = pendingFigs.find(f => f.id === figId) || manualFigs.find(f => f.id === figId) || approvedFigs.find(f => f.id === figId);
+  if (!fig) { alert('Could not find that figure.'); ev.target.value = ''; return; }
+  if (!fig.slug) { alert('This figure has no slug, so its image cannot be named. Give it a slug first.'); ev.target.value = ''; return; }
+  let out;
+  try { out = await _imageFileToJpeg(file); }
+  catch (err) { alert('Could not read or convert that image.'); ev.target.value = ''; return; }
+  if (out.size > 2 * 1024 * 1024 && !confirm('That image is over 2 MB. Commit it anyway?')) { ev.target.value = ''; return; }
+  pendingImages[figId] = { filename: 'images/' + fig.slug + '.jpg', dataUrl: out.dataUrl, mime: 'image/jpeg', size: out.size };
+  ev.target.value = '';
+  const y = window.scrollY;
+  refreshUI();
+  window.scrollTo(0, y);
 }
 
 function afUpdateSlugPreview() {
@@ -1452,6 +1534,33 @@ function ingestPending(data) {
     }
     return f;
   });
+  // v1.24: guard against slug collisions. Figure images resolve as
+  // images/<slug>.jpg, so two figures sharing a slug share — and on upload
+  // overwrite — the same image file (e.g. a freshly imported "Beast Man"
+  // inheriting the vintage Beast Man's photo). Any incoming pending figure
+  // whose slug already belongs to a different figure (approved, manual, or
+  // earlier in this same batch) is remapped to a unique slug derived from its
+  // id. Safe because pending figures have no committed image of their own yet.
+  {
+    const taken = new Set([
+      ...approvedFigs.map(f => f.slug),
+      ...manualFigs.map(f => f.slug),
+    ].filter(Boolean));
+    let remapped = 0;
+    for (const f of pendingFigs) {
+      if (!f.slug) continue;
+      if (taken.has(f.slug)) {
+        const suf = (String(f.id).split('-').pop() || Math.random().toString(36).slice(2, 8));
+        let s = f.slug + '-' + suf;
+        while (taken.has(s)) s = f.slug + '-' + Math.random().toString(36).slice(2, 6);
+        console.warn(`[motu-editor] slug "${f.slug}" already in use — remapped ${f.id} → "${s}" to avoid an image collision`);
+        f.slug = s;
+        remapped++;
+      }
+      taken.add(f.slug);
+    }
+    if (remapped) console.info(`[motu-editor] ${remapped} pending slug(s) remapped to avoid image collisions`);
+  }
   // Initialize per-figure accessories from any existing loadout entry,
   // else fall back to an auto-extracted suggestion (v1.10) so new figures
   // arrive with their chips pre-checked for one-tap confirmation.
@@ -1903,7 +2012,7 @@ function renderCard(f) {
 
   return `<div class="${cls}" data-id="${esc(f.id)}">
     <div class="fig-img">
-      ${imgSrc ? `<img src="${esc(imgSrc)}" onerror="this.style.display='none';this.parentNode.textContent='no image'">` : 'no image'}
+      ${figImgBlock(f)}
     </div>
     <div class="fig-body">
       <div class="fig-header">
@@ -2070,7 +2179,7 @@ function renderExistingCard(f) {
 
   return `<div class="${cls}" data-id="${esc(f.id)}">
     <div class="fig-img">
-      ${imgSrc ? `<img src="${esc(imgSrc)}" onerror="this.style.display='none';this.parentNode.textContent='no image'">` : 'no image'}
+      ${figImgBlock(f)}
     </div>
     <div class="fig-body">
       <div class="fig-header">
