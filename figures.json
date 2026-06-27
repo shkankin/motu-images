@@ -3458,6 +3458,19 @@
     "upc": "194735307586"
   },
   {
+    "id": "manual-skeletal-lady-slither-mqvs65b1",
+    "name": "Skeletal Lady Slither",
+    "sourceName": "Skeletal Lady Slither",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Powers of Grayskull",
+    "sourceGroup": "Powers of Grayskull",
+    "faction": "Snake Men",
+    "year": 2026,
+    "slug": "manual-skeletal-lady-slither-mqvs65b1",
+    "source": "manual"
+  },
+  {
     "id": "skeleton-warrior-2-pack-6220",
     "name": "Skeleton Warrior 2 Pack",
     "line": "origins",
