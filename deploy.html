@@ -13,7 +13,12 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.4
+     deploy.html  v1.5
+       • v1.5: File routing. Images (.jpg/.jpeg/.png/.gif/.webp) now deploy to
+         images/ instead of the repo root (matching where the app and editor
+         read them); .png is accepted for the first time. Added fallbacks so any
+         *.py routes to scripts/ and any *.yml/*.yaml to .github/workflows/, and
+         registered import_hemanorg.py + import-hemanorg.yml in the path map.
        • v1.4: Fixed a false-green race. Right after a web deploy,
          /pages/builds/latest still returns the PREVIOUS (built) build
          while the new one builds; the card wrongly showed green when the
@@ -271,8 +276,8 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.4</span></h1>
-  <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts deploy to <code>scripts/</code>. Workflows deploy to <code>.github/workflows/</code>.</p>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.5</span></h1>
+  <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
 <!-- Token -->
@@ -290,10 +295,10 @@
 <div class="card">
   <h2>Files to Deploy</h2>
   <div id="dropZone">
-    <input type="file" multiple accept=".js,.html,.css,.py,.json,.yml,.yaml" onchange="onFilePick(this.files)">
+    <input type="file" multiple accept=".js,.html,.css,.py,.json,.yml,.yaml,.jpg,.jpeg,.png" onchange="onFilePick(this.files)">
     <div class="drop-icon">📂</div>
     <div class="drop-label">Drop files here or tap to browse</div>
-    <div class="drop-sub">Accepts .js .html .css .py .json .yml — paths are auto-resolved</div>
+    <div class="drop-sub">Accepts .js .html .css .py .json .yml .jpg .png — paths are auto-resolved</div>
   </div>
   <div id="fileList"></div>
   <div style="display:flex;gap:8px;margin-top:12px" id="listActions" style="display:none">
@@ -365,9 +370,11 @@ const PATH_MAP = {
   'loadouts.json':        'loadouts.json',
   // /scripts
   'sync_af411.py':        'scripts/sync_af411.py',
+  'import_hemanorg.py':   'scripts/import_hemanorg.py',
   'lint_handlers.mjs':    'scripts/lint_handlers.mjs',
   // /.github/workflows
   'sync-af411.yml':           '.github/workflows/sync-af411.yml',
+  'import-hemanorg.yml':      '.github/workflows/import-hemanorg.yml',
   'lint.yml':                 '.github/workflows/lint.yml',
 };
 
@@ -455,11 +462,14 @@ function onFilePick(fileList) {
   for (const f of fileList) {
     // v2: resolution order — explicit PATH_MAP entry first, then sensible
     // fallbacks so new files don't silently skip. Any unmapped *.js routes
-    // to js/<name> (every app module lives there), images keep their name
-    // at repo root, and *.json at root. Anything else stays unknown.
+    // to js/<name>; images (jpg/jpeg/png/gif/webp) go to images/<name>;
+    // *.py to scripts/<name>; *.yml/*.yaml to .github/workflows/<name>;
+    // and *.json at root. Anything else stays unknown.
     const repoPath = PATH_MAP[f.name]
       || (/\.js$/i.test(f.name) ? 'js/' + f.name : null)
-      || (/\.jpe?g$/i.test(f.name) ? f.name : null)
+      || (/\.(jpe?g|png|gif|webp)$/i.test(f.name) ? 'images/' + f.name : null)
+      || (/\.py$/i.test(f.name) ? 'scripts/' + f.name : null)
+      || (/\.ya?ml$/i.test(f.name) ? '.github/workflows/' + f.name : null)
       || (/\.json$/i.test(f.name) ? f.name : null);
     files.set(f.name, { file: f, repoPath, status: 'pending' });
   }
