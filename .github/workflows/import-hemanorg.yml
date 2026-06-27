@@ -1,0 +1,96 @@
+name: Import Accessories (he-man.org)
+
+# ── Workflow v1.0 ───────────────────────────────────────────────────────
+#   Manual-only. Crawls he-man.org for per-figure accessories and writes
+#   loadouts-suggested.json for review in the figures editor. NEVER edits
+#   loadouts.json — the editor review promotes confirmed chips.
+#   workflow_dispatch inputs are passed via env: (not interpolated into the
+#   run: block) to avoid shell injection, matching the AF411 sync workflow.
+run-name: "Import Accessories (he-man.org) v1.0 · ${{ inputs.line && format('line {0}', inputs.line) || 'all lines' }}${{ inputs.dry_run == true && ' · dry-run' || '' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Cap figure pages fetched this run (blank = all; e.g. 50 for a gentle first batch)'
+        required: false
+        default: ''
+        type: string
+      offset:
+        description: 'Skip the first N candidate URLs (for batching across runs)'
+        required: false
+        default: ''
+        type: string
+      line:
+        description: 'Only emit suggestions for this app line id (blank = all)'
+        required: false
+        default: ''
+        type: choice
+        options: ['', original, origins, masterverse, classics, 200x, new-adventures, mondo, super7, chronicles]
+      dry_run:
+        description: 'Parse + match only, print results, do not write/commit'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run he-man.org importer
+        env:
+          IN_LIMIT: ${{ inputs.limit }}
+          IN_OFFSET: ${{ inputs.offset }}
+          IN_LINE: ${{ inputs.line }}
+          IN_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          set -- python scripts/import_hemanorg.py -v
+          if [ -n "$IN_LIMIT" ];  then set -- "$@" --limit "$IN_LIMIT";   fi
+          if [ -n "$IN_OFFSET" ]; then set -- "$@" --offset "$IN_OFFSET"; fi
+          if [ -n "$IN_LINE" ];   then set -- "$@" --line "$IN_LINE";     fi
+          if [ "$IN_DRY_RUN" = "true" ]; then set -- "$@" --dry-run;      fi
+          echo "Running: $*"
+          "$@"
+
+      - name: Commit and push suggestions
+        if: ${{ success() && inputs.dry_run != true }}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name  "MOTU Vault Bot"
+          git config user.email "motu-vault-bot@users.noreply.github.com"
+          git add loadouts-suggested.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No suggestion changes to commit"
+            exit 0
+          fi
+          COUNT=$(python -c "import json,sys; d=json.load(open('loadouts-suggested.json')); print(sum(1 for k in d if k!='_meta'))" 2>/dev/null || echo "?")
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          git commit -m "import: he-man.org accessory suggestions — ${TIMESTAMP}" \
+                     -m "Suggestions for ${COUNT} figures → review in the figures editor"
+          git config pull.rebase true
+          PUSHED=0
+          for attempt in 1 2 3; do
+            if git push; then PUSHED=1; break; fi
+            echo "⚠ push rejected (attempt $attempt) — rebasing on latest main…"
+            git pull --rebase -X theirs origin main || git rebase --abort || true
+            sleep 3
+          done
+          if [ "$PUSHED" != "1" ]; then
+            echo "::error::Could not push after rebase retries."
+            exit 1
+          fi
+          echo "✅ Suggestions committed and pushed"
