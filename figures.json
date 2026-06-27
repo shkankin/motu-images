@@ -18237,6 +18237,17 @@
     "upc": "194735422562"
   },
   {
+    "id": "manual-beast-man-mqvpymw2",
+    "name": "Beast Man",
+    "sourceName": "Beast Man",
+    "line": "motu-giants",
+    "sourceLine": "motu-giants",
+    "faction": "Evil Warriors",
+    "year": 2014,
+    "slug": "manual-beast-man-mqvpymw2",
+    "source": "manual"
+  },
+  {
     "id": "manual-he-man-mqroode8",
     "name": "He-Man",
     "sourceName": "He-Man",
@@ -18248,6 +18259,17 @@
     "source": "manual"
   },
   {
+    "id": "manual-man-at-arms-mqvpwzjn",
+    "name": "Man-at-Arms",
+    "sourceName": "Man-at-Arms",
+    "line": "motu-giants",
+    "sourceLine": "motu-giants",
+    "faction": "Heroic Warriors",
+    "year": 2014,
+    "slug": "manual-man-at-arms-mqvpwzjn",
+    "source": "manual"
+  },
+  {
     "id": "manual-skeletor-mqvpnnwf",
     "name": "Skeletor",
     "sourceName": "Skeletor",
@@ -18256,6 +18278,17 @@
     "faction": "Evil Warriors",
     "year": 2014,
     "slug": "manual-skeletor-mqvpnnwf",
+    "source": "manual"
+  },
+  {
+    "id": "manual-stratos-mqvpxq45",
+    "name": "Stratos",
+    "sourceName": "Stratos",
+    "line": "motu-giants",
+    "sourceLine": "motu-giants",
+    "faction": "Heroic Warriors",
+    "year": 2014,
+    "slug": "manual-stratos-mqvpxq45",
     "source": "manual"
   }
 ]
