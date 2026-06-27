@@ -18246,5 +18246,16 @@
     "year": 2014,
     "slug": "manual-he-man-mqroode8",
     "source": "manual"
+  },
+  {
+    "id": "manual-skeletor-mqvpnnwf",
+    "name": "Skeletor",
+    "sourceName": "Skeletor",
+    "line": "motu-giants",
+    "sourceLine": "motu-giants",
+    "faction": "Evil Warriors",
+    "year": 2014,
+    "slug": "manual-skeletor-mqvpnnwf",
+    "source": "manual"
   }
 ]
