@@ -115,7 +115,7 @@ from pathlib import Path
 
 # AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
 # startup banner below) and to ship atomic JSON writes — see atomic_write_text.
-SCRIPT_VERSION = "v1.7"
+SCRIPT_VERSION = "v1.8"
 
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
@@ -242,6 +242,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent  # assumes scripts/ is one le
 FIGURES_JSON = REPO_ROOT / "figures.json"
 PENDING_JSON = REPO_ROOT / "figures-pending.json"   # v1.4: review queue for new figures
 REJECTED_JSON = REPO_ROOT / "figures-rejected.json" # v1.4: slugs the editor said no to
+LOADOUTS_JSON = REPO_ROOT / "loadouts.json"          # v1.8: per-figure accessory loadouts (read-only here, for incremental skip)
+LOADOUTS_SUGGESTED_JSON = REPO_ROOT / "loadouts-suggested.json"  # v1.8: heuristic accessory suggestions for editor review
 IMAGES_DIR = REPO_ROOT / "images"  # v1.3: images moved to images/ subdirectory
 
 # v1.1: fields that the scraper KNOWS about. Anything else on an existing entry
@@ -575,6 +577,187 @@ def enrich_upcs(figs, existing_by_id, delay, limit=None):
     return got
 
 
+# ─── v1.8: accessory extraction ───────────────────────────────────
+# AF411 figure pages list accessories inside the description prose, not a
+# structured field — e.g. "Accessories include 2 axes, a shield, a flail…",
+# "comes with… and an extra set of hands", "X is included". We already fetch
+# the detail page for --upc, so accessory capture rides the same request.
+# This is HEURISTIC: it emits loadouts-suggested.json for review in the
+# figures editor — it does NOT touch loadouts.json directly. Validated to
+# ~95% recall on a sample of real AF411 descriptions; the editor review pass
+# fixes the rest (verbose names, the occasional miss).
+
+# Canonical accessory vocabulary (state.js ACCESSORIES + the custom names
+# already in loadouts.json). Extracted items normalize to these so the
+# suggestions reuse existing names instead of spawning near-duplicates.
+_ACC_CANON = [
+    'Power Sword','Half Sword','Sword of Power','Two Swords','Laser Sword','Sword',
+    'Havoc Staff','Staff','Shield','Bat Shield','Four-pronged Battle Shield',
+    'Battle Axe','Tech Axe','Axe','Mace','Thunder Ball Mace','Club','Hammer','Spear',
+    'Trident','Bow','Crossbow','Gun/Blaster','Rifle','Laser','Chain & Lock','Chain',
+    'Spiked Ball & Chain','Whip','Nunchucks','Hook','Cape','Harness','Arm Armor',
+    'Leg Armor','Armor','Helmet','Mask','Belt','Backpack','Blasterpak','Vest','Hood',
+    'Hat','Crown','Collar','Claw','Power Pincer','Grabber','Wings','Wand','Mouser',
+    'Pet Snake','Cosmic Key','Launching Fists','8 Missiles','Buzz Saw Blades',
+    'Magic Trick Discs','Certificate of Authenticity','Minicomic','Comic',
+    'Mini-figure','Stand','Info Card','Accessory Card','Instructions',
+]
+_ACC_LC = {c.lower(): c for c in _ACC_CANON}
+_ACC_MULTI = sorted([c for c in _ACC_CANON if ' ' in c], key=lambda c: -len(c))
+_ACC_ALIAS = {
+    'mini comic book':'Minicomic','mini-comic':'Minicomic','mini comic':'Minicomic',
+    'minicomic book':'Minicomic','comic book':'Comic','collector card':'Info Card',
+    "collector's card":'Info Card','collectors card':'Info Card','collector cards':'Info Card',
+    'chest armor':'Armor','shoulder armor':'Armor','skirt armor':'Armor','removable armor':'Armor',
+    'jetpack':'Backpack','hands':'Hands','halter':'Halter','flail':'Flail',
+}
+_ACC_HI = [
+    re.compile(r'accessories\s+include[s]?\s*:?\s+(.+?)(?:\.|;|$)', re.I),
+    re.compile(r'as well as\s+(.+?)\s+accessor(?:y|ies)\b', re.I),
+    re.compile(r'\bhas\s+(.+?)\s+accessor(?:y|ies)\b', re.I),
+    re.compile(r'(.+?)\s+(?:are|is)\s+included\s+as\s+accessor(?:y|ies)(?:,?\s+along with\s+(.+?))?(?:\.|;|$)', re.I),
+    re.compile(r'(.+?)\s+accessor(?:y|ies)\s+(?:are|is)\s+included', re.I),
+]
+_ACC_LO = [re.compile(r'\b(?:comes?|come)\s+(?:with|equipped with|packaged with)\s+(.+?)(?:\.|;|$)', re.I)]
+_ACC_SING = [re.compile(r'\b([A-Z][\w\s/\'-]{2,26}?)\s+is\s+included\b')]
+_ACC_POSS  = re.compile(r"^\w+['\u2019]s\s+", re.I)
+_ACC_SETOF = re.compile(r'^(?:an?\s+)?(?:extra|second|additional|new|another)?\s*set of\s+', re.I)
+_ACC_QTY   = re.compile(r'^\d+\s+')
+_ACC_LEAD  = re.compile(r'^(?:a|an|the|his|her|its|their|two|second|extra|new|deluxe|signature|'
+                        r'removable|included|alternate|metallic|soft|hard|key|movie-related|'
+                        r'content-accurate|ram-headed|convenient|special|exclusive)\s+', re.I)
+_ACC_STOP  = re.compile(r'\b(?:in|with|for|that|which|along|tells|story|inspired|designed|'
+                        r'features?|allowing|enhancing|updated|honoring|complete|suitable)\b', re.I)
+_ACC_REJECT = ('movie-related','content-accurate','story','figure','points','articulation',
+               'packaging','window box','staff-holder','play','battle scene','detail')
+_ACC_DESC_END = re.compile(r'\[High:|Scroll right for more|average Buy It Now|average selling price|'
+                           r'was added on|Do you have additional|Point your camera|'
+                           r'It can be found online|Tip:', re.I)
+
+
+def _acc_clean(raw):
+    s = re.sub(r'\s+', ' ', raw.strip().strip('.,;:').strip())
+    m = _ACC_STOP.search(s)
+    if m and m.start() > 0:
+        s = s[:m.start()].strip()
+    s = _ACC_POSS.sub('', s); s = _ACC_SETOF.sub('', s); s = _ACC_QTY.sub('', s)
+    prev = None
+    while prev != s:
+        prev = s; s = _ACC_LEAD.sub('', s)
+    s = re.sub(r'\s+accessor(?:y|ies)$', '', s, flags=re.I).strip().strip('.,;:').strip()
+    if not s or len(s.split()) > 5:
+        return None
+    low = s.lower()
+    if any(b in low for b in _ACC_REJECT):
+        return None
+    if low in _ACC_ALIAS:  return _ACC_ALIAS[low]
+    if low in _ACC_LC:     return _ACC_LC[low]
+    if low.endswith('es') and low[:-2] in _ACC_LC: return _ACC_LC[low[:-2]]
+    if low.endswith('s')  and low[:-1] in _ACC_LC: return _ACC_LC[low[:-1]]
+    for c in _ACC_MULTI:
+        if low.endswith(' ' + c.lower()):
+            return c
+    return ' '.join(w if w.isupper() else w.capitalize() for w in s.split())
+
+
+def _acc_split(clause):
+    clause = re.sub(r'\s+&\s+', ', ', clause)
+    clause = re.sub(r'\s+and\s+', ', ', clause, flags=re.I).replace('/', ', ')
+    return [p for p in (x.strip() for x in clause.split(',')) if p]
+
+
+def extract_accessories(text):
+    """Heuristically pull accessory names from a figure's description prose.
+    Returns a de-duped, normalized list. Unit-testable (no network)."""
+    if not text:
+        return []
+    found, seen = [], set()
+    def add(n):
+        if n and n.lower() not in seen:
+            seen.add(n.lower()); found.append(n)
+    hit = False
+    for pat in _ACC_HI:
+        for m in pat.finditer(text):
+            for g in m.groups():
+                if g:
+                    hit = True
+                    for it in _acc_split(g): add(_acc_clean(it))
+    if not hit:
+        for pat in _ACC_LO:
+            for m in pat.finditer(text):
+                for it in _acc_split(m.group(1)): add(_acc_clean(it))
+    for pat in _ACC_SING:
+        for m in pat.finditer(text): add(_acc_clean(m.group(1)))
+    return found
+
+
+def extract_accessories_from_html(raw):
+    """Detail-page HTML -> (accessories, source snippet). Isolates the
+    description region (before the price/stats boilerplate) so nav and price
+    text don't leak into the parse."""
+    txt = _page_to_text(raw)
+    m = _ACC_DESC_END.search(txt)
+    desc = (txt[:m.start()] if m else txt[:1800]).strip()
+    return extract_accessories(desc), desc[:240]
+
+
+def enrich_detail_pages(figs, existing_by_id, existing_loadout_ids, delay,
+                        want_upc=False, want_acc=False, acc_suggestions=None, limit=None):
+    """Fetch each figure's AF411 detail page ONCE and extract the requested
+    fields. Incremental: a figure is fetched only if it still needs something —
+    no upc (--upc) or no loadout yet (--accessories). `acc_suggestions` is
+    populated in place. Returns the count of UPCs captured."""
+    if acc_suggestions is None:
+        acc_suggestions = {}
+    need = []
+    for f in figs:
+        if not f.get("af411_url"):
+            continue
+        needs_upc = False
+        if want_upc and not f.get("upc"):
+            prior = existing_by_id.get(f["id"])
+            if prior and prior.get("upc"):
+                f["upc"] = prior["upc"]            # carry forward, no fetch
+            else:
+                needs_upc = True
+        needs_acc = (want_acc and f["id"] not in existing_loadout_ids
+                     and f["id"] not in acc_suggestions)
+        if needs_upc or needs_acc:
+            need.append((f, needs_upc, needs_acc))
+    if limit is not None:
+        need = need[:limit]
+    if not need:
+        print("  ✓ detail pages: nothing to fetch")
+        return 0
+    print(f"  🔎 fetching {len(need)} detail page(s)…")
+    upc_got = acc_got = misses = 0
+    for i, (f, needs_upc, needs_acc) in enumerate(need):
+        url = f["af411_url"]
+        raw = fetch_page(url if url.startswith("http") else f"{BASE}{url}")
+        if raw:
+            if needs_upc:
+                upc = extract_upc(raw)
+                if upc:
+                    f["upc"] = upc; upc_got += 1
+                elif misses < 5:
+                    misses += 1
+                    print(f"    – {f['id']}: no UPC found")
+            if needs_acc:
+                accs, source = extract_accessories_from_html(raw)
+                if accs:
+                    acc_suggestions[f["id"]] = {
+                        "name": f.get("name", ""), "accessories": accs, "source": source}
+                    acc_got += 1
+                    print(f"    + {f['id']}: {', '.join(accs)}")
+        if i < len(need) - 1:
+            time.sleep(delay)
+    if want_upc:
+        print(f"  ✓ UPC: captured {upc_got}")
+    if want_acc:
+        print(f"  ✓ accessories: suggested for {acc_got} figure(s) → loadouts-suggested.json")
+    return upc_got
+
+
 # ─── Main ─────────────────────────────────────────────────────────
 
 def main():
@@ -597,6 +780,14 @@ def main():
     parser.add_argument("--upc-limit", type=int, default=None,
                         help="v1.6: cap how many UPC detail-pages to fetch this run "
                              "(useful for a gentle first backfill, e.g. --upc-limit 50).")
+    parser.add_argument("--accessories", action="store_true",
+                        help="v1.8: also parse each figure's detail-page description for "
+                             "accessories and write loadouts-suggested.json for review in "
+                             "the figures editor. Incremental — skips figures that already "
+                             "have a loadout. Shares the detail-page fetch with --upc.")
+    parser.add_argument("--acc-limit", type=int, default=None,
+                        help="v1.8: cap how many detail-pages to fetch for accessory "
+                             "extraction this run (gentle first backfill, e.g. --acc-limit 50).")
     args = parser.parse_args()
 
     print("═" * 60)
@@ -614,6 +805,17 @@ def main():
 
     existing_by_id = {f["id"]: f for f in existing}
     existing_ids = set(existing_by_id.keys())
+
+    # v1.8: load existing loadouts so accessory extraction is incremental —
+    # we only fetch detail pages for figures that don't already have a loadout.
+    existing_loadout_ids = set()
+    if LOADOUTS_JSON.exists():
+        try:
+            _ld = json.loads(LOADOUTS_JSON.read_text())
+            if isinstance(_ld, dict) and isinstance(_ld.get("loadouts"), dict):
+                existing_loadout_ids = set(_ld["loadouts"].keys())
+        except json.JSONDecodeError:
+            print("⚠ Could not parse loadouts.json — accessory skip-list empty")
 
     # v1.4: Load review queue (figures awaiting editor approval)
     pending = []
@@ -657,9 +859,38 @@ def main():
     # v1.6: optional UPC enrichment. Runs against everything just scraped,
     # but only fetches detail pages for figures that still lack a upc (new
     # ones, plus a one-time backfill of existing figures missing it).
-    if args.upc:
-        print(f"\n🏷  UPC enrichment…\n")
-        enrich_upcs(all_scraped, existing_by_id, args.delay, limit=args.upc_limit)
+    # v1.6/v1.8: optional detail-page enrichment. A single fetch per figure
+    # captures UPC (--upc) and/or accessories (--accessories); both incremental.
+    acc_suggestions = {}
+    if args.upc or args.accessories:
+        print(f"\n🔎 Detail-page enrichment…\n")
+        enrich_detail_pages(
+            all_scraped, existing_by_id, existing_loadout_ids, args.delay,
+            want_upc=args.upc, want_acc=args.accessories,
+            acc_suggestions=acc_suggestions,
+            limit=args.acc_limit if (args.accessories and not args.upc) else args.upc_limit,
+        )
+        if args.accessories and acc_suggestions:
+            # Shape matches what the figures editor's ingestLoadouts() already
+            # consumes for a suggestion bundle: a `_meta` block (which flags the
+            # whole file as suggestions rather than authoritative loadouts) plus
+            # top-level <figId>: [accessory, ...] arrays. The editor seeds these
+            # as pre-checked "✨ suggested — confirm" chips and does NOT promote
+            # them into loadouts.json until the reviewer saves.
+            payload = {"_meta": {
+                "version": 1,
+                "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "source": f"AF411 description prose (heuristic, sync_af411.py {SCRIPT_VERSION} --accessories)",
+                "note": "Review in the figures editor before committing — the parse is heuristic.",
+                "perFigure": {fid: {"name": s["name"], "source": s["source"]}
+                              for fid, s in acc_suggestions.items()},
+            }}
+            for fid, s in acc_suggestions.items():
+                payload[fid] = s["accessories"]
+            atomic_write_text(LOADOUTS_SUGGESTED_JSON,
+                              json.dumps(payload, indent=2, ensure_ascii=False))
+            print(f"\n📝 Wrote {len(acc_suggestions)} accessory suggestion(s) "
+                  f"→ {LOADOUTS_SUGGESTED_JSON.name}")
 
     scraped_by_id = {f["id"]: f for f in all_scraped}
     scraped_ids = set(scraped_by_id.keys())

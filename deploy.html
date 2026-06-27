@@ -13,7 +13,14 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.3
+     deploy.html  v1.4
+       • v1.4: Fixed a false-green race. Right after a web deploy,
+         /pages/builds/latest still returns the PREVIOUS (built) build
+         while the new one builds; the card wrongly showed green when the
+         build SHA was unknown or merely behind HEAD. "Live" now requires
+         the completed build's SHA to equal HEAD (or a deploy that touched
+         no Pages-served files, where no rebuild is expected). Built-behind-
+         HEAD now stays yellow and keeps polling.
        • v1.3: Pages live status card. After a deploy, the tool polls
          GET /repos/{repo}/pages/builds/latest every 10s (first check
          after 15s) and updates a coloured indicator — grey (unknown),
@@ -264,7 +271,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.3</span></h1>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.4</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts deploy to <code>scripts/</code>. Workflows deploy to <code>.github/workflows/</code>.</p>
 </header>
 
@@ -594,6 +601,7 @@ async function deploy() {
     setTimeout(() => { btn.textContent = '⬆ Commit to GitHub'; btn.disabled = false; updateDeployBtn(); }, 4000);
 
     // Start polling Pages for this specific commit going live
+    _lastCommitHadWebFiles = eligible.some(f => isPagesServed(f.repoPath));
     pollPagesUntilLive(newCommitSha);
 
   } catch (err) {
@@ -665,6 +673,14 @@ function setProgress(pct, show = true) {
 let _pagesPoller = null;   // setInterval handle
 let _targetSha   = null;   // SHA we're waiting for Pages to deploy
 let _checkSeq    = 0;      // incremented on each checkPagesStatus call + on pollPagesUntilLive start
+// v1.4: did the last commit touch any Pages-served file? null = unknown (e.g.
+// a manual Check with no deploy context). Used so a 'built' status behind HEAD
+// is only treated as live when no Pages rebuild was expected (backend/scripts
+// only). Everything not under backend/, scripts/, or .github/ is Pages-served.
+let _lastCommitHadWebFiles = null;
+function isPagesServed(repoPath) {
+  return !/^(backend|scripts|\.github)\//.test(repoPath || '');
+}
 
 function setPagesStatus(indicator, text, detail) {
   const colors = { grey: 'var(--t3)', yellow: '#f5c842', green: 'var(--green)', red: 'var(--red)', blue: 'var(--blue)' };
@@ -747,21 +763,30 @@ async function checkPagesStatus() {
     // If the API returned a SHA, compare it. If not (some token scopes omit it),
     // trust the status field — a recent 'built' response is almost certainly current.
     const shaKnown        = buildSha.length > 0;
-    const isCurrentCommit = !shaKnown || buildSha === latestSha;
+    // v1.4: green ONLY when the completed build is provably THIS commit. The old
+    // code called it live when the SHA was unknown (some token scopes omit it)
+    // OR when a 'built' build was behind HEAD — both produced a false green
+    // right after a web deploy, because /pages/builds/latest keeps returning the
+    // PREVIOUS (already-built) build while the new one is still building.
+    const confirmedCurrent  = shaKnown && buildSha === latestSha;
+    // If the just-pushed commit touched no Pages-served files, Pages won't
+    // rebuild, so a 'built' status (even behind HEAD) genuinely means live.
+    const noRebuildExpected = _lastCommitHadWebFiles === false;
     const updatedAt  = build.updated_at ? new Date(build.updated_at).toLocaleTimeString() : '';
 
-    if (status === 'built' && isCurrentCommit) {
-      const liveRef = shaKnown ? shortBuild : shortLatest;
-      setPagesStatus('green', `✓ Live — ${liveRef} at ${updatedAt}`,
-        `HEAD ${shortLatest} is live`);
+    if (status === 'built' && (confirmedCurrent || noRebuildExpected)) {
+      const liveRef = confirmedCurrent ? shortBuild : shortLatest;
+      const note = confirmedCurrent
+        ? `HEAD ${shortLatest} is live`
+        : `No Pages rebuild needed (backend/scripts only) · HEAD ${shortLatest}`;
+      setPagesStatus('green', `✓ Live — ${liveRef} at ${updatedAt}`, note);
       stopPolling();
-    } else if (status === 'building' || (status === 'built' && !isCurrentCommit)) {
-      const lag = status === 'building' ? `${shortLatest} building…` : `✓ Live — HEAD is ${shortLatest}`;
-      // Non-web commits don't trigger a Pages rebuild — if status is 'built'
-      // the site is live even if the build SHA predates HEAD.
-      const stateColor = (status === 'built') ? 'green' : 'yellow';
-      setPagesStatus(stateColor, lag,
-        `Status: ${status} · updated ${updatedAt} (Pages only rebuilds for web file changes)`);
+    } else if (status === 'building' || (status === 'built' && !confirmedCurrent)) {
+      // 'built' but the build SHA is behind HEAD means Pages is still publishing
+      // this commit — keep polling, do NOT report it live.
+      setPagesStatus('yellow',
+        `Building — HEAD ${shortLatest}${shaKnown ? `, live build ${shortBuild}` : ''}…`,
+        `Status: ${status} · updated ${updatedAt}`);
     } else if (status === 'errored') {
       setPagesStatus('red', `Build errored — ${shortBuild || shortLatest}`,
         `Error: ${build.error?.message || 'unknown'} · ${updatedAt}`);

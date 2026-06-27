@@ -32,6 +32,16 @@ on:
         required: false
         default: ''
         type: string
+      capture_accessories:
+        description: 'Also extract accessories from detail-page descriptions → loadouts-suggested.json (slow; one fetch per figure without a loadout; review in the editor)'
+        required: false
+        default: false
+        type: boolean
+      accessories_limit:
+        description: 'Cap accessory detail-page fetches this run (blank = no cap; e.g. 50 for a gentle first backfill)'
+        required: false
+        default: ''
+        type: string
   schedule:
     # 06:00 UTC daily (≈ 2am ET, 1am CT, 11pm PT)
     - cron: '0 6 * * *'
@@ -69,6 +79,8 @@ jobs:
           IN_AUDIT_ONLY: ${{ inputs.audit_only }}
           IN_CAPTURE_UPC: ${{ inputs.capture_upc }}
           IN_UPC_LIMIT: ${{ inputs.upc_limit }}
+          IN_CAPTURE_ACC: ${{ inputs.capture_accessories }}
+          IN_ACC_LIMIT: ${{ inputs.accessories_limit }}
         run: |
           cd "$GITHUB_WORKSPACE"
           set -- python scripts/sync_af411.py
@@ -91,6 +103,16 @@ jobs:
               set -- "$@" --upc-limit "$IN_UPC_LIMIT"
             fi
           fi
+          # Accessory extraction is MANUAL-ONLY too — same per-figure detail-page
+          # cost as UPC, shares the fetch when both are on. Incremental (skips
+          # figures that already have a loadout). Writes loadouts-suggested.json
+          # for review in the figures editor; never edits loadouts.json directly.
+          if [ "$EVENT_NAME" != "schedule" ] && [ "$IN_CAPTURE_ACC" = "true" ]; then
+            set -- "$@" --accessories
+            if [ -n "$IN_ACC_LIMIT" ]; then
+              set -- "$@" --acc-limit "$IN_ACC_LIMIT"
+            fi
+          fi
           echo "Running: $*"
           "$@"
 
@@ -111,6 +133,7 @@ jobs:
           git add figures.json
           git add figures-pending.json 2>/dev/null || true
           git add figures-rejected.json 2>/dev/null || true
+          git add loadouts-suggested.json 2>/dev/null || true
           git add "images/*.jpg" "images/*.png" 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes to commit"

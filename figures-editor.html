@@ -4,7 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- ════════════════════════════════════════════════════════════════
-     figures-editor.html  v1.14.0  (security audit + pre-flight token check)
+     figures-editor.html  v1.23.0  (accessory suggestions + CDN-aware live status)
+       • v1.23.0: Two additions. (1) Accessory suggestions — loadouts-suggested.json
+         (from sync_af411.py --accessories) is now auto-fetched on Load and has its
+         own file picker; ingestLoadouts() seeds the parsed accessories as
+         "✨ suggested — confirm" chips without overwriting confirmed loadouts or
+         committing anything until you save. (2) "Is it live?" status pill (lower-
+         left): editor commits update data files served by the raw.githubusercontent
+         CDN — NOT GitHub Pages — so after a commit it polls the raw URL the app
+         actually reads and confirms the committed bytes are being served (by-SHA
+         vs by-branch hash compare). Replaces the old, misleading "Pages deploying"
+         note. Click the pill to re-check.
        • v1.14.0: Token pre-flight — _doCommit() now confirms the token has
          push access to the repo (GET /repos/<repo> → permissions.push) before
          uploading any blobs, so a wrong/expired/read-only token fails fast
@@ -373,6 +383,9 @@
     <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
       loadouts.json <input id="fLoadouts" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'loadouts')">
     </label>
+    <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)" title="Accessory suggestions from sync_af411.py --accessories. Seeds '✨ suggested — confirm' chips; nothing is saved until you commit.">
+      loadouts-suggested.json <input id="fSuggested" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'loadouts')">
+    </label>
     <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
       figures-rejected.json <input id="fRejected" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'rejected')">
     </label>
@@ -451,6 +464,16 @@
 
 <!-- Commit progress log -->
 <div id="commitLog" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--bd);padding:12px 16px;font-family:monospace;font-size:12px;z-index:9998;max-height:180px;overflow-y:auto"></div>
+
+<!-- v1.23: CDN-aware "is my edit live?" pill. Editor commits update data files
+     served by the raw.githubusercontent CDN (not GitHub Pages), so this polls
+     the raw URL the app actually reads and confirms the committed bytes are
+     being served. Click to re-check. -->
+<div id="liveStatus" onclick="checkDataLive()"
+     style="display:none;position:fixed;bottom:14px;left:14px;z-index:9999;background:var(--bg2);border:1px solid var(--bd);border-radius:999px;padding:7px 13px;font-size:12px;cursor:pointer;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(0,0,0,.35)">
+  <span id="liveDot" style="width:9px;height:9px;border-radius:50%;background:#888;flex-shrink:0;display:inline-block"></span>
+  <span id="liveText" style="color:var(--t1)">–</span>
+</div>
 
 <!-- GitHub token modal -->
 <div id="ghTokenModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
@@ -569,7 +592,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.22.0';
+const EDITOR_VERSION = 'v1.23.0';
 document.addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1380,6 +1403,10 @@ async function loadFromFetch() {
   const approved = await tryFetch('figures.json');
   const lds = await tryFetch('loadouts.json');
   const rej = await tryFetch('figures-rejected.json');
+  // v1.23: accessory suggestions from sync_af411.py --accessories. Ingested
+  // AFTER loadouts.json so its _meta bundle seeds only figures that don't yet
+  // have a confirmed loadout (ingestLoadouts skips those).
+  const sug = await tryFetch('loadouts-suggested.json');
 
   if (pending == null && approved == null) {
     alert('Could not fetch JSON files from server. Use the file pickers instead, or host the editor at the same path as the JSON files.');
@@ -1388,6 +1415,7 @@ async function loadFromFetch() {
   if (pending) ingestPending(pending);
   if (approved) ingestApproved(approved);
   if (lds) ingestLoadouts(lds);
+  if (sug) ingestLoadouts(sug);
   if (rej) ingestRejected(rej);
   refreshUI();
 }
@@ -2427,6 +2455,68 @@ function _clearCommitLog() {
   if (el) { el.innerHTML = ''; el.style.display = 'none'; }
 }
 
+// ── v1.23: data-live status (CDN-aware) ────────────────────────────
+// The app fetches figures.json / loadouts.json from the raw.githubusercontent
+// CDN — NOT GitHub Pages — so "is my edit live?" means "has the raw CDN caught
+// up to my commit?", not "did Pages rebuild?". After a commit we know the new
+// commit SHA: the immutable by-SHA raw URL gives the exact committed bytes, and
+// we poll the by-branch raw URL (the one the app reads) until it matches. Files
+// unchanged by the commit match immediately; changed ones match once the CDN
+// edge updates (typically a few minutes).
+const RAW_BASE = `https://raw.githubusercontent.com/${GH_REPO}`;
+const LIVE_FILES = ['figures.json', 'loadouts.json'];
+let _liveSha = null, _liveExpect = {}, _livePoller = null, _liveSeq = 0;
+
+function _liveHash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h >>> 0; }
+async function _liveFetch(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }
+function stopLivePoll() { if (_livePoller) { clearInterval(_livePoller); _livePoller = null; } }
+function setLiveStatus(color, text, title) {
+  const el = document.getElementById('liveStatus'); if (!el) return;
+  el.style.display = 'flex'; el.title = title || 'Click to re-check';
+  const map = { grey: '#888', yellow: '#e0a92e', green: '#3fb950', red: '#f85149' };
+  document.getElementById('liveDot').style.background = map[color] || '#888';
+  document.getElementById('liveText').textContent = text;
+}
+
+async function checkDataLive() {
+  if (!_liveSha) { setLiveStatus('grey', 'No commit yet to track'); return; }
+  const seq = ++_liveSeq;
+  try {
+    // committed (expected) hashes from the immutable by-SHA URLs — fetched once
+    for (const f of LIVE_FILES) {
+      if (_liveExpect[f] == null) {
+        _liveExpect[f] = _liveHash(await _liveFetch(`${RAW_BASE}/${_liveSha}/${f}?n=${Date.now()}`));
+      }
+    }
+    if (seq !== _liveSeq) return;  // a newer check superseded this one
+    const pending = [];
+    for (const f of LIVE_FILES) {
+      const got = _liveHash(await _liveFetch(`${RAW_BASE}/${GH_BRANCH}/${f}?n=${Date.now()}`));
+      if (got !== _liveExpect[f]) pending.push(f.replace('.json', ''));
+    }
+    if (seq !== _liveSeq) return;
+    if (!pending.length) {
+      setLiveStatus('green', `✓ Live on CDN — ${_liveSha.slice(0, 7)}`, 'Your committed data is being served to users');
+      stopLivePoll();
+    } else {
+      setLiveStatus('yellow', `Propagating… ${pending.join(', ')}`, 'raw.githubusercontent CDN is catching up — can take a few minutes');
+    }
+  } catch (e) {
+    setLiveStatus('red', `Live-check failed: ${e.message}`, 'Click to retry');
+  }
+}
+
+function trackDataLive(commitSha) {
+  _liveSha = commitSha; _liveExpect = {}; _liveSeq++;
+  setLiveStatus('yellow', `Committed ${commitSha.slice(0, 7)} — checking CDN…`, 'Confirming the raw CDN is serving your commit');
+  stopLivePoll();
+  let waited = 0; const FIRST = 8000, IV = 12000, MAX = 360000;  // 6-min cap
+  setTimeout(() => {
+    checkDataLive();
+    _livePoller = setInterval(() => { waited += IV; checkDataLive(); if (waited >= MAX) stopLivePoll(); }, IV);
+  }, FIRST);
+}
+
 async function _doCommit(token) {
   const { files, approvedNew, rejectedNew, editedExisting, merged } = buildPayloads();
   const btn = document.getElementById('commitBtn');
@@ -2563,7 +2653,8 @@ async function _doCommit(token) {
     for (const id of uploadedImageIds) delete pendingImages[id];
 
     _commitLog('ok', `✓ Committed ${treeItems.length} file(s) — ${newCommitSha.slice(0,7)}`);
-    _commitLog('ok', '  Pages deploying — live in ~45s');
+    _commitLog('ok', '  Data committed — tracking CDN propagation (see the pill, lower-left)');
+    trackDataLive(newCommitSha);
     if (btn) {
       btn.textContent = `✓ ${treeItems.length} file(s) committed`;
       setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 4000);
