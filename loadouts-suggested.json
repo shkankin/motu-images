@@ -1,0 +1,252 @@
+{
+  "_meta": {
+    "version": 1,
+    "generated": "2026-06-27T07:54:54Z",
+    "source": "he-man.org (import_hemanorg.py v1.0)",
+    "note": "Accessory suggestions parsed from he-man.org. Review in the figures editor before committing; names may be verbose and matching is heuristic.",
+    "perFigure": {
+      "he-man-2435": {
+        "name": "He-Man (1982)",
+        "source": "https://www.he-man.org/he-man-1982/ — \"He-Man (1982)\""
+      },
+      "teela-2441": {
+        "name": "Teela (1982)",
+        "source": "https://www.he-man.org/teela-1982/ — \"Teela (1982)\""
+      },
+      "man-at-arms-2437": {
+        "name": "Man-At-Arms (1982)",
+        "source": "https://www.he-man.org/man-at-arms-1982/ — \"Man-At-Arms (1982)\""
+      },
+      "stratos-2440": {
+        "name": "Stratos (1982)",
+        "source": "https://www.he-man.org/stratos-1982/ — \"Stratos (1982)\""
+      },
+      "skeletor-2439": {
+        "name": "Skeletor (1982)",
+        "source": "https://www.he-man.org/skeletor-1982/ — \"Skeletor (1982)\""
+      },
+      "beast-man-2436": {
+        "name": "Beast Man (1982)",
+        "source": "https://www.he-man.org/beast-man-1982/ — \"Beast Man (1982)\""
+      },
+      "mer-man-2438": {
+        "name": "Mer-Man (1982)",
+        "source": "https://www.he-man.org/mer-man-1982/ — \"Mer-Man (1982)\""
+      },
+      "zodac-2442": {
+        "name": "Zodac (1982)",
+        "source": "https://www.he-man.org/zodac-1982/ — \"Zodac (1982)\""
+      },
+      "battle-ram-2431": {
+        "name": "Battle Ram (1982)",
+        "source": "https://www.he-man.org/battle-ram-1982/ — \"Battle Ram (1982)\""
+      },
+      "castle-grayskull-2432": {
+        "name": "Castle Grayskull (1982)",
+        "source": "https://www.he-man.org/castle-grayskull-1982/ — \"Castle Grayskull (1982)\""
+      },
+      "man-e-faces-2839": {
+        "name": "Man-E-Faces (1983)",
+        "source": "https://www.he-man.org/man-e-faces-1983/ — \"Man-E-Faces (1983)\""
+      },
+      "ram-man-2840": {
+        "name": "Ram Man (1983)",
+        "source": "https://www.he-man.org/ram-man-1983/ — \"Ram Man (1983)\""
+      },
+      "faker-2838": {
+        "name": "Faker (1983)",
+        "source": "https://www.he-man.org/faker-1983/ — \"Faker (1983)\""
+      },
+      "evil-lyn-2837": {
+        "name": "Evil-Lyn (1983)",
+        "source": "https://www.he-man.org/evil-lyn-1983/ — \"Evil-Lyn (1983)\""
+      },
+      "trap-jaw-2841": {
+        "name": "Trap Jaw (1983)",
+        "source": "https://www.he-man.org/trap-jaw-1983/ — \"Trap Jaw (1983)\""
+      },
+      "tri-klops-2842": {
+        "name": "Tri-Klops (1983)",
+        "source": "https://www.he-man.org/tri-klops-1983/ — \"Tri-Klops (1983)\""
+      },
+      "screeech-2845": {
+        "name": "Screeech (1983)",
+        "source": "https://www.he-man.org/screeech-1983/ — \"Screeech (1983)\""
+      },
+      "mekaneck-3232": {
+        "name": "Mekaneck (1983)",
+        "source": "https://www.he-man.org/mekaneck-1983/ — \"Mekaneck (1983)\""
+      },
+      "buzz-off-3224": {
+        "name": "Buzz-Off (1984)",
+        "source": "https://www.he-man.org/buzz-off-1984/ — \"Buzz-Off (1984)\""
+      },
+      "fisto-3227": {
+        "name": "Fisto (1984)",
+        "source": "https://www.he-man.org/fisto-1984/ — \"Fisto (1984)\""
+      },
+      "prince-adam-3230": {
+        "name": "Prince Adam (1984)",
+        "source": "https://www.he-man.org/prince-adam-1984/ — \"Prince Adam (1984)\""
+      },
+      "orko-3229": {
+        "name": "Orko (1984)",
+        "source": "https://www.he-man.org/orko-1984/ — \"Orko (1984)\""
+      },
+      "battle-armor-he-man-3222": {
+        "name": "Battle Armor He-Man (1984)",
+        "source": "https://www.he-man.org/battle-armor-he-man-1984/ — \"Battle Armor He-Man (1984)\""
+      },
+      "stridor-6812": {
+        "name": "Stridor (1984)",
+        "source": "https://www.he-man.org/stridor-1984/ — \"Stridor (1984)\""
+      },
+      "dragon-walker-3238": {
+        "name": "Dragon Walker (1984)",
+        "source": "https://www.he-man.org/dragon-walker-1984/ — \"Dragon Walker (1984)\""
+      },
+      "road-ripper-3240": {
+        "name": "Road Ripper (1984)",
+        "source": "https://www.he-man.org/road-ripper-1984/ — \"Road Ripper (1984)\""
+      },
+      "battle-armor-skeletor-3223": {
+        "name": "Battle Armor Skeletor (1984)",
+        "source": "https://www.he-man.org/battle-armor-skeletor-1984/ — \"Battle Armor Skeletor (1984)\""
+      },
+      "clawful-3225": {
+        "name": "Clawful (1984)",
+        "source": "https://www.he-man.org/clawful-1984/ — \"Clawful (1984)\""
+      },
+      "jitsu-3228": {
+        "name": "Jitsu (1984)",
+        "source": "https://www.he-man.org/jitsu-1984/ — \"Jitsu (1984)\""
+      },
+      "thunder-punch-he-man-3748": {
+        "name": "Thunder Punch He-Man (1985)",
+        "source": "https://www.he-man.org/thunder-punch-he-man-1985/ — \"Thunder Punch He-Man (1985)\""
+      }
+    }
+  },
+  "he-man-2435": [
+    "Power Sword",
+    "Axe",
+    "Shield",
+    "Harness"
+  ],
+  "teela-2441": [
+    "Snake Armor",
+    "Snake Staff",
+    "Shield"
+  ],
+  "man-at-arms-2437": [
+    "Mace",
+    "Three Pieces Of Removable Armor"
+  ],
+  "stratos-2440": [
+    "No Weapons",
+    "But His Jet Pack",
+    "Wings Were Removable"
+  ],
+  "skeletor-2439": [
+    "Power Sword",
+    "Havoc Staff",
+    "Belt",
+    "Harness"
+  ],
+  "beast-man-2436": [
+    "Armor",
+    "Bicep Armor"
+  ],
+  "mer-man-2438": [
+    "Sword Armor",
+    "Armor"
+  ],
+  "zodac-2442": [
+    "Laser Gun",
+    "Armor"
+  ],
+  "battle-ram-2431": [
+    "Three Missiles"
+  ],
+  "castle-grayskull-2432": [
+    "He-man",
+    "Skeletor"
+  ],
+  "man-e-faces-2839": [
+    "Orange Laser Gun"
+  ],
+  "ram-man-2840": [
+    "Axe Weapon",
+    "Minicomic"
+  ],
+  "faker-2838": [
+    "Power Sword",
+    "Skeletor Harness Cast"
+  ],
+  "evil-lyn-2837": [
+    "Glow-"
+  ],
+  "trap-jaw-2841": [
+    "Three Removable Arm Attachments",
+    "Belt",
+    "Articulated Jaw"
+  ],
+  "tri-klops-2842": [
+    "Sword",
+    "Armor"
+  ],
+  "screeech-2845": [
+    "Battle Armor Skeletor"
+  ],
+  "mekaneck-3232": [
+    "Mace",
+    "Clamshell Armor"
+  ],
+  "buzz-off-3224": [
+    "Axe",
+    "Helmet"
+  ],
+  "fisto-3227": [
+    "Sword",
+    "Clamshell Armor"
+  ],
+  "prince-adam-3230": [
+    "Sword",
+    "Cloth Vest",
+    "Belt"
+  ],
+  "orko-3229": [
+    "Ripcord",
+    "Magic Coin Trick Set",
+    "Hat"
+  ],
+  "battle-armor-he-man-3222": [
+    "Power Sword"
+  ],
+  "stridor-6812": [
+    "Helmet",
+    "Tail"
+  ],
+  "dragon-walker-3238": [
+    "Artwork By William George"
+  ],
+  "road-ripper-3240": [
+    "Ripcord"
+  ],
+  "battle-armor-skeletor-3223": [
+    "Havoc Staff",
+    "Power Sword",
+    "But No Removable Armor"
+  ],
+  "clawful-3225": [
+    "But"
+  ],
+  "jitsu-3228": [
+    "Snap-on Clamshell Armor",
+    "Katana Sword"
+  ],
+  "thunder-punch-he-man-3748": [
+    "Vac Metal Shield",
+    "Several Ring Caps"
+  ]
+}
