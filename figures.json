@@ -7217,6 +7217,19 @@
     "source": "manual"
   },
   {
+    "id": "manual-battle-armor-he-man-damaged-mqxep1xw",
+    "name": "Battle Armor He-Man (Damaged)",
+    "sourceName": "Battle Armor He-Man (Damaged)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Heroic Warriors",
+    "year": 2017,
+    "slug": "manual-battle-armor-he-man-damaged-mqxep1xw",
+    "source": "manual"
+  },
+  {
     "id": "manual-battle-armor-skeletor-01299688",
     "name": "Battle Armor Skeletor",
     "sourceName": "Battle Armor Skeletor",
@@ -7228,6 +7241,20 @@
     "year": 2018,
     "slug": "manual-battle-armor-skeletor-01299688",
     "faction": "Evil Warriors",
+    "source": "manual"
+  },
+  {
+    "id": "manual-battle-armor-skeletor-damaged-mqxer8v7",
+    "name": "Battle Armor Skeletor (Damaged)",
+    "sourceName": "Battle Armor Skeletor (Damaged)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "wave": "Hot Topic",
+    "year": 2017,
+    "slug": "manual-battle-armor-skeletor-damaged-mqxer8v7",
     "source": "manual"
   },
   {
@@ -7781,6 +7808,32 @@
     "source": "manual"
   },
   {
+    "id": "manual-skeletor-blood-metallic-mqxesd19",
+    "name": "Skeletor (Blood Metallic)",
+    "sourceName": "Skeletor (Blood Metallic)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-skeletor-blood-metallic-mqxesd19",
+    "source": "manual"
+  },
+  {
+    "id": "manual-skeletor-gold-armor-mqxet6r5",
+    "name": "Skeletor (Gold Armor)",
+    "sourceName": "Skeletor (Gold Armor)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-skeletor-gold-armor-mqxet6r5",
+    "source": "manual"
+  },
+  {
     "id": "manual-skeletor-madsaki-mp7g8inw",
     "name": "Skeletor Madsaki",
     "sourceName": "Skeletor Madsaki",
@@ -7992,6 +8045,45 @@
     "year": 2016,
     "slug": "manual-tri-klops-d4b10169",
     "faction": "Evil Warriors",
+    "source": "manual"
+  },
+  {
+    "id": "manual-tri-klops-comic-mqxeuyv2",
+    "name": "Tri-Klops (Comic)",
+    "sourceName": "Tri-Klops (Comic)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-tri-klops-comic-mqxeuyv2",
+    "source": "manual"
+  },
+  {
+    "id": "manual-tri-klops-green-eye-mqxets9i",
+    "name": "Tri-Klops (Green Eye)",
+    "sourceName": "Tri-Klops (Green Eye)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-tri-klops-green-eye-mqxets9i",
+    "source": "manual"
+  },
+  {
+    "id": "manual-tri-klops-yellow-green-mqxevqjn",
+    "name": "Tri-Klops (Yellow/Green)",
+    "sourceName": "Tri-Klops (Yellow/Green)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-tri-klops-yellow-green-mqxevqjn",
     "source": "manual"
   },
   {
