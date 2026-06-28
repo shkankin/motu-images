@@ -7297,6 +7297,32 @@
     "source": "manual"
   },
   {
+    "id": "manual-beast-man-red-flocked-mqxe6x79",
+    "name": "Beast Man (Red Flocked)",
+    "sourceName": "Beast Man (Red Flocked)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-beast-man-red-flocked-mqxe6x79",
+    "source": "manual"
+  },
+  {
+    "id": "manual-beast-man-red-mqxe4mej",
+    "name": "Beast Man (Red)",
+    "sourceName": "Beast Man (Red)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-beast-man-red-mqxe4mej",
+    "source": "manual"
+  },
+  {
     "id": "manual-evil-lyn-a9bee754",
     "name": "Evil-Lyn",
     "sourceName": "Evil-Lyn",
@@ -7308,6 +7334,19 @@
     "year": 2016,
     "slug": "manual-evil-lyn-a9bee754",
     "faction": "Evil Warriors",
+    "source": "manual"
+  },
+  {
+    "id": "manual-evil-lyn-classic-mqxe7lpj",
+    "name": "Evil-Lyn (Classic)",
+    "sourceName": "Evil-Lyn (Classic)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-evil-lyn-classic-mqxe7lpj",
     "source": "manual"
   },
   {
@@ -7350,6 +7389,19 @@
     "slug": "manual-he-man-mqroc0uf",
     "source": "manual",
     "wave": "1"
+  },
+  {
+    "id": "manual-he-man-comic-mqxe8fli",
+    "name": "He-Man (Comic)",
+    "sourceName": "He-Man (Comic)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Heroic Warriors",
+    "year": 2017,
+    "slug": "manual-he-man-comic-mqxe8fli",
+    "source": "manual"
   },
   {
     "id": "manual-he-man-madsaki-mp7g7q9q",
@@ -7455,6 +7507,19 @@
     "wave": "1",
     "year": 2016,
     "slug": "manual-man-at-arms-dd220177",
+    "source": "manual"
+  },
+  {
+    "id": "manual-man-at-arms-classics-mqxe9egs",
+    "name": "Man-At-Arms (Classics)",
+    "sourceName": "Man-At-Arms (Classics)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Heroic Warriors",
+    "year": 2017,
+    "slug": "manual-man-at-arms-classics-mqxe9egs",
     "source": "manual"
   },
   {
@@ -7574,6 +7639,19 @@
     "wave": "SDCC",
     "year": 2016,
     "slug": "manual-prince-adam-01789f1c",
+    "source": "manual"
+  },
+  {
+    "id": "manual-ram-man-yellow-mqxeak3w",
+    "name": "Ram Man (Yellow)",
+    "sourceName": "Ram Man (Yellow)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Heroic Warriors",
+    "year": 2017,
+    "slug": "manual-ram-man-yellow-mqxeak3w",
     "source": "manual"
   },
   {
@@ -7810,6 +7888,19 @@
     "source": "manual"
   },
   {
+    "id": "manual-stratos-white-skin-mqxed8yn",
+    "name": "Stratos (White Skin)",
+    "sourceName": "Stratos (White Skin)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Heroic Warriors",
+    "year": 2017,
+    "slug": "manual-stratos-white-skin-mqxed8yn",
+    "source": "manual"
+  },
+  {
     "id": "manual-teela-2858bf7e",
     "name": "Teela",
     "sourceName": "Teela",
@@ -7820,6 +7911,19 @@
     "wave": "1",
     "year": 2016,
     "slug": "manual-teela-2858bf7e",
+    "source": "manual"
+  },
+  {
+    "id": "manual-teela-pink-mqxecn1n",
+    "name": "Teela (Pink)",
+    "sourceName": "Teela (Pink)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Heroic Warriors",
+    "year": 2017,
+    "slug": "manual-teela-pink-mqxecn1n",
     "source": "manual"
   },
   {
@@ -7847,6 +7951,19 @@
     "year": 2016,
     "slug": "manual-trap-jaw-464cb54c",
     "faction": "Evil Warriors",
+    "source": "manual"
+  },
+  {
+    "id": "manual-trap-jaw-blue-arm-mqxec27j",
+    "name": "Trap Jaw (Blue Arm)",
+    "sourceName": "Trap Jaw (Blue Arm)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Evil Warriors",
+    "year": 2017,
+    "slug": "manual-trap-jaw-blue-arm-mqxec27j",
     "source": "manual"
   },
   {
@@ -7901,6 +8018,19 @@
     "wave": "2",
     "year": 2018,
     "slug": "manual-zodac-12b3d65d",
+    "source": "manual"
+  },
+  {
+    "id": "manual-zodac-purple-mqxeb9ex",
+    "name": "Zodac (Purple)",
+    "sourceName": "Zodac (Purple)",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Loyal Subjects",
+    "sourceGroup": "Loyal Subjects",
+    "faction": "Heroic Warriors",
+    "year": 2017,
+    "slug": "manual-zodac-purple-mqxeb9ex",
     "source": "manual"
   },
   {
