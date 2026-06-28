@@ -1,6 +1,129 @@
 {
   "version": 2,
-  "loadouts": {},
+  "loadouts": {
+    "battle-armor-he-man-3222": [
+      "Power Sword"
+    ],
+    "battle-armor-skeletor-3223": [
+      "Havoc Staff",
+      "Power Sword",
+      "But No Removable Armor"
+    ],
+    "battle-ram-2431": [
+      "Three Missiles"
+    ],
+    "beast-man-2436": [
+      "Armor",
+      "Bicep Armor"
+    ],
+    "buzz-off-3224": [
+      "Axe",
+      "Helmet"
+    ],
+    "castle-grayskull-2432": [
+      "He-man",
+      "Skeletor"
+    ],
+    "clawful-3225": [
+      "But"
+    ],
+    "dragon-walker-3238": [
+      "Artwork By William George"
+    ],
+    "evil-lyn-2837": [
+      "Glow-"
+    ],
+    "faker-2838": [
+      "Power Sword",
+      "Skeletor Harness Cast"
+    ],
+    "fisto-3227": [
+      "Sword",
+      "Clamshell Armor"
+    ],
+    "he-man-2435": [
+      "Power Sword",
+      "Axe",
+      "Shield",
+      "Harness"
+    ],
+    "jitsu-3228": [
+      "Snap-on Clamshell Armor",
+      "Katana Sword"
+    ],
+    "man-at-arms-2437": [
+      "Mace",
+      "Three Pieces Of Removable Armor"
+    ],
+    "man-e-faces-2839": [
+      "Orange Laser Gun"
+    ],
+    "mekaneck-3232": [
+      "Mace",
+      "Clamshell Armor"
+    ],
+    "mer-man-2438": [
+      "Sword Armor",
+      "Armor"
+    ],
+    "orko-3229": [
+      "Ripcord",
+      "Magic Coin Trick Set",
+      "Hat"
+    ],
+    "prince-adam-3230": [
+      "Sword",
+      "Cloth Vest",
+      "Belt"
+    ],
+    "ram-man-2840": [
+      "Axe Weapon",
+      "Minicomic"
+    ],
+    "road-ripper-3240": [
+      "Ripcord"
+    ],
+    "screeech-2845": [
+      "Battle Armor Skeletor"
+    ],
+    "skeletor-2439": [
+      "Power Sword",
+      "Havoc Staff",
+      "Belt",
+      "Harness"
+    ],
+    "stratos-2440": [
+      "No Weapons",
+      "But His Jet Pack",
+      "Wings Were Removable"
+    ],
+    "stridor-6812": [
+      "Helmet",
+      "Tail"
+    ],
+    "teela-2441": [
+      "Snake Armor",
+      "Snake Staff",
+      "Shield"
+    ],
+    "thunder-punch-he-man-3748": [
+      "Vac Metal Shield",
+      "Several Ring Caps"
+    ],
+    "trap-jaw-2841": [
+      "Three Removable Arm Attachments",
+      "Belt",
+      "Articulated Jaw"
+    ],
+    "tri-klops-2842": [
+      "Sword",
+      "Armor"
+    ],
+    "zodac-2442": [
+      "Laser Gun",
+      "Armor"
+    ]
+  },
   "customAccessories": [
     "8 Missiles",
     "Arm Armor",
