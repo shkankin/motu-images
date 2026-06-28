@@ -378,11 +378,12 @@
 <body>
 <div class="container">
   <h1>MOTU Vault — Figures Editor <span id="editorVersionBadge" style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:8px"></span></h1>
-  <div class="subtitle">Review the AF411 pending queue, or edit existing figures already in figures.json. Toggle between modes below. Download merged outputs when done.</div>
+  <div class="subtitle">Auto-loads the current figures.json, loadouts.json and review queue from the repo on open — no manual file loading. Review pending figures or edit existing ones, then commit; new figures are appended to figures.json, never replace it.</div>
 
   <div class="toolbar">
-    <button onclick="loadFromFetch()">Load from server</button>
-    <span style="color:var(--t3);font-size:11px;align-self:center">— or —</span>
+    <button id="loadServerBtn" onclick="loadFromFetch({manual:true})" title="Pulls the current figures.json, loadouts.json and review queues straight from the repo. Runs automatically on open.">↻ Load from server</button>
+    <span id="serverStatus" style="font-size:11px;align-self:center;color:var(--t3)"></span>
+    <span style="color:var(--t3);font-size:11px;align-self:center">— or load files —</span>
     <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
       figures-pending.json <input id="fPending" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'pending')">
     </label>
@@ -601,10 +602,15 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.24.0';
-document.addEventListener('DOMContentLoaded', () => {
+const EDITOR_VERSION = 'v1.25.0';
+document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
+  // v1.25: sync constants from state.js first (so SUBLINES is current for the
+  // pending-group handling), then auto-pull the live catalog, loadouts and
+  // review queues so the editor reflects git state with no manual file loading.
+  try { await syncConstantsFromStateJs(); } catch (e) {}
+  loadFromFetch();
 });
 
 // ── Constants — derived from state.js ──────────────────────────────
@@ -1471,35 +1477,65 @@ let suggestedSeed = new Set();
 
 // ── File loading ───────────────────────────────────────────────────
 
-async function loadFromFetch() {
-  // Try fetching from same-origin paths. Cache-bust with timestamp so the
-  // browser always fetches the latest JSON rather than a stale cached copy.
-  const tryFetch = async (path) => {
-    try {
-      const r = await fetch(path + '?v=' + Date.now(), { cache: 'no-store' });
-      if (r.ok) return await r.json();
-    } catch {}
+async function loadFromFetch(opts) {
+  const manual = !!(opts && opts.manual);
+  // On an explicit reload, don't silently discard unsaved review work.
+  if (manual) {
+    const dirty = Object.keys(decisions || {}).length
+               || Object.keys(edits || {}).length
+               || (manualFigs && manualFigs.length);
+    if (dirty && !confirm('Reload everything from the server? Unsaved review decisions and edits will be discarded.')) return;
+  }
+  // Same-origin first (local dev / Pages), then the raw CDN the app reads and
+  // this editor commits to — so it works even when Pages doesn't serve the data
+  // files. Cache-busted so we never pick up a stale copy.
+  const RAW_DATA = `${RAW_BASE}/${GH_BRANCH}`;
+  const tryFetch = async (name) => {
+    for (const url of [name, `${RAW_DATA}/${name}`]) {
+      try {
+        const r = await fetch(url + '?v=' + Date.now(), { cache: 'no-store' });
+        if (r.ok) return await r.json();
+      } catch {}
+    }
     return null;
   };
-  const pending = await tryFetch('figures-pending.json');
+  setServerStatus('loading', 'Loading from server…');
   const approved = await tryFetch('figures.json');
-  const lds = await tryFetch('loadouts.json');
-  const rej = await tryFetch('figures-rejected.json');
+  const lds      = await tryFetch('loadouts.json');
+  const rej      = await tryFetch('figures-rejected.json');
+  const pending  = await tryFetch('figures-pending.json');
   // v1.23: accessory suggestions from sync_af411.py --accessories. Ingested
   // AFTER loadouts.json so its _meta bundle seeds only figures that don't yet
   // have a confirmed loadout (ingestLoadouts skips those).
-  const sug = await tryFetch('loadouts-suggested.json');
+  const sug      = await tryFetch('loadouts-suggested.json');
 
-  if (pending == null && approved == null) {
-    alert('Could not fetch JSON files from server. Use the file pickers instead, or host the editor at the same path as the JSON files.');
+  if (approved == null && pending == null) {
+    setServerStatus('error', '✗ could not reach server');
+    if (manual) alert('Could not fetch the data files from the server. Check your connection, or use the file pickers below.');
     return;
   }
-  if (pending) ingestPending(pending);
+  // Order matters (v1.25): catalog + loadouts BEFORE pending, so the slug-
+  // collision guard in ingestPending can see the catalog and loadout seeding
+  // resolves against confirmed loadouts first.
   if (approved) ingestApproved(approved);
   if (lds) ingestLoadouts(lds);
   if (sug) ingestLoadouts(sug);
   if (rej) ingestRejected(rej);
+  if (pending) ingestPending(pending);
+  setServerStatus('ok', Array.isArray(approved) ? `✓ ${approved.length} figures loaded from server` : '✓ loaded from server');
   refreshUI();
+}
+
+// Small status line next to the "Load from server" button.
+function setServerStatus(kind, msg) {
+  const btn = document.getElementById('loadServerBtn');
+  if (btn) btn.disabled = (kind === 'loading');
+  const el = document.getElementById('serverStatus');
+  if (!el) return;
+  el.style.color = kind === 'error' ? 'var(--rd,#e05555)'
+                 : kind === 'ok'    ? 'var(--gn,#37b24d)'
+                 : 'var(--t3)';
+  el.textContent = msg || '';
 }
 
 function loadFile(ev, kind) {
@@ -2673,6 +2709,48 @@ async function _doCommit(token) {
     if (!commitRes.ok) throw new Error(`Commit read failed: ${commitRes.status}`);
     const baseTreeSha = (await commitRes.json()).tree.sha;
 
+    // v1.25: overwrite guard. Before writing figures.json, read the copy at the
+    // exact HEAD we're committing onto and make sure this commit isn't about to
+    // drop figures we didn't explicitly delete. Catches both ways the catalog
+    // gets clobbered: (a) figures.json was never loaded, so `merged` is just the
+    // new figures; (b) another device/workflow committed since we loaded, so our
+    // base is stale. Legitimate deletions (deletedFigs) are allowed to shrink it.
+    if (Array.isArray(files['figures.json'])) {
+      try {
+        const curRes = await fetch(`${api}/contents/figures.json?ref=${headSha}`, { headers });
+        if (curRes.ok) {
+          const cur = await curRes.json();
+          let curArr = null;
+          if (cur && typeof cur.content === 'string' && cur.content) {
+            const bin = atob(cur.content.replace(/\s/g, ''));
+            const bytes = Uint8Array.from(bin, ch => ch.charCodeAt(0));
+            curArr = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+          }
+          if (Array.isArray(curArr)) {
+            const curCount = curArr.length;
+            const writing  = files['figures.json'].length;
+            const allowedDrop = deletedFigs.size;
+            if (curCount - allowedDrop > writing) {
+              _commitLog('err', `✗ Overwrite guard: server has ${curCount} figures; this commit would write ${writing} (you deleted ${allowedDrop}). Aborted.`);
+              if (btn) { btn.textContent = origLabel; btn.disabled = false; }
+              alert(
+                `Commit blocked to protect your catalog.\n\n` +
+                `The server's figures.json has ${curCount} figures, but this commit would write only ${writing} ` +
+                `(you deleted ${allowedDrop}). Your existing catalog isn't fully loaded — usually because ` +
+                `figures.json wasn't loaded, or another device committed since you opened the editor.\n\n` +
+                `Click "↻ Load from server" to refresh, redo your review, then commit again.`
+              );
+              return;
+            }
+          }
+        }
+      } catch (guardErr) {
+        // Couldn't read/parse the current file (network, >1MB inline limit, …).
+        // Don't hard-block the commit on the guard itself — just note it.
+        _commitLog('dim', `  (overwrite guard skipped — ${guardErr.message})`);
+      }
+    }
+
     // Create blobs — hard abort on any failure
     const treeItems = [];
     const fileList = Object.entries(files);
@@ -2886,7 +2964,9 @@ async function syncConstantsFromStateJs() {
     console.log('[editor] syncConstantsFromStateJs: could not reach js/state.js, using built-in fallbacks.');
   }
 }
-syncConstantsFromStateJs();
+// v1.25: syncConstantsFromStateJs() is now invoked from the DOMContentLoaded
+// handler (above), immediately before loadFromFetch(), so constants are synced
+// before the live catalog/loadouts/queues are ingested.
 </script>
 </body>
 </html>
