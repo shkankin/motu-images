@@ -602,7 +602,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.25.0';
+const EDITOR_VERSION = 'v1.26.0';
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1856,9 +1856,16 @@ function refreshUI() {
   const hasPendingDecisions = approved > 0 || rejected > 0;
   const dl = document.getElementById('downloadBar');
   dl.style.display = (haveAny && (hasPendingDecisions || editedExistingCount > 0 || deletedFigs.size > 0 || manualFigs.length > 0)) ? 'flex' : 'none';
-  document.getElementById('dlApproved').textContent = approved;
-  document.getElementById('dlRejected').textContent = rejected;
-  document.getElementById('dlPending').textContent = undecided;
+  // v1.26: null-guard these. refreshChromeOnly() re-renders the download
+  // summary on every field edit; if its markup ever lacks one of these ids,
+  // an unguarded textContent set here throws and aborts the whole re-render —
+  // which is what made the Approve button appear dead after editing a field
+  // (the decision was set, but refreshUI() threw before re-rendering the card).
+  // The full summary innerHTML is rebuilt just below regardless, so these are
+  // only a fast-path nicety, never load-bearing.
+  { const el = document.getElementById('dlApproved'); if (el) el.textContent = approved; }
+  { const el = document.getElementById('dlRejected'); if (el) el.textContent = rejected; }
+  { const el = document.getElementById('dlPending');  if (el) el.textContent = undecided; }
   // v1.11: count staged images whose fig will actually land in figures.json.
   // Uses the same logic as _doCommit (final merged figures list) so the
   // badge can't lie. Calling buildPayloads here is cheap — it's the same
@@ -2363,9 +2370,12 @@ function refreshChromeOnly() {
   dl.style.display = (haveAny && (approvedN > 0 || rejectedN > 0 || editedExistingCount > 0 || deletedFigs.size > 0 || manualFigs.length > 0)) ? 'flex' : 'none';
   const dlSummary = document.querySelector('.download-summary');
   if (dlSummary) {
+    // v1.26: keep the same id="dl*" attributes the full refreshUI() render uses,
+    // so these elements never disappear after a light edit-refresh (a missing id
+    // here is what previously made refreshUI() throw and break Approve).
     dlSummary.innerHTML = mode === 'existing' && editedExistingCount > 0
-      ? `<strong>${editedExistingCount}</strong> existing figure(s) edited · <strong>${approvedN}</strong> pending approved · <strong>${rejectedN}</strong> pending rejected`
-      : `<strong>${approvedN}</strong> approved · <strong>${rejectedN}</strong> rejected · <span>${undecidedN}</span> still undecided`;
+      ? `<strong>${editedExistingCount}</strong> existing figure(s) edited · <strong id="dlApproved">${approvedN}</strong> pending approved · <strong id="dlRejected">${rejectedN}</strong> pending rejected`
+      : `<strong id="dlApproved">${approvedN}</strong> approved · <strong id="dlRejected">${rejectedN}</strong> rejected · <span id="dlPending">${undecidedN}</span> still undecided`;
   }
 
   // Refresh per-card EDITED badge + reset button on visible cards
