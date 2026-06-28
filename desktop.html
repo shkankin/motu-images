@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOTU Vault — Desktop</title>
+<!--
+  desktop.html — a dense, keyboard-friendly spreadsheet view of the collection,
+  built for wide screens where the mobile app's card layout wastes space.
+
+  It is intentionally self-contained and imports ONLY the leaf module
+  js/idb-store.js, so it reads and writes the SAME IndexedDB store the mobile
+  app uses (DB 'motu-vault' → store 'kv' → key 'motu-c2'). A status change here
+  shows up in the app on next load on this device — and, once collection sync
+  lands, across devices. It deliberately does NOT import data.js/render.js (that
+  would boot the whole mobile UI); instead it replicates setStatus()'s exact
+  observable behavior (set status, keep a copy slot for owned/for-sale, stamp
+  'acquired', drop the entry when cleared) and preserves every other field
+  untouched, so it can never corrupt the richer per-copy data.
+-->
+<style>
+  :root{
+    --bg:#0e1014; --panel:#161922; --panel2:#1b1f2a; --row:#13161d; --rowalt:#15181f;
+    --bd:#272c38; --bd2:#323847; --t1:#e8ebf1; --t2:#aeb6c4; --t3:#727b8c;
+    --owned:#34d399; --wishlist:#60a5fa; --ordered:#fb923c; --sale:#f87171;
+    --acc:#e0a23c; --focus:#7aa2ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--t1);
+    font:14px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--focus)}
+  .wrap{display:flex;flex-direction:column;height:100vh}
+
+  /* ── Masthead ───────────────────────────────────────────── */
+  header{
+    display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+    padding:14px 20px;border-bottom:1px solid var(--bd);background:var(--panel);
+  }
+  .brand{font-weight:800;letter-spacing:.14em;font-size:13px;text-transform:uppercase;color:var(--t1)}
+  .brand b{color:var(--acc)}
+  .brand small{color:var(--t3);letter-spacing:.18em;margin-left:8px;font-weight:600}
+  .summary{display:flex;gap:16px;flex-wrap:wrap;margin-left:auto;align-items:baseline}
+  .sm{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+  .sm .n{font-variant-numeric:tabular-nums;font-weight:700;font-size:15px}
+  .sm .l{color:var(--t3);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  .dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:2px;transform:translateY(0)}
+  .pct{color:var(--acc);font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* ── Toolbar ────────────────────────────────────────────── */
+  .toolbar{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    padding:10px 20px;border-bottom:1px solid var(--bd);background:var(--panel2);
+  }
+  .toolbar input[type=search],.toolbar select{
+    background:var(--bg);color:var(--t1);border:1px solid var(--bd2);
+    border-radius:7px;padding:7px 10px;font:inherit;font-size:13px;
+  }
+  .toolbar input[type=search]{min-width:240px}
+  .toolbar input[type=search]::placeholder{color:var(--t3)}
+  .toolbar select{cursor:pointer}
+  .toolbar label.chk{display:flex;align-items:center;gap:6px;color:var(--t2);font-size:13px;cursor:pointer;user-select:none}
+  .toolbar .count{margin-left:auto;color:var(--t3);font-size:12px;font-variant-numeric:tabular-nums}
+  .toolbar button.ghost{
+    background:transparent;color:var(--t2);border:1px solid var(--bd2);
+    border-radius:7px;padding:7px 11px;font:inherit;font-size:12px;cursor:pointer;
+  }
+  .toolbar button.ghost:hover{color:var(--t1);border-color:var(--t3)}
+
+  /* ── Table ──────────────────────────────────────────────── */
+  .scroll{flex:1;overflow:auto}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
+  thead th{
+    position:sticky;top:0;z-index:2;background:var(--panel);
+    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--t2);
+    padding:0;border-bottom:1px solid var(--bd2);white-space:nowrap;
+  }
+  thead th button{
+    all:unset;display:flex;align-items:center;gap:5px;width:100%;
+    padding:9px 12px;cursor:pointer;font:inherit;font-size:11px;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--t2);box-sizing:border-box;
+  }
+  thead th button:hover{color:var(--t1)}
+  thead th.static{padding:9px 12px;color:var(--t2)}
+  thead th .arr{color:var(--acc);font-size:10px;opacity:0;transition:opacity .12s}
+  thead th[aria-sort] .arr{opacity:1}
+  tbody td{padding:7px 12px;border-bottom:1px solid var(--bd);vertical-align:middle}
+  tbody tr{background:var(--row)}
+  tbody tr:nth-child(even){background:var(--rowalt)}
+  tbody tr:hover{background:var(--panel2)}
+  tbody tr td:first-child{border-left:3px solid transparent}
+  tr[data-status=owned]    td:first-child{border-left-color:var(--owned)}
+  tr[data-status=wishlist] td:first-child{border-left-color:var(--wishlist)}
+  tr[data-status=ordered]  td:first-child{border-left-color:var(--ordered)}
+  tr[data-status="for-sale"] td:first-child{border-left-color:var(--sale)}
+  tr[data-status=owned]{background:color-mix(in srgb,var(--owned) 7%,var(--row))}
+  tr[data-status=owned]:hover{background:color-mix(in srgb,var(--owned) 12%,var(--row))}
+
+  .col-own{width:42px;text-align:center}
+  .col-img{width:46px}
+  .col-yr{width:64px;font-variant-numeric:tabular-nums;color:var(--t2)}
+  .col-wave{color:var(--t2);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .col-line,.col-faction{color:var(--t2);white-space:nowrap}
+  .name{font-weight:600;color:var(--t1)}
+  .name .src{display:block;font-weight:400;color:var(--t3);font-size:11px;margin-top:1px}
+  td.col-status{width:128px}
+
+  .thumb{width:34px;height:34px;border-radius:5px;object-fit:cover;background:#000;display:block;border:1px solid var(--bd)}
+  .thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:9px;font-weight:700;letter-spacing:.05em}
+  .hide-img .col-img{display:none}
+
+  input[type=checkbox]{
+    appearance:none;-webkit-appearance:none;width:18px;height:18px;border:1.5px solid var(--bd2);
+    border-radius:4px;background:var(--bg);cursor:pointer;position:relative;vertical-align:middle;margin:0;
+  }
+  input[type=checkbox]:checked{background:var(--owned);border-color:var(--owned)}
+  input[type=checkbox]:checked::after{
+    content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;
+    border:solid #0a0d08;border-width:0 2px 2px 0;transform:rotate(45deg);
+  }
+  select.status{
+    width:100%;background:var(--bg);color:var(--t2);border:1px solid var(--bd2);
+    border-radius:6px;padding:5px 6px;font:inherit;font-size:12px;cursor:pointer;
+  }
+  tr[data-status=owned]    select.status{color:var(--owned);border-color:color-mix(in srgb,var(--owned) 45%,var(--bd2))}
+  tr[data-status=wishlist] select.status{color:var(--wishlist)}
+  tr[data-status=ordered]  select.status{color:var(--ordered)}
+  tr[data-status="for-sale"] select.status{color:var(--sale)}
+
+  :focus-visible{outline:2px solid var(--focus);outline-offset:1px;border-radius:4px}
+
+  .state{padding:60px 20px;text-align:center;color:var(--t3)}
+  .state h2{color:var(--t2);font-weight:700;margin:0 0 8px}
+  .banner{padding:9px 20px;font-size:12px;background:color-mix(in srgb,var(--sale) 14%,var(--panel));color:#ffd9d9;border-bottom:1px solid var(--bd)}
+  footer{padding:9px 20px;border-top:1px solid var(--bd);background:var(--panel);color:var(--t3);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
+  footer b{color:var(--t2);font-weight:600}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid var(--bd2);border-top-color:var(--acc);border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP</small></div>
+    <div class="summary" id="summary"></div>
+  </header>
+
+  <div id="banner"></div>
+
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="Search name…" autocomplete="off" spellcheck="false">
+    <select id="fline" title="Filter by line"><option value="">All lines</option></select>
+    <select id="fstatus" title="Filter by status">
+      <option value="">All</option>
+      <option value="owned">Owned</option>
+      <option value="wishlist">Wishlist</option>
+      <option value="ordered">Ordered</option>
+      <option value="for-sale">For Sale</option>
+      <option value="__none">Unowned</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="toggleImg" checked> Images</label>
+    <button class="ghost" id="clear" type="button">Clear filters</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <div class="scroll" id="scroll">
+    <table id="grid" aria-label="Collection">
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+    <div class="state" id="state"><span class="spin"></span>Loading your collection…</div>
+  </div>
+
+  <footer>
+    <span><b>How it saves:</b> changes write to this device and appear in the mobile app on next open.</span>
+    <span id="store"></span>
+  </footer>
+</div>
+
+<script type="module">
+import { hydrate, bigGet, bigSet, bigFlush, idbAvailable } from './js/idb-store.js';
+
+// ── Constants (mirror state.js) ──────────────────────────────────────
+const ROOT = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
+const FIGS_URL = ROOT + '/figures.json';
+const IMG = ROOT + '/images';
+const COLL_KEY = 'motu-c2';
+const JOURNAL_KEY = 'motu-c2-journal';
+const STATUSES = ['owned','wishlist','ordered','for-sale'];
+const STATUS_LABEL = {owned:'Owned', wishlist:'Wishlist', ordered:'Ordered', 'for-sale':'For Sale'};
+const STATUS_DOT = {owned:'var(--owned)', wishlist:'var(--wishlist)', ordered:'var(--ordered)', 'for-sale':'var(--sale)'};
+const LINE_NAME = {
+  origins:'Origins', masterverse:'Masterverse', 'kids-core':'Kids Core', chronicles:'Chronicles',
+  'cross-brand':'Cross-Brand & Collabs', classics:'Classics', '200x':'200x', original:'Vintage',
+  'new-adventures':'New Adventures', mondo:'Mondo', super7:'Super7', 'eternia-minis':'Eternia Minis',
+  'mighty-masters':'Mighty Masters', 'motu-giants':'MOTU Giants',
+};
+const lineName = id => LINE_NAME[id] || (id ? id.replace(/(^|-)(\w)/g,(_,d,c)=>(d?' ':'')+c.toUpperCase()) : '—');
+const esc = s => s==null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ── State ────────────────────────────────────────────────────────────
+let CAT = [];           // catalog (figures.json)
+let coll = {};          // collection map { id: {status, copies, ...} }
+let view = [];          // current filtered + sorted slice
+const filters = { q:'', line:'', status:'' };
+let sort = { key:'name', dir:1 };
+const $ = id => document.getElementById(id);
+
+// ── Persistence (same store + journal semantics as the app) ──────────
+async function loadCollection(){
+  // migrate:true on the collection mirrors what the mobile app does at boot.
+  await hydrate([COLL_KEY], { migrate:true });
+  let c = bigGet(COLL_KEY) || {};
+  // Honor a crash journal exactly like app.js boot: a non-empty journal still
+  // present means the app was killed before its IDB write committed.
+  try {
+    const j = JSON.parse(localStorage.getItem(JOURNAL_KEY) || 'null');
+    if (j && typeof j === 'object' && Object.keys(j).length){ c = j; bigSet(COLL_KEY, c); }
+  } catch {}
+  try { localStorage.removeItem(JOURNAL_KEY); } catch {}   // reconciled
+  return c;
+}
+function saveCollection(){
+  bigSet(COLL_KEY, coll);                                   // → IndexedDB mirror (what the app reads)
+  try { localStorage.removeItem(JOURNAL_KEY); } catch {}    // we're the latest writer; void stale journal
+}
+// Crash-safety on close, consistent with the app's flushSaveColl/visibilitychange.
+window.addEventListener('pagehide', () => {
+  bigFlush(COLL_KEY, coll);
+  try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(coll)); } catch {}
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { try { localStorage.removeItem(JOURNAL_KEY); } catch {} }
+});
+
+// ── Status mutation (faithful to data.js setStatus, minus the toggle —
+//    the checkbox/select express explicit intent, so null clears) ──────
+const todayMMYYYY = () => { const d=new Date(); return String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); };
+function applyStatus(id, status){            // status ∈ STATUSES or null
+  const was = coll[id] ? coll[id].status : undefined;
+  const rec = coll[id] ? {...coll[id]} : {};
+  if (!Array.isArray(rec.copies)) rec.copies = rec.copies || [];
+  if (status == null){
+    delete rec.status;
+    if (!rec.status && (!rec.copies || rec.copies.length === 0)) { delete coll[id]; }
+    else { coll[id] = rec; }
+  } else {
+    rec.status = status;
+    if ((status === 'owned' || status === 'for-sale') && (!rec.copies || rec.copies.length === 0)){
+      rec.copies = [{ id:1 }];
+    }
+    if (status === 'owned' && was !== 'owned'){
+      const cps = rec.copies || [];
+      if (cps.length && !cps[0].acquired) cps[0] = { ...cps[0], acquired: todayMMYYYY() };
+      rec.copies = [...cps];
+    }
+    coll[id] = rec;
+  }
+  saveCollection();
+  updateRow(id);
+  renderSummary();
+}
+const statusOf = id => (coll[id] && coll[id].status) || '';
+
+// ── Rendering ────────────────────────────────────────────────────────
+const COLUMNS = [
+  { key:'own',     label:'',        sortable:true,  cls:'col-own',    th:'static' },
+  { key:'img',     label:'',        sortable:false, cls:'col-img' },
+  { key:'name',    label:'Figure',  sortable:true },
+  { key:'line',    label:'Line',    sortable:true,  cls:'col-line' },
+  { key:'wave',    label:'Wave',    sortable:true,  cls:'col-wave' },
+  { key:'year',    label:'Year',    sortable:true,  cls:'col-yr' },
+  { key:'faction', label:'Faction', sortable:true,  cls:'col-faction' },
+  { key:'status',  label:'Status',  sortable:true,  cls:'col-status' },
+];
+
+function renderHead(){
+  $('head').innerHTML = COLUMNS.map(c => {
+    const active = sort.key === c.key;
+    const arr = active ? (sort.dir>0?'▲':'▼') : '';
+    if (c.label === '' && c.key === 'own')
+      return `<th class="col-own static" title="Owned"><button data-sort="own" aria-label="Sort by owned">✓<span class="arr">${arr}</span></button></th>`;
+    if (!c.sortable) return `<th class="${c.cls||''} static"></th>`;
+    return `<th class="${c.cls||''}"${active?` aria-sort="${sort.dir>0?'ascending':'descending'}"`:''}>
+      <button data-sort="${c.key}">${esc(c.label)}<span class="arr">${arr}</span></button></th>`;
+  }).join('');
+}
+
+const sortVal = (f, key) => {
+  if (key === 'own')    return statusOf(f.id) === 'owned' ? 0 : 1;
+  if (key === 'status'){ const s = statusOf(f.id); return s ? STATUSES.indexOf(s) : 99; }
+  if (key === 'line')   return lineName(f.line).toLowerCase();
+  if (key === 'year')   return f.year ?? -1;
+  return (f[key] ?? '').toString().toLowerCase();
+};
+
+function applyFilters(){
+  const q = filters.q.trim().toLowerCase();
+  view = CAT.filter(f => {
+    if (filters.line && f.line !== filters.line) return false;
+    if (filters.status){
+      const s = statusOf(f.id);
+      if (filters.status === '__none'){ if (s) return false; }
+      else if (s !== filters.status) return false;
+    }
+    if (q && !((f.name||'').toLowerCase().includes(q) || (f.sourceName||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+  view.sort((a,b) => {
+    const av = sortVal(a, sort.key), bv = sortVal(b, sort.key);
+    if (av < bv) return -1*sort.dir;
+    if (av > bv) return  1*sort.dir;
+    return (a.name||'').localeCompare(b.name||'');   // stable tiebreak
+  });
+  renderBody();
+  $('count').textContent = `${view.length.toLocaleString()} of ${CAT.length.toLocaleString()}`;
+}
+
+function rowHTML(f){
+  const s = statusOf(f.id);
+  const opts = ['<option value="">—</option>'].concat(
+    STATUSES.map(st => `<option value="${st}"${st===s?' selected':''}>${STATUS_LABEL[st]}</option>`)).join('');
+  const img = f.slug
+    ? `<img class="thumb" loading="lazy" src="${IMG}/${esc(f.slug)}.jpg" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb ph',textContent:'—'}))">`
+    : `<span class="thumb ph">—</span>`;
+  return `<tr data-id="${esc(f.id)}"${s?` data-status="${s}"`:''}>
+    <td class="col-own"><input type="checkbox" data-own ${s==='owned'?'checked':''} aria-label="Owned: ${esc(f.name)}"></td>
+    <td class="col-img">${img}</td>
+    <td><span class="name">${esc(f.name)}${f.sourceName && f.sourceName!==f.name?`<span class="src">${esc(f.sourceName)}</span>`:''}</span></td>
+    <td class="col-line">${esc(lineName(f.line))}</td>
+    <td class="col-wave" title="${esc(f.wave||'')}">${esc(f.wave||'—')}</td>
+    <td class="col-yr">${f.year ?? '—'}</td>
+    <td class="col-faction">${esc(f.faction||'—')}</td>
+    <td class="col-status"><select class="status" data-status-sel aria-label="Status: ${esc(f.name)}">${opts}</select></td>
+  </tr>`;
+}
+
+function renderBody(){
+  const body = $('body');
+  if (!view.length){
+    body.innerHTML = '';
+    $('state').style.display = 'block';
+    $('state').innerHTML = `<h2>No matches</h2><div>Nothing fits these filters. Clear them to see the full catalog.</div>`;
+    return;
+  }
+  $('state').style.display = 'none';
+  body.innerHTML = view.map(rowHTML).join('');
+}
+
+// Targeted single-row refresh after a status change (no full re-render → no scroll jump)
+function updateRow(id){
+  const tr = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+  if (!tr) return;
+  const s = statusOf(id);
+  if (s) tr.setAttribute('data-status', s); else tr.removeAttribute('data-status');
+  const cb = tr.querySelector('[data-own]'); if (cb) cb.checked = (s === 'owned');
+  const sel = tr.querySelector('[data-status-sel]'); if (sel) sel.value = s;
+  // If a status filter is active and this row no longer qualifies, drop it.
+  if (filters.status){
+    const keep = filters.status === '__none' ? !s : s === filters.status;
+    if (!keep){ tr.remove(); view = view.filter(f => f.id !== id); $('count').textContent = `${view.length.toLocaleString()} of ${CAT.length.toLocaleString()}`; }
+  }
+}
+
+function renderSummary(){
+  let owned=0, wl=0, ord=0, sale=0;
+  for (const f of CAT){
+    const s = statusOf(f.id);
+    if (s==='owned') owned++; else if (s==='wishlist') wl++; else if (s==='ordered') ord++; else if (s==='for-sale') sale++;
+  }
+  const pct = CAT.length ? Math.round(owned/CAT.length*100) : 0;
+  const cell = (n,label,color)=>`<div class="sm"><span class="n">${color?`<span class="dot" style="background:${color}"></span>`:''}${n.toLocaleString()}</span><span class="l">${label}</span></div>`;
+  $('summary').innerHTML =
+    `<div class="sm"><span class="n">${owned.toLocaleString()}<span class="l" style="margin-left:4px">/ ${CAT.length.toLocaleString()}</span></span><span class="l">owned · <span class="pct">${pct}%</span></span></div>`
+    + cell(wl,'wishlist',STATUS_DOT.wishlist) + cell(ord,'ordered',STATUS_DOT.ordered) + cell(sale,'for sale',STATUS_DOT['for-sale']);
+}
+
+// ── Events ───────────────────────────────────────────────────────────
+$('body').addEventListener('change', e => {
+  const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+  const id = tr.dataset.id;
+  if (e.target.matches('[data-own]'))      applyStatus(id, e.target.checked ? 'owned' : null);
+  else if (e.target.matches('[data-status-sel]')) applyStatus(id, e.target.value || null);
+});
+$('head').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-sort]'); if (!btn) return;
+  const key = btn.dataset.sort;
+  if (sort.key === key) sort.dir *= -1; else { sort.key = key; sort.dir = 1; }
+  renderHead(); applyFilters();
+});
+$('q').addEventListener('input', e => { filters.q = e.target.value; applyFilters(); });
+$('fline').addEventListener('change', e => { filters.line = e.target.value; applyFilters(); });
+$('fstatus').addEventListener('change', e => { filters.status = e.target.value; applyFilters(); });
+$('toggleImg').addEventListener('change', e => { $('scroll').classList.toggle('hide-img', !e.target.checked); });
+$('clear').addEventListener('click', () => {
+  filters.q=''; filters.line=''; filters.status='';
+  $('q').value=''; $('fline').value=''; $('fstatus').value='';
+  applyFilters();
+});
+
+// ── Boot ─────────────────────────────────────────────────────────────
+(async function init(){
+  coll = await loadCollection();
+  $('store').innerHTML = idbAvailable()
+    ? '<b>Storage:</b> IndexedDB (shared with the app)'
+    : '<b>Storage:</b> localStorage fallback';
+  let figs;
+  try {
+    const r = await fetch(FIGS_URL + '?v=' + Date.now(), { cache:'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    figs = await r.json();
+  } catch (err){
+    $('state').innerHTML = `<h2>Couldn’t load the catalog</h2><div>${esc(err.message)} — check your connection and reload.</div>`;
+    return;
+  }
+  CAT = Array.isArray(figs) ? figs.filter(f => f && f.id) : [];
+
+  // Populate the line filter from lines actually present, in catalog order.
+  const lines = [...new Set(CAT.map(f => f.line).filter(Boolean))]
+    .sort((a,b) => lineName(a).localeCompare(lineName(b)));
+  $('fline').insertAdjacentHTML('beforeend',
+    lines.map(l => `<option value="${esc(l)}">${esc(lineName(l))}</option>`).join(''));
+
+  renderHead();
+  renderSummary();
+  applyFilters();
+})();
+</script>
+</body>
+</html>
