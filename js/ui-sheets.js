@@ -194,7 +194,12 @@ function renderMenuSheet() {
   // "Manage Collections" since it's the same action for one level down.
   // Replaces a v7.13 attempt at a breadcrumb/header button for this, which
   // was the wrong spot — a breadcrumb is for wayfinding, not actions.
-  if (S.tab === 'lines' && S.activeLine && !S.activeSubline && getOrderedSublines(S.activeLine).length > 1) {
+  // v7.17: dropped a wrong `S.tab === 'lines'` check — goToLine() actually
+  // sets S.tab to 'all' while browsing a line's content (S.activeLine is
+  // the real signal for "viewing this line"), so the old check meant this
+  // item could never appear at all. navTo() always clears S.activeLine on
+  // a genuine tab switch, so activeLine alone is reliable here.
+  if (S.activeLine && !S.activeSubline && !S.search && getOrderedSublines(S.activeLine).length > 1) {
     const mcIdx = menuItems.findIndex(m => m.action === 'menu-manage-collections');
     menuItems.splice(mcIdx + 1, 0, {
       label: `Manage ${esc(ln(S.activeLine))} Sublines`,
