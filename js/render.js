@@ -494,7 +494,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.20</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.21</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1630,7 +1630,7 @@ function renderCopyCard(f, cp, i, isMulti, total) {
     </div>
     <div class="input-group">
       <label>Price Paid</label>
-      <input type="number" step="0.01" class="ghost-input" value="${esc(paid || (f.retail != null ? f.retail : ''))}" placeholder="${f.retail != null ? esc(f.retail.toFixed(2)) : '0.00'}" data-focus-action="select-all" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="paid">
+      <input type="number" step="0.01" class="ghost-input" value="${esc(paid || '')}" placeholder="${f.retail != null ? esc(f.retail.toFixed(2)) : '0.00'}" data-focus-action="select-all" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="paid">
     </div>
     ${isForSale ? `<div class="input-group">
       <label>Asking Price</label>
