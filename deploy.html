@@ -13,7 +13,14 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.6
+     deploy.html  v1.7
+       • v1.7: .zip upload. Drop (or pick) a .zip and it's expanded in-browser
+         via the JSZip instance already loaded for the "download repo as zip"
+         feature — each entry routes through the same resolveRepoPath() a
+         direct file drop uses, so a zip of changed files behaves exactly
+         like selecting those files individually. Tolerates a folder prefix
+         inside the zip (takes the basename) but a flat zip is the expected
+         shape. Added .zip to the file-input's accept list.
        • v1.6: desktop.html is a root .html page with no PATH_MAP entry and,
          since no *.html fallback existed, it resolved to null and silently
          skipped on deploy. Added 'desktop.html' → 'desktop.html' and
@@ -282,7 +289,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.6</span></h1>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.7</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -301,7 +308,7 @@
 <div class="card">
   <h2>Files to Deploy</h2>
   <div id="dropZone">
-    <input type="file" multiple accept=".js,.html,.css,.py,.json,.yml,.yaml,.jpg,.jpeg,.png" onchange="onFilePick(this.files)">
+    <input type="file" multiple accept=".js,.html,.css,.py,.json,.yml,.yaml,.jpg,.jpeg,.png,.zip" onchange="onFilePick(this.files)">
     <div class="drop-icon">📂</div>
     <div class="drop-label">Drop files here or tap to browse</div>
     <div class="drop-sub">Accepts .js .html .css .py .json .yml .jpg .png — paths are auto-resolved</div>
@@ -466,27 +473,59 @@ dropZone.addEventListener('drop', e => {
   onFilePick(e.dataTransfer.files);
 });
 
-function onFilePick(fileList) {
+// v1.7: shared by both a direct file drop and a .zip's extracted entries,
+// so the two paths can never drift out of sync with each other.
+function resolveRepoPath(name) {
+  // resolution order — explicit PATH_MAP entry first, then sensible
+  // fallbacks so new files don't silently skip. Any unmapped *.js routes
+  // to js/<name>; images (jpg/jpeg/png/gif/webp) go to images/<name>;
+  // *.py to scripts/<name>; *.yml/*.yaml to .github/workflows/<name>;
+  // *.json and *.html at root. Anything else stays unknown.
+  return PATH_MAP[name]
+    || (/\.js$/i.test(name) ? 'js/' + name : null)
+    || (/\.(jpe?g|png|gif|webp)$/i.test(name) ? 'images/' + name : null)
+    || (/\.py$/i.test(name) ? 'scripts/' + name : null)
+    || (/\.ya?ml$/i.test(name) ? '.github/workflows/' + name : null)
+    || (/\.json$/i.test(name) ? name : null)
+    || (/\.html$/i.test(name) ? name : null);
+}
+
+async function onFilePick(fileList) {
   for (const f of fileList) {
-    // v3: added *.html → root fallback (v1.6) — desktop.html hit the exact
-    // gap this closes: a root .html page with no PATH_MAP entry used to
-    // resolve to null and silently skip.
-    // resolution order — explicit PATH_MAP entry first, then sensible
-    // fallbacks so new files don't silently skip. Any unmapped *.js routes
-    // to js/<name>; images (jpg/jpeg/png/gif/webp) go to images/<name>;
-    // *.py to scripts/<name>; *.yml/*.yaml to .github/workflows/<name>;
-    // *.json and *.html at root. Anything else stays unknown.
-    const repoPath = PATH_MAP[f.name]
-      || (/\.js$/i.test(f.name) ? 'js/' + f.name : null)
-      || (/\.(jpe?g|png|gif|webp)$/i.test(f.name) ? 'images/' + f.name : null)
-      || (/\.py$/i.test(f.name) ? 'scripts/' + f.name : null)
-      || (/\.ya?ml$/i.test(f.name) ? '.github/workflows/' + f.name : null)
-      || (/\.json$/i.test(f.name) ? f.name : null)
-      || (/\.html$/i.test(f.name) ? f.name : null);
-    files.set(f.name, { file: f, repoPath, status: 'pending' });
+    // v1.7: a dropped/picked .zip is expanded via JSZip (already loaded
+    // for the "download repo as zip" feature above) and each entry routed
+    // through the exact same resolveRepoPath() a direct drop would use —
+    // matches Claude's "deliver changes as one flat zip" convention, so
+    // that zip can just be dropped here instead of multi-selecting files.
+    if (/\.zip$/i.test(f.name)) { await expandZipIntoFiles(f); continue; }
+    files.set(f.name, { file: f, repoPath: resolveRepoPath(f.name), status: 'pending' });
   }
   renderFileList();
   updateDeployBtn();
+}
+
+async function expandZipIntoFiles(zipFile) {
+  log('dim', `📦 Expanding ${zipFile.name}…`);
+  let zip;
+  try {
+    zip = await JSZip.loadAsync(zipFile);
+  } catch (e) {
+    log('err', `✗ Couldn't read ${zipFile.name} as a zip: ${e.message}`);
+    return;
+  }
+  const entries = Object.values(zip.files).filter(e => !e.dir);
+  if (!entries.length) { log('err', `✗ ${zipFile.name} has no files in it`); return; }
+  for (const entry of entries) {
+    // A flat zip (no folders) is the expected shape, but tolerate a folder
+    // prefix by taking just the basename — resolveRepoPath() and PATH_MAP
+    // both match on filename only, same as a direct drop would.
+    const name = entry.name.split('/').pop();
+    if (!name) continue;
+    const blob = await entry.async('blob');
+    const repoPath = resolveRepoPath(name);
+    files.set(name, { file: new File([blob], name, { type: blob.type }), repoPath, status: 'pending' });
+    log('dim', `  ${repoPath ? '✓' : '⚠'} ${name}${repoPath ? ' → ' + repoPath : ' — unrecognized type, will show as unmapped'}`);
+  }
 }
 
 function clearFiles() {

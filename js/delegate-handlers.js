@@ -244,9 +244,8 @@ registerAll({
   'toggle-reorder':   () => window.toggleReorder?.(),
   'open-barcode-scanner': () => window.openBarcodeScanner?.(),
 
-  // Lines grid — reorder
-  'move-line-up':   (e, el, d) => window.moveLine?.(d.lineId, -1),
-  'move-line-down': (e, el, d) => window.moveLine?.(d.lineId,  1),
+  // Lines grid — reorder (drag handled separately in handlers.js; this is
+  // just the per-row Hide toggle, still a plain click action)
   'toggle-line-hidden': (e, el, d) => {
     e.stopPropagation();
     window.toggleHidden?.(d.lineId);

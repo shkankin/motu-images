@@ -406,12 +406,6 @@ window.goToWave = (lineId, wave) => {
   render();
 };
 window.toggleHidden = toggleHidden;
-window.moveLine = (id, dir) => {
-  const arr = [...S.lineOrder]; const i = arr.indexOf(id); const j = i + dir;
-  if (j < 0 || j >= arr.length) return;
-  [arr[i], arr[j]] = [arr[j], arr[i]];
-  S.lineOrder = arr; store.set('motu-line-order', arr); render();
-};
 
 window.openFig = id => {
   const ca = document.getElementById('contentArea');

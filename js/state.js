@@ -15,6 +15,7 @@ const ICO = {
   search:  'M11 3a8 8 0 100 16 8 8 0 000-16zM21 21l-4.35-4.35',
   filter:  'M22 3H2l8 9.46V19l4 2V12.46L22 3z',
   sort:    'M3 6h18M6 12h12M10 18h4',
+  grip:    'M9 6L9 6M9 12L9 12M9 18L9 18M15 6L15 6M15 12L15 12M15 18L15 18',
   check:   'M20 6L9 17l-5-5',
   plus:    'M12 5v14M5 12h14',
   x:       'M18 6L6 18M6 6l12 12',
@@ -409,6 +410,14 @@ const S = {
   _repoCustomSublines: {},  // v6.40: custom subline definitions from loadouts.json. Injected into SUBLINES at runtime.
   _lastDetailFigId: null,   // v6.40: fig id last viewed in detail — used to scroll list back to it on exit.
   _sublineOrder: {},        // v6.43: {[lineId]: [key, ...]} — persisted display order for sublines per line.
+  // v7.12: per-device subline order, set via drag-and-drop in the app itself
+  // (Lines tab → drill into a line → Reorder). Same shape as _sublineOrder
+  // ({[lineId]: [key,...]}) so it's a drop-in fit if this is ever promoted
+  // to the canonical/shared loadouts.json order later — but for now it's
+  // local-only (localStorage key 'motu-subline-order') and, where set,
+  // takes precedence over the admin/canonical order from loadouts.json.
+  // See getOrderedSublines() in data.js for the precedence.
+  _localSublineOrder: (store.get('motu-subline-order') || {}),
 };
 
 const DEFAULT_TITLE = 'MOTU Collector';

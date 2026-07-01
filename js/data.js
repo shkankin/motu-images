@@ -750,7 +750,11 @@ function isSublineHidden(lineId, subKey) {
 function getOrderedSublines(lineId) {
   const subs = SUBLINES[lineId] || [];
   if (!subs.length) return subs;
-  const savedOrder = S._sublineOrder[lineId];
+  // v7.12: a per-device order (set via drag-and-drop in-app) takes
+  // precedence over the canonical/admin order from loadouts.json when
+  // present — it reflects the user's explicit intent on this device.
+  const localOrder = S._localSublineOrder[lineId];
+  const savedOrder = (localOrder && localOrder.length) ? localOrder : S._sublineOrder[lineId];
   if (!savedOrder || !savedOrder.length) {
     // No saved order — still enforce hidden-last
     const vis = subs.filter(s => !isSublineHidden(lineId, s.key));

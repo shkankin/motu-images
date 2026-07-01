@@ -257,6 +257,131 @@ function initLongPress(el, figId) {
   }, {capture: true});
 }
 
+// ── v7.12: drag-to-reorder ───────────────────────────────────────────
+// Press-drag-release reordering for the Lines tab's line list and a
+// line's subline list ("Manage Collections" / the in-line Reorder
+// button) — grab the handle, drag, drop, like reordering a queue.
+// Pointer Events (not the touchstart/touchmove pattern used elsewhere in
+// this file) since this is a self-contained gesture that benefits from
+// covering mouse + touch in one handler instead of two.
+//
+// One delegated listener on `document`, registered once at module load —
+// works after every re-render without rebinding, same reasoning as the
+// touchend/touchcancel listeners above (§166–184): the container's
+// innerHTML is rebuilt on every render(), but document itself never is.
+//
+// Algorithm: on move, compute how many item-heights the pointer has
+// travelled from the drag start and round to the nearest whole slot.
+// Every *other* item's displayed position is then derived fresh from that
+// slot number vs. its own original index — not accumulated frame to
+// frame — so there's no drift no matter how the pointer wanders. Only on
+// release do we touch real state: read the final DOM-key order, persist
+// it, and render() once.
+let _dragState = null;
+
+document.addEventListener('pointerdown', e => {
+  if (e.button != null && e.button !== 0) return;   // left-click / touch / pen only
+  const handle = e.target.closest('.drag-handle');
+  if (!handle) return;
+  const item = handle.closest('[data-reorder-item]');
+  const container = item && item.closest('[data-reorder-scope]');
+  if (!item || !container) return;
+  e.preventDefault();
+
+  const all = [...container.querySelectorAll('[data-reorder-item]')];
+  const originalKeys = all.map(el => el.dataset.key);
+  const origIndex = all.indexOf(item);
+  const itemH = item.getBoundingClientRect().height;
+  if (!itemH) return;
+
+  all.forEach(el => { if (el !== item) el.style.transition = 'transform 0.15s ease'; });
+  item.style.zIndex = '5';
+  item.classList.add('dragging');
+  try { item.setPointerCapture(e.pointerId); } catch {}
+  haptic(10);
+
+  _dragState = {
+    pointerId: e.pointerId, container, all, originalKeys, origIndex, itemH,
+    item, startY: e.clientY, lastSlot: origIndex, scrollRAF: null, edgeDir: 0,
+  };
+}, { passive: false });
+
+function _applyDragTransforms(slot) {
+  const { all, item, origIndex } = _dragState;
+  all.forEach((el, i) => {
+    if (el === item) return;
+    let displayIndex = i;
+    if (i > origIndex && i <= slot) displayIndex = i - 1;
+    else if (i < origIndex && i >= slot) displayIndex = i + 1;
+    const offset = (displayIndex - i) * _dragState.itemH;
+    el.style.transform = offset ? `translateY(${offset}px)` : '';
+  });
+}
+
+function _dragAutoScroll() {
+  if (!_dragState) return;
+  if (_dragState.edgeDir) {
+    window.scrollBy(0, _dragState.edgeDir * 12);
+    _dragState.scrollRAF = requestAnimationFrame(_dragAutoScroll);
+  } else {
+    _dragState.scrollRAF = null;
+  }
+}
+
+document.addEventListener('pointermove', e => {
+  if (!_dragState || e.pointerId !== _dragState.pointerId) return;
+  const d = _dragState;
+  const dy = e.clientY - d.startY;
+  d.item.style.transform = `translateY(${dy}px)`;
+
+  const rawSlot = d.origIndex + Math.round(dy / d.itemH);
+  const slot = Math.min(Math.max(rawSlot, 0), d.all.length - 1);
+  if (slot !== d.lastSlot) {
+    haptic(6);
+    d.lastSlot = slot;
+    _applyDragTransforms(slot);
+  }
+
+  // Auto-scroll when dragging near the top/bottom of the viewport.
+  const EDGE = 70;
+  if (e.clientY < EDGE) d.edgeDir = -1;
+  else if (e.clientY > window.innerHeight - EDGE) d.edgeDir = 1;
+  else d.edgeDir = 0;
+  if (d.edgeDir && !d.scrollRAF) d.scrollRAF = requestAnimationFrame(_dragAutoScroll);
+}, { passive: true });
+
+function _dragEnd() {
+  if (!_dragState) return;
+  const { container, all, item, originalKeys, origIndex, lastSlot, scrollRAF } = _dragState;
+  if (scrollRAF) cancelAnimationFrame(scrollRAF);
+  all.forEach(el => { el.style.transition = ''; el.style.transform = ''; });
+  item.style.zIndex = '';
+  item.classList.remove('dragging');
+  _dragState = null;
+
+  if (lastSlot === origIndex) return;   // dropped back where it started — no-op
+  const finalKeys = originalKeys.filter((_, i) => i !== origIndex);
+  finalKeys.splice(lastSlot, 0, originalKeys[origIndex]);
+  haptic(15);
+
+  const scope = container.dataset.reorderScope;
+  if (scope === 'lines') {
+    S.lineOrder = finalKeys;
+    store.set('motu-line-order', finalKeys);
+  } else if (scope === 'sublines') {
+    const lineId = container.dataset.lineId;
+    S._localSublineOrder = { ...S._localSublineOrder, [lineId]: finalKeys };
+    store.set('motu-subline-order', S._localSublineOrder);
+  }
+  render();
+}
+document.addEventListener('pointerup', e => {
+  if (_dragState && e.pointerId === _dragState.pointerId) _dragEnd();
+}, { passive: true });
+document.addEventListener('pointercancel', e => {
+  if (_dragState && e.pointerId === _dragState.pointerId) _dragEnd();
+}, { passive: true });
+
 function showContextMenu(figId, x, y) {
   // Prevent the regular tap from firing
   const fig = figById(figId);
