@@ -13,7 +13,19 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.8
+     deploy.html  v1.9
+       • v1.9: v1.8 fixed a real race condition, but there was a second, separate
+         bug — the tool trusted /pages/builds/latest as primary and only fell
+         back to the Deployments API on a 404. This repo deploys Pages via a
+         GitHub Actions workflow ("pages build and deployment"), and that
+         model doesn't reliably 404 that legacy endpoint — it can return 200
+         with a stale/unrelated legacy build record instead, so the fallback
+         never triggered and the tool trusted bad data. Verified directly
+         against this repo: /pages/builds/latest → 404 (unauthenticated), but
+         /deployments?environment=github-pages → the exact current deployment,
+         sha-matched to HEAD, updated seconds earlier. Swapped priority —
+         Deployments API is primary now; the legacy Builds API is only a
+         fallback for repos genuinely still on classic branch-based Pages.
        • v1.8: Pages Status was showing stale info — a green "Live" card for
          an old commit sitting right next to a log proving a brand new one
          had just been pushed. Root cause: the staleness guard (a sequence
@@ -305,7 +317,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.8</span></h1>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.9</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -809,9 +821,6 @@ async function checkPagesStatus() {
   btn.textContent = '…';
 
   try {
-    // Try the Deployments API first — it's more reliable for Pages and
-    // returns environment + deployment status without needing Pages enabled.
-    // Falls back to the Pages builds API if needed.
     const headers = {
       'Authorization': `Bearer ${token}`,
       'X-GitHub-Api-Version': '2022-11-28',
@@ -822,43 +831,65 @@ async function checkPagesStatus() {
     const refRes = await fetch(`${api}/git/ref/heads/${BRANCH}`, { headers });
     if (!refRes.ok) throw new Error(`Branch read failed: ${refRes.status}`);
     const latestSha = (await refRes.json()).object.sha;
+    const shortLatest = latestSha.slice(0, 7);
 
-    // 2. Pages builds/latest
-    const buildsRes = await fetch(`${api}/pages/builds/latest`, { headers });
-
-    // Early exit avoids wasted network calls below if already stale — but
-    // this is a perf optimization only. The real guarantee is inside
-    // setPagesStatus() itself, which re-checks regardless of this early exit.
     if (seq !== _checkSeq) { btn.disabled = false; btn.textContent = 'Check'; return; }
-    if (buildsRes.status === 404) {
-      // Pages not enabled or token lacks pages read scope — fall back to deployments
-      const deplRes = await fetch(`${api}/deployments?environment=github-pages&per_page=1`, { headers });
-      if (!deplRes.ok) throw new Error(`Deployments read failed: ${deplRes.status}`);
+
+    // 2. Deployments API — PRIMARY as of v1.9. This repo deploys Pages via
+    // a GitHub Actions workflow ("pages build and deployment", visible on
+    // the repo's Actions tab), and that model reports through here, NOT
+    // through the legacy Builds API below. Verified directly against this
+    // repo: /pages/builds/latest returned 404, while this endpoint returned
+    // the exact current deployment — sha-matched to HEAD, updated seconds
+    // earlier. The v1.8 fix (race-condition guard) was real and necessary,
+    // but this is a separate bug: even race-free, the tool was trusting an
+    // API that doesn't reliably track this repo's actual deployment model.
+    const deplRes = await fetch(`${api}/deployments?environment=github-pages&per_page=1`, { headers });
+    if (deplRes.ok) {
       const depls = await deplRes.json();
-      if (!depls.length) { setPagesStatus(seq, 'grey', 'No Pages deployments found'); return; }
-      const depl = depls[0];
-      const statusRes = await fetch(depl.statuses_url, { headers });
-      const statuses  = statusRes.ok ? await statusRes.json() : [];
-      const st = statuses[0]?.state || 'unknown';
-      const deplSha = depl.sha;
-      const shortSha = deplSha.slice(0, 7);
-      const shortLatest = latestSha.slice(0, 7);
-      const isCurrentCommit = deplSha === latestSha;
-      const timestamp = depl.updated_at ? new Date(depl.updated_at).toLocaleTimeString() : '';
-      if (st === 'success' && isCurrentCommit) {
-        setPagesStatus(seq, 'green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`);
-        stopPolling();
-      } else if (st === 'pending' || st === 'in_progress' || !isCurrentCommit) {
-        setPagesStatus(seq, 'yellow', `Building — deployed ${shortSha}, HEAD is ${shortLatest}`, `State: ${st} · updated ${timestamp}`);
-      } else if (st === 'failure' || st === 'error') {
-        setPagesStatus(seq, 'red', `Build failed — ${shortSha}`, `State: ${st} · ${timestamp}`);
-        stopPolling();
-      } else {
-        setPagesStatus(seq, 'grey', `${st} — ${shortSha}`, `HEAD: ${shortLatest} · ${timestamp}`);
+      if (depls.length) {
+        const depl = depls[0];
+        const statusRes = await fetch(depl.statuses_url, { headers });
+        const statuses  = statusRes.ok ? await statusRes.json() : [];
+        const st = statuses[0]?.state || 'unknown';
+        const deplSha = depl.sha;
+        const shortSha = deplSha.slice(0, 7);
+        const isCurrentCommit = deplSha === latestSha;
+        const timestamp = depl.updated_at ? new Date(depl.updated_at).toLocaleTimeString() : '';
+        // Same nuance the old builds-API path had: if the just-pushed
+        // commit touched no Pages-served files, no new deployment will
+        // ever appear for it — the last successful one (even if behind
+        // HEAD) genuinely means live, not "still building."
+        const noRebuildExpected = _lastCommitHadWebFiles === false;
+        if (st === 'success' && isCurrentCommit) {
+          setPagesStatus(seq, 'green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`);
+          stopPolling();
+        } else if (st === 'success' && !isCurrentCommit && noRebuildExpected) {
+          setPagesStatus(seq, 'green', `✓ Live — ${shortLatest} at ${timestamp}`, `No Pages rebuild needed (backend/scripts only) · last deployed ${shortSha}`);
+          stopPolling();
+        } else if (st === 'success' && !isCurrentCommit) {
+          setPagesStatus(seq, 'yellow', `Building — last deployed ${shortSha}, HEAD is ${shortLatest}`, `Waiting for a deployment of HEAD · last success ${timestamp}`);
+        } else if (st === 'pending' || st === 'in_progress' || st === 'queued') {
+          setPagesStatus(seq, 'yellow', `Building — deploying ${shortSha}${isCurrentCommit ? ' (HEAD)' : `, HEAD is ${shortLatest}`}`, `State: ${st} · updated ${timestamp}`);
+        } else if (st === 'failure' || st === 'error') {
+          setPagesStatus(seq, 'red', `Build failed — ${shortSha}`, `State: ${st} · ${timestamp}`);
+          stopPolling();
+        } else {
+          setPagesStatus(seq, 'grey', `${st} — ${shortSha}`, `HEAD: ${shortLatest} · ${timestamp}`);
+        }
+        return;
       }
-      return;
     }
 
+    // 3. Fallback: legacy Pages Builds API — only reached if the
+    // Deployments API returned no usable data (e.g. a repo genuinely still
+    // on classic branch-based Pages, which never creates "deployments").
+    const buildsRes = await fetch(`${api}/pages/builds/latest`, { headers });
+    if (seq !== _checkSeq) { btn.disabled = false; btn.textContent = 'Check'; return; }
+    if (buildsRes.status === 404) {
+      setPagesStatus(seq, 'grey', 'No Pages deployments found');
+      return;
+    }
     if (!buildsRes.ok) throw new Error(`Pages API failed: ${buildsRes.status}`);
     const build = await buildsRes.json();
     // The Pages builds API returns commit as a plain SHA string, not an object.
@@ -866,7 +897,6 @@ async function checkPagesStatus() {
     const buildSha   = (typeof build.commit === 'string' ? build.commit : (build.commit?.sha || '')) || '';
     const status     = build.status || 'unknown';
     const shortBuild  = buildSha.slice(0, 7);
-    const shortLatest = latestSha.slice(0, 7);
     // If the API returned a SHA, compare it. If not (some token scopes omit it),
     // trust the status field — a recent 'built' response is almost certainly current.
     const shaKnown        = buildSha.length > 0;
