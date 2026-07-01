@@ -494,7 +494,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.12</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.13</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -822,6 +822,14 @@ function renderBreadcrumb() {
   // now done via the standalone kids-core-editor.html that round-trips
   // through localStorage / repo JSON. Editing existing figures from the
   // detail screen still works (Edit button → openSheet kidsCoreAdmin).
+  // v7.13: subline-reorder trigger lives here (not a separate header block
+  // above the card list) so it inherits the breadcrumb's already-correct
+  // spacing instead of stacking a second padding/gap rhythm on top of it.
+  // Only worth showing with 2+ sublines, and not while already reordering
+  // (the "✓ Done" toggle covers that case).
+  if (!S.activeSubline && !S.editingOrder && getOrderedSublines(S.activeLine).length > 1) {
+    html += `<button class="reorder-trigger" data-action="toggle-reorder" title="Reorder sublines" aria-label="Reorder sublines">${icon(ICO.grip,13,3)} Reorder</button>`;
+  }
   html += '</div>';
   return html;
 }
@@ -943,7 +951,7 @@ function renderLinesGrid() {
     ordered.forEach(l => {
       const hidden = isLineFullyHidden(l.id);
       html += `<div class="reorder-item" style="${hidden?'opacity:0.4':''}" data-reorder-item data-key="${esc(l.id)}">
-        <button class="drag-handle" aria-label="Drag to reorder ${esc(l.name)}" title="Drag to reorder">${icon(ICO.grip,18,3)}</button>
+        <button class="reorder-handle" aria-label="Drag to reorder ${esc(l.name)}" title="Drag to reorder">${icon(ICO.grip,18,3)}</button>
         <div style="flex:1;min-width:0">
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(l.name)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">${l.yr} · ${l.total} figures · ${l.owned} owned</div>
@@ -966,10 +974,12 @@ function renderLinesGrid() {
     // (proper margin from the search bar above, consistent padding).
     html += `<div class="lines-header">
       <div class="lines-header-count">${visibleOrdered.length} ${visibleOrdered.length === 1 ? 'Line' : 'Lines'}</div>
-      <div class="lines-view-toggle" role="group" aria-label="View mode">
-        <button data-action="toggle-reorder" title="Reorder lines" aria-label="Reorder lines">${icon(ICO.grip,15,3)}</button>
-        <button class="${linesView==='list'?'active':''}" data-action="set-lines-view" data-view="list" title="List view" aria-label="List view">${icon(ICO.list,15)}</button>
-        <button class="${linesView==='grid'?'active':''}" data-action="set-lines-view" data-view="grid" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="reorder-trigger" data-action="toggle-reorder" title="Reorder lines" aria-label="Reorder lines">${icon(ICO.grip,13,3)} Reorder</button>
+        <div class="lines-view-toggle" role="group" aria-label="View mode">
+          <button class="${linesView==='list'?'active':''}" data-action="set-lines-view" data-view="list" title="List view" aria-label="List view">${icon(ICO.list,15)}</button>
+          <button class="${linesView==='grid'?'active':''}" data-action="set-lines-view" data-view="grid" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
+        </div>
       </div>
     </div>`;
     if (linesView === 'list') {
@@ -1058,7 +1068,7 @@ function renderSublines() {
     populated.forEach(({ sl, slFigs }) => {
       const hidden = isSublineHidden(S.activeLine, sl.key);
       html += `<div class="reorder-item" style="${hidden?'opacity:0.4':''}" data-reorder-item data-key="${esc(sl.key)}">
-        <button class="drag-handle" aria-label="Drag to reorder ${esc(sl.label)}" title="Drag to reorder">${icon(ICO.grip,18,3)}</button>
+        <button class="reorder-handle" aria-label="Drag to reorder ${esc(sl.label)}" title="Drag to reorder">${icon(ICO.grip,18,3)}</button>
         <div style="flex:1;min-width:0">
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(sl.label)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">${slFigs.length} figures</div>
@@ -1073,13 +1083,6 @@ function renderSublines() {
   }
 
   let html = '<div class="subline-list">';
-  // v7.12: Reorder entry point — only worth showing with 2+ real sublines.
-  if (populated.length > 1) {
-    html += `<div class="lines-header" style="padding-top:0">
-      <div class="lines-header-count">${populated.length} Sublines</div>
-      <button class="drag-handle" data-action="toggle-reorder" title="Reorder sublines" aria-label="Reorder sublines" style="width:auto;padding:6px 12px;gap:6px;display:inline-flex;align-items:center;font-size:12px;color:var(--t3)">${icon(ICO.grip,14,3)} Reorder</button>
-    </div>`;
-  }
   html += `<button class="subline-card all-card${newInLine > 0 ? ' has-new' : ''}" data-action="select-subline" data-subline="__all__">
     <div class="subline-ring">${progressRing(allPct, 48, 'var(--gold)')}</div>
     <div class="subline-info">

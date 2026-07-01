@@ -748,18 +748,39 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   cursor: grabbing;
 }
-.drag-handle {
+/* v7.13: renamed from .drag-handle — that name was already in use (see
+   .databox-title-wrap .drag-handle below, an unrelated low-emphasis
+   detail-view control) and, since that rule comes later in the cascade,
+   its opacity:0.5 was silently winning here too, washing these out. */
+.reorder-handle {
   width: 32px; height: 32px;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: 7px;
-  border: none;
-  background: transparent;
-  color: var(--t3);
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t2);
   cursor: grab;
-  touch-action: none;   /* v7.12: the handle owns vertical motion, not page scroll */
+  touch-action: none;   /* the handle owns vertical motion, not page scroll */
 }
-.reorder-item.dragging .drag-handle { color: var(--acc); }
+.reorder-item.dragging .reorder-handle { color: var(--acc); border-color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, var(--bg3)); }
+
+/* v7.13: small pill trigger for entering reorder mode (Lines header,
+   sublines breadcrumb) — same visual language as the Hide button
+   (border + bg3 fill) so it clearly reads as tappable. */
+.reorder-trigger {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+  color: var(--t3);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.reorder-trigger:active { transform: scale(0.95); }
 
 /* ── Subline Cards ───────────────────────────────────────────────── */
 .subline-list {

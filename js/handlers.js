@@ -281,7 +281,7 @@ let _dragState = null;
 
 document.addEventListener('pointerdown', e => {
   if (e.button != null && e.button !== 0) return;   // left-click / touch / pen only
-  const handle = e.target.closest('.drag-handle');
+  const handle = e.target.closest('.reorder-handle');
   if (!handle) return;
   const item = handle.closest('[data-reorder-item]');
   const container = item && item.closest('[data-reorder-scope]');
