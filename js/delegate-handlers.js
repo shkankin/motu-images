@@ -206,11 +206,37 @@ registerAll({
 registerAll({
   'img-error': (e, el, d) => window.imgErr?.(d.figId),
   'img-hide':  (e, el) => { el.style.display = 'none'; },
+  // v7.19: img-fallback previously only tried a different filename (.jpg ->
+  // .png), which assumes the failure is "wrong extension." It never
+  // considered that the SW's cached response for this exact URL could
+  // itself be stale/bad — in which case swapping to another filename just
+  // hits the same working-fine SW cache logic with a different key, while
+  // the real broken entry sits there forever. Stage 0 now deletes that
+  // specific cache entry directly (Cache Storage is available page-side,
+  // not just inside the SW) and forces a real reload of the SAME url —
+  // 'motu-vault-images' must match IMG_CACHE in sw.js; they can't share an
+  // import since one runs in the SW scope, so keep them in sync by hand.
+  // A cache miss re-fetches from network and re-populates under the same
+  // key, so this also fixes it for every future load, not just this one.
+  // Stage 1 (still broken after that) falls through to the old filename-
+  // swap behavior. Stage 2 (both failed) hides the element as before.
   'img-fallback': (e, el, d) => {
-    if (el.dataset.fellBack) { el.style.display = 'none'; return; }
-    el.dataset.fellBack = '1';
-    if (d.fallbackSrc) el.src = d.fallbackSrc;
-    else el.style.display = 'none';
+    const stage = el.dataset.retryStage || '0';
+    if (stage === '0') {
+      el.dataset.retryStage = '1';
+      const src = el.src;
+      caches.open('motu-vault-images').then(c => c.delete(src)).catch(() => {}).then(() => {
+        el.src = '';
+        el.src = src;
+      });
+      return;
+    }
+    if (stage === '1' && d.fallbackSrc) {
+      el.dataset.retryStage = '2';
+      el.src = d.fallbackSrc;
+      return;
+    }
+    el.style.display = 'none';
   },
 }, 'error');
 

@@ -13,7 +13,23 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.7
+     deploy.html  v1.8
+       • v1.8: Pages Status was showing stale info — a green "Live" card for
+         an old commit sitting right next to a log proving a brand new one
+         had just been pushed. Root cause: the staleness guard (a sequence
+         counter meant to discard results from a superseded check) was only
+         checked ONCE, early, in checkPagesStatus() — but both branches after
+         that point have further awaited fetches with no re-check before
+         their own status update, so a slow, genuinely-stale check (e.g. the
+         one that fires on page load) could finish AFTER a newer one and
+         silently overwrite it. Moved the guard inside setPagesStatus()
+         itself so every call site is protected by construction. Also: the
+         card now resets the instant a deploy starts (previously untouched
+         until the whole commit finished, so old status sat there for the
+         entire upload), and every status change now also logs into the
+         main feed — Pages status is part of the same single, real-time
+         timeline as the commit steps now, not a separate card with no
+         visible relationship to it.
        • v1.7: .zip upload. Drop (or pick) a .zip and it's expanded in-browser
          via the JSZip instance already loaded for the "download repo as zip"
          feature — each entry routes through the same resolveRepoPath() a
@@ -289,7 +305,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.7</span></h1>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.8</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -579,6 +595,15 @@ async function deploy() {
   btn.textContent = '⏳ Deploying…';
   clearLog();
   setProgress(0, true);
+  // v7.19: reset Pages Status the instant a deploy starts, not only after
+  // it finishes (pollPagesUntilLive used to be the only thing that touched
+  // it, called at the very end) — otherwise whatever it last said (possibly
+  // the page-load check, possibly minutes old) sits there looking current
+  // for the entire upload/commit process, which is exactly what looked
+  // broken: an old "Live" status right next to a log actively pushing a
+  // brand new commit.
+  stopPolling();
+  setPagesStatus(++_checkSeq, 'blue', 'Deploying — will check Pages once committed…');
 
   const headers = {
     'Authorization': `Bearer ${token}`,
@@ -743,7 +768,21 @@ function isPagesServed(repoPath) {
   return !/^(backend|scripts|\.github)\//.test(repoPath || '');
 }
 
-function setPagesStatus(indicator, text, detail) {
+// v7.19: seq is now REQUIRED and checked here, centrally — not at scattered
+// call sites. The old code guarded staleness once, early in checkPagesStatus,
+// but both branches after that guard have further awaits (the deployments
+// fallback: 2 more; the main builds-API path: 1 more) with no re-check
+// before their own setPagesStatus() calls. A slow, genuinely-stale check
+// (e.g. the one that fires on page load) could finish AFTER a newer check
+// had already reported fresh status, and silently overwrite it — exactly
+// the "shows the old commit as live right under a log proving a new one
+// was just pushed" bug. Baking the check in here means every call site is
+// protected by construction; nothing to remember, nothing to miss.
+// Also logs every change into the main log (unless quiet) so Pages status
+// is part of the same single, real-time, chronological feed as the commit
+// steps — not a separate card the log has no relationship to.
+function setPagesStatus(seq, indicator, text, detail, quiet) {
+  if (seq !== _checkSeq) return;   // a newer check has started — discard
   const colors = { grey: 'var(--t3)', yellow: '#f5c842', green: 'var(--green)', red: 'var(--red)', blue: 'var(--blue)' };
   document.getElementById('pagesIndicator').style.background = colors[indicator] || colors.grey;
   document.getElementById('pagesStatusText').textContent = text;
@@ -754,13 +793,17 @@ function setPagesStatus(indicator, text, detail) {
   } else {
     detailEl.style.display = 'none';
   }
+  if (!quiet) {
+    const logType = indicator === 'green' ? 'ok' : indicator === 'red' ? 'err' : 'dim';
+    log(logType, `Pages: ${text}`);
+  }
 }
 
 async function checkPagesStatus() {
   const token = getToken();
-  if (!token) { setPagesStatus('grey', 'No token — save a token first'); return; }
+  if (!token) { setPagesStatus(_checkSeq, 'grey', 'No token — save a token first'); return; }
 
-  const seq = ++_checkSeq;  // capture this call's sequence number
+  const seq = ++_checkSeq;  // this call's own sequence number, checked inside every setPagesStatus() call below
   const btn = document.getElementById('pagesCheckBtn');
   btn.disabled = true;
   btn.textContent = '…';
@@ -783,13 +826,16 @@ async function checkPagesStatus() {
     // 2. Pages builds/latest
     const buildsRes = await fetch(`${api}/pages/builds/latest`, { headers });
 
-    if (seq !== _checkSeq) { btn.disabled = false; btn.textContent = 'Check'; return; } // stale — a newer check started
+    // Early exit avoids wasted network calls below if already stale — but
+    // this is a perf optimization only. The real guarantee is inside
+    // setPagesStatus() itself, which re-checks regardless of this early exit.
+    if (seq !== _checkSeq) { btn.disabled = false; btn.textContent = 'Check'; return; }
     if (buildsRes.status === 404) {
       // Pages not enabled or token lacks pages read scope — fall back to deployments
       const deplRes = await fetch(`${api}/deployments?environment=github-pages&per_page=1`, { headers });
       if (!deplRes.ok) throw new Error(`Deployments read failed: ${deplRes.status}`);
       const depls = await deplRes.json();
-      if (!depls.length) { setPagesStatus('grey', 'No Pages deployments found'); return; }
+      if (!depls.length) { setPagesStatus(seq, 'grey', 'No Pages deployments found'); return; }
       const depl = depls[0];
       const statusRes = await fetch(depl.statuses_url, { headers });
       const statuses  = statusRes.ok ? await statusRes.json() : [];
@@ -800,15 +846,15 @@ async function checkPagesStatus() {
       const isCurrentCommit = deplSha === latestSha;
       const timestamp = depl.updated_at ? new Date(depl.updated_at).toLocaleTimeString() : '';
       if (st === 'success' && isCurrentCommit) {
-        setPagesStatus('green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`);
+        setPagesStatus(seq, 'green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`);
         stopPolling();
       } else if (st === 'pending' || st === 'in_progress' || !isCurrentCommit) {
-        setPagesStatus('yellow', `Building — deployed ${shortSha}, HEAD is ${shortLatest}`, `State: ${st} · updated ${timestamp}`);
+        setPagesStatus(seq, 'yellow', `Building — deployed ${shortSha}, HEAD is ${shortLatest}`, `State: ${st} · updated ${timestamp}`);
       } else if (st === 'failure' || st === 'error') {
-        setPagesStatus('red', `Build failed — ${shortSha}`, `State: ${st} · ${timestamp}`);
+        setPagesStatus(seq, 'red', `Build failed — ${shortSha}`, `State: ${st} · ${timestamp}`);
         stopPolling();
       } else {
-        setPagesStatus('grey', `${st} — ${shortSha}`, `HEAD: ${shortLatest} · ${timestamp}`);
+        setPagesStatus(seq, 'grey', `${st} — ${shortSha}`, `HEAD: ${shortLatest} · ${timestamp}`);
       }
       return;
     }
@@ -840,25 +886,25 @@ async function checkPagesStatus() {
       const note = confirmedCurrent
         ? `HEAD ${shortLatest} is live`
         : `No Pages rebuild needed (backend/scripts only) · HEAD ${shortLatest}`;
-      setPagesStatus('green', `✓ Live — ${liveRef} at ${updatedAt}`, note);
+      setPagesStatus(seq, 'green', `✓ Live — ${liveRef} at ${updatedAt}`, note);
       stopPolling();
     } else if (status === 'building' || (status === 'built' && !confirmedCurrent)) {
       // 'built' but the build SHA is behind HEAD means Pages is still publishing
       // this commit — keep polling, do NOT report it live.
-      setPagesStatus('yellow',
+      setPagesStatus(seq, 'yellow',
         `Building — HEAD ${shortLatest}${shaKnown ? `, live build ${shortBuild}` : ''}…`,
         `Status: ${status} · updated ${updatedAt}`);
     } else if (status === 'errored') {
-      setPagesStatus('red', `Build errored — ${shortBuild || shortLatest}`,
+      setPagesStatus(seq, 'red', `Build errored — ${shortBuild || shortLatest}`,
         `Error: ${build.error?.message || 'unknown'} · ${updatedAt}`);
       stopPolling();
     } else {
-      setPagesStatus('grey', `${status} — ${shortBuild || shortLatest}`,
+      setPagesStatus(seq, 'grey', `${status} — ${shortBuild || shortLatest}`,
         `HEAD: ${shortLatest} · ${updatedAt}`);
     }
 
   } catch (e) {
-    setPagesStatus('red', `Check failed: ${e.message}`);
+    setPagesStatus(seq, 'red', `Check failed: ${e.message}`);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Check';
@@ -867,9 +913,11 @@ async function checkPagesStatus() {
 
 function pollPagesUntilLive(commitSha) {
   _targetSha = commitSha;
-  _checkSeq++;  // invalidate any in-flight checkPagesStatus from page load or prior poll
+  const seq = ++_checkSeq;  // this poll cycle's own sequence number — a newer commit's
+                             // pollPagesUntilLive() call bumps _checkSeq again, which
+                             // correctly discards anything still in flight from this one
   stopPolling();
-  setPagesStatus('yellow', 'Waiting for Pages build to start…');
+  setPagesStatus(seq, 'yellow', 'Waiting for Pages build to start…');
   log('inf', '  Watching Pages — will update when live…');
 
   // First check after 15s (Pages needs time to queue), then every 10s
@@ -887,7 +935,7 @@ function pollPagesUntilLive(commitSha) {
       // Stop if live (green) or errored (red) — checkPagesStatus calls stopPolling() in those cases
       if (elapsed >= MAX_WAIT) {
         stopPolling();
-        setPagesStatus('grey', 'Timed out waiting for Pages build', 'Try the Check button manually');
+        setPagesStatus(seq, 'grey', 'Timed out waiting for Pages build', 'Try the Check button manually');
         log('err', '  Pages build did not complete within 5 minutes');
       }
     }, POLL_INTERVAL);
