@@ -188,7 +188,7 @@ function renderMenuSheet() {
       action: 'menu-open-locations',
     });
   }
-  // v7.15: "Reorder Sublines" — contextual, only shown while actually
+  // v7.15: "Manage Sublines" — contextual, only shown while actually
   // viewing a line's subline list (not drilled into one subline, and not
   // on some other tab where there'd be no clear target). Sits right after
   // "Manage Collections" since it's the same action for one level down.
@@ -197,7 +197,7 @@ function renderMenuSheet() {
   if (S.tab === 'lines' && S.activeLine && !S.activeSubline && getOrderedSublines(S.activeLine).length > 1) {
     const mcIdx = menuItems.findIndex(m => m.action === 'menu-manage-collections');
     menuItems.splice(mcIdx + 1, 0, {
-      label: `Reorder ${esc(ln(S.activeLine))} Sublines`,
+      label: `Manage ${esc(ln(S.activeLine))} Sublines`,
       icon: ICO.grip,
       action: 'menu-reorder-sublines',
     });
