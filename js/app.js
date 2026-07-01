@@ -311,6 +311,16 @@ if ('serviceWorker' in navigator) {
   // a stale sw.js (otherwise a long Cache-Control on the SW script can
   // freeze users on an old service worker for up to 24h).
   navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+  // v7.18: request persistent storage. Without this, Cache Storage (incl.
+  // sw.js's IMG_CACHE) is "best-effort" and the browser can silently evict
+  // it under storage pressure — separate from, and more likely than, the
+  // v6.84 versioned-cache-wipe bug (that fix is a different mechanism,
+  // already in place, already verified intact). Matches the reported
+  // symptom well: happens occasionally, not tied to any specific deploy,
+  // fixed by anything that forces a full re-populate (which clearing site
+  // data does). Not a guaranteed fix — the browser can still decline — but
+  // it's the standard mitigation, and installed PWAs are usually granted it.
+  if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   // Listen for background update notification from SW
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data?.type === 'UPDATE_AVAILABLE') {
