@@ -362,6 +362,11 @@ registerAll({
     window.S.activeSubline = null;
     window.render?.();
   },
+  'menu-reorder-sublines': () => {
+    window.closeSheet?.();
+    window.S.editingOrder = true;
+    window.render?.();
+  },
   'menu-open-locations': () => {
     window.S._locView = null;
     window.openSheet?.('locations');

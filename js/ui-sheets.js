@@ -29,7 +29,7 @@ import {
   copyPaid, copyNotes, getAllLocations,
   renderExportSheet, renderSheetBody,
   renderAccessoryPickerSheet, SETTINGS_KEYS,
-  _derived, clearOverrides, backupDue, getBackupMeta,
+  _derived, clearOverrides, backupDue, getBackupMeta, getOrderedSublines,
 } from './data.js';
 import {
   renderKidsCoreAdminSheet,
@@ -186,6 +186,20 @@ function renderMenuSheet() {
       label: `Locations (${_locs.length})`,
       icon: ICO.box || ICO.tag,
       action: 'menu-open-locations',
+    });
+  }
+  // v7.15: "Reorder Sublines" — contextual, only shown while actually
+  // viewing a line's subline list (not drilled into one subline, and not
+  // on some other tab where there'd be no clear target). Sits right after
+  // "Manage Collections" since it's the same action for one level down.
+  // Replaces a v7.13 attempt at a breadcrumb/header button for this, which
+  // was the wrong spot — a breadcrumb is for wayfinding, not actions.
+  if (S.tab === 'lines' && S.activeLine && !S.activeSubline && getOrderedSublines(S.activeLine).length > 1) {
+    const mcIdx = menuItems.findIndex(m => m.action === 'menu-manage-collections');
+    menuItems.splice(mcIdx + 1, 0, {
+      label: `Reorder ${esc(ln(S.activeLine))} Sublines`,
+      icon: ICO.grip,
+      action: 'menu-reorder-sublines',
     });
   }
   // v6.31: insert "Viewed Wishlists" only when there's at least one entry,

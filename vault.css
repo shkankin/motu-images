@@ -747,16 +747,20 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   border-color: var(--acc);
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   cursor: grabbing;
+  will-change: transform, box-shadow;   /* v7.14: keep this on its own GPU layer during touchmove */
 }
 /* v7.13: renamed from .drag-handle — that name was already in use (see
    .databox-title-wrap .drag-handle below, an unrelated low-emphasis
    detail-view control) and, since that rule comes later in the cascade,
    its opacity:0.5 was silently winning here too, washing these out. */
 .reorder-handle {
-  width: 32px; height: 32px;
+  width: 44px; height: 44px;   /* v7.14: was 32px — below this app's own 44px
+    touch-target precedent (WCAG 2.5.8 / Apple HIG / Material — see the
+    .tutorial-skip/-back/-next rule this borrows from). Room freed up by
+    dropping Hide from this row (below) made this fit without crowding. */
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 7px;
+  border-radius: 9px;
   border: 1px solid var(--bd);
   background: var(--bg3);
   color: var(--t2);
@@ -765,22 +769,25 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .reorder-item.dragging .reorder-handle { color: var(--acc); border-color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, var(--bg3)); }
 
-/* v7.13: small pill trigger for entering reorder mode (Lines header,
-   sublines breadcrumb) — same visual language as the Hide button
-   (border + bg3 fill) so it clearly reads as tappable. */
-.reorder-trigger {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 10px;
+/* v7.14: Hide/Show inside a reorder row — kept (line-hiding has no other
+   entry point in this app; removing it here would remove it entirely),
+   but resized well past the old 4px/10px-padding, 10px-font version and
+   given a firm margin-left so it sits clearly apart from the row's own
+   drag-drop zone, reducing accidental taps right as a drag ends. */
+.reorder-hide-btn {
+  min-height: 40px;
+  padding: 0 14px;
+  margin-left: 6px;
   border-radius: 8px;
   border: 1px solid var(--bd);
   background: var(--bg3);
   color: var(--t3);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   flex-shrink: 0;
-  cursor: pointer;
 }
-.reorder-trigger:active { transform: scale(0.95); }
+.reorder-item.is-hidden { opacity: 0.4; }
+.reorder-item.is-hidden .reorder-hide-btn { opacity: 1; border-color: var(--rd); color: var(--rd); background: color-mix(in srgb, var(--rd) 10%, transparent); }
 
 /* ── Subline Cards ───────────────────────────────────────────────── */
 .subline-list {
