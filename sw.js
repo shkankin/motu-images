@@ -1,7 +1,23 @@
-// MOTU Vault — Service Worker v7.11
+// MOTU Vault — Service Worker v7.14
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v7.14 changelog:
+//   • Both the HTML/navigate fetch and the "everything else" (JS/CSS/etc.)
+//     fetch were already coded network-first (v6.16), but neither set an
+//     explicit cache mode on the fetch() call — meaning the browser's own
+//     HTTP cache (not this SW's Cache API, a separate layer) could still
+//     satisfy the request without a real round-trip, serving a stale
+//     response the SW would have no way to detect. Reported symptom: v7.13
+//     didn't show up in a normal window, only a private one (which had no
+//     prior HTTP cache entries to serve stale). Added {cache:'reload'} to
+//     both fetch() calls — bypasses the local HTTP cache, still allows the
+//     server/CDN to answer 304-not-modified, still populates the SW cache
+//     for offline fallback. Also bumped CACHE below to match, so the SW
+//     script's own bytes change and the browser's SW-update check (which
+//     only fires on a byte diff) actually triggers an activate cycle
+//     instead of the old worker just running forever unnoticed.
 //
 // v7.11 changelog:
 //   • state.js SUBLINES: pruned 8 sublines that match zero figures in the
@@ -907,7 +923,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.11';
+const CACHE = 'motu-vault-v7.14';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -1108,7 +1124,7 @@ self.addEventListener('fetch', e => {
   // provides full offline support when the network is unavailable.
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
     e.respondWith(
-      fetch(e.request).then(res => {
+      fetch(e.request, { cache: 'reload' }).then(res => {
         if (res.ok) {
           const cacheClone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, cacheClone));
@@ -1127,7 +1143,7 @@ self.addEventListener('fetch', e => {
   // app this is invisible, and it eliminates the "bump CACHE every patch"
   // tax that was making iteration painful.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'reload' })
       .then(res => {
         if (res.ok && e.request.method === 'GET' && url.origin === location.origin) {
           const clone = res.clone();
