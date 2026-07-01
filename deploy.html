@@ -13,7 +13,13 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Vault — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.5
+     deploy.html  v1.6
+       • v1.6: desktop.html is a root .html page with no PATH_MAP entry and,
+         since no *.html fallback existed, it resolved to null and silently
+         skipped on deploy. Added 'desktop.html' → 'desktop.html' and
+         'idb-store.js' → 'js/idb-store.js' (already routed correctly via the
+         *.js fallback; added for explicitness) to PATH_MAP, and added a
+         *.html → root fallback so future root pages don't hit this again.
        • v1.5: File routing. Images (.jpg/.jpeg/.png/.gif/.webp) now deploy to
          images/ instead of the repo root (matching where the app and editor
          read them); .png is accepted for the first time. Added fallbacks so any
@@ -276,7 +282,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.5</span></h1>
+  <h1>⚔ MOTU Vault — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.6</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -342,6 +348,7 @@ const PATH_MAP = {
   // /js
   'app.js':               'js/app.js',
   'data.js':              'js/data.js',
+  'idb-store.js':         'js/idb-store.js',
   'render.js':            'js/render.js',
   'state.js':             'js/state.js',
   'handlers.js':          'js/handlers.js',
@@ -363,6 +370,7 @@ const PATH_MAP = {
   'sw.js':                'sw.js',
   'manifest.json':        'manifest.json',
   'deploy.html':          'deploy.html',
+  'desktop.html':         'desktop.html',
   // figures data (root)
   'figures.json':         'figures.json',
   'figures-pending.json': 'figures-pending.json',
@@ -460,17 +468,21 @@ dropZone.addEventListener('drop', e => {
 
 function onFilePick(fileList) {
   for (const f of fileList) {
-    // v2: resolution order — explicit PATH_MAP entry first, then sensible
+    // v3: added *.html → root fallback (v1.6) — desktop.html hit the exact
+    // gap this closes: a root .html page with no PATH_MAP entry used to
+    // resolve to null and silently skip.
+    // resolution order — explicit PATH_MAP entry first, then sensible
     // fallbacks so new files don't silently skip. Any unmapped *.js routes
     // to js/<name>; images (jpg/jpeg/png/gif/webp) go to images/<name>;
     // *.py to scripts/<name>; *.yml/*.yaml to .github/workflows/<name>;
-    // and *.json at root. Anything else stays unknown.
+    // *.json and *.html at root. Anything else stays unknown.
     const repoPath = PATH_MAP[f.name]
       || (/\.js$/i.test(f.name) ? 'js/' + f.name : null)
       || (/\.(jpe?g|png|gif|webp)$/i.test(f.name) ? 'images/' + f.name : null)
       || (/\.py$/i.test(f.name) ? 'scripts/' + f.name : null)
       || (/\.ya?ml$/i.test(f.name) ? '.github/workflows/' + f.name : null)
-      || (/\.json$/i.test(f.name) ? f.name : null);
+      || (/\.json$/i.test(f.name) ? f.name : null)
+      || (/\.html$/i.test(f.name) ? f.name : null);
     files.set(f.name, { file: f, repoPath, status: 'pending' });
   }
   renderFileList();

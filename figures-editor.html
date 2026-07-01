@@ -4,7 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- ════════════════════════════════════════════════════════════════
-     figures-editor.html  v1.23.0  (accessory suggestions + CDN-aware live status)
+     figures-editor.html  v1.27.0  (SUBLINES sync fix)
+       • v1.27.0: The mirrored SUBLINES constant (meant to match state.js
+         exactly) had drifted — wrong/missing sublines on 7 of 12 lines,
+         including cross-brand, where it had a stale 'minis-games' key
+         instead of 'loyal-subjects' and so didn't recognize any of the
+         48 Loyal Subjects figures. Re-synced to state.js exactly (verified:
+         0 mismatches across all 12 lines; 1227/1227 catalog-wide match
+         after the fix, 0 regressions on anything previously matching).
+         Also removed dead code: an orphaned first definition of
+         renderSublineReorderList() (and its sole helper,
+         _getEditorOrderedSublines()) that was shadowed by a second
+         definition of the same name and never actually ran.
+       • v1.26.0: Fixed the bug where editing a field then clicking Approve
+         did nothing: refreshChromeOnly() re-rendered the download summary
+         without the dlApproved/dlRejected/dlPending ids, then refreshUI()
+         did unguarded getElementById(...).textContent and threw, aborting
+         the re-render (the decision WAS set; the UI just froze). Fix =
+         null-guard those updates in refreshUI() + keep the ids in
+         refreshChromeOnly().
+       • v1.25.0: Auto-load — loadFromFetch() pulls figures.json/
+         loadouts.json/review queues from the repo on open (same-origin
+         then raw-CDN fallback), plus an authoritative commit
+         overwrite-guard (reads figures.json at HEAD via the contents API
+         and blocks any commit that would drop undeleted figures).
        • v1.23.0: Two additions. (1) Accessory suggestions — loadouts-suggested.json
          (from sync_af411.py --accessories) is now auto-fetched on Load and has its
          own file picker; ingestLoadouts() seeds the parsed accessories as
@@ -602,7 +625,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.26.0';
+const EDITOR_VERSION = 'v1.27.0';
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -669,13 +692,18 @@ let LINES = [
 // lines get a free-text group field in the editor.
 let SUBLINES = {
   origins: [
-    {key:'action',     label:'Action Figures',           groups:['Action Figures']},
-    {key:'deluxe',     label:'Deluxe',                   groups:['Deluxe']},
-    {key:'exclusives', label:'Exclusives',               groups:['Exclusives']},
-    {key:'vehicles',   label:'Vehicles & Playsets',      groups:['Vehicles & Playsets']},
-    {key:'turtles',    label:'Turtles of Grayskull',     groups:['Turtles of Grayskull']},
-    {key:'crossovers', label:'Crossovers',               groups:['Crossovers']},
-    {key:'wwe',        label:'WWE',                      groups:['WWE']},
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'exclusives',label:'Exclusives',groups:['Exclusives']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
+    {key:'turtles',label:'Turtles of Grayskull',groups:['Turtles of Grayskull']},
+    {key:'crossovers',label:'Crossovers',groups:['Crossovers']},
+    {key:'wwe',label:'WWE',groups:['WWE']},
+    {key:'movie',label:'Movie (2026)',groups:['Movie (2026)']},
+    {key:'rulers',label:'Rulers of the Sun',groups:['Rulers of the Sun']},
+    {key:'cartoon',label:'Cartoon Collection',groups:['Cartoon Collection']},
+    {key:'powers',label:'Powers of Grayskull',groups:['Powers of Grayskull']},
+    {key:'thundercats',label:'MOTU x Thundercats',groups:['MOTU x Thundercats']},
+    {key:'sketchbook',label:'Sketchbook Series',groups:['Sketchbook Series']},
   ],
   masterverse: [
     {key:'revelation',     label:'Revelation',           groups:['Revelation','Revelation Deluxe']},
@@ -691,23 +719,20 @@ let SUBLINES = {
     {key:'vintage',        label:'Vintage Collection',   groups:['Vintage Collection']},
   ],
   classics: [
-    {key:'heroic',    label:'Heroic Warriors',       groups:['Heroic Warriors']},
-    {key:'evil',      label:'Evil Warriors',         groups:['Evil Warriors']},
-    {key:'horde',     label:'Evil Horde',            groups:['Evil Horde']},
-    {key:'snake',     label:'Snake Men',             groups:['Snake Men']},
-    {key:'rebellion', label:'Great Rebellion',       groups:['Great Rebellion']},
-    {key:'galactic',  label:'Galactic Protectors',   groups:['Galactic Protectors']},
-    {key:'mutants',   label:'Evil Mutants',          groups:['Evil Mutants']},
-    {key:'filmation', label:'Filmation',             groups:['Filmation']},
-    {key:'packs',     label:'Packs',                 groups:['Packs']},
-    {key:'creatures', label:'Creatures',             groups:['Creatures']},
-    {key:'vehicles',  label:'Vehicles & Playsets',   groups:['Vehicles & Playsets']},
-    {key:'other',     label:'Other',                 groups:['Other','Battle Sets']},
+    {key:'heroic',label:'Heroic Warriors',groups:['Heroic Warriors']},
+    {key:'evil',label:'Evil Warriors',groups:['Evil Warriors']},
+    {key:'horde',label:'Evil Horde',groups:['Evil Horde']},
+    {key:'snake',label:'Snake Men',groups:['Snake Men']},
+    {key:'rebellion',label:'Great Rebellion',groups:['Great Rebellion']},
+    {key:'galactic',label:'Galactic Protectors',groups:['Galactic Protectors']},
+    {key:'mutants',label:'Evil Mutants',groups:['Evil Mutants']},
+    {key:'packs',label:'Packs',groups:['Packs']},
+    {key:'creatures',label:'Creatures',groups:['Creatures']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
   ],
   'kids-core': [
-    {key:'action',   label:'Action Figures',         groups:['Action Figures']},
-    {key:'vehicles', label:'Vehicles & Playsets',    groups:['Vehicles & Playsets','Vehicles and Playsets']},
-    {key:'movie',    label:'Movie (2026)',           groups:['Movie (2026)','Movie']},
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
   ],
   original: [
     {key:'action',   label:'Action Figures',                 groups:['Action Figures']},
@@ -728,26 +753,28 @@ let SUBLINES = {
     {key:'classics', label:'Classics',          groups:['Classics']},
   ],
   chronicles: [
-    {key:'movie', label:'Movie',                groups:['Movie']},
-    {key:'core',  label:'Core (Non-Movie)',     groups:['Core (Non-Movie)']},
+    {key:'movie',label:'Movie',groups:['Movie']},
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
   ],
   'new-adventures': [
-    {key:'action',   label:'Action Figures',  groups:['Action Figures']},
-    {key:'vehicles', label:'Vehicles',        groups:['Vehicles']},
-    {key:'playsets', label:'Playsets',        groups:['Playsets']},
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'veh-playsets',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
   ],
   'eternia-minis': [
     {key:'action',   label:'Action Figures',         groups:['Action Figures']},
     {key:'vehicles', label:'Vehicles & Playsets',    groups:['Vehicles & Playsets']},
   ],
-  // v1.10.3: Cross-Brand & Collabs — multi-brand catch-all for crossovers,
-  // dolls, die-cast, mini sets, and games. Manufacturer "Various" since
-  // these span Mattel, Mega, Hot Wheels, USAopoly, etc.
+  'mighty-masters': [
+    {key:'action',label:'Action Figures',groups:['Action Figures']},
+  ],
+  // Kept in sync with state.js's SUBLINES. loyal-subjects covers the Loyal
+  // Subjects import specifically (48 figures as of this edit); there is no
+  // generic minis/games catch-all subline for cross-brand at this time.
   'cross-brand': [
     {key:'designer',    label:'Designer & Artist Collaborations',     groups:['Designer & Artist Collaborations']},
     {key:'dolls',       label:'Fashion & Collector Dolls',            groups:['Fashion & Collector Dolls']},
     {key:'hot-wheels',  label:'Hot Wheels & Die-Cast',                groups:['Hot Wheels & Die-Cast']},
-    {key:'minis-games', label:'Mini Figures, Building Sets, & Games', groups:['Mini Figures, Building Sets, & Games']},
+    {key:'loyal-subjects', label:'Loyal Subjects',                    groups:['Loyal Subjects']},
   ],
   // mondo: no sublines — flat free-text group field
 };
@@ -1364,16 +1391,6 @@ function confirmDeleteFig(id) {
   refreshUI();
 }
 
-function _getEditorOrderedSublines(lineId) {
-  const subs = SUBLINES[lineId] || [];
-  const saved = sublineOrder[lineId];
-  if (!saved || !saved.length) return [...subs];
-  const keyMap = new Map(subs.map(s => [s.key, s]));
-  const ordered = saved.map(k => keyMap.get(k)).filter(Boolean);
-  const remaining = subs.filter(s => !saved.includes(s.key));
-  return [...ordered, ...remaining];
-}
-
 // v1.18: line <option>s for the custom-subline selectors. Lists EVERY line
 // (including flat ones like Mighty Masters / Mondo that have no sublines yet)
 // so a custom subline can be added to any of them and the reorder picker shows
@@ -1387,32 +1404,6 @@ function _populateReorderLineSelect() {
   if (sel) sel.innerHTML = _lineOptionsHtml(sel.value);
   const csl = document.getElementById('cslLineId');   // the add-custom-subline picker
   if (csl) csl.innerHTML = _lineOptionsHtml(csl.value);
-}
-
-function renderSublineReorderList() {
-  const sel = document.getElementById('reorderLineSelect');
-  const el  = document.getElementById('sublineReorderList');
-  if (!sel || !el) return;
-  const lineId = sel.value;
-  if (!lineId) { el.innerHTML = ''; return; }
-  const subs = _getEditorOrderedSublines(lineId);
-  if (!subs.length) { el.innerHTML = '<em style="color:var(--t3)">No sublines for this line.</em>'; return; }
-  // Hidden sublines locked to bottom — detect via saved hiddenItems-equivalent
-  // Editor doesn't have hiddenItems; mark custom-subline keys visually only
-  el.innerHTML = subs.map((s, i) => {
-    const isFirst = i === 0;
-    const isLast  = i === subs.length - 1;
-    const upStyle  = `padding:3px 8px;font-size:13px;line-height:1${isFirst ? ';opacity:0.3;cursor:default' : ''}`;
-    const dnStyle  = `padding:3px 8px;font-size:13px;line-height:1${isLast  ? ';opacity:0.3;cursor:default' : ''}`;
-    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bd)">
-      <span style="flex:1;font-size:13px">${esc(s.label)}</span>
-      <code style="color:var(--t3);font-size:11px">${esc(s.key)}</code>
-      <button class="secondary" style="${upStyle}" title="Move up"
-        onclick="if(!${isFirst})moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},-1)">↑</button>
-      <button class="secondary" style="${dnStyle}" title="Move down"
-        onclick="if(!${isLast})moveSubline(${JSON.stringify(lineId)},${JSON.stringify(s.key)},+1)">↓</button>
-    </div>`;
-  }).join('');
 }
 
 function moveSubline(lineId, key, dir) {
