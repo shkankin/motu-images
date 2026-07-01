@@ -4,12 +4,30 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MOTU Vault — Desktop</title>
+<!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.1
+       • v1.1: Subline column. Derived (not stored) the same way render.js
+         does — matches SUBLINES[f.line].groups.includes(f.group) — with a
+         sortable Subline column (sort by line, then subline index, then
+         name). Uses base SUBLINES declaration order only; does not yet
+         apply the admin-configurable sublineOrder from loadouts.json (this
+         page doesn't fetch loadouts.json), so a custom reorder made in
+         figures-editor.html won't be reflected here yet — noted gap, not
+         fixed. Flat lines (mondo, motu-giants) and any figure whose group
+         doesn't match a known subline show "—" and sort last within their line.
+       • v1: initial release — dense, dark-themed, sortable/filterable
+         spreadsheet of the full catalog; Owned checkbox + status dropdown
+         per row; live counts; search/line/status filters; images toggle.
+     ════════════════════════════════════════════════════════════════ -->
 <!--
   desktop.html — a dense, keyboard-friendly spreadsheet view of the collection,
   built for wide screens where the mobile app's card layout wastes space.
 
-  It is intentionally self-contained and imports ONLY the leaf module
-  js/idb-store.js, so it reads and writes the SAME IndexedDB store the mobile
+  It is intentionally self-contained and imports only two leaf modules —
+  js/idb-store.js (collection persistence) and SUBLINES from js/state.js
+  (constants only; import verified side-effect-safe — a few read-only
+  localStorage lookups, no writes, no DOM access) — so it reads and writes
+  the SAME IndexedDB store the mobile
   app uses (DB 'motu-vault' → store 'kv' → key 'motu-c2'). A status change here
   shows up in the app on next load on this device — and, once collection sync
   lands, across devices. It deliberately does NOT import data.js/render.js (that
@@ -145,7 +163,7 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP</small></div>
+    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.1</small></div>
     <div class="summary" id="summary"></div>
   </header>
 
@@ -183,6 +201,7 @@
 
 <script type="module">
 import { hydrate, bigGet, bigSet, bigFlush, idbAvailable } from './js/idb-store.js';
+import { SUBLINES } from './js/state.js';
 
 // ── Constants (mirror state.js) ──────────────────────────────────────
 const ROOT = 'https://raw.githubusercontent.com/shkankin/motu-images/main';
@@ -201,6 +220,20 @@ const LINE_NAME = {
 };
 const lineName = id => LINE_NAME[id] || (id ? id.replace(/(^|-)(\w)/g,(_,d,c)=>(d?' ':'')+c.toUpperCase()) : '—');
 const esc = s => s==null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// v1.1: a figure's subline is derived, not stored — same mapping render.js
+// uses (SUBLINES[f.line] entries carry a groups[] array; the figure's own
+// f.group is matched against it). Base SUBLINES declaration order only
+// (does not apply the admin sublineOrder override from loadouts.json — see
+// header comment). Returns null for flat lines (no SUBLINES entry, e.g.
+// mondo) and for any figure whose group doesn't match a known subline.
+function sublineOf(f){
+  const subs = SUBLINES[f.line];
+  if (!subs) return null;
+  const idx = subs.findIndex(sl => sl.groups.includes(f.group));
+  if (idx === -1) return null;
+  return { label: subs[idx].label, idx };
+}
 
 // ── State ────────────────────────────────────────────────────────────
 let CAT = [];           // catalog (figures.json)
@@ -272,6 +305,7 @@ const COLUMNS = [
   { key:'img',     label:'',        sortable:false, cls:'col-img' },
   { key:'name',    label:'Figure',  sortable:true },
   { key:'line',    label:'Line',    sortable:true,  cls:'col-line' },
+  { key:'subline', label:'Subline', sortable:true,  cls:'col-subline' },
   { key:'wave',    label:'Wave',    sortable:true,  cls:'col-wave' },
   { key:'year',    label:'Year',    sortable:true,  cls:'col-yr' },
   { key:'faction', label:'Faction', sortable:true,  cls:'col-faction' },
@@ -294,6 +328,15 @@ const sortVal = (f, key) => {
   if (key === 'own')    return statusOf(f.id) === 'owned' ? 0 : 1;
   if (key === 'status'){ const s = statusOf(f.id); return s ? STATUSES.indexOf(s) : 99; }
   if (key === 'line')   return lineName(f.line).toLowerCase();
+  // v1.1: sort by line, then subline index, then name (name is the existing
+  // stable tiebreak in applyFilters). Composite string so a single compare
+  // does line-then-index: line name groups first, zero-padded index within.
+  // No-subline figures (flat lines, or a group that matches nothing) sort
+  // last within their line via the 9999 sentinel.
+  if (key === 'subline'){
+    const sub = sublineOf(f);
+    return lineName(f.line).toLowerCase() + '\u0001' + String(sub ? sub.idx : 9999).padStart(4,'0');
+  }
   if (key === 'year')   return f.year ?? -1;
   return (f[key] ?? '').toString().toLowerCase();
 };
@@ -327,11 +370,13 @@ function rowHTML(f){
   const img = f.slug
     ? `<img class="thumb" loading="lazy" src="${IMG}/${esc(f.slug)}.jpg" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'thumb ph',textContent:'—'}))">`
     : `<span class="thumb ph">—</span>`;
+  const sub = sublineOf(f);
   return `<tr data-id="${esc(f.id)}"${s?` data-status="${s}"`:''}>
     <td class="col-own"><input type="checkbox" data-own ${s==='owned'?'checked':''} aria-label="Owned: ${esc(f.name)}"></td>
     <td class="col-img">${img}</td>
     <td><span class="name">${esc(f.name)}${f.sourceName && f.sourceName!==f.name?`<span class="src">${esc(f.sourceName)}</span>`:''}</span></td>
     <td class="col-line">${esc(lineName(f.line))}</td>
+    <td class="col-subline" title="${esc(sub ? sub.label : '')}">${sub ? esc(sub.label) : '—'}</td>
     <td class="col-wave" title="${esc(f.wave||'')}">${esc(f.wave||'—')}</td>
     <td class="col-yr">${f.year ?? '—'}</td>
     <td class="col-faction">${esc(f.faction||'—')}</td>
