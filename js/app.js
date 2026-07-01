@@ -245,6 +245,15 @@ async function init() {
   if (needsFetch) {
     setTimeout(() => fetchFigs(false, !hasCache), 1000);
   }
+  // v7.20: if a sync attempt failed (weak/no signal — e.g. inside a store),
+  // retry automatically the moment connectivity returns, instead of leaving
+  // it to the user noticing the sync icon or waiting for the next natural
+  // CACHE_TTL-driven check on some future app open. fetchFigs()'s own
+  // in-flight guard covers 'online' firing more than once in quick
+  // succession (some browsers do this on network changes).
+  window.addEventListener('online', () => {
+    if (S.syncStatus === 'err') fetchFigs(false, false);
+  });
   // Remove splash when the CSS animation finishes. animationend keeps it
   // tight — no hard timer, no drift. Safety timeout covers the 2.8s animation
   // in case the image failed silently.

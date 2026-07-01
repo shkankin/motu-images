@@ -307,7 +307,21 @@ async function fetchFigs(manual = false, firstLoad = false) {
     } catch(e) {
       clearTimeout(timeoutId);
       console.error('Fetch failed:', e);
-      S.syncStatus = manual ? 'err' : 'idle';
+      // v7.20: this used to be `manual ? 'err' : 'idle'` — a background
+      // refresh of a STALE cache (the common case: app already has data,
+      // just checking for updates) that fails left S.syncStatus at 'idle'
+      // and nothing else touched, so the existing sync icon (which already
+      // has an 'err' visual state) never showed it. Reported symptom: at a
+      // toy store, several figures returned nothing on both barcode scan
+      // and name search — not because they weren't in the catalog, but
+      // because the last successful sync predated them and this refresh
+      // silently failed on weak in-store signal. The cached (stale) data
+      // was still shown as if current, with no way to tell "not found" from
+      // "couldn't check." Toasts stay manual-only (a silent background
+      // retry failing shouldn't interrupt); the small persistent icon
+      // shouldn't be silent, since it's the only signal a user has that
+      // what they're looking at might not be current.
+      S.syncStatus = 'err';
       // v6.30: detect timeout/abort distinctly from generic offline so we
       // can show a more useful message ("slow connection" vs "no connection").
       const isAbort   = e?.name === 'AbortError';
@@ -321,8 +335,11 @@ async function fetchFigs(manual = false, firstLoad = false) {
         } else {
           toast('✗ Sync failed');
         }
-        setTimeout(() => { S.syncStatus = 'idle'; render(); }, 5000);
       }
+      // v7.20: leave the 'err' indicator up rather than auto-clearing after
+      // 5s (previously manual-only anyway) — it should persist until a
+      // retry actually succeeds, since the underlying problem (stale data)
+      // persists too. _retryFetchOnReconnect() below clears it on success.
       if (firstLoad) { S.fetchError = true; render(); }
       else render();
     } finally {
