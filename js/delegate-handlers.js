@@ -46,14 +46,21 @@ registerAll({
     window.setStatus?.(d.figId, 'owned');
   },
 
-  // v7.22: the pinned-open swipe action bar's three buttons. 'detail'
-  // reuses open-fig's own function rather than touching status at all —
-  // full swipe was deliberately designed to never force a status choice.
+  // v7.22: the pinned-open swipe action bar. 'detail' reuses open-fig's
+  // own function rather than touching status at all — full swipe was
+  // deliberately designed to never force a status choice.
+  // v7.26 fix: the v7.22 panel had three buttons; the redesign grew it to
+  // five (swipePanelButtonsHtml in render.js emits owned/wishlist/ordered/
+  // for-sale/detail) but this handler was never widened past the original
+  // owned/wishlist pair — so tapping Ordered or For Sale closed the row
+  // and silently did nothing. Now accepts any status key setStatus knows
+  // (same STATUSES set the detail screen's status pills use, including
+  // its toggle-off-on-retap behavior).
   'swipe-commit': (e, el, d) => {
     e.stopPropagation();
     window._closeSwipeRow?.(d.figId, false);
     if (d.swipeDo === 'detail') { window.openFig?.(d.figId); return; }
-    if (d.swipeDo === 'owned' || d.swipeDo === 'wishlist') {
+    if (['owned', 'wishlist', 'ordered', 'for-sale'].includes(d.swipeDo)) {
       window.setStatus?.(d.figId, d.swipeDo);
       window.patchFigRow?.(d.figId);
     }
