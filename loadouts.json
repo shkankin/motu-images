@@ -407,7 +407,6 @@
       "action",
       "rulers",
       "cartoon",
-      "deluxe",
       "exclusives",
       "powers",
       "turtles",
@@ -419,8 +418,7 @@
     ],
     "chronicles": [
       "movie",
-      "action",
-      "core"
+      "action"
     ],
     "original": [
       "commemorative",
@@ -431,8 +429,6 @@
     ],
     "new-adventures": [
       "action",
-      "vehicles",
-      "playsets",
       "veh-playsets"
     ],
     "mighty-masters": [
