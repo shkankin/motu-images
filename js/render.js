@@ -375,17 +375,27 @@ function render() {
     if (S._justNavigated) {
       app().setAttribute('data-stagger', '1');
       // v6.24: reverse stagger — bottom items animate first.
-      // v6.25: cap at STAGGER_CAP so long lists (All/Collection tabs) don't
-      // make top items wait seconds. Items beyond the cap share the max delay
-      // so the wave still reads as bottom-up without growing unboundedly.
+      // v7.24 fix: STAGGER_CAP was being applied to the PER-ROW delay
+      // (`min(last-i, CAP)`), not to which rows get staggered at all. For
+      // a short list (Lines, ~10 items) `last` is small, so `last-i` never
+      // actually reaches the cap and every item gets a real, distinct
+      // delay — the intended wave. For a long list (All/Collection,
+      // hundreds+) EVERY visible row is near the TOP, meaning `last-i` is
+      // huge for all of them, so they ALL clamped to the same maxed-out
+      // delay and just faded in together — no stagger, just a pause then
+      // a simultaneous fade. That's the "never as smooth as Lines"
+      // symptom. Fix: cap the EFFECTIVE list length to the stagger window
+      // first, then compute delay within that — only the rows actually
+      // visible after a fresh scroll-to-top navigation participate; rows
+      // beyond the window get no explicit delay (CSS defaults to 0, which
+      // is correct — they're off-screen until scrolled to regardless).
       requestAnimationFrame(() => {
         const STAGGER_CAP = 11;
-        const nodes = [...(app().querySelectorAll('.fig-row,.fig-card,.line-card,.line-row,.subline-card'))];
-        const last = nodes.length - 1;
-        nodes.forEach((el, i) => {
-          const idx = Math.min(last - i, STAGGER_CAP);
-          el.style.setProperty('--stagger-i', idx);
-        });
+        const nodes = app().querySelectorAll('.fig-row,.fig-card,.line-card,.line-row,.subline-card');
+        const effectiveLast = Math.min(nodes.length - 1, STAGGER_CAP);
+        for (let i = 0; i <= effectiveLast; i++) {
+          nodes[i].style.setProperty('--stagger-i', effectiveLast - i);
+        }
       });
       setTimeout(() => { try { app().removeAttribute('data-stagger'); } catch {} }, 600);
     }
@@ -507,7 +517,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.23</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.24</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1228,15 +1238,16 @@ function renderFigRow(f, standalone = false) {
 
   if (!swipeEnabled) return rowHtml;
 
-  // v7.22 (rebuilt): reveal panel sits behind the row; the row slides on
-  // top of it via transform, exposing this as it goes. Five real buttons,
-  // always present — no separate "live preview" zone (that was a v7.22
-  // first-draft mistake: it left a 4th, redundant, icon-only block visible
-  // even in the pinned-open state — the reveal of the actual buttons IS
-  // the drag feedback, nothing extra needed on top). DOM order is
-  // reversed from display order since justify-content:flex-end reveals
-  // the LAST child first — 'owned' needs to appear first at a light
-  // swipe, so it's last in the markup.
+  // v7.24: reveal panel sits behind the row; the row slides on top of it
+  // via transform, exposing this as it goes. Five real buttons, always
+  // present — nothing auto-commits from drag distance alone anymore (v7.22
+  // had two auto-committing tiers; removed after reports of false
+  // positives — an imprecise swipe shouldn't silently change a status).
+  // One threshold now: swipe far enough and release, the panel pins open;
+  // every action requires an explicit tap. DOM order is reversed from
+  // display order since justify-content:flex-end reveals the LAST child
+  // first — 'owned' is still the most likely first tap, so it's revealed
+  // first (last in the markup).
   // Neutral by default, only the CURRENT status colored — reuses the
   // exact icon/color choices the detail screen's own status-pill already
   // established (STATUS_HEX, ICO.check/heart/box/tag), not a new scheme.

@@ -862,7 +862,8 @@ button:active { opacity: 0.7; transform: scale(0.97); }
    as iOS Mail / Gmail / Relay. */
 .fig-row-wrap {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;   /* v7.24: only the swipe panel needs horizontal clipping — vertical hidden was clipping the entrance animation's translateY for no reason */
   touch-action: pan-y;   /* only this axis is native-scrollable; horizontal is ours */
   border-bottom: 1px solid color-mix(in srgb, var(--bd) 15%, transparent);
 }
