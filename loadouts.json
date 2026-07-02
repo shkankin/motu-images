@@ -400,107 +400,26 @@
     "Wand",
     "Wings"
   ],
-  "customSublines": {
-    "origins": [
-      {
-        "key": "cartoon-collection",
-        "label": "Cartoon Collection",
-        "groups": [
-          "Cartoon Collection"
-        ]
-      },
-      {
-        "key": "thundercats",
-        "label": "MOTU x Thundercats",
-        "groups": [
-          "MOTU x Thundercats"
-        ]
-      },
-      {
-        "key": "sketchbook-series",
-        "label": "Sketchbook Series",
-        "groups": [
-          "Sketchbook Series"
-        ]
-      },
-      {
-        "key": "movie-2026",
-        "label": "Movie (2026)",
-        "groups": [
-          "Movie (2026)"
-        ]
-      },
-      {
-        "key": "powers-grayskull",
-        "label": "Powers of Grayskull",
-        "groups": [
-          "Powers of Grayskull"
-        ]
-      },
-      {
-        "key": "rulers-sun",
-        "label": "Rulers of the Sun",
-        "groups": [
-          "Rulers of the Sun"
-        ]
-      }
-    ],
-    "chronicles": [
-      {
-        "key": "action-figures",
-        "label": "Action Figures",
-        "groups": [
-          "Action Figures"
-        ]
-      }
-    ],
-    "new-adventures": [
-      {
-        "key": "vehicles-playset",
-        "label": "Vehicles & Playsets",
-        "groups": [
-          "Vehicles & Playsets"
-        ]
-      }
-    ],
-    "mighty-masters": [
-      {
-        "key": "action-figures",
-        "label": "Action Figures",
-        "groups": [
-          "Action Figures"
-        ]
-      }
-    ],
-    "cross-brand": [
-      {
-        "key": "loyal-subjects",
-        "label": "Loyal Subjects",
-        "groups": [
-          "Loyal Subjects"
-        ]
-      }
-    ]
-  },
+  "customSublines": {},
   "sublineOrder": {
     "origins": [
-      "movie-2026",
+      "movie",
       "action",
-      "rulers-sun",
-      "cartoon-collection",
+      "rulers",
+      "cartoon",
       "deluxe",
       "exclusives",
-      "powers-grayskull",
+      "powers",
       "turtles",
       "thundercats",
       "crossovers",
-      "sketchbook-series",
+      "sketchbook",
       "vehicles",
       "wwe"
     ],
     "chronicles": [
       "movie",
-      "action-figures",
+      "action",
       "core"
     ],
     "original": [
@@ -514,10 +433,10 @@
       "action",
       "vehicles",
       "playsets",
-      "vehicles-playset"
+      "veh-playsets"
     ],
     "mighty-masters": [
-      "action-figures"
+      "action"
     ]
   }
 }
