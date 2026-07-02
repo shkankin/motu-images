@@ -119,7 +119,11 @@ const photoStore = {
       .filter(({n}) => {
         const owner = photoCopyOf(id, n);
         if (owner == null) return includeShared;
-        return owner === copyId;
+        // v7.28: owner may already be stored as a string from before the
+        // write-side fix in handleCopyPhoto — compare numerically so
+        // existing saved assignments keep matching without needing a
+        // migration pass over already-persisted localStorage data.
+        return Number(owner) === Number(copyId);
       })
       .map(({n, label}) => ({
         n, label: label || '',
@@ -433,6 +437,13 @@ window.removePhoto = async (id, n) => {
 };
 
 window.handleCopyPhoto = (input, figId, copyId) => {
+  // v7.28: same bug class as the copyId fix in data.js (v7.27) — this
+  // copyId comes straight from a dataset read (always a string) but is
+  // compared elsewhere (getForCopy, below) against cp.id (always a
+  // number). Coerce here so nothing string-typed ever gets INTO storage
+  // in the first place. Preserve null/undefined/'' as null (shared photo,
+  // not assigned to a specific copy) rather than coercing those to NaN.
+  copyId = (copyId == null || copyId === '') ? null : Number(copyId);
   const file = input.files?.[0]; if (!file) return;
   if (file.size > 20000000) { toast('✗ Image too large (max 20MB)'); return; }
   const existing = S.customPhotos[figId] || [];

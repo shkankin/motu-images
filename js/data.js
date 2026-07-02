@@ -349,7 +349,7 @@ async function fetchFigs(manual = false, firstLoad = false) {
   return _fetchInFlight;
 }
 
-// § COLLECTION-OPS ── saveColl, setStatus, patchFigRow, updateColl, copy ops, overrides, stats, getSortedFigs ──
+// § COLLECTION-OPS ── saveColl, setStatus, patchFigRow, copy ops, overrides, stats, getSortedFigs ──
 
 // v6.31: status-change event log. Persisted to localStorage as a capped
 // ring of {t, id, from, to} tuples. Powers the monthly-activity chart on
@@ -927,46 +927,15 @@ const AUTOFILL_CONDITIONS = new Set([
   'Mint in Box', 'Mint on Card', 'New/Sealed', 'Loose Complete',
 ]);
 
-function updateColl(id, key, val) {
-  const cur = S.coll[id] || {};
-  // Ensure migrated shape so future reads are consistent.
-  let next = isMigrated(cur) ? {...cur, copies: cur.copies.map(c => ({...c}))} : migrateEntry(cur);
-  if (!next.copies) next.copies = [];
-
-  if (PER_COPY_FIELDS.has(key)) {
-    const writeKey = (key === 'variants') ? 'variant' : key;
-    // Ensure a primary copy exists to write into. If none, create one.
-    if (!next.copies.length) next.copies.push({ id: 1 });
-    const copy = {...next.copies[0]};
-    if (val === '' || val == null) delete copy[writeKey];
-    else copy[writeKey] = val;
-    next.copies[0] = copy;
-  } else {
-    // Top-level field (status, etc.)
-    if (val === '' || val == null) delete next[key];
-    else next[key] = val;
-  }
-
-  S.coll[id] = next;
-  saveColl();
-}
-
-// Debounced version for oninput on long-text fields (e.g. notes) so
-// a pending edit doesn't get lost if the app is force-closed mid-typing.
-// Stores pending args alongside timer so flushFieldDebounces() can apply
-// them synchronously on pagehide / beforeunload / visibilitychange.
-const _updDebounces = {};  // { dk: {timer, args: [id,key,val]} }
-window.updateCollDebounced = (id, key, val) => {
-  const dk = id + ':' + key;
-  if (_updDebounces[dk]) clearTimeout(_updDebounces[dk].timer);
-  _updDebounces[dk] = {
-    args: [id, key, val],
-    timer: setTimeout(() => {
-      updateColl(id, key, val);
-      delete _updDebounces[dk];
-    }, 400),
-  };
-};
+// v7.28: removed updateColl() + updateCollDebounced() + their half of
+// flushFieldDebounces() — confirmed dead. The multi-copy migration made
+// every actual field write go through updateCopy()/updateCopyDebounced()
+// instead (copy-level, not collection-level); nothing outside this file
+// called either of these, and nothing inside it did either once you
+// exclude their own now-removed debounce/flush plumbing. PER_COPY_FIELDS
+// (just above) is now effectively dead too — its only real consumer was
+// updateColl — but it's still imported (unused) in render.js; left alone
+// since removing it wasn't asked for and it's harmless either way.
 
 // ─── Multi-Copy Operations (v4.43) ───────────────────────────────
 // addCopy / removeCopy / updateCopy work directly on the copies array
@@ -1124,7 +1093,7 @@ window.updateCopy = (id, copyId, key, val, opts) => {
   }
 };
 
-// Copy-field debounce — same pattern as _updDebounces. See flushFieldDebounces().
+// Copy-field debounce. See flushFieldDebounces().
 const _copyDebounces = {};  // { dk: {timer, args: [id,copyId,key,val]} }
 window.updateCopyDebounced = (id, copyId, key, val) => {
   const dk = id + ':' + copyId + ':' + key;
@@ -1494,13 +1463,6 @@ function getCopyCompleteness(figId, cp) {
 // Must run BEFORE flushSaveColl so the writes land in S.coll, then get
 // persisted by the collection flush.
 function flushFieldDebounces() {
-  for (const dk in _updDebounces) {
-    const entry = _updDebounces[dk];
-    if (!entry) continue;
-    clearTimeout(entry.timer);
-    try { updateColl(...entry.args); } catch {}
-    delete _updDebounces[dk];
-  }
   for (const dk in _copyDebounces) {
     const entry = _copyDebounces[dk];
     if (!entry) continue;
@@ -2617,5 +2579,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, updateColl, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
 };
