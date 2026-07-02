@@ -382,6 +382,170 @@ document.addEventListener('pointercancel', e => {
   if (_dragState && e.pointerId === _dragState.pointerId) _dragEnd();
 }, { passive: true });
 
+// ── v7.22: swipe-to-action on figure list rows ───────────────────────
+// Three tiers by drag distance, swipe left to reveal (iOS Mail / Gmail /
+// Relay pattern). Light swipe commits Owned, more commits Wishlist — both
+// auto-commit and snap closed immediately, no confirmation, since they're
+// meant to be fast. Full swipe does NOT auto-commit anything: it pins the
+// row open showing all three choices (Owned/Wishlist/Detail) as real
+// buttons, so dragging further never forces a decision the drag depth
+// alone can't disambiguate — the same reasoning that ruled out "full
+// swipe sets both statuses at once" (status is single-select in this app).
+//
+// Touch events (not the Pointer Events the reorder-drag engine above
+// uses) — deliberately matching the direction-lock convention the tab-
+// swipe code in this same file already established on #contentArea.
+// NOTE: tab-swipe is currently hard-disabled (_swipeAllowed() → false,
+// v6.36). If it's ever re-enabled, it listens on the same #contentArea
+// these rows live inside and the two WILL need to arbitrate — right now
+// there's nothing to arbitrate against, so this doesn't attempt to.
+const SWIPE_DEAD  = 10;   // px — jitter tolerance before committing to a direction
+const SWIPE_TIER1 = 50;   // Owned zone starts
+const SWIPE_TIER2 = 120;  // Wishlist zone starts
+const SWIPE_TIER3 = 200;  // "more" zone starts — pins open on release, doesn't commit
+const SWIPE_PIN   = 352;  // resting position when pinned open (100px dyn + 3×84px buttons)
+const SWIPE_MAX   = 380;  // hard rubber-band cap during active drag
+
+let _rowSwipe = null;          // active in-progress gesture state, or null
+let _rowSwipeOpenId = null;    // figId of the currently pinned-open row, if any
+
+function _swipeDynContent(tier) {
+  if (tier === 'owned')    return icon(ICO.check,18) + '<span>Owned</span>';
+  if (tier === 'wishlist') return icon(ICO.star,18) + '<span>Wishlist</span>';
+  if (tier === 'more')     return icon(ICO.chevR,18);
+  return '';
+}
+
+function _closeSwipeRow(figId, animate = true) {
+  if (!figId) return;
+  const wrap = document.querySelector(`.fig-row-wrap[data-fig-id="${CSS.escape(figId)}"]`);
+  const row = wrap?.querySelector('.fig-row');
+  if (row) {
+    row.style.transition = animate ? 'transform 0.2s ease' : '';
+    row.style.transform = '';
+    row.classList.remove('swipe-pinned');
+  }
+  const dyn = wrap?.querySelector('[data-swipe-dyn]');
+  if (dyn) dyn.className = 'fig-swipe-dyn';
+  if (_rowSwipeOpenId === figId) _rowSwipeOpenId = null;
+}
+
+document.addEventListener('touchstart', e => {
+  if (e.touches.length !== 1) return;
+  const row = e.target.closest('.fig-row');
+  const wrap = row?.closest('.fig-row-wrap');
+  if (!wrap) return;
+  const figId = wrap.dataset.figId;
+  // A touch starting on a DIFFERENT row while one is pinned open closes it
+  // first — same convention as a swipe-open email row elsewhere closing
+  // when you interact with another one.
+  if (_rowSwipeOpenId && _rowSwipeOpenId !== figId) _closeSwipeRow(_rowSwipeOpenId);
+  row.style.transition = '';
+  _rowSwipe = {
+    wrap, row, figId,
+    dyn: wrap.querySelector('[data-swipe-dyn]'),
+    startX: e.touches[0].clientX,
+    startY: e.touches[0].clientY,
+    dirLocked: null,
+    lastTier: null,
+    wasPinned: row.classList.contains('swipe-pinned'),
+    baseX: row.classList.contains('swipe-pinned') ? -SWIPE_PIN : 0,
+  };
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  if (!_rowSwipe || e.touches.length !== 1) return;
+  const dx = e.touches[0].clientX - _rowSwipe.startX;
+  const dy = e.touches[0].clientY - _rowSwipe.startY;
+  if (!_rowSwipe.dirLocked) {
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    if (ax < SWIPE_DEAD && ay < SWIPE_DEAD) return;
+    _rowSwipe.dirLocked = (ax > ay * 1.5) ? 'h' : 'v';
+  }
+  if (_rowSwipe.dirLocked !== 'h') return;
+  e.preventDefault();
+  const dragged = Math.max(0, Math.min(SWIPE_MAX, -_rowSwipe.baseX - dx));
+  _rowSwipe.row.style.transform = `translateX(${-dragged}px)`;
+  _rowSwipe.dragged = dragged;
+  // v7.22 fix: re-dragging an ALREADY-pinned row (closing it, or re-opening
+  // partway) is a different gesture than a fresh drag from closed — it
+  // should only ever end in "closed" or "back to pinned," never accidentally
+  // land in the owned/wishlist tier zones and commit a status change just
+  // because the numeric position happens to fall there while closing.
+  if (_rowSwipe.wasPinned) return;
+  const tier = dragged >= SWIPE_TIER3 ? 'more' : dragged >= SWIPE_TIER2 ? 'wishlist' : dragged >= SWIPE_TIER1 ? 'owned' : null;
+  if (tier !== _rowSwipe.lastTier) {
+    haptic(tier ? 8 : 4);
+    _rowSwipe.lastTier = tier;
+    if (_rowSwipe.dyn) {
+      _rowSwipe.dyn.className = 'fig-swipe-dyn' + (tier ? ' tier-' + tier : '');
+      _rowSwipe.dyn.innerHTML = _swipeDynContent(tier);
+    }
+  }
+}, { passive: false });
+
+function _rowSwipeEnd() {
+  if (!_rowSwipe) return;
+  const { row, figId, dyn, dirLocked, dragged = 0, wasPinned } = _rowSwipe;
+  _rowSwipe = null;
+  if (dirLocked !== 'h') return;   // vertical scroll — nothing to settle
+  row.style.transition = 'transform 0.2s ease';
+
+  if (wasPinned) {
+    // Closing (or re-settling) an already-open row — single threshold at
+    // the midpoint of the pinned width, never a status commit.
+    if (dragged >= SWIPE_PIN / 2) {
+      row.style.transform = `translateX(${-SWIPE_PIN}px)`;
+      _rowSwipeOpenId = figId;
+    } else {
+      row.style.transform = '';
+      row.classList.remove('swipe-pinned');
+      if (dyn) dyn.className = 'fig-swipe-dyn';
+    }
+    return;
+  }
+
+  if (dragged >= SWIPE_TIER3) {
+    row.style.transform = `translateX(${-SWIPE_PIN}px)`;
+    row.classList.add('swipe-pinned');
+    _rowSwipeOpenId = figId;
+    haptic(15);
+  } else if (dragged >= SWIPE_TIER2) {
+    row.style.transform = '';
+    row.classList.remove('swipe-pinned');
+    if (dyn) dyn.className = 'fig-swipe-dyn';
+    haptic(15);
+    setStatus(figId, 'wishlist');
+    patchFigRow(figId);
+  } else if (dragged >= SWIPE_TIER1) {
+    row.style.transform = '';
+    row.classList.remove('swipe-pinned');
+    if (dyn) dyn.className = 'fig-swipe-dyn';
+    haptic(15);
+    setStatus(figId, 'owned');
+    patchFigRow(figId);
+  } else {
+    // Released short of tier 1 — not far enough to mean anything, snap closed.
+    row.style.transform = '';
+  }
+}
+document.addEventListener('touchend', _rowSwipeEnd, { passive: true });
+document.addEventListener('touchcancel', _rowSwipeEnd, { passive: true });
+
+// A pinned-open row is still tappable on its still-visible sliver (the
+// part of .fig-row not covered by the revealed panel) — that should close
+// it, not open the detail screen underneath. Capture phase so this runs
+// before delegate.js's own click dispatch.
+document.addEventListener('click', e => {
+  const row = e.target.closest('.fig-row.swipe-pinned');
+  if (!row) return;
+  const wrap = row.closest('.fig-row-wrap');
+  e.preventDefault();
+  e.stopPropagation();
+  _closeSwipeRow(wrap?.dataset.figId);
+}, { capture: true });
+window._closeSwipeRow = _closeSwipeRow;
+
 function showContextMenu(figId, x, y) {
   // Prevent the regular tap from firing
   const fig = figById(figId);

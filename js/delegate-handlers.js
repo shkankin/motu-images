@@ -46,6 +46,19 @@ registerAll({
     window.setStatus?.(d.figId, 'owned');
   },
 
+  // v7.22: the pinned-open swipe action bar's three buttons. 'detail'
+  // reuses open-fig's own function rather than touching status at all —
+  // full swipe was deliberately designed to never force a status choice.
+  'swipe-commit': (e, el, d) => {
+    e.stopPropagation();
+    window._closeSwipeRow?.(d.figId, false);
+    if (d.swipeDo === 'detail') { window.openFig?.(d.figId); return; }
+    if (d.swipeDo === 'owned' || d.swipeDo === 'wishlist') {
+      window.setStatus?.(d.figId, d.swipeDo);
+      window.patchFigRow?.(d.figId);
+    }
+  },
+
   'select-toggle': (e, el, d) => {
     // toggleSelect needs to receive the original event so it can
     // stopPropagation and check shift/meta if multi-select is used.

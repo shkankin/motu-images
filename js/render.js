@@ -494,7 +494,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.21</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.22</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1166,7 +1166,10 @@ function renderFigRow(f, standalone = false) {
     return '';
   })();
 
-  return `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
+  // v7.22: swipe-to-action. Off for select mode (own interaction model),
+  // standalone (reused in non-list contexts), and variant-nested rows.
+  const swipeEnabled = !S.selectMode && !standalone && !f.variantOf;
+  const rowHtml = `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
@@ -1208,6 +1211,28 @@ function renderFigRow(f, standalone = false) {
       ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
     </div>`}
+  </div>`;
+
+  if (!swipeEnabled) return rowHtml;
+
+  // v7.22: reveal panel sits behind the row; the row itself (unchanged
+  // above) slides on top of it via transform, exposing this as it goes.
+  // dyn = the single dynamically-recolored zone (tiers 1/2, live while
+  // dragging — matches the Gmail/Mail/Relay pattern: one zone that changes
+  // color+icon+label as you cross thresholds, not multiple zones stacking
+  // up side by side). actions = the 3-button bar, further left, only
+  // reachable past the tier-3 threshold, where the row pins open instead
+  // of auto-committing — full swipe intentionally does NOT force a choice.
+  return `<div class="fig-row-wrap" data-fig-id="${eId}">
+    <div class="fig-swipe-panel" data-swipe-panel="${eId}">
+      <div class="fig-swipe-actions" data-swipe-actions="${eId}">
+        <button class="fig-swipe-btn owned" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="owned">${icon(ICO.check,18)}<span>Owned</span></button>
+        <button class="fig-swipe-btn wishlist" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="wishlist">${icon(ICO.star,18)}<span>Wishlist</span></button>
+        <button class="fig-swipe-btn detail" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="detail">${icon(ICO.chevR,18)}<span>Detail</span></button>
+      </div>
+      <div class="fig-swipe-dyn" data-swipe-dyn="${eId}"></div>
+    </div>
+    ${rowHtml}
   </div>`;
 }
 
@@ -1750,6 +1775,7 @@ function patchDetailStatus() {
   }
 }
 window.patchDetailStatus = patchDetailStatus;
+window.patchFigRow = patchFigRow;
 
 // v6.57: re-render only the market-value block in place. Called by pricing.js
 // when a deferred fetch completes, so the loading placeholder updates live
