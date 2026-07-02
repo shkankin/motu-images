@@ -1,127 +1,363 @@
 {
   "version": 2,
   "loadouts": {
+    "beast-man-2394": [
+      "Whip",
+      "Harness",
+      "Minicomic"
+    ],
+    "2-bopsteady-8567": [
+      "Sword",
+      "Mace",
+      "Info Card"
+    ],
+    "april-oneil-8563": [
+      "Hammer",
+      "Minicomic",
+      "Wings"
+    ],
+    "beast-man-7898": [
+      "Shield",
+      "Armor",
+      "Helmet",
+      "Minicomic",
+      "Whip"
+    ],
+    "mouse-jaw-7900": [
+      "Info Card",
+      "Axe",
+      "Gun/Blaster",
+      "Claw",
+      "Mouser",
+      "Effect - Muzzle Blast"
+    ],
+    "ninjor-9094": [
+      "Sword",
+      "Wings",
+      "Harness",
+      "Collar",
+      "Minicomic"
+    ],
     "battle-armor-he-man-3222": [
-      "Power Sword"
+      "Minicomic",
+      "Battle Axe",
+      "Sword of Power"
     ],
     "battle-armor-skeletor-3223": [
+      "Sword of Power",
       "Havoc Staff",
-      "Power Sword",
-      "But No Removable Armor"
-    ],
-    "battle-ram-2431": [
-      "Three Missiles"
+      "Minicomic"
     ],
     "beast-man-2436": [
-      "Armor",
-      "Bicep Armor"
+      "Minicomic",
+      "Whip",
+      "Harness"
+    ],
+    "blade-3974": [
+      "Minicomic",
+      "Two Swords"
+    ],
+    "blast-attak-3975": [
+      "Minicomic",
+      "Tech Axe",
+      "Trigger Cord"
+    ],
+    "buzz-saw-hordak-3979": [
+      "Minicomic",
+      "Crossbow",
+      "Cape",
+      "Buzz Saw Blades"
     ],
     "buzz-off-3224": [
       "Axe",
-      "Helmet"
+      "Helmet",
+      "Minicomic",
+      "Wings"
     ],
-    "castle-grayskull-2432": [
-      "He-man",
-      "Skeletor"
+    "clamp-champ-3970": [
+      "Armor",
+      "Minicomic",
+      "Power Pincer"
     ],
     "clawful-3225": [
-      "But"
+      "Mace",
+      "Armor",
+      "Minicomic"
     ],
-    "dragon-walker-3238": [
-      "Artwork By William George"
+    "dragon-blaster-skeletor-3752": [
+      "Minicomic",
+      "Sword of Power",
+      "Chain & Lock",
+      "Armor"
+    ],
+    "dragstor-3785": [
+      "Crossbow",
+      "Ripcord",
+      "Minicomic"
     ],
     "evil-lyn-2837": [
-      "Glow-"
+      "Minicomic",
+      "Wand"
+    ],
+    "extendar-3777": [
+      "Minicomic",
+      "Shield"
     ],
     "faker-2838": [
-      "Power Sword",
-      "Skeletor Harness Cast"
+      "Harness",
+      "Sword of Power",
+      "Minicomic"
     ],
     "fisto-3227": [
       "Sword",
-      "Clamshell Armor"
+      "Armor",
+      "Minicomic"
+    ],
+    "flying-fists-he-man-3778": [
+      "Minicomic",
+      "Mace",
+      "Shield",
+      "Red Clip"
+    ],
+    "grizzlor-3757": [
+      "Crossbow",
+      "Harness",
+      "Minicomic"
+    ],
+    "gwildor-3971": [
+      "Minicomic",
+      "Cosmic Key"
     ],
     "he-man-2435": [
-      "Power Sword",
-      "Axe",
-      "Shield",
-      "Harness"
+      "Battle Axe",
+      "Sword of Power",
+      "Minicomic",
+      "Shield"
+    ],
+    "hordak-3756": [
+      "Cape",
+      "Armor",
+      "Crossbow",
+      "Bat Shield",
+      "Minicomic"
+    ],
+    "horde-trooper-3786": [
+      "Spear",
+      "Minicomic"
+    ],
+    "hurricane-hordak-3784": [
+      "Minicomic",
+      "Bat Wing Propeller",
+      "Thunder Ball Mace",
+      "Four-pronged Battle Shield"
     ],
     "jitsu-3228": [
-      "Snap-on Clamshell Armor",
-      "Katana Sword"
+      "Sword",
+      "Armor",
+      "Minicomic"
+    ],
+    "king-hiss-3788": [
+      "Armor",
+      "Minicomic",
+      "Staff",
+      "Shield"
+    ],
+    "king-randor-3972": [
+      "Spear",
+      "Cape",
+      "Armor",
+      "Minicomic",
+      "Crown"
+    ],
+    "kobra-khan-3231": [
+      "Gun/Blaster",
+      "Minicomic"
+    ],
+    "laser-light-skeletor-3986": [
+      "Minicomic",
+      "Havoc Staff",
+      "Cape"
+    ],
+    "laser-power-he-man-3985": [
+      "Backpack",
+      "Minicomic",
+      "Arm Armor",
+      "Laser Sword"
+    ],
+    "leech-3758": [
+      "Minicomic",
+      "Crossbow"
     ],
     "man-at-arms-2437": [
       "Mace",
-      "Three Pieces Of Removable Armor"
+      "Minicomic",
+      "Arm Armor",
+      "Leg Armor",
+      "Armor"
     ],
     "man-e-faces-2839": [
-      "Orange Laser Gun"
+      "Minicomic",
+      "Gun/Blaster",
+      "Sword",
+      "Shield",
+      "Mace",
+      "Axe",
+      "Rifle"
+    ],
+    "mantenna-3759": [
+      "Crossbow",
+      "Minicomic"
     ],
     "mekaneck-3232": [
-      "Mace",
-      "Clamshell Armor"
+      "Club",
+      "Armor",
+      "Minicomic"
     ],
     "mer-man-2438": [
-      "Sword Armor",
-      "Armor"
+      "Harness",
+      "Sword",
+      "Minicomic"
+    ],
+    "mosquitor-3980": [
+      "Gun/Blaster",
+      "Minicomic"
+    ],
+    "moss-man-3749": [
+      "Club",
+      "Minicomic"
+    ],
+    "ninjor-3976": [
+      "Minicomic",
+      "Nunchucks",
+      "Sword",
+      "Bow",
+      "Hood"
     ],
     "orko-3229": [
       "Ripcord",
-      "Magic Coin Trick Set",
-      "Hat"
+      "Minicomic",
+      "Hat",
+      "Magic Trick Discs"
     ],
     "prince-adam-3230": [
-      "Sword",
-      "Cloth Vest",
-      "Belt"
+      "Sword of Power",
+      "Belt",
+      "Minicomic",
+      "Vest"
     ],
     "ram-man-2840": [
-      "Axe Weapon",
+      "Axe",
       "Minicomic"
     ],
-    "road-ripper-3240": [
-      "Ripcord"
+    "rattlor-3789": [
+      "Staff",
+      "Minicomic"
     ],
-    "screeech-2845": [
-      "Battle Armor Skeletor"
+    "rio-blast-3779": [
+      "Minicomic",
+      "Blasterpak"
+    ],
+    "roboto-3750": [
+      "Gun/Blaster",
+      "Axe",
+      "Claw",
+      "Minicomic"
+    ],
+    "rokkon-3780": [
+      "Minicomic",
+      "Laser"
+    ],
+    "saurod-3978": [
+      "Gun/Blaster",
+      "Minicomic"
+    ],
+    "scare-glow-3977": [
+      "Cape",
+      "Staff",
+      "Minicomic"
     ],
     "skeletor-2439": [
-      "Power Sword",
-      "Havoc Staff",
+      "Harness",
       "Belt",
-      "Harness"
+      "Havoc Staff",
+      "Sword of Power",
+      "Minicomic"
     ],
-    "stratos-2440": [
-      "No Weapons",
-      "But His Jet Pack",
-      "Wings Were Removable"
+    "skeletor-the-original-3235": [
+      "Harness",
+      "Belt",
+      "Minicomic",
+      "Havoc Staff",
+      "Sword of Power"
     ],
-    "stridor-6812": [
-      "Helmet",
-      "Tail"
-    ],
-    "teela-2441": [
-      "Snake Armor",
-      "Snake Staff",
+    "snake-face-3981": [
+      "Minicomic",
+      "Staff",
       "Shield"
     ],
-    "thunder-punch-he-man-3748": [
-      "Vac Metal Shield",
-      "Several Ring Caps"
+    "snout-spout-3781": [
+      "Axe",
+      "Minicomic"
     ],
-    "trap-jaw-2841": [
-      "Three Removable Arm Attachments",
-      "Belt",
-      "Articulated Jaw"
+    "sorceress-3973": [
+      "Staff",
+      "Minicomic"
     ],
-    "tri-klops-2842": [
-      "Sword",
-      "Armor"
+    "spikor-3753": [
+      "Club",
+      "Minicomic"
     ],
-    "zodac-2442": [
-      "Laser Gun",
-      "Armor"
+    "sssqueeze-3982": [
+      "Minicomic",
+      "Pet Snake"
+    ],
+    "blast-attak-12884": [
+      "Tech Axe",
+      "Trigger Cord",
+      "Minicomic"
+    ],
+    "manual-tytus-mp1wyxhd": [
+      "Grabber"
+    ],
+    "manual-megator-mp1wzry5": [
+      "Spiked Ball & Chain"
+    ],
+    "manual-shogun-masters-faker-mp207hu0": [
+      "Power Sword",
+      "Certificate of Authenticity",
+      "Launching Fists"
+    ],
+    "manual-shogun-masters-he-man-mp201u2x": [
+      "Power Sword",
+      "Certificate of Authenticity",
+      "Launching Fists"
+    ],
+    "shogun-masters-skeletor-3247": [
+      "Certificate of Authenticity",
+      "Havoc Staff",
+      "8 Missiles"
+    ],
+    "expand-or-13889": [
+      "Minicomic",
+      "Spear"
+    ],
+    "man-e-faces-200x-cartoon-collection-deluxe-13916": [
+      "Gun/Blaster"
+    ],
+    "sy-klone-200x-cartoon-collection-13913": [
+      "Shield"
+    ],
+    "manual-beast-man-mqptisfy": [
+      "Whip"
+    ],
+    "manual-he-man-mqpsslfi": [
+      "Power Sword"
+    ],
+    "manual-skeletor-mqpxh15m": [
+      "Havoc Staff"
+    ],
+    "manual-man-at-arms-mqpxj5a6": [
+      "Club"
     ]
   },
   "customAccessories": [
@@ -163,5 +399,125 @@
     "Vest",
     "Wand",
     "Wings"
-  ]
+  ],
+  "customSublines": {
+    "origins": [
+      {
+        "key": "cartoon-collection",
+        "label": "Cartoon Collection",
+        "groups": [
+          "Cartoon Collection"
+        ]
+      },
+      {
+        "key": "thundercats",
+        "label": "MOTU x Thundercats",
+        "groups": [
+          "MOTU x Thundercats"
+        ]
+      },
+      {
+        "key": "sketchbook-series",
+        "label": "Sketchbook Series",
+        "groups": [
+          "Sketchbook Series"
+        ]
+      },
+      {
+        "key": "movie-2026",
+        "label": "Movie (2026)",
+        "groups": [
+          "Movie (2026)"
+        ]
+      },
+      {
+        "key": "powers-grayskull",
+        "label": "Powers of Grayskull",
+        "groups": [
+          "Powers of Grayskull"
+        ]
+      },
+      {
+        "key": "rulers-sun",
+        "label": "Rulers of the Sun",
+        "groups": [
+          "Rulers of the Sun"
+        ]
+      }
+    ],
+    "chronicles": [
+      {
+        "key": "action-figures",
+        "label": "Action Figures",
+        "groups": [
+          "Action Figures"
+        ]
+      }
+    ],
+    "new-adventures": [
+      {
+        "key": "vehicles-playset",
+        "label": "Vehicles & Playsets",
+        "groups": [
+          "Vehicles & Playsets"
+        ]
+      }
+    ],
+    "mighty-masters": [
+      {
+        "key": "action-figures",
+        "label": "Action Figures",
+        "groups": [
+          "Action Figures"
+        ]
+      }
+    ],
+    "cross-brand": [
+      {
+        "key": "loyal-subjects",
+        "label": "Loyal Subjects",
+        "groups": [
+          "Loyal Subjects"
+        ]
+      }
+    ]
+  },
+  "sublineOrder": {
+    "origins": [
+      "movie-2026",
+      "action",
+      "rulers-sun",
+      "cartoon-collection",
+      "deluxe",
+      "exclusives",
+      "powers-grayskull",
+      "turtles",
+      "thundercats",
+      "crossovers",
+      "sketchbook-series",
+      "vehicles",
+      "wwe"
+    ],
+    "chronicles": [
+      "movie",
+      "action-figures",
+      "core"
+    ],
+    "original": [
+      "commemorative",
+      "action",
+      "meteorbs",
+      "sheera",
+      "vehicles"
+    ],
+    "new-adventures": [
+      "action",
+      "vehicles",
+      "playsets",
+      "vehicles-playset"
+    ],
+    "mighty-masters": [
+      "action-figures"
+    ]
+  }
 }
