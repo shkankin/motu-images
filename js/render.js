@@ -517,7 +517,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.28</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.29</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -970,12 +970,14 @@ function renderLinesGrid() {
     html += '<div class="reorder-list" data-reorder-scope="lines">';
     ordered.forEach(l => {
       const hidden = isLineFullyHidden(l.id);
+      const hasSublines = getOrderedSublines(l.id).length > 1;
       html += `<div class="reorder-item${hidden?' is-hidden':''}" data-reorder-item data-key="${esc(l.id)}">
         <button class="reorder-handle" aria-label="Drag to reorder ${esc(l.name)}" title="Drag to reorder">${icon(ICO.grip,18,3)}</button>
         <div style="flex:1;min-width:0">
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(l.name)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">${l.yr} · ${l.total} figures · ${l.owned} owned · ${l.pct}%</div>
         </div>
+        ${hasSublines ? `<button class="reorder-handle" data-action="reorder-drill-line" data-line-id="${esc(l.id)}" aria-label="Manage ${esc(l.name)} sublines" title="Manage sublines">${icon(ICO.chevR,18,3)}</button>` : ''}
         <button class="reorder-hide-btn" data-action="toggle-line-hidden" data-line-id="${esc(l.id)}" aria-label="${hidden?'Show':'Hide'} ${esc(l.name)}">
           ${hidden?'Show':'Hide'}
         </button>

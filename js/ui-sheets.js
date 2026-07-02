@@ -29,7 +29,7 @@ import {
   copyPaid, copyNotes, getAllLocations,
   renderExportSheet, renderSheetBody,
   renderAccessoryPickerSheet, SETTINGS_KEYS,
-  _derived, clearOverrides, backupDue, getBackupMeta, getOrderedSublines,
+  _derived, clearOverrides, backupDue, getBackupMeta,
 } from './data.js';
 import {
   renderKidsCoreAdminSheet,
@@ -188,25 +188,13 @@ function renderMenuSheet() {
       action: 'menu-open-locations',
     });
   }
-  // v7.15: "Manage Sublines" — contextual, only shown while actually
-  // viewing a line's subline list (not drilled into one subline, and not
-  // on some other tab where there'd be no clear target). Sits right after
-  // "Manage Collections" since it's the same action for one level down.
-  // Replaces a v7.13 attempt at a breadcrumb/header button for this, which
-  // was the wrong spot — a breadcrumb is for wayfinding, not actions.
-  // v7.17: dropped a wrong `S.tab === 'lines'` check — goToLine() actually
-  // sets S.tab to 'all' while browsing a line's content (S.activeLine is
-  // the real signal for "viewing this line"), so the old check meant this
-  // item could never appear at all. navTo() always clears S.activeLine on
-  // a genuine tab switch, so activeLine alone is reliable here.
-  if (S.activeLine && !S.activeSubline && !S.search && getOrderedSublines(S.activeLine).length > 1) {
-    const mcIdx = menuItems.findIndex(m => m.action === 'menu-manage-collections');
-    menuItems.splice(mcIdx + 1, 0, {
-      label: `Manage ${esc(ln(S.activeLine))} Sublines`,
-      icon: ICO.grip,
-      action: 'menu-reorder-sublines',
-    });
-  }
+  // v7.29: the conditional "Manage Sublines" menu item (v7.15-v7.17) is
+  // gone — replaced by a "Sublines" drill-in button directly on each row
+  // inside line-reorder mode (Manage Collections → tap a line's Sublines
+  // button). That's one menu entry instead of two, and doesn't require
+  // already knowing you have to navigate into a line first before the
+  // option even appears — the exact discoverability complaint that
+  // prompted this change.
   // v6.31: insert "Viewed Wishlists" only when there's at least one entry,
   // so new users don't see an empty option that won't do anything.
   const wlHistory = (typeof window.getWishlistHistory === 'function') ? window.getWishlistHistory() : [];

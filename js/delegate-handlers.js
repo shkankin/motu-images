@@ -308,6 +308,26 @@ registerAll({
     window.toggleHidden?.(d.lineId);
   },
 
+  // v7.29: drill from line-reorder mode straight into that line's subline-
+  // reorder mode, without leaving "management mode" — replaces the old
+  // separate "Manage Sublines" menu item, which only appeared once you'd
+  // already navigated into a line the normal way (not intuitive — you had
+  // to know to look for it there first). Deliberately does NOT touch
+  // S.tab — renderContent() routes on S.activeLine/S.activeSubline, not
+  // S.tab (the exact state goToLine() itself trips on — see its own
+  // comment) — and deliberately leaves S.editingOrder alone so it stays
+  // true, landing directly in subline-reorder instead of normal browsing.
+  // The breadcrumb's existing "Lines" link (crumbToLines) already
+  // preserves editingOrder too, so the way back to line-reorder mode
+  // works without any change there.
+  'reorder-drill-line': (e, el, d) => {
+    e.stopPropagation();
+    if (!d.lineId) return;
+    window.S.activeLine = d.lineId;
+    window.S.activeSubline = null;
+    window.render?.();
+  },
+
   // Lines view toggle
   'set-lines-view': (e, el, d) => {
     window.store?.set('motu-lines-view', d.view);
@@ -417,11 +437,6 @@ registerAll({
     window.S.tab = 'lines';
     window.S.activeLine = null;
     window.S.activeSubline = null;
-    window.render?.();
-  },
-  'menu-reorder-sublines': () => {
-    window.closeSheet?.();
-    window.S.editingOrder = true;
     window.render?.();
   },
   'menu-open-locations': () => {
