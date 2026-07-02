@@ -517,7 +517,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.24</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.25</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1195,7 +1195,7 @@ function renderFigRow(f, standalone = false) {
   const rowHtml = `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}">
-      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
+      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-load-action="img-loaded" data-fig-id="${eId}">` :
         `<span class="initial">${esc(f.name[0])}</span>`}
     </div>
     <div class="fig-text">
@@ -1238,19 +1238,30 @@ function renderFigRow(f, standalone = false) {
 
   if (!swipeEnabled) return rowHtml;
 
-  // v7.24: reveal panel sits behind the row; the row slides on top of it
-  // via transform, exposing this as it goes. Five real buttons, always
-  // present — nothing auto-commits from drag distance alone anymore (v7.22
-  // had two auto-committing tiers; removed after reports of false
-  // positives — an imprecise swipe shouldn't silently change a status).
-  // One threshold now: swipe far enough and release, the panel pins open;
-  // every action requires an explicit tap. DOM order is reversed from
-  // display order since justify-content:flex-end reveals the LAST child
-  // first — 'owned' is still the most likely first tap, so it's revealed
-  // first (last in the markup).
-  // Neutral by default, only the CURRENT status colored — reuses the
-  // exact icon/color choices the detail screen's own status-pill already
-  // established (STATUS_HEX, ICO.check/heart/box/tag), not a new scheme.
+  // v7.25: panel starts EMPTY — buttons are built lazily by
+  // swipePanelButtonsHtml() (below) the first time a row is actually
+  // touched (handlers.js's touchstart), not upfront for every row. This
+  // used to add ~1.7KB of markup per row for a panel that's invisible for
+  // 99.9% of rows at any given time (only one can ever be open) — across
+  // 1000+ figures on the All tab that was ~1.8MB of pure waste, and a
+  // real contributor to the tab feeling slow to open.
+  return `<div class="fig-row-wrap" data-fig-id="${eId}">
+    <div class="fig-swipe-panel" data-swipe-panel="${eId}"></div>
+    ${rowHtml}
+  </div>`;
+}
+
+// v7.25: the swipe panel's 5-button HTML, factored out of renderFigRow so
+// handlers.js can build it on demand (see the note above) instead of it
+// being baked into every row's initial markup. DOM order is reversed from
+// display order since justify-content:flex-end reveals the LAST child
+// first — 'owned' is still the most likely first tap, so it's revealed
+// first (last in the markup). Neutral by default, only the CURRENT status
+// colored — reuses the exact icon/color choices the detail screen's own
+// status-pill already established (STATUS_HEX, ICO.check/heart/box/tag).
+function swipePanelButtonsHtml(figId) {
+  const eId = esc(figId);
+  const status = S.coll[figId]?.status;
   const swipeBtnMeta = {
     'for-sale': { i: ICO.tag,   l: 'For Sale' },
     ordered:    { i: ICO.box,   l: 'Ordered' },
@@ -1258,18 +1269,14 @@ function renderFigRow(f, standalone = false) {
     wishlist:   { i: ICO.heart, l: 'Wishlist' },
     owned:      { i: ICO.check, l: 'Owned' },
   };
-  const swipeBtns = ['for-sale', 'ordered', 'detail', 'wishlist', 'owned'].map(key => {
+  return ['for-sale', 'ordered', 'detail', 'wishlist', 'owned'].map(key => {
     const m = swipeBtnMeta[key];
-    const active = key !== 'detail' && c.status === key;
+    const active = key !== 'detail' && status === key;
     const styleAttr = active ? ` style="--status-color:${STATUS_HEX[key]}"` : '';
     return `<button class="fig-swipe-btn${active ? ' active' : ''}${key === 'detail' ? ' detail' : ''}" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="${key}"${styleAttr}>${icon(m.i, 18)}<span>${m.l}</span></button>`;
   }).join('');
-
-  return `<div class="fig-row-wrap" data-fig-id="${eId}">
-    <div class="fig-swipe-panel" data-swipe-panel="${eId}">${swipeBtns}</div>
-    ${rowHtml}
-  </div>`;
 }
+window.swipePanelButtonsHtml = swipePanelButtonsHtml;
 
 // v6.69: price-watch deal check (cache-only, no network). True when a
 // wishlist/ordered figure's cached asking is at or below its target price.
@@ -1329,7 +1336,7 @@ function renderFigCard(f, standalone = false) {
 
   return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}${isVarFig && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
     <div class="card-image-wrap">
-      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-fig-id="${eId}">` :
+      ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-load-action="img-loaded" data-fig-id="${eId}">` :
         `<div class="card-initial">${esc(f.name[0])}</div>`}
       ${S.selectMode ? `<div class="select-checkbox select-checkbox-corner ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
       ${!S.selectMode && isNew ? '<div class="new-badge">NEW</div>' : ''}

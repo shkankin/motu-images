@@ -37,8 +37,10 @@ const _registry = {
   focus:       new Map(),
   keydown:     new Map(),
   contextmenu: new Map(),
-  // 'error' uses capture phase since image/script load errors don't bubble.
+  // 'error' and 'load' use capture phase — neither bubbles (image load
+  // success/failure events are capture-only, same reasoning for both).
   error:       new Map(),
+  load:        new Map(),
 };
 
 // Register handler. type defaults to 'click'.
@@ -102,10 +104,10 @@ export function bootDelegation(root = document) {
   if (_booted) return;
   _booted = true;
   for (const type of Object.keys(_registry)) {
-    // Capture phase used for 'error' and 'blur'/'focus' because they don't
-    // bubble — capture is the only way a single document-level listener
-    // sees them. Other events bubble normally so non-capture is fine.
-    const useCapture = (type === 'error' || type === 'blur' || type === 'focus');
+    // Capture phase used for 'error'/'load' and 'blur'/'focus' because they
+    // don't bubble — capture is the only way a single document-level
+    // listener sees them. Other events bubble normally so non-capture is fine.
+    const useCapture = (type === 'error' || type === 'load' || type === 'blur' || type === 'focus');
     root.addEventListener(type, (e) => dispatch(type, e), useCapture);
   }
 }

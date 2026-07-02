@@ -432,7 +432,13 @@ document.addEventListener('touchstart', e => {
   if (_rowSwipeOpenId && _rowSwipeOpenId !== figId) _closeSwipeRow(_rowSwipeOpenId);
   row.style.transition = '';
   const panel = wrap.querySelector('.fig-swipe-panel');
-  if (panel) panel.style.visibility = 'visible';   // only reveal on a real touch
+  if (panel) {
+    panel.style.visibility = 'visible';   // only reveal on a real touch
+    // v7.25: panel markup is now built lazily (render.js no longer bakes
+    // it into every row upfront — see the note there). First real touch
+    // on a given row builds its 5 buttons once; later touches reuse them.
+    if (!panel.childElementCount) panel.innerHTML = window.swipePanelButtonsHtml?.(figId) || '';
+  }
   _rowSwipe = {
     wrap, row, figId, panel,
     startX: e.touches[0].clientX,
@@ -470,14 +476,21 @@ document.addEventListener('touchmove', e => {
 
 function _rowSwipeEnd() {
   if (!_rowSwipe) return;
-  const { row, figId, panel, dirLocked, dragged = 0 } = _rowSwipe;
+  const { row, figId, panel, dirLocked, dragged = 0, wasPinned } = _rowSwipe;
   _rowSwipe = null;
   if (dirLocked !== 'h') return;   // vertical scroll — nothing to settle
   row.style.transition = 'transform 0.2s ease';
-  // One rule regardless of where the row started: past the threshold on
-  // release, pin open; otherwise closed. (Re-dragging an already-pinned
-  // row to close it naturally passes back through this same threshold.)
-  if (dragged >= SWIPE_REVEAL) {
+  // v7.25 fix: threshold must differ by starting state. A FRESH drag
+  // (starting closed) needs SWIPE_REVEAL to pin open — fine. But when
+  // RE-dragging an ALREADY-pinned row (closing it), `dragged` measures how
+  // much is still revealed, not how much was newly revealed — using the
+  // same low SWIPE_REVEAL threshold there meant a normal close-swipe (say,
+  // 200px right, leaving dragged=180) stayed above 110 for nearly the
+  // entire gesture and just re-pinned instead of closing. Reported: "swipe
+  // right to close doesn't work, stays static." Midpoint of the pinned
+  // width is the right check for that case instead.
+  const threshold = wasPinned ? SWIPE_PIN / 2 : SWIPE_REVEAL;
+  if (dragged >= threshold) {
     row.style.transform = `translateX(${-SWIPE_PIN}px)`;
     row.classList.add('swipe-pinned');
     _rowSwipeOpenId = figId;

@@ -253,6 +253,17 @@ registerAll({
   },
 }, 'error');
 
+// v7.25: fade lazy-loaded thumbnails in once they actually have bytes,
+// instead of the row's entrance animation finishing while the image is
+// still blank and the picture popping in abruptly moments later on a
+// cold cache. .fig-thumb img starts at opacity:0 in CSS; this just flips
+// it once real content has arrived. For an already-cached image this
+// fires within the same frame, so the fade is imperceptible — it only
+// matters for the slow, first-load case it's meant to smooth over.
+registerAll({
+  'img-loaded': (e, el) => el.classList.add('img-loaded'),
+}, 'load');
+
 // ── Change/input/blur actions ───────────────────────────────────────
 // Used for inputs in the detail/edit views. Less common but still need
 // the same data-action style.

@@ -939,7 +939,15 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .fig-thumb img {
   width: 100%; height: 100%;
   object-fit: cover; object-position: top;
+  /* v7.25: fade in once actually loaded rather than popping in abruptly
+     after the row's entrance animation already finished — matters on a
+     cold cache where the row appears well before the image bytes arrive.
+     Cached images fire 'load' within the same frame, so this is
+     imperceptible there; it only smooths over the slow first-load case. */
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
+.fig-thumb img.img-loaded { opacity: 1; }
 .fig-thumb .initial {
   font-family: 'Cinzel', serif;
   font-size: 20px; color: var(--t3); font-weight: 700;
