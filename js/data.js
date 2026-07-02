@@ -1001,6 +1001,9 @@ window.addCopy = id => {
 };
 
 window.removeCopy = async (id, copyId) => {
+  // v7.27: see the matching comment in updateCopy — copyId from a DOM
+  // dataset read is always a string, cp.id is always a number.
+  copyId = Number(copyId);
   const c = S.coll[id];
   if (!c || !isMigrated(c)) return;
   const cp = c.copies.find(x => x.id === copyId);
@@ -1022,6 +1025,19 @@ window.removeCopy = async (id, copyId) => {
 };
 
 window.updateCopy = (id, copyId, key, val, opts) => {
+  // v7.27: copyId arrives as a string from every real call site — it's
+  // read from a DOM data-* attribute (dataset.* is always a DOMStringMap,
+  // strings only) — but cp.id is a number (nextCopyId() does arithmetic).
+  // `x.id === copyId` below is strict equality, so 1 === '1' is false and
+  // the lookup silently failed for every copy-field edit. Reported as
+  // "price paid and condition not saving" — those are the two fields most
+  // people touch right after marking something owned, but this same
+  // mismatch affects every function that looks a copy up by id (see the
+  // matching fix in removeCopy/addAccessory/removeAccessory/
+  // openAccessoryPicker below). Coercing here also fixes the debounced
+  // path for free — updateCopyDebounced stores and replays whatever type
+  // it was given, so fixing only the call sites wouldn't have caught it.
+  copyId = Number(copyId);
   const c = S.coll[id];
   if (!c) return;
   // Auto-migrate (defensive — shouldn't happen post-v4.42 init).
@@ -1195,6 +1211,8 @@ function maybeSuggestConditionForCopy(figId, copyId, nextCp, prevComplete) {
 
 window.addAccessory = (figId, copyId, name) => {
   if (!name) return;
+  // v7.27: see the matching comment in updateCopy.
+  copyId = Number(copyId);
   const c = S.coll[figId];
   if (!c || !isMigrated(c)) return;
   // Capture completeness BEFORE the mutation so the suggestion logic can
@@ -1218,6 +1236,8 @@ window.addAccessory = (figId, copyId, name) => {
 };
 
 window.removeAccessory = (figId, copyId, idx) => {
+  // v7.27: see the matching comment in updateCopy.
+  copyId = Number(copyId);
   const c = S.coll[figId];
   if (!c || !isMigrated(c)) return;
   const prevCp = c.copies.find(x => x.id === copyId);
@@ -1269,8 +1289,12 @@ window.addCustomAccessory = () => {
 };
 
 window.openAccessoryPicker = (figId, copyId) => {
+  // v7.27: see the matching comment in updateCopy. This is the source of
+  // S._accPickCopyId, which toggleAccessoryInPicker() and
+  // renderAccessoryPickerSheet() both read back out later — fixing the
+  // type here covers both of those transitively.
   S._accPickFigId = figId;
-  S._accPickCopyId = copyId;
+  S._accPickCopyId = Number(copyId);
   openSheet('accessoryPicker');
 };
 
