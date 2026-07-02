@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- ════════════════════════════════════════════════════════════════
+     figures-editor.html  v1.28.0  (removed AF411/heman.org accessory auto-suggestions)
+       • v1.28.0: Removed the whole loadouts-suggested.json integration
+         (v1.23.0/v1.10 below) — auto-fetch on load, its file-picker button,
+         the ingestLoadouts() _meta branch that seeded chips from it, and
+         the per-figure f._suggestedLoadout fallback. Confirmed loadouts
+         (loadouts.json) are unaffected — that load/save path is untouched.
+         Per explicit instruction: didn't work well enough, accessories are
+         maintained manually going forward. The "✨ suggested — confirm"
+         badge and suggestedSeed tracking are gone with it, since nothing
+         populates them anymore. Below is now historical — the sync_af411.py
+         --accessories / --backfill-loadouts flags this refers to are no
+         longer read by this file, though the script itself wasn't touched.
      figures-editor.html  v1.27.0  (SUBLINES sync fix)
        • v1.27.0: The mirrored SUBLINES constant (meant to match state.js
          exactly) had drifted — wrong/missing sublines on 7 of 12 lines,
@@ -416,9 +428,6 @@
     <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
       loadouts.json <input id="fLoadouts" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'loadouts')">
     </label>
-    <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)" title="Accessory suggestions from sync_af411.py --accessories. Seeds '✨ suggested — confirm' chips; nothing is saved until you commit.">
-      loadouts-suggested.json <input id="fSuggested" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'loadouts')">
-    </label>
     <label class="secondary" style="background:var(--bg3);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--t1);border:1px solid var(--bd)">
       figures-rejected.json <input id="fRejected" type="file" accept=".json,application/json" style="display:none" onchange="loadFile(event,'rejected')">
     </label>
@@ -625,7 +634,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.27.0';
+const EDITOR_VERSION = 'v1.28.0';
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1460,11 +1469,6 @@ let decisions = {};
 let edits = {};
 // Per-figure accessory selections: {[id]: ['Power Sword', ...]}
 let figAccessories = {};
-// v1.10: ids whose accessory chips were pre-seeded from an auto-extracted
-// suggestion (scraper --loadouts or loadouts-suggested.json) rather than a
-// confirmed loadout. Used only to flag them visually so the reviewer knows
-// to confirm. Cleared for an id once the user toggles any chip on it.
-let suggestedSeed = new Set();
 
 // ── File loading ───────────────────────────────────────────────────
 
@@ -1495,10 +1499,6 @@ async function loadFromFetch(opts) {
   const lds      = await tryFetch('loadouts.json');
   const rej      = await tryFetch('figures-rejected.json');
   const pending  = await tryFetch('figures-pending.json');
-  // v1.23: accessory suggestions from sync_af411.py --accessories. Ingested
-  // AFTER loadouts.json so its _meta bundle seeds only figures that don't yet
-  // have a confirmed loadout (ingestLoadouts skips those).
-  const sug      = await tryFetch('loadouts-suggested.json');
 
   if (approved == null && pending == null) {
     setServerStatus('error', '✗ could not reach server');
@@ -1510,7 +1510,6 @@ async function loadFromFetch(opts) {
   // resolves against confirmed loadouts first.
   if (approved) ingestApproved(approved);
   if (lds) ingestLoadouts(lds);
-  if (sug) ingestLoadouts(sug);
   if (rej) ingestRejected(rej);
   if (pending) ingestPending(pending);
   setServerStatus('ok', Array.isArray(approved) ? `✓ ${approved.length} figures loaded from server` : '✓ loaded from server');
@@ -1588,15 +1587,10 @@ function ingestPending(data) {
     }
     if (remapped) console.info(`[motu-editor] ${remapped} pending slug(s) remapped to avoid image collisions`);
   }
-  // Initialize per-figure accessories from any existing loadout entry,
-  // else fall back to an auto-extracted suggestion (v1.10) so new figures
-  // arrive with their chips pre-checked for one-tap confirmation.
+  // Initialize per-figure accessories from any existing confirmed loadout entry.
   for (const f of pendingFigs) {
     if (loadouts[f.id]) {
       figAccessories[f.id] = [...loadouts[f.id]];
-    } else if (Array.isArray(f._suggestedLoadout) && f._suggestedLoadout.length) {
-      figAccessories[f.id] = [...f._suggestedLoadout];
-      suggestedSeed.add(f.id);
     }
   }
 }
@@ -1615,21 +1609,6 @@ function ingestApproved(data) {
 
 function ingestLoadouts(data) {
   if (data && typeof data === 'object') {
-    // v1.10: loadouts-suggested.json (from sync_af411.py --backfill-loadouts)
-    // carries a `_meta` block of per-figure confidence. Treat it as a bundle
-    // of SUGGESTIONS — seed the editable chips (pre-checked, flagged) but do
-    // NOT promote them into the authoritative `loadouts` map. The reviewer
-    // confirms each via the normal Save/download flow.
-    if (data._meta && typeof data._meta === 'object') {
-      const meta = data._meta;
-      for (const [id, accs] of Object.entries(data)) {
-        if (id === '_meta' || loadouts[id] || !Array.isArray(accs) || !accs.length) continue;
-        figAccessories[id] = [...accs];
-        suggestedSeed.add(id);
-      }
-      window.__loadoutMeta = meta;  // optional: confidence lookup for the UI
-      return;
-    }
     loadouts = data.loadouts || data;
     delete loadouts._meta;  // defensive: never let a stray meta key become a figId
     // v6.33: schema v2 carries the editor's master list of custom accessory
@@ -1650,14 +1629,9 @@ function ingestLoadouts(data) {
       sublineOrder = data.sublineOrder;
     }
     // Re-seed for both pending and approved (in case loadouts loaded last).
-    // Confirmed loadouts win; suggestions only fill where nothing's set yet.
     for (const f of [...pendingFigs, ...approvedFigs]) {
       if (loadouts[f.id]) {
         figAccessories[f.id] = [...loadouts[f.id]];
-        suggestedSeed.delete(f.id);
-      } else if (!figAccessories[f.id] && Array.isArray(f._suggestedLoadout) && f._suggestedLoadout.length) {
-        figAccessories[f.id] = [...f._suggestedLoadout];
-        suggestedSeed.add(f.id);
       }
     }
   }
@@ -2098,7 +2072,7 @@ function renderCard(f) {
         </div>
       </div>
       <details>
-        <summary>Accessories / Loadout (${accs.length} selected)${suggestedSeed.has(f.id) ? ' · <span style="color:var(--acc)">✨ suggested — confirm</span>' : ''}</summary>
+        <summary>Accessories / Loadout (${accs.length} selected)</summary>
         ${renderAccessoriesPanel(f.id, accs)}
       </details>
     </div>
@@ -2264,7 +2238,7 @@ function renderExistingCard(f) {
         </div>
       </div>
       <details ${isEdited && hasLoadoutChange(f.id) ? 'open' : ''}>
-        <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''}${suggestedSeed.has(f.id) ? ' · <span style="color:var(--acc)">✨ suggested — confirm</span>' : ''})</summary>
+        <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''})</summary>
         ${renderAccessoriesPanel(f.id, accs)}
       </details>
     </div>
@@ -2321,7 +2295,6 @@ function setEdit(id, field, val) {
 
 function toggleAcc(id, acc, el) {
   if (!figAccessories[id]) figAccessories[id] = [];
-  suggestedSeed.delete(id);  // v1.10: a touched suggestion is now reviewer-owned
   const i = figAccessories[id].indexOf(acc);
   if (i >= 0) {
     figAccessories[id].splice(i, 1);
