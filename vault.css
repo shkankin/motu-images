@@ -874,6 +874,15 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   align-items: stretch;
   justify-content: flex-end;
   z-index: 0;
+  /* v7.22 bug fix: reported as "a screen full of the new pullout tabs"
+     flashing briefly when switching to a tab with many rows — bulk-
+     inserting hundreds of rows at once can paint a beat before layout
+     (this panel sitting behind an opaque, correctly-positioned .fig-row)
+     is fully settled. Hidden by default, closes the gap entirely: JS
+     flips this to visible only when a real swipe gesture actually starts
+     or a row is pinned open, so there's nothing to flash during a plain
+     tab switch regardless of the exact timing mechanism. */
+  visibility: hidden;
 }
 .fig-row-wrap > .fig-row {
   position: relative;
@@ -881,37 +890,18 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   background: var(--bg);   /* opaque — otherwise the panel shows through until dragged */
 }
 
-/* The live, dynamically-recolored zone (tiers 1–2 while actively dragging).
-   Fixed width; JS swaps class + innerHTML as thresholds are crossed. Sits
-   rightmost (last flex child), so it's the first thing revealed. */
-.fig-swipe-dyn {
-  width: 100px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-  background: var(--bg3);
-  transition: background-color 0.12s ease;
-}
-.fig-swipe-dyn.tier-owned    { background: var(--gn); }
-.fig-swipe-dyn.tier-wishlist { background: var(--bl); }
-.fig-swipe-dyn.tier-more     { background: var(--acc); }
-
-/* The pinned-open action bar (tier 3 release) — three real, always-tappable
-   buttons. Sits to the LEFT of .fig-swipe-dyn, only reachable once dragged
-   past the tier-3 threshold. Full swipe intentionally doesn't force a
-   choice; it just makes all of them reachable at once. */
-.fig-swipe-actions {
-  display: flex;
-  flex-shrink: 0;
-}
+/* v7.22 rebuild: five real, always-tappable buttons — Owned/Wishlist/
+   Ordered/For Sale/Detail — reusing the exact neutral-vs-active pattern
+   the detail screen's .status-pill already established (same STATUS_HEX
+   colors, same "only the current one is colored" rule) rather than the
+   first draft's solid-color blocks, which made every option look equally
+   "on" and confusingly stacked a 4th, redundant live-preview block next
+   to them. DOM order is reversed from display order (flex-end reveals
+   the LAST child first) — 'owned' needs to appear first on a light
+   swipe, so it's last in the markup. */
 .fig-swipe-btn {
-  width: 84px;
+  width: 76px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -919,13 +909,16 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   gap: 3px;
   font-size: 10px;
   font-weight: 700;
-  color: #fff;
+  background: var(--bg2);
   border: none;
-  border-right: 1px solid rgba(0,0,0,0.15);
+  border-right: 1px solid var(--bd);
+  color: var(--t2);
 }
-.fig-swipe-btn.owned    { background: var(--gn); }
-.fig-swipe-btn.wishlist { background: var(--bl); }
-.fig-swipe-btn.detail   { background: var(--bg3); color: var(--t1); }
+.fig-swipe-btn.active {
+  background: color-mix(in srgb, var(--status-color) 18%, var(--bg2));
+  color: var(--status-color);
+}
+.fig-swipe-btn.detail { color: var(--t1); }
 
 .fig-thumb {
   width: 56px; height: 56px;

@@ -308,6 +308,19 @@ function patchFigRow(id) {
           ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${id}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
           : `<button class="quick-own" data-action="set-status-owned" data-fig-id="${id}" title="Mark owned">${icon(ICO.check,16)}</button>`);
     }
+    // v7.22: keep the swipe panel's active-button highlight in sync too —
+    // otherwise reopening it after a quick tier-1/2 swipe commit (which
+    // closes the panel immediately) would show the status it had BEFORE
+    // that commit, not the one it was just set to.
+    const panel = row.closest('.fig-row-wrap')?.querySelector('.fig-swipe-panel');
+    if (panel) {
+      panel.querySelectorAll('.fig-swipe-btn').forEach(btn => {
+        const key = btn.dataset.swipeDo;
+        const active = key !== 'detail' && c.status === key;
+        btn.classList.toggle('active', active);
+        btn.style.setProperty('--status-color', active ? STATUS_HEX[key] : '');
+      });
+    }
     updateNavBadge();
     return true;
   }
@@ -494,7 +507,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.22</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.23</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1215,23 +1228,34 @@ function renderFigRow(f, standalone = false) {
 
   if (!swipeEnabled) return rowHtml;
 
-  // v7.22: reveal panel sits behind the row; the row itself (unchanged
-  // above) slides on top of it via transform, exposing this as it goes.
-  // dyn = the single dynamically-recolored zone (tiers 1/2, live while
-  // dragging — matches the Gmail/Mail/Relay pattern: one zone that changes
-  // color+icon+label as you cross thresholds, not multiple zones stacking
-  // up side by side). actions = the 3-button bar, further left, only
-  // reachable past the tier-3 threshold, where the row pins open instead
-  // of auto-committing — full swipe intentionally does NOT force a choice.
+  // v7.22 (rebuilt): reveal panel sits behind the row; the row slides on
+  // top of it via transform, exposing this as it goes. Five real buttons,
+  // always present — no separate "live preview" zone (that was a v7.22
+  // first-draft mistake: it left a 4th, redundant, icon-only block visible
+  // even in the pinned-open state — the reveal of the actual buttons IS
+  // the drag feedback, nothing extra needed on top). DOM order is
+  // reversed from display order since justify-content:flex-end reveals
+  // the LAST child first — 'owned' needs to appear first at a light
+  // swipe, so it's last in the markup.
+  // Neutral by default, only the CURRENT status colored — reuses the
+  // exact icon/color choices the detail screen's own status-pill already
+  // established (STATUS_HEX, ICO.check/heart/box/tag), not a new scheme.
+  const swipeBtnMeta = {
+    'for-sale': { i: ICO.tag,   l: 'For Sale' },
+    ordered:    { i: ICO.box,   l: 'Ordered' },
+    detail:     { i: ICO.chevR, l: 'Detail' },
+    wishlist:   { i: ICO.heart, l: 'Wishlist' },
+    owned:      { i: ICO.check, l: 'Owned' },
+  };
+  const swipeBtns = ['for-sale', 'ordered', 'detail', 'wishlist', 'owned'].map(key => {
+    const m = swipeBtnMeta[key];
+    const active = key !== 'detail' && c.status === key;
+    const styleAttr = active ? ` style="--status-color:${STATUS_HEX[key]}"` : '';
+    return `<button class="fig-swipe-btn${active ? ' active' : ''}${key === 'detail' ? ' detail' : ''}" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="${key}"${styleAttr}>${icon(m.i, 18)}<span>${m.l}</span></button>`;
+  }).join('');
+
   return `<div class="fig-row-wrap" data-fig-id="${eId}">
-    <div class="fig-swipe-panel" data-swipe-panel="${eId}">
-      <div class="fig-swipe-actions" data-swipe-actions="${eId}">
-        <button class="fig-swipe-btn owned" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="owned">${icon(ICO.check,18)}<span>Owned</span></button>
-        <button class="fig-swipe-btn wishlist" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="wishlist">${icon(ICO.star,18)}<span>Wishlist</span></button>
-        <button class="fig-swipe-btn detail" data-action="swipe-commit" data-fig-id="${eId}" data-swipe-do="detail">${icon(ICO.chevR,18)}<span>Detail</span></button>
-      </div>
-      <div class="fig-swipe-dyn" data-swipe-dyn="${eId}"></div>
-    </div>
+    <div class="fig-swipe-panel" data-swipe-panel="${eId}">${swipeBtns}</div>
     ${rowHtml}
   </div>`;
 }
