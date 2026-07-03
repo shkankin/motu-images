@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "id": "man-at-arms-14013",
+    "name": "Man-At-Arms",
+    "sourceName": "Man-At-Arms",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Core (Non-Movie)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 13.35,
+    "slug": "man-at-arms-14013",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "_addedToPending": 1783069095
+  },
+  {
+    "id": "war-paint-he-man-14012",
+    "name": "War Paint He-man",
+    "sourceName": "War Paint He-man",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Core (Non-Movie)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 13.35,
+    "slug": "war-paint-he-man-14012",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "_addedToPending": 1783069096
+  }
+]
