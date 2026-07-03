@@ -400,8 +400,13 @@ document.addEventListener('pointercancel', e => {
 // there's nothing to arbitrate against, so this doesn't attempt to.
 const SWIPE_DEAD   = 10;   // px — jitter tolerance before committing to a direction
 const SWIPE_REVEAL = 110;  // past this on release, pin the panel open
-const SWIPE_PIN     = 380; // resting position when pinned open (5 × 76px buttons)
-const SWIPE_MAX      = 400; // hard rubber-band cap during active drag
+const SWIPE_MAX_PAD = 20;  // small rubber-band allowance past the panel's own measured width
+// v7.31: the pinned-open resting position used to be a hardcoded 380px
+// (assumed 5 × 76px buttons) — reported as visually offset/cut off on the
+// left, which a fixed pixel guess can't self-correct for if the row's
+// real available width differs by device or container padding. Now
+// measured from the actual rendered panel (panel.scrollWidth) each time a
+// drag starts instead, so it's always exactly right regardless of screen.
 
 let _rowSwipe = null;          // active in-progress gesture state, or null
 let _rowSwipeOpenId = null;    // figId of the currently pinned-open row, if any
@@ -425,15 +430,15 @@ document.addEventListener('touchstart', e => {
   let row = e.target.closest('.fig-row');
   let wrap = row?.closest('.fig-row-wrap');
   if (!wrap) {
-    // v7.30 fix: once a row is pinned open, .fig-row is translated -380px
-    // out of the way — only a thin sliver of it remains on screen. Most
-    // of what's actually visible where the row used to be is the revealed
-    // panel (.fig-swipe-panel), which the check above never matched, so a
-    // swipe starting there (the natural place to put your finger to close
-    // it) was silently ignored. Closing only ever worked as a side effect
-    // of starting a touch on a DIFFERENT row. This lets a touch starting
-    // on the panel of an ALREADY-PINNED row count too — a plain tap on one
-    // of its buttons still works normally, since nothing here calls
+    // v7.30 fix: once a row is pinned open, .fig-row is translated out of
+    // the way — only a thin sliver of it remains on screen. Most of what's
+    // actually visible where the row used to be is the revealed panel
+    // (.fig-swipe-panel), which the check above never matched, so a swipe
+    // starting there (the natural place to put your finger to close it)
+    // was silently ignored. Closing only ever worked as a side effect of
+    // starting a touch on a DIFFERENT row. This lets a touch starting on
+    // the panel of an ALREADY-PINNED row count too — a plain tap on one of
+    // its buttons still works normally, since nothing here calls
     // preventDefault() or takes over unless real horizontal drag distance
     // is detected later in touchmove.
     const panel = e.target.closest('.fig-swipe-panel');
@@ -457,14 +462,17 @@ document.addEventListener('touchstart', e => {
     // on a given row builds its 5 buttons once; later touches reuse them.
     if (!panel.childElementCount) panel.innerHTML = window.swipePanelButtonsHtml?.(figId) || '';
   }
+  // v7.31: measure now that the panel is guaranteed built (fresh or
+  // reused) — this is what SWIPE_PIN used to be a fixed guess for.
+  const pinWidth = panel ? panel.scrollWidth : 0;
   _rowSwipe = {
-    wrap, row, figId, panel,
+    wrap, row, figId, panel, pinWidth,
     startX: e.touches[0].clientX,
     startY: e.touches[0].clientY,
     dirLocked: null,
     crossedReveal: false,
     wasPinned: row.classList.contains('swipe-pinned'),
-    baseX: row.classList.contains('swipe-pinned') ? -SWIPE_PIN : 0,
+    baseX: row.classList.contains('swipe-pinned') ? -pinWidth : 0,
   };
 }, { passive: true });
 
@@ -479,7 +487,7 @@ document.addEventListener('touchmove', e => {
   }
   if (_rowSwipe.dirLocked !== 'h') return;
   e.preventDefault();
-  const dragged = Math.max(0, Math.min(SWIPE_MAX, -_rowSwipe.baseX - dx));
+  const dragged = Math.max(0, Math.min(_rowSwipe.pinWidth + SWIPE_MAX_PAD, -_rowSwipe.baseX - dx));
   _rowSwipe.row.style.transform = `translateX(${-dragged}px)`;
   _rowSwipe.dragged = dragged;
   // Single haptic tick the moment the reveal threshold is crossed (in
@@ -494,7 +502,7 @@ document.addEventListener('touchmove', e => {
 
 function _rowSwipeEnd() {
   if (!_rowSwipe) return;
-  const { row, figId, panel, dirLocked, dragged = 0, wasPinned } = _rowSwipe;
+  const { row, figId, panel, dirLocked, dragged = 0, wasPinned, pinWidth } = _rowSwipe;
   _rowSwipe = null;
   if (dirLocked !== 'h') return;   // vertical scroll — nothing to settle
   row.style.transition = 'transform 0.2s ease';
@@ -507,9 +515,9 @@ function _rowSwipeEnd() {
   // entire gesture and just re-pinned instead of closing. Reported: "swipe
   // right to close doesn't work, stays static." Midpoint of the pinned
   // width is the right check for that case instead.
-  const threshold = wasPinned ? SWIPE_PIN / 2 : SWIPE_REVEAL;
+  const threshold = wasPinned ? pinWidth / 2 : SWIPE_REVEAL;
   if (dragged >= threshold) {
-    row.style.transform = `translateX(${-SWIPE_PIN}px)`;
+    row.style.transform = `translateX(${-pinWidth}px)`;
     row.classList.add('swipe-pinned');
     _rowSwipeOpenId = figId;
   } else {

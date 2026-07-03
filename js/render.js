@@ -517,7 +517,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.30</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.31</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1253,25 +1253,27 @@ function renderFigRow(f, standalone = false) {
   </div>`;
 }
 
-// v7.25: the swipe panel's 5-button HTML, factored out of renderFigRow so
-// handlers.js can build it on demand (see the note above) instead of it
-// being baked into every row's initial markup. DOM order is reversed from
-// display order since justify-content:flex-end reveals the LAST child
-// first — 'owned' is still the most likely first tap, so it's revealed
-// first (last in the markup). Neutral by default, only the CURRENT status
-// colored — reuses the exact icon/color choices the detail screen's own
-// status-pill already established (STATUS_HEX, ICO.check/heart/box/tag).
+// v7.31: reordered — the old order (for-sale, ordered, detail, wishlist,
+// owned) put Detail awkwardly in the middle of the four status options
+// instead of grouped with or after them, which read as visually
+// disorganized. Flex with justify-content:flex-end just aligns the whole
+// group to the row's trailing edge when it doesn't fill the available
+// width — it doesn't reverse child order — so DOM order here now matches
+// left-to-right display order directly: Owned, Wishlist, Ordered, For
+// Sale, Detail. Neutral by default, only the CURRENT status colored —
+// reuses the exact icon/color choices the detail screen's own status-pill
+// already established (STATUS_HEX, ICO.check/heart/box/tag).
 function swipePanelButtonsHtml(figId) {
   const eId = esc(figId);
   const status = S.coll[figId]?.status;
   const swipeBtnMeta = {
-    'for-sale': { i: ICO.tag,   l: 'For Sale' },
-    ordered:    { i: ICO.box,   l: 'Ordered' },
-    detail:     { i: ICO.chevR, l: 'Detail' },
-    wishlist:   { i: ICO.heart, l: 'Wishlist' },
     owned:      { i: ICO.check, l: 'Owned' },
+    wishlist:   { i: ICO.heart, l: 'Wishlist' },
+    ordered:    { i: ICO.box,   l: 'Ordered' },
+    'for-sale': { i: ICO.tag,   l: 'For Sale' },
+    detail:     { i: ICO.chevR, l: 'Detail' },
   };
-  return ['for-sale', 'ordered', 'detail', 'wishlist', 'owned'].map(key => {
+  return ['owned', 'wishlist', 'ordered', 'for-sale', 'detail'].map(key => {
     const m = swipeBtnMeta[key];
     const active = key !== 'detail' && status === key;
     const styleAttr = active ? ` style="--status-color:${STATUS_HEX[key]}"` : '';
