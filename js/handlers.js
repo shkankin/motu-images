@@ -422,9 +422,27 @@ function _closeSwipeRow(figId, animate = true) {
 
 document.addEventListener('touchstart', e => {
   if (e.touches.length !== 1) return;
-  const row = e.target.closest('.fig-row');
-  const wrap = row?.closest('.fig-row-wrap');
-  if (!wrap) return;
+  let row = e.target.closest('.fig-row');
+  let wrap = row?.closest('.fig-row-wrap');
+  if (!wrap) {
+    // v7.30 fix: once a row is pinned open, .fig-row is translated -380px
+    // out of the way — only a thin sliver of it remains on screen. Most
+    // of what's actually visible where the row used to be is the revealed
+    // panel (.fig-swipe-panel), which the check above never matched, so a
+    // swipe starting there (the natural place to put your finger to close
+    // it) was silently ignored. Closing only ever worked as a side effect
+    // of starting a touch on a DIFFERENT row. This lets a touch starting
+    // on the panel of an ALREADY-PINNED row count too — a plain tap on one
+    // of its buttons still works normally, since nothing here calls
+    // preventDefault() or takes over unless real horizontal drag distance
+    // is detected later in touchmove.
+    const panel = e.target.closest('.fig-swipe-panel');
+    const panelWrap = panel?.closest('.fig-row-wrap');
+    const pinnedRow = panelWrap?.querySelector('.fig-row.swipe-pinned');
+    if (!pinnedRow) return;
+    wrap = panelWrap;
+    row = pinnedRow;
+  }
   const figId = wrap.dataset.figId;
   // A touch starting on a DIFFERENT row while one is pinned open closes it
   // first — same convention as a swipe-open email row elsewhere closing
