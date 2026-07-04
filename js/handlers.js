@@ -401,12 +401,16 @@ document.addEventListener('pointercancel', e => {
 const SWIPE_DEAD   = 10;   // px — jitter tolerance before committing to a direction
 const SWIPE_REVEAL = 110;  // past this on release, pin the panel open
 const SWIPE_MAX_PAD = 20;  // small rubber-band allowance past the panel's own measured width
-// v7.31: the pinned-open resting position used to be a hardcoded 380px
-// (assumed 5 × 76px buttons) — reported as visually offset/cut off on the
-// left, which a fixed pixel guess can't self-correct for if the row's
-// real available width differs by device or container padding. Now
-// measured from the actual rendered panel (panel.scrollWidth) each time a
-// drag starts instead, so it's always exactly right regardless of screen.
+// v7.31/v7.32: the pinned-open resting position used to be a hardcoded
+// 380px (assumed 5 × 76px fixed-width buttons). v7.31 switched to
+// measuring panel.scrollWidth instead — which turned out to be an
+// incomplete fix on its own, since the buttons still had a fixed CSS
+// width; scrollWidth was just re-deriving the same constant 380px on
+// every device, not actually adapting to anything. Still reported as
+// offset. The real fix is in vault.css (v7.32): .fig-swipe-btn is now
+// flex:1 instead of a fixed width, so the panel always exactly fills
+// whatever the row's real rendered width is, by construction — and NOW
+// panel.scrollWidth genuinely reflects that, on every device.
 
 let _rowSwipe = null;          // active in-progress gesture state, or null
 let _rowSwipeOpenId = null;    // figId of the currently pinned-open row, if any

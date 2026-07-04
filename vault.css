@@ -898,10 +898,15 @@ button:active { opacity: 0.7; transform: scale(0.97); }
    blocks, which made every option look equally "on." DOM order (in
    render.js) now matches left-to-right display order directly — Owned,
    Wishlist, Ordered, For Sale, Detail — grouping the four status options
-   together instead of splitting them around Detail. */
+   together instead of splitting them around Detail.
+   v7.32: buttons were width:76px fixed — meaning the panel was ALWAYS
+   exactly 380px regardless of the row's real rendered width on any given
+   device, which is what was actually causing the reported left offset.
+   flex:1 (equal share of whatever space is available) makes the panel
+   always exactly match the row's width by construction, on every screen. */
 .fig-swipe-btn {
-  width: 76px;
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
