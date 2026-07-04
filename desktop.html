@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MOTU Vault — Desktop</title>
 <!-- ════════════════════════════════════════════════════════════════
+<!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.3
+       • v1.3: Fixed a real share-link collision bug (matching js/share.js
+         v7.35). Manually-added figures' ids are a randomly-generated
+         string with no reliable trailing digit — several confirmed
+         colliding on the same 1-2 digit "id" in the actual catalog,
+         which silently dropped one figure and replaced it with a
+         different one on decode (e.g. reported: Beast Man from MOTU
+         Giants showing up twice — it was actually overwriting another
+         manually-added figure that shared the same coincidental trailing
+         digit). Manual figures now decode via their full unique suffix
+         instead ('m:' prefixed tokens); catalog figures unaffected.
      desktop.html  v1.2
        • v1.2: New shared want-list view, gated entirely on a #wl= URL
          fragment (same format share.js's "Share Want List" already
@@ -210,7 +222,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.2</small></div>
+    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.3</small></div>
     <div class="summary" id="summary"></div>
   </header>
 
@@ -547,9 +559,20 @@ async function initSharedView(ids){
     sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div></div><div class="state"><h2>Couldn't load this want list</h2><div>${esc(err.message)} — check your connection and reload.</div></div>`;
     return;
   }
-  const byNum = new Map();
-  (Array.isArray(figs) ? figs : []).forEach(f => { const m = f.id && f.id.match(/(\d+)$/); if (m) byNum.set(m[1], f); });
-  const wanted = ids.map(n => byNum.get(n)).filter(Boolean);
+  // v7.35: two lookup maps — bare numeric tokens match a catalog figure's
+  // trailing AF411 id (unique by construction); 'm:' tokens match a
+  // manually-added figure's full unique suffix instead, since those ids
+  // are a randomly-generated string with no reliable trailing digit (see
+  // the matching note in js/share.js's buildShareURL for the real
+  // collision this fixes — confirmed against the actual catalog, not
+  // hypothetical).
+  const byNum = new Map(), byManual = new Map();
+  (Array.isArray(figs) ? figs : []).forEach(f => {
+    if (!f.id) return;
+    if (f.id.startsWith('manual-')) byManual.set(f.id.slice('manual-'.length), f);
+    else { const m = f.id.match(/(\d+)$/); if (m) byNum.set(m[1], f); }
+  });
+  const wanted = ids.map(t => t.startsWith('m:') ? byManual.get(t.slice(2)) : byNum.get(t)).filter(Boolean);
 
   if (!wanted.length) {
     sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div></div><div class="state"><h2>Empty want list</h2><div>This link didn't match any figures in the current catalog.</div></div>`;

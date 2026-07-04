@@ -22,28 +22,41 @@ const openSheet = (...a) => window.openSheet?.(...a);
 // render() is bridged onto window in app.js; reach it lazily to avoid a cycle.
 const render = (...a) => window.render?.(...a);
 
-// ─── Want-List Share Link (v4.58, v7.33: now opens desktop.html) ────
+// ─── Want-List Share Link (v4.58, v7.33: opens desktop.html, v7.35: fixes below) ─
 // Encodes wishlist figure IDs into a compact URL fragment.
-// Format: <desktop.html>#wl=<base64url(numeric_ids joined by comma)>
-// We store only the trailing numeric AF411 ID from each slug
-// (e.g. "he-man-40th-anniversary-4220" → 4220) to keep the payload small.
+// Format: <desktop.html>#wl=<base64url(tokens joined by comma)>
+// Each token is either a bare number (catalog figures — their trailing
+// AF411 id, e.g. "4220") or "m:<suffix>" (manually-added figures — see the
+// v7.35 note below for why those need a different token shape).
 // The receiver reconstructs figure info from their own figures.json cache.
-// v7.33: used to link back to whichever page generated it (motu-vault.html)
-// and open a bare, non-interactive list in a sheet — no images worth
-// looking at, no extra info, nothing tappable. Reported as not useful
-// enough to actually share with someone. desktop.html (v1.2) now has its
-// own dedicated shared-view mode for exactly this link format — bigger
-// images, retail price, and a proper mobile-first layout, since most
-// recipients open this on a phone, not the desktop screens that page's
-// normal table view is built for.
+//
+// v7.35: two real bugs fixed.
+//   (1) Ordered items no longer included — only 'wishlist' now. Sharing
+//       something already ordered as "wanted" risked a duplicate gift;
+//       it's already being acquired, so it shouldn't be presented as
+//       something to still get.
+//   (2) Manually-added figures (id starts with 'manual-') don't have a
+//       reliable trailing numeric id — their ids are a randomly-generated
+//       string that just happens to often end in a digit, with ZERO
+//       uniqueness guarantee. Confirmed against the real catalog: several
+//       manually-added figures collide on the same 1-2 digit "id" this
+//       way (e.g. a MOTU Giants figure and three unrelated cross-brand
+//       figures all ending in "2") — not just a display duplicate, an
+//       actual silently-dropped-and-replaced item on decode, since the
+//       last one processed simply overwrites the others for that key.
+//       Those now encode with their full unique suffix (after "manual-")
+//       instead of relying on trailing digits at all.
 
 function buildShareURL() {
-  const ids = Object.entries(S.coll)
-    .filter(([, c]) => c.status === 'wishlist' || c.status === 'ordered')
-    .map(([id]) => id.match(/(\d+)$/)?.[1])
+  const parts = Object.entries(S.coll)
+    .filter(([, c]) => c.status === 'wishlist')
+    .map(([id]) => {
+      if (id.startsWith('manual-')) return 'm:' + id.slice('manual-'.length);
+      return id.match(/(\d+)$/)?.[1];
+    })
     .filter(Boolean);
-  if (!ids.length) return null;
-  const payload = btoa(ids.join(','))
+  if (!parts.length) return null;
+  const payload = btoa(parts.join(','))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   // Swap whatever page this was generated from (normally motu-vault.html)
   // for its sibling desktop.html — same directory, just a different file.
@@ -372,8 +385,8 @@ function checkShortcutAction() {
 }
 
 function checkShareLink() {
-  const nums = decodeShareURL(location.hash);
-  if (!nums || !nums.length) return;
+  const tokens = decodeShareURL(location.hash);
+  if (!tokens || !tokens.length) return;
   // Wait for figs to be loaded (may be called before/after figures.json)
   let _retries = 0;
   function show() {
@@ -381,15 +394,23 @@ function checkShareLink() {
       if (++_retries > 150) { toast('✗ Could not load want list'); return; }
       setTimeout(show, 200); return;
     }
-    // Build a numeric suffix → figId map
-    const byNum = new Map();
-    S.figs.forEach(f => { const m = f.id.match(/(\d+)$/); if(m) byNum.set(m[1], f); });
-    const figs = nums.map(n => byNum.get(n)).filter(Boolean);
+    // v7.35: two lookup maps now — bare numeric tokens match a catalog
+    // figure's trailing AF411 id (unique by construction); 'm:' tokens
+    // match a manually-added figure's full unique suffix instead, since
+    // those ids don't have a reliable trailing digit (see buildShareURL's
+    // note above on why that used to silently collide).
+    const byNum = new Map(), byManual = new Map();
+    S.figs.forEach(f => {
+      if (!f.id) return;
+      if (f.id.startsWith('manual-')) byManual.set(f.id.slice('manual-'.length), f);
+      else { const m = f.id.match(/(\d+)$/); if (m) byNum.set(m[1], f); }
+    });
+    const figs = tokens.map(t => t.startsWith('m:') ? byManual.get(t.slice(2)) : byNum.get(t)).filter(Boolean);
     if (!figs.length) return;
     // v6.31: record this view in the user's wishlist history so they can
     // revisit it from Settings later. Re-opening the same link bumps the
     // timestamp instead of duplicating.
-    try { window.recordWishlistView?.(nums, figs); } catch {}
+    try { window.recordWishlistView?.(tokens, figs); } catch {}
     S.sheet = 'wantListView';
     S._sharedWantList = figs;
     pushNav();
