@@ -269,6 +269,14 @@ async function init() {
   // v6.67: backup nag. Local-only storage is evictable on mobile; if the
   // user has piled up edits with no recent export, surface a gentle nudge.
   // Throttled to once per 3 days so it never becomes wallpaper.
+  // v7.38 fix: toastAction lives in render.js and was never bridged to
+  // window — only ever usable as a module export. The `typeof window.
+  // toastAction === 'function'` guard below was always false, so this
+  // whole block silently did nothing no matter how backupDue() evaluated.
+  // app.js already imports render.js wholesale as renderMod; using that
+  // directly is also more correct than a window bridge would have been,
+  // since this file is a normal ES module, not the intentionally
+  // import-free delegate-handlers.js.
   setTimeout(() => {
     try {
       if (!backupDue()) return;
@@ -277,14 +285,14 @@ async function init() {
       if (Date.now() - last < 3 * 24 * 60 * 60 * 1000) return;
       store.set(NAG_TS_KEY, Date.now());
       const n = getBackupMeta().changes;
-      if (typeof window.toastAction === 'function') {
-        window.toastAction(`${n} change${n === 1 ? '' : 's'} since your last backup`, 'Back up', () => window.openSheet?.('export'));
-      }
+      renderMod.toastAction(`${n} change${n === 1 ? '' : 's'} since your last backup`, 'Back up', () => window.openSheet?.('export'));
     } catch {}
   }, 4000);
 
   // v6.69: price-watch deal toast. Cache-only check (no network) for
   // wishlist/ordered figures at/below their target. Once per day max.
+  // v7.38 fix: same bug as the backup nag above — window.toastAction was
+  // never bridged, so this never actually displayed either.
   setTimeout(() => {
     try {
       const DEAL_TS_KEY = 'motu-deal-nag-ts';
@@ -301,9 +309,7 @@ async function init() {
       }
       if (!deals) return;
       store.set(DEAL_TS_KEY, Date.now());
-      if (typeof window.toastAction === 'function') {
-        window.toastAction(`${deals} want-list figure${deals === 1 ? '' : 's'} at or below your target price`, 'View', () => window.goToFiltered?.('wishlist'));
-      }
+      renderMod.toastAction(`${deals} want-list figure${deals === 1 ? '' : 's'} at or below your target price`, 'View', () => window.goToFiltered?.('wishlist'));
     } catch {}
   }, 6000);
 

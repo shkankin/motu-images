@@ -642,6 +642,7 @@ registerAll({
   // Export sheet
   'export-csv':       (e, el, d) => { window.exportCSV?.(d.filter); window.closeSheet?.(); },
   'export-json':      () => { window.exportJSON?.(); window.closeSheet?.(); },
+  'share-backup':     () => { window.shareBackup?.(); window.closeSheet?.(); },
   'export-insurance': () => window.buildInsuranceReport?.(),
   'export-photos-zip':() => { window.exportPhotosZip?.(); window.closeSheet?.(); },
   'export-settings':  () => { window.exportSettings?.(); window.closeSheet?.(); },

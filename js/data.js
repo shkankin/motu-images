@@ -1981,6 +1981,44 @@ ${rows}
   toast(`✓ Report saved · ${figs.length} figures`);
 };
 
+// v7.38: backup-blob building split out of exportJSON so shareBackup()
+// (below) can reuse the exact same data assembly — only the final step
+// (download vs. share) differs between the two.
+async function _buildBackupBlob() {
+  const backup = {
+    version: 'motu-vault-backup-v5',  // v5: + soldLog (realized sales) + customFigs (user-added figures/variants)
+    exported: new Date().toISOString(),
+    collection: S.coll,
+    photos: {},
+    photoCopy: getPhotoCopyMap(),  // {figId: {n: copyId}} — which copy each photo belongs to
+    overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
+    soldLog: getSoldLog(),  // v6.68: completed sales for realized-gain stats
+    customFigs: store.get(CUSTOM_FIGS_KEY) || [],  // v6.68: in-app variants & customs
+    figAdded: getFigAdded(),  // v6.82: durable catalog-add timestamps (Recently Added sort)
+  };
+  // Include custom photos as arrays of {label, dataUrl}.
+  // Yield to the event loop every 25 figures so the UI can update — without
+  // this, a 500-photo backup blocks the main thread for several seconds and
+  // the toast above never paints.
+  let totalPhotos = 0;
+  const ids = Object.keys(S.customPhotos);
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const photos = await photoStore.exportAllAsDataURLs(id);
+    if (photos.length) {
+      backup.photos[id] = photos;
+      totalPhotos += photos.length;
+    }
+    if (i % 25 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+  // No pretty-printing — saves ~15% size for backups (which can be
+  // significant when photos push the file into the tens of MB range)
+  // and one less full copy of the data resident during stringify.
+  const json = JSON.stringify(backup);
+  const blob = new Blob([json], {type: 'application/json'});
+  return { blob, totalPhotos };
+}
+
 async function exportJSON() {
   // v6.30: large backups (hundreds of photos as base64 data URLs) used to
   // build the entire string in memory at once, then JSON.stringify it with
@@ -1997,37 +2035,7 @@ async function exportJSON() {
   try {
     pendingToast = true;
     toast('Building backup…', { duration: 8000 });
-    const backup = {
-      version: 'motu-vault-backup-v5',  // v5: + soldLog (realized sales) + customFigs (user-added figures/variants)
-      exported: new Date().toISOString(),
-      collection: S.coll,
-      photos: {},
-      photoCopy: getPhotoCopyMap(),  // {figId: {n: copyId}} — which copy each photo belongs to
-      overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
-      soldLog: getSoldLog(),  // v6.68: completed sales for realized-gain stats
-      customFigs: store.get(CUSTOM_FIGS_KEY) || [],  // v6.68: in-app variants & customs
-      figAdded: getFigAdded(),  // v6.82: durable catalog-add timestamps (Recently Added sort)
-    };
-    // Include custom photos as arrays of {label, dataUrl}.
-    // Yield to the event loop every 25 figures so the UI can update — without
-    // this, a 500-photo backup blocks the main thread for several seconds and
-    // the toast above never paints.
-    let totalPhotos = 0;
-    const ids = Object.keys(S.customPhotos);
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i];
-      const photos = await photoStore.exportAllAsDataURLs(id);
-      if (photos.length) {
-        backup.photos[id] = photos;
-        totalPhotos += photos.length;
-      }
-      if (i % 25 === 0) await new Promise(r => setTimeout(r, 0));
-    }
-    // No pretty-printing — saves ~15% size for backups (which can be
-    // significant when photos push the file into the tens of MB range)
-    // and one less full copy of the data resident during stringify.
-    const json = JSON.stringify(backup);
-    const blob = new Blob([json], {type: 'application/json'});
+    const { blob, totalPhotos } = await _buildBackupBlob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'motu-vault-backup.json';
@@ -2220,7 +2228,40 @@ function importJSON(file) {
   reader.readAsText(file);
 }
 
+// v7.38: alternative to exportJSON's plain download — shares the same
+// backup file via the OS native share sheet instead, which on modern
+// mobile browsers lists "Save to Drive," "Save to Dropbox," Files/iCloud,
+// AirDrop, email, etc. as direct targets. No per-provider integration or
+// OAuth needed on this app's part; the share sheet handles the choice.
+// Same underlying data as exportJSON() (via the now-shared _buildBackupBlob),
+// so it's just as valid a backup — marks backupDue() clear on success too.
+async function shareBackup() {
+  if (!navigator.share) {
+    toast('✗ Sharing isn\'t supported in this browser — use Download instead');
+    return;
+  }
+  try {
+    toast('Building backup…', { duration: 8000 });
+    const { blob, totalPhotos } = await _buildBackupBlob();
+    const file = new File([blob], 'motu-vault-backup.json', { type: 'application/json' });
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+      toast('✗ This browser can\'t share files — use Download instead');
+      return;
+    }
+    await navigator.share({ files: [file], title: 'MOTU Vault Backup' });
+    toast(`✓ Backup shared · ${totalPhotos} photo${totalPhotos===1?'':'s'}`);
+    markBackupDone();
+  } catch (e) {
+    if (e?.name === 'AbortError') return;  // user closed the share sheet — not a failure
+    console.error('Share backup failed:', e);
+    const oom = /out of memory|allocation/i.test(e?.message || '');
+    toast(oom
+      ? '✗ Backup too large for this device — try exporting fewer photos'
+      : '✗ Share failed: ' + (e?.message || 'unknown error').slice(0, 60));
+  }
+}
 window.exportJSON = exportJSON;
+window.shareBackup = shareBackup;
 
 // v4.99: export/import app settings separately from collection data.
 // Includes theme, sort, view mode, line order, hidden items, recent
@@ -2344,6 +2385,14 @@ function renderExportSheet() {
   html += `<button data-action="export-json" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--gold);background:color-mix(in srgb, var(--gold) 8%, transparent);margin-bottom:8px;text-align:left;font-size:15px;color:var(--gold)">
     <span>Backup Collection + Photos</span>
     <span style="color:var(--t3);font-size:12px">${anyStatus} entries · ${photoCount} photos</span>
+  </button>`;
+  // v7.38: same backup, shared via the OS share sheet instead of a plain
+  // download — lets the user send it straight to Google Drive, Dropbox,
+  // Files/iCloud, email, etc. without this app integrating with any of
+  // them directly. Secondary/plainer styling since Download is still the
+  // more universally-supported default.
+  html += `<button data-action="share-backup" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:center;font-size:13px;font-weight:600;color:var(--t2)">
+    ${icon(ICO.share || ICO.export, 15)}<span>Share to Drive, Dropbox, etc.</span>
   </button>`;
   html += '<div class="text-sm text-dim" style="line-height:1.5">Includes all statuses, conditions, notes, variants, and custom photos. Use to restore your full collection.</div>';
   html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
