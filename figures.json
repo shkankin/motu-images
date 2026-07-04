@@ -1057,7 +1057,7 @@
     "year": 2026,
     "retail": 42.99,
     "slug": "fright-fighter-2026-movie-13439",
-    "faction": "Other",
+    "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "origins",
     "sourceGroup": "",
@@ -1289,6 +1289,21 @@
     "upc": "194735333363"
   },
   {
+    "id": "he-man-nick-galitzine-13442",
+    "name": "He-Man",
+    "line": "origins",
+    "group": "Movie (2026)",
+    "wave": "",
+    "year": 2026,
+    "retail": 21.99,
+    "slug": "he-man-nick-galitzine-13442",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "194735350865"
+  },
+  {
     "id": "he-man-battle-armor-deluxe-2419",
     "name": "He-Man - Battle Armor (Deluxe)",
     "line": "origins",
@@ -1362,21 +1377,6 @@
     "sourceLine": "origins",
     "sourceGroup": "",
     "upc": "194735244249"
-  },
-  {
-    "id": "he-man-nick-galitzine-13442",
-    "name": "He-Man (Nick Galitzine)",
-    "line": "origins",
-    "group": "Movie (2026)",
-    "wave": "",
-    "year": 2026,
-    "retail": 21.99,
-    "slug": "he-man-nick-galitzine-13442",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": "",
-    "upc": "194735350865"
   },
   {
     "id": "he-man-reissue-13228",
@@ -2053,6 +2053,21 @@
     "upc": "194735165568"
   },
   {
+    "id": "man-at-arms-movie-13977",
+    "name": "Man-At-Arms",
+    "sourceName": "Man-At-Arms (Movie)",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Movie (2026)",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 21.99,
+    "slug": "man-at-arms-movie-13977",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
     "id": "man-at-arms-200x-cartoon-collection-12504",
     "name": "Man-At-Arms (200x - Cartoon Collection)",
     "line": "origins",
@@ -2081,21 +2096,6 @@
     "sourceLine": "origins",
     "sourceGroup": "",
     "upc": "194735244300"
-  },
-  {
-    "id": "man-at-arms-movie-13977",
-    "name": "Man-At-Arms (Movie)",
-    "sourceName": "Man-At-Arms (Movie)",
-    "line": "origins",
-    "sourceLine": "origins",
-    "group": "Movie (2026)",
-    "sourceGroup": "",
-    "wave": "",
-    "year": 2026,
-    "retail": 21.99,
-    "slug": "man-at-arms-movie-13977",
-    "faction": "Heroic Warriors",
-    "source": "af411"
   },
   {
     "id": "man-e-faces-2399",
@@ -2906,7 +2906,7 @@
   },
   {
     "id": "ram-man-and-moss-man-movie-13979",
-    "name": "Ram Man and Moss Man (Movie)",
+    "name": "Ram Man and Moss Man",
     "sourceName": "Ram Man and Moss Man (Movie)",
     "line": "origins",
     "sourceLine": "origins",
@@ -3130,6 +3130,21 @@
     "upc": "194735333349"
   },
   {
+    "id": "roboto-movie-deluxe-13984",
+    "name": "Roboto (Deluxe)",
+    "sourceName": "Roboto (Movie) Deluxe",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Movie (2026)",
+    "sourceGroup": "Origins Deluxe",
+    "wave": "",
+    "year": 2026,
+    "retail": 26.97,
+    "slug": "roboto-movie-deluxe-13984",
+    "faction": "Heroic Warriors",
+    "source": "af411"
+  },
+  {
     "id": "roboto-mini-comic-5564",
     "name": "Roboto (Mini Comic)",
     "line": "origins",
@@ -3143,21 +3158,6 @@
     "sourceLine": "origins",
     "sourceGroup": "",
     "upc": "194735104079"
-  },
-  {
-    "id": "roboto-movie-deluxe-13984",
-    "name": "Roboto (Movie) Deluxe",
-    "sourceName": "Roboto (Movie) Deluxe",
-    "line": "origins",
-    "sourceLine": "origins",
-    "group": "Movie (2026)",
-    "sourceGroup": "Origins Deluxe",
-    "wave": "",
-    "year": 2026,
-    "retail": 26.97,
-    "slug": "roboto-movie-deluxe-13984",
-    "faction": "Heroic Warriors",
-    "source": "af411"
   },
   {
     "id": "rokkon-7977",
@@ -3429,7 +3429,7 @@
   },
   {
     "id": "skel-knight-deluxe-movie-13985",
-    "name": "Skel-Knight (Deluxe) Movie",
+    "name": "Skel-Knight (Deluxe)",
     "sourceName": "Skel-Knight (Deluxe) Movie",
     "line": "origins",
     "sourceLine": "origins",
@@ -4582,6 +4582,21 @@
     "upc": "887961913392"
   },
   {
+    "id": "tri-klops-movie-13978",
+    "name": "Tri-Klops",
+    "sourceName": "Tri-Klops (Movie)",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Movie (2026)",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 21.99,
+    "slug": "tri-klops-movie-13978",
+    "faction": "Evil Warriors",
+    "source": "af411"
+  },
+  {
     "id": "tri-klops-200x-cartoon-collection-12172",
     "name": "Tri-Klops (200x - Cartoon Collection)",
     "line": "origins",
@@ -4640,21 +4655,6 @@
     "sourceLine": "origins",
     "sourceGroup": "",
     "upc": "0194735001743"
-  },
-  {
-    "id": "tri-klops-movie-13978",
-    "name": "Tri-Klops (Movie)",
-    "sourceName": "Tri-Klops (Movie)",
-    "line": "origins",
-    "sourceLine": "origins",
-    "group": "Movie (2026)",
-    "sourceGroup": "",
-    "wave": "",
-    "year": 2026,
-    "retail": 21.99,
-    "slug": "tri-klops-movie-13978",
-    "faction": "Evil Warriors",
-    "source": "af411"
   },
   {
     "id": "triple-h-12004",
