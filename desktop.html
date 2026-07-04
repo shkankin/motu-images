@@ -8,6 +8,16 @@
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+<!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.6
+       • v1.6: Added a "Look this one up" search link to each shared
+         want-list card. A non-collector viewing a shared list often
+         can't tell Origins/Masterverse/Classics/200x apart — they're
+         different, non-interchangeable releases of "the same" character
+         — so the query explicitly includes "Masters of the Universe" +
+         the figure name + its line + year, not just the character name,
+         to help them land on the exact correct product rather than
+         guessing.
      desktop.html  v1.5
        • v1.5: Manual figures now encode via their trailing unique code
          only (matching js/share.js v7.37), not the full descriptive
@@ -225,6 +235,11 @@
   .shared-info .n{font-weight:700;font-size:15px;color:var(--t1);margin-bottom:3px}
   .shared-info .meta{color:var(--t3);font-size:12px;margin-bottom:4px}
   .shared-info .price{color:var(--acc);font-size:13px;font-weight:700}
+  .shared-search-link{
+    display:inline-flex;align-items:center;gap:5px;margin-top:6px;
+    font-size:12px;font-weight:600;color:var(--t3);text-decoration:none;
+  }
+  .shared-search-link:hover,.shared-search-link:active{color:var(--acc)}
   .shared-owned-badge{
     flex-shrink:0;font-size:11px;font-weight:700;color:var(--owned);
     text-align:right;white-space:nowrap;
@@ -240,7 +255,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.5</small></div>
+    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.6</small></div>
     <div class="summary" id="summary"></div>
   </header>
 
@@ -572,14 +587,26 @@ function sharedCardHTML(f, owned){
     ? `<img class="shared-thumb" loading="lazy" src="${IMG}/${esc(f.slug)}.jpg" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shared-thumb ph',textContent:'—'}))">`
     : `<span class="shared-thumb ph">—</span>`;
   const sub = sublineOf(f);
-  const meta = [lineName(f.line), sub ? sub.label : null, f.year].filter(Boolean).join(' · ');
+  const lnName = lineName(f.line);
+  const meta = [lnName, sub ? sub.label : null, f.year].filter(Boolean).join(' · ');
   const price = Number.isFinite(f.retail) ? `<div class="price">$${f.retail.toFixed(2)} MSRP</div>` : '';
+  // v7.39: someone viewing a shared want list is often not a collector —
+  // they need to identify the ONE correct product, not just "He-Man" in
+  // general (Origins/Masterverse/Classics/200x He-Man are all different,
+  // non-interchangeable releases). "Masters of the Universe" is included
+  // explicitly since the line name alone (e.g. just "Origins") isn't
+  // recognizable out of context to someone who doesn't already know it's
+  // a MOTU line.
+  const searchQuery = ['Masters of the Universe', f.name, lnName, f.year, 'toy figure']
+    .filter(Boolean).join(' ');
+  const searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(searchQuery);
   return `<div class="shared-card${owned ? ' owned' : ''}">
     ${img}
     <div class="shared-info">
       <div class="n">${esc(f.name)}</div>
       <div class="meta">${esc(meta)}</div>
       ${price}
+      <a class="shared-search-link" href="${esc(searchUrl)}" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Look this one up</span></a>
     </div>
     ${owned ? `<div class="shared-owned-badge">✓ You already<br>have this</div>` : ''}
   </div>`;

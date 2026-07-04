@@ -30,7 +30,7 @@ import {
   loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap,
   getPhotoCopyMap, replacePhotoCopyMap, mergePhotoCopyMap,
 } from './photos.js';
-import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
+import { render, toast, toastAction, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
 import { checkCompletion } from './eggs.js';
 
 // v6.40: merge custom subline arrays into SUBLINES without clobbering existing
@@ -2248,16 +2248,31 @@ async function shareBackup() {
       toast('✗ This browser can\'t share files — use Download instead');
       return;
     }
-    await navigator.share({ files: [file], title: 'MOTU Vault Backup' });
-    toast(`✓ Backup shared · ${totalPhotos} photo${totalPhotos===1?'':'s'}`);
-    markBackupDone();
+    // v7.39 fix: navigator.share() has to run inside a fresh, unexpired
+    // user gesture. _buildBackupBlob() above is async and can take real
+    // time for a photo-heavy collection (real IndexedDB reads) — by the
+    // time it resolves, the original tap's gesture window has often
+    // already expired, especially on Safari/iOS. That surfaced as a
+    // rejection users described as "permission denied." Reported and
+    // confirmed. Fix: one more explicit tap now that the file is actually
+    // ready, so the share call itself has a genuine gesture with zero
+    // async work between the tap and the call.
+    toastAction(`Backup ready · ${totalPhotos} photo${totalPhotos===1?'':'s'}`, 'Share now', async () => {
+      try {
+        await navigator.share({ files: [file], title: 'MOTU Vault Backup' });
+        markBackupDone();
+      } catch (e) {
+        if (e?.name === 'AbortError') return;  // user closed the share sheet — not a failure
+        console.error('Share backup failed:', e);
+        toast('✗ Share failed: ' + (e?.message || 'unknown error').slice(0, 60));
+      }
+    });
   } catch (e) {
-    if (e?.name === 'AbortError') return;  // user closed the share sheet — not a failure
     console.error('Share backup failed:', e);
     const oom = /out of memory|allocation/i.test(e?.message || '');
     toast(oom
       ? '✗ Backup too large for this device — try exporting fewer photos'
-      : '✗ Share failed: ' + (e?.message || 'unknown error').slice(0, 60));
+      : '✗ Backup failed: ' + (e?.message || 'unknown error').slice(0, 60));
   }
 }
 window.exportJSON = exportJSON;
