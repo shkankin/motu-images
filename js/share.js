@@ -22,12 +22,20 @@ const openSheet = (...a) => window.openSheet?.(...a);
 // render() is bridged onto window in app.js; reach it lazily to avoid a cycle.
 const render = (...a) => window.render?.(...a);
 
-// ─── Want-List Share Link (v4.58) ─────────────────────────────────
+// ─── Want-List Share Link (v4.58, v7.33: now opens desktop.html) ────
 // Encodes wishlist figure IDs into a compact URL fragment.
-// Format: <base_url>#wl=<base64url(numeric_ids joined by comma)>
+// Format: <desktop.html>#wl=<base64url(numeric_ids joined by comma)>
 // We store only the trailing numeric AF411 ID from each slug
 // (e.g. "he-man-40th-anniversary-4220" → 4220) to keep the payload small.
 // The receiver reconstructs figure info from their own figures.json cache.
+// v7.33: used to link back to whichever page generated it (motu-vault.html)
+// and open a bare, non-interactive list in a sheet — no images worth
+// looking at, no extra info, nothing tappable. Reported as not useful
+// enough to actually share with someone. desktop.html (v1.2) now has its
+// own dedicated shared-view mode for exactly this link format — bigger
+// images, retail price, and a proper mobile-first layout, since most
+// recipients open this on a phone, not the desktop screens that page's
+// normal table view is built for.
 
 function buildShareURL() {
   const ids = Object.entries(S.coll)
@@ -37,7 +45,9 @@ function buildShareURL() {
   if (!ids.length) return null;
   const payload = btoa(ids.join(','))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  const base = location.href.split('#')[0];
+  // Swap whatever page this was generated from (normally motu-vault.html)
+  // for its sibling desktop.html — same directory, just a different file.
+  const base = location.href.split('#')[0].replace(/[^/]*$/, '') + 'desktop.html';
   return `${base}#wl=${payload}`;
 }
 

@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MOTU Vault — Desktop</title>
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.2
+       • v1.2: New shared want-list view, gated entirely on a #wl= URL
+         fragment (same format share.js's "Share Want List" already
+         generates — see js/share.js v7.33). Opening a share link now
+         lands here instead of the app's old bare, non-interactive sheet:
+         bigger images, retail price, and a plain single-column card
+         layout, since recipients are mostly opening this on a phone, not
+         the desktop screens the rest of this page is built for. Fetches
+         figures.json fresh (already did, for the normal table) — works
+         for a first-time visitor with zero local data. If this device
+         happens to have its own local collection, already-owned figures
+         get a small badge, same courtesy the old in-app viewer gave —
+         harmless and just doesn't show anything for a new visitor.
+         Completely separate code path from the normal table view below;
+         nothing about normal usage changes.
      desktop.html  v1.1
        • v1.1: Subline column. Derived (not stored) the same way render.js
          does — matches SUBLINES[f.line].groups.includes(f.group) — with a
@@ -152,6 +167,38 @@
 
   .state{padding:60px 20px;text-align:center;color:var(--t3)}
   .state h2{color:var(--t2);font-weight:700;margin:0 0 8px}
+
+  /* ── v1.2: shared want-list view (mobile-first, separate from the
+     table above) ────────────────────────────────────────────────
+     Triggered only by a #wl= link (same format share.js's "Share Want
+     List" already generates). Recipients are mostly opening this on a
+     phone, not the desktop the rest of this page is built for, so this
+     is a plain single-column card list — no table, no horizontal
+     scroll, no filters to fight with on a small screen. */
+  .shared-wrap{max-width:640px;margin:0 auto;padding:20px 16px 60px}
+  .shared-head{padding:8px 4px 20px}
+  .shared-head .brand{font-size:12px;margin-bottom:10px}
+  .shared-head h1{font-size:20px;margin:0 0 4px;color:var(--t1)}
+  .shared-head p{margin:0;color:var(--t3);font-size:13px}
+  .shared-card{
+    display:flex;gap:14px;align-items:center;
+    padding:12px;margin-bottom:10px;
+    background:var(--panel);border:1px solid var(--bd);border-radius:12px;
+  }
+  .shared-card.owned{border-color:color-mix(in srgb,var(--owned) 45%,var(--bd))}
+  .shared-thumb{
+    width:72px;height:72px;border-radius:8px;object-fit:cover;
+    background:#000;flex-shrink:0;border:1px solid var(--bd);
+  }
+  .shared-thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:10px;font-weight:700}
+  .shared-info{flex:1;min-width:0}
+  .shared-info .n{font-weight:700;font-size:15px;color:var(--t1);margin-bottom:3px}
+  .shared-info .meta{color:var(--t3);font-size:12px;margin-bottom:4px}
+  .shared-info .price{color:var(--acc);font-size:13px;font-weight:700}
+  .shared-owned-badge{
+    flex-shrink:0;font-size:11px;font-weight:700;color:var(--owned);
+    text-align:right;white-space:nowrap;
+  }
   .banner{padding:9px 20px;font-size:12px;background:color-mix(in srgb,var(--sale) 14%,var(--panel));color:#ffd9d9;border-bottom:1px solid var(--bd)}
   footer{padding:9px 20px;border-top:1px solid var(--bd);background:var(--panel);color:var(--t3);font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
   footer b{color:var(--t2);font-weight:600}
@@ -161,9 +208,9 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.1</small></div>
+    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.2</small></div>
     <div class="summary" id="summary"></div>
   </header>
 
@@ -198,6 +245,10 @@
     <span id="store"></span>
   </footer>
 </div>
+
+<!-- v1.2: shown instead of #normalView when the page is opened via a
+     #wl= share link — see initSharedView() below. -->
+<div class="shared-wrap" id="sharedView" style="display:none"></div>
 
 <script type="module">
 import { hydrate, bigGet, bigSet, bigFlush, idbAvailable } from './js/idb-store.js';
@@ -447,8 +498,90 @@ $('clear').addEventListener('click', () => {
   applyFilters();
 });
 
-// ── Boot ─────────────────────────────────────────────────────────────
+// ── v1.2: shared want-list view ───────────────────────────────────────
+// Mirrors share.js's buildShareURL/decodeShareURL format exactly — same
+// #wl=<base64url(numeric_ids joined by comma)> fragment, same trailing-
+// numeric-id-from-slug matching. Kept as a plain duplicate rather than a
+// shared import, since this page is deliberately self-contained (see the
+// header comment) and this is a handful of lines, not worth a new module
+// boundary just to avoid repeating them.
+function decodeShareURL(hash){
+  const m = hash.match(/[#&]wl=([A-Za-z0-9\-_]+)/);
+  if (!m) return null;
+  try {
+    const b64 = m[1].replace(/-/g,'+').replace(/_/g,'/');
+    return atob(b64).split(',').map(n => n.trim()).filter(Boolean);
+  } catch { return null; }
+}
+
+function sharedCardHTML(f, owned){
+  const img = f.slug
+    ? `<img class="shared-thumb" loading="lazy" src="${IMG}/${esc(f.slug)}.jpg" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shared-thumb ph',textContent:'—'}))">`
+    : `<span class="shared-thumb ph">—</span>`;
+  const sub = sublineOf(f);
+  const meta = [lineName(f.line), sub ? sub.label : null, f.year].filter(Boolean).join(' · ');
+  const price = Number.isFinite(f.retail) ? `<div class="price">$${f.retail.toFixed(2)} MSRP</div>` : '';
+  return `<div class="shared-card${owned ? ' owned' : ''}">
+    ${img}
+    <div class="shared-info">
+      <div class="n">${esc(f.name)}</div>
+      <div class="meta">${esc(meta)}</div>
+      ${price}
+    </div>
+    ${owned ? `<div class="shared-owned-badge">✓ You already<br>have this</div>` : ''}
+  </div>`;
+}
+
+async function initSharedView(ids){
+  $('normalView').style.display = 'none';
+  const sv = $('sharedView');
+  sv.style.display = 'block';
+  sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div><h2>Loading want list…</h2></div>`;
+
+  let figs;
+  try {
+    const r = await fetch(FIGS_URL + '?v=' + Date.now(), { cache:'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    figs = await r.json();
+  } catch (err) {
+    sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div></div><div class="state"><h2>Couldn't load this want list</h2><div>${esc(err.message)} — check your connection and reload.</div></div>`;
+    return;
+  }
+  const byNum = new Map();
+  (Array.isArray(figs) ? figs : []).forEach(f => { const m = f.id && f.id.match(/(\d+)$/); if (m) byNum.set(m[1], f); });
+  const wanted = ids.map(n => byNum.get(n)).filter(Boolean);
+
+  if (!wanted.length) {
+    sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div></div><div class="state"><h2>Empty want list</h2><div>This link didn't match any figures in the current catalog.</div></div>`;
+    return;
+  }
+
+  // Best-effort: if this device happens to have its own local collection
+  // (someone opening their own share link, or a fellow collector who uses
+  // the app), flag anything they already have — same courtesy the old
+  // in-app want-list view gave. Harmless and empty for a first-time
+  // visitor with no local data at all.
+  let localColl = {};
+  try { localColl = await loadCollection(); } catch {}
+  const isOwned = f => { const s = localColl[f.id] && localColl[f.id].status; return s === 'owned' || s === 'for-sale'; };
+
+  sv.innerHTML = `
+    <div class="shared-head">
+      <div class="brand"><b>MOTU</b> VAULT</div>
+      <h1>Want List</h1>
+      <p>${wanted.length} figure${wanted.length === 1 ? '' : 's'}</p>
+    </div>
+    ${wanted.map(f => sharedCardHTML(f, isOwned(f))).join('')}
+  `;
+}
+
 (async function init(){
+  // v1.2: a #wl= link means this page was opened via "Share Want List,"
+  // not by the owner browsing their own collection — skip the normal
+  // table/toolbar entirely and show the focused card view instead.
+  const sharedIds = decodeShareURL(location.hash);
+  if (sharedIds && sharedIds.length) { await initSharedView(sharedIds); return; }
+
   coll = await loadCollection();
   $('store').innerHTML = idbAvailable()
     ? '<b>Storage:</b> IndexedDB (shared with the app)'
