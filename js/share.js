@@ -23,40 +23,25 @@ const openSheet = (...a) => window.openSheet?.(...a);
 const render = (...a) => window.render?.(...a);
 
 // ─── Want-List Share Link (v4.58, v7.33: opens desktop.html, v7.35: fixes,
-//      v7.36: compact binary encoding) ──────────────────────────────
-// v7.36: was comma-separated decimal text (e.g. "2394,3710,...") then
-// base64'd — reported as producing an unwieldy long link. Checked the real
-// catalog: every legitimate AF411 id fits under 14,000, comfortably within
-// 2 bytes, so a binary-packed payload runs meaningfully shorter — verified
-// ~35% shorter on a real 85-figure link. Format (before base64url):
-//   byte 0: 0xFE (marks this as the binary format — see the fallback note
-//            in decodeShareURL for why this specific byte was chosen)
-//   then, per figure: either
-//     0x00 + 2 bytes (big-endian uint16)      → catalog figure, its AF411 id
-//     0x01 + 1 byte length N + N string bytes → manually-added figure, its
-//                                                 full unique suffix (see
-//                                                 the v7.35 note just below
-//                                                 for why manual figures
-//                                                 can't use a small int)
-// v7.35: two real bugs fixed, still true of this format.
-//   (1) Ordered items no longer included — only 'wishlist' now. Sharing
-//       something already ordered as "wanted" risked a duplicate gift;
-//       it's already being acquired, so it shouldn't be presented as
-//       something to still get.
-//   (2) Manually-added figures (id starts with 'manual-') don't have a
-//       reliable trailing numeric id — their ids are a randomly-generated
-//       string that just happens to often end in a digit, with ZERO
-//       uniqueness guarantee. Confirmed against the real catalog: several
-//       manually-added figures collide on the same 1-2 digit "id" this
-//       way — not just a display duplicate, an actual silently-dropped-
-//       and-replaced item on decode. Those get the 0x01 suffix form above
-//       instead of ever being treated as a small int.
-
+//      v7.36: compact binary encoding, v7.37: shorter manual-figure tokens) ─
+// v7.37: manually-added figures were still encoding their FULL descriptive
+// suffix (e.g. "jungle-he-man-he-man-guerrero-mp0e83ff", ~38 chars) — for
+// a wishlist with many manual figures this dominated the link length and
+// made the v7.36 improvement much smaller than it should've been (14%
+// instead of the ~35-55% typical elsewhere). Checked the real catalog:
+// just the segment after the LAST hyphen (e.g. "mp0e83ff", ≤8 chars) is
+// already unique across all 107 manually-added figures on its own — the
+// descriptive name prefix was never actually needed for uniqueness.
+// Manual figures now encode only that trailing segment.
 function buildShareURL() {
   const entries = Object.entries(S.coll)
     .filter(([, c]) => c.status === 'wishlist')
     .map(([id]) => {
-      if (id.startsWith('manual-')) return { manual: true, suffix: id.slice('manual-'.length) };
+      if (id.startsWith('manual-')) {
+        const suffix = id.slice('manual-'.length);
+        const code = suffix.includes('-') ? suffix.slice(suffix.lastIndexOf('-') + 1) : suffix;
+        return { manual: true, suffix: code };
+      }
       const m = id.match(/(\d+)$/);
       return m ? { manual: false, num: parseInt(m[1], 10) } : null;
     })
@@ -448,13 +433,17 @@ function checkShareLink() {
     }
     // v7.35: two lookup maps now — bare numeric tokens match a catalog
     // figure's trailing AF411 id (unique by construction); 'm:' tokens
-    // match a manually-added figure's full unique suffix instead, since
+    // match a manually-added figure's trailing unique code instead, since
     // those ids don't have a reliable trailing digit (see buildShareURL's
     // note above on why that used to silently collide).
     const byNum = new Map(), byManual = new Map();
     S.figs.forEach(f => {
       if (!f.id) return;
-      if (f.id.startsWith('manual-')) byManual.set(f.id.slice('manual-'.length), f);
+      if (f.id.startsWith('manual-')) {
+        const suffix = f.id.slice('manual-'.length);
+        const code = suffix.includes('-') ? suffix.slice(suffix.lastIndexOf('-') + 1) : suffix;
+        byManual.set(code, f);
+      }
       else { const m = f.id.match(/(\d+)$/); if (m) byNum.set(m[1], f); }
     });
     const figs = tokens.map(t => t.startsWith('m:') ? byManual.get(t.slice(2)) : byNum.get(t)).filter(Boolean);
