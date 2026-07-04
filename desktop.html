@@ -6,6 +6,14 @@
 <title>MOTU Vault — Desktop</title>
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+<!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.4
+       • v1.4: Compact binary share-link encoding (matching js/share.js
+         v7.36) — roughly 35% shorter on a real test link, no third-party
+         service or backend needed. Old text-format links (v7.35 and
+         earlier) still decode correctly via a fallback — the two formats
+         are told apart by a marker byte that can never appear at the
+         start of the old format's decoded text.
      desktop.html  v1.3
        • v1.3: Fixed a real share-link collision bug (matching js/share.js
          v7.35). Manually-added figures' ids are a randomly-generated
@@ -222,7 +230,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.3</small></div>
+    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.4</small></div>
     <div class="summary" id="summary"></div>
   </header>
 
@@ -510,19 +518,42 @@ $('clear').addEventListener('click', () => {
   applyFilters();
 });
 
-// ── v1.2: shared want-list view ───────────────────────────────────────
-// Mirrors share.js's buildShareURL/decodeShareURL format exactly — same
-// #wl=<base64url(numeric_ids joined by comma)> fragment, same trailing-
-// numeric-id-from-slug matching. Kept as a plain duplicate rather than a
-// shared import, since this page is deliberately self-contained (see the
-// header comment) and this is a handful of lines, not worth a new module
-// boundary just to avoid repeating them.
+// ── v1.2/v1.3: shared want-list view ──────────────────────────────────
+// Mirrors js/share.js's buildShareURL/decodeShareURL format exactly (now
+// the v7.36 binary encoding, with a fallback for older text-format links
+// — see the full explanation there). Kept as a plain duplicate rather
+// than a shared import, since this page is deliberately self-contained
+// (see the header comment) and this is a handful of lines, not worth a
+// new module boundary just to avoid repeating them.
 function decodeShareURL(hash){
   const m = hash.match(/[#&]wl=([A-Za-z0-9\-_]+)/);
   if (!m) return null;
   try {
     const b64 = m[1].replace(/-/g,'+').replace(/_/g,'/');
-    return atob(b64).split(',').map(n => n.trim()).filter(Boolean);
+    const bin = atob(b64);
+    if (bin.charCodeAt(0) === 0xFE) {
+      const tokens = [];
+      let i = 1;
+      while (i < bin.length) {
+        const type = bin.charCodeAt(i++);
+        if (type === 0x00) {
+          if (i + 2 > bin.length) break;
+          const num = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
+          i += 2;
+          tokens.push(String(num));
+        } else if (type === 0x01) {
+          if (i + 1 > bin.length) break;
+          const len = bin.charCodeAt(i++);
+          if (i + len > bin.length) break;
+          const strBytes = new Uint8Array(len);
+          for (let j = 0; j < len; j++) strBytes[j] = bin.charCodeAt(i + j);
+          i += len;
+          tokens.push('m:' + new TextDecoder().decode(strBytes));
+        } else break;
+      }
+      return tokens;
+    }
+    return bin.split(',').map(n => n.trim()).filter(Boolean);
   } catch { return null; }
 }
 

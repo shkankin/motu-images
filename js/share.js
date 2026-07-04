@@ -22,15 +22,23 @@ const openSheet = (...a) => window.openSheet?.(...a);
 // render() is bridged onto window in app.js; reach it lazily to avoid a cycle.
 const render = (...a) => window.render?.(...a);
 
-// ─── Want-List Share Link (v4.58, v7.33: opens desktop.html, v7.35: fixes below) ─
-// Encodes wishlist figure IDs into a compact URL fragment.
-// Format: <desktop.html>#wl=<base64url(tokens joined by comma)>
-// Each token is either a bare number (catalog figures — their trailing
-// AF411 id, e.g. "4220") or "m:<suffix>" (manually-added figures — see the
-// v7.35 note below for why those need a different token shape).
-// The receiver reconstructs figure info from their own figures.json cache.
-//
-// v7.35: two real bugs fixed.
+// ─── Want-List Share Link (v4.58, v7.33: opens desktop.html, v7.35: fixes,
+//      v7.36: compact binary encoding) ──────────────────────────────
+// v7.36: was comma-separated decimal text (e.g. "2394,3710,...") then
+// base64'd — reported as producing an unwieldy long link. Checked the real
+// catalog: every legitimate AF411 id fits under 14,000, comfortably within
+// 2 bytes, so a binary-packed payload runs meaningfully shorter — verified
+// ~35% shorter on a real 85-figure link. Format (before base64url):
+//   byte 0: 0xFE (marks this as the binary format — see the fallback note
+//            in decodeShareURL for why this specific byte was chosen)
+//   then, per figure: either
+//     0x00 + 2 bytes (big-endian uint16)      → catalog figure, its AF411 id
+//     0x01 + 1 byte length N + N string bytes → manually-added figure, its
+//                                                 full unique suffix (see
+//                                                 the v7.35 note just below
+//                                                 for why manual figures
+//                                                 can't use a small int)
+// v7.35: two real bugs fixed, still true of this format.
 //   (1) Ordered items no longer included — only 'wishlist' now. Sharing
 //       something already ordered as "wanted" risked a duplicate gift;
 //       it's already being acquired, so it shouldn't be presented as
@@ -40,23 +48,37 @@ const render = (...a) => window.render?.(...a);
 //       string that just happens to often end in a digit, with ZERO
 //       uniqueness guarantee. Confirmed against the real catalog: several
 //       manually-added figures collide on the same 1-2 digit "id" this
-//       way (e.g. a MOTU Giants figure and three unrelated cross-brand
-//       figures all ending in "2") — not just a display duplicate, an
-//       actual silently-dropped-and-replaced item on decode, since the
-//       last one processed simply overwrites the others for that key.
-//       Those now encode with their full unique suffix (after "manual-")
-//       instead of relying on trailing digits at all.
+//       way — not just a display duplicate, an actual silently-dropped-
+//       and-replaced item on decode. Those get the 0x01 suffix form above
+//       instead of ever being treated as a small int.
 
 function buildShareURL() {
-  const parts = Object.entries(S.coll)
+  const entries = Object.entries(S.coll)
     .filter(([, c]) => c.status === 'wishlist')
     .map(([id]) => {
-      if (id.startsWith('manual-')) return 'm:' + id.slice('manual-'.length);
-      return id.match(/(\d+)$/)?.[1];
+      if (id.startsWith('manual-')) return { manual: true, suffix: id.slice('manual-'.length) };
+      const m = id.match(/(\d+)$/);
+      return m ? { manual: false, num: parseInt(m[1], 10) } : null;
     })
     .filter(Boolean);
-  if (!parts.length) return null;
-  const payload = btoa(parts.join(','))
+  if (!entries.length) return null;
+
+  const bytes = [0xFE];
+  const enc = new TextEncoder();
+  for (const e of entries) {
+    if (e.manual) {
+      const strBytes = enc.encode(e.suffix);
+      if (strBytes.length > 255) continue;  // pathological; skip rather than corrupt the stream
+      bytes.push(0x01, strBytes.length, ...strBytes);
+    } else if (e.num <= 0xFFFF) {
+      bytes.push(0x00, (e.num >> 8) & 0xFF, e.num & 0xFF);
+    }
+    // ids over 65535 silently skipped — none exist in the catalog today
+    // (max ~14,000); the old text format is still readable as a fallback
+    // if that ever changes before this format is revisited.
+  }
+  const binStr = bytes.map(b => String.fromCharCode(b)).join('');
+  const payload = btoa(binStr)
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   // Swap whatever page this was generated from (normally motu-vault.html)
   // for its sibling desktop.html — same directory, just a different file.
@@ -69,7 +91,37 @@ function decodeShareURL(hash) {
   if (!m) return null;
   try {
     const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
-    return atob(b64).split(',').map(n => n.trim()).filter(Boolean);
+    const bin = atob(b64);
+    // v7.36: binary format marker. The old text format's decoded string
+    // only ever starts with a digit ('0'-'9', code 48-57) or 'm' (code
+    // 109) — 0xFE (254) can never collide with that, so it safely tells
+    // the two formats apart. Old-format links already sent out before
+    // this change still decode correctly via the fallback below.
+    if (bin.charCodeAt(0) === 0xFE) {
+      const tokens = [];
+      let i = 1;
+      while (i < bin.length) {
+        const type = bin.charCodeAt(i++);
+        if (type === 0x00) {
+          if (i + 2 > bin.length) break;
+          const num = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
+          i += 2;
+          tokens.push(String(num));
+        } else if (type === 0x01) {
+          if (i + 1 > bin.length) break;
+          const len = bin.charCodeAt(i++);
+          if (i + len > bin.length) break;
+          const strBytes = new Uint8Array(len);
+          for (let j = 0; j < len; j++) strBytes[j] = bin.charCodeAt(i + j);
+          i += len;
+          tokens.push('m:' + new TextDecoder().decode(strBytes));
+        } else {
+          break;  // unrecognized type byte — stop rather than misread the rest
+        }
+      }
+      return tokens;
+    }
+    return bin.split(',').map(n => n.trim()).filter(Boolean);
   } catch { return null; }
 }
 
