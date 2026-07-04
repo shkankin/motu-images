@@ -425,6 +425,16 @@ const DEFAULT_TITLE = 'MOTU Collector';
 function getThemeTitles() {
   return THEMES[S.theme]?.titles || [DEFAULT_TITLE];
 }
+// v7.34: delegate-handlers.js's 'title-cycle' action (fires for any theme
+// with multiple titles — currently just skeletor, 3 titles) calls
+// window.getThemeTitles?.() — that module system has no imports at all by
+// design, window-only. This was only ever an ES module export, never
+// actually assigned to window, so the call silently resolved to undefined
+// and the handler returned immediately without doing anything. This is
+// the real cause of "tapping the title does nothing" for the skeletor
+// theme specifically — it always takes this code path since it has 3
+// titles, not the single-title-per-theme branches the other themes use.
+window.getThemeTitles = getThemeTitles;
 
 // ── Exports ─────────────────────────────────────────────────
 export {

@@ -107,6 +107,11 @@ function playTitleSound(idx) {
   const src = sounds[idx];
   if (src) playSound(src, 0.8);
 }
+// v7.34: same bug as getThemeTitles in state.js — delegate-handlers.js's
+// 'title-cycle' action calls window.playTitleSound?.(), which was never
+// actually bridged to window, only usable as a local function within this
+// module. Silently did nothing when called from the delegate handler.
+window.playTitleSound = playTitleSound;
 
 // § CELEBRATIONS ── checkCompletion, celebrateCompletion, spawnConfetti ──
 const _celebrated = store.get('motu-celebrated') || {};
