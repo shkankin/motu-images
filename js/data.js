@@ -30,7 +30,7 @@ import {
   loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap,
   getPhotoCopyMap, replacePhotoCopyMap, mergePhotoCopyMap,
 } from './photos.js';
-import { render, toast, toastAction, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
+import { render, toast, haptic, appConfirm, patchFigRow, patchDetailStatus, triggerPulse, toastUndo } from './render.js';
 import { checkCompletion } from './eggs.js';
 
 // v6.40: merge custom subline arrays into SUBLINES without clobbering existing
@@ -1981,9 +1981,10 @@ ${rows}
   toast(`✓ Report saved · ${figs.length} figures`);
 };
 
-// v7.38: backup-blob building split out of exportJSON so shareBackup()
-// (below) can reuse the exact same data assembly — only the final step
-// (download vs. share) differs between the two.
+// v7.38: backup-blob building split out of exportJSON as its own helper.
+// (Originally so a since-removed shareBackup() could reuse the same data
+// assembly — see the v7.40 note below. Left split out since it's clean
+// either way and there's no reason to re-merge working code.)
 async function _buildBackupBlob() {
   const backup = {
     version: 'motu-vault-backup-v5',  // v5: + soldLog (realized sales) + customFigs (user-added figures/variants)
@@ -2228,55 +2229,24 @@ function importJSON(file) {
   reader.readAsText(file);
 }
 
-// v7.38: alternative to exportJSON's plain download — shares the same
-// backup file via the OS native share sheet instead, which on modern
-// mobile browsers lists "Save to Drive," "Save to Dropbox," Files/iCloud,
-// AirDrop, email, etc. as direct targets. No per-provider integration or
-// OAuth needed on this app's part; the share sheet handles the choice.
-// Same underlying data as exportJSON() (via the now-shared _buildBackupBlob),
-// so it's just as valid a backup — marks backupDue() clear on success too.
-async function shareBackup() {
-  if (!navigator.share) {
-    toast('✗ Sharing isn\'t supported in this browser — use Download instead');
-    return;
-  }
-  try {
-    toast('Building backup…', { duration: 8000 });
-    const { blob, totalPhotos } = await _buildBackupBlob();
-    const file = new File([blob], 'motu-vault-backup.json', { type: 'application/json' });
-    if (navigator.canShare && !navigator.canShare({ files: [file] })) {
-      toast('✗ This browser can\'t share files — use Download instead');
-      return;
-    }
-    // v7.39 fix: navigator.share() has to run inside a fresh, unexpired
-    // user gesture. _buildBackupBlob() above is async and can take real
-    // time for a photo-heavy collection (real IndexedDB reads) — by the
-    // time it resolves, the original tap's gesture window has often
-    // already expired, especially on Safari/iOS. That surfaced as a
-    // rejection users described as "permission denied." Reported and
-    // confirmed. Fix: one more explicit tap now that the file is actually
-    // ready, so the share call itself has a genuine gesture with zero
-    // async work between the tap and the call.
-    toastAction(`Backup ready · ${totalPhotos} photo${totalPhotos===1?'':'s'}`, 'Share now', async () => {
-      try {
-        await navigator.share({ files: [file], title: 'MOTU Vault Backup' });
-        markBackupDone();
-      } catch (e) {
-        if (e?.name === 'AbortError') return;  // user closed the share sheet — not a failure
-        console.error('Share backup failed:', e);
-        toast('✗ Share failed: ' + (e?.message || 'unknown error').slice(0, 60));
-      }
-    });
-  } catch (e) {
-    console.error('Share backup failed:', e);
-    const oom = /out of memory|allocation/i.test(e?.message || '');
-    toast(oom
-      ? '✗ Backup too large for this device — try exporting fewer photos'
-      : '✗ Backup failed: ' + (e?.message || 'unknown error').slice(0, 60));
-  }
-}
+// v7.40: shareBackup() (v7.38, gesture-fix attempt in v7.39) removed.
+// Used the Web Share API to offer "Save to Drive/Dropbox/etc." as an
+// alternative to the plain download below. Kept failing with a
+// permission-denied-style rejection even after fixing the known gesture-
+// timing issue (navigator.share() needs to run inside a fresh, unexpired
+// user gesture — the original bug was an async gap before the call
+// letting that expire). The remaining failure couldn't be diagnosed
+// further without direct device console access, and researched
+// separately: the "native Save As" dialog experience the report was
+// actually asking for (matching another app's file-export flow) turns out
+// to require the File System Access API's showSaveFilePicker(), which has
+// never reliably shipped on Android Chrome and is still rolling out with
+// known bugs even as of this note. Removed rather than leave an
+// unreliable button in place — plain Download below remains the
+// consistently-working path; from there, uploading the one resulting
+// file to Drive/Dropbox manually via that app takes a few seconds and
+// sidesteps all of this.
 window.exportJSON = exportJSON;
-window.shareBackup = shareBackup;
 
 // v4.99: export/import app settings separately from collection data.
 // Includes theme, sort, view mode, line order, hidden items, recent
@@ -2400,14 +2370,6 @@ function renderExportSheet() {
   html += `<button data-action="export-json" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--gold);background:color-mix(in srgb, var(--gold) 8%, transparent);margin-bottom:8px;text-align:left;font-size:15px;color:var(--gold)">
     <span>Backup Collection + Photos</span>
     <span style="color:var(--t3);font-size:12px">${anyStatus} entries · ${photoCount} photos</span>
-  </button>`;
-  // v7.38: same backup, shared via the OS share sheet instead of a plain
-  // download — lets the user send it straight to Google Drive, Dropbox,
-  // Files/iCloud, email, etc. without this app integrating with any of
-  // them directly. Secondary/plainer styling since Download is still the
-  // more universally-supported default.
-  html += `<button data-action="share-backup" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:center;font-size:13px;font-weight:600;color:var(--t2)">
-    ${icon(ICO.share || ICO.export, 15)}<span>Share to Drive, Dropbox, etc.</span>
   </button>`;
   html += '<div class="text-sm text-dim" style="line-height:1.5">Includes all statuses, conditions, notes, variants, and custom photos. Use to restore your full collection.</div>';
   html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
