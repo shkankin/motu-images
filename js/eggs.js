@@ -122,7 +122,10 @@ const _celebrated = store.get('motu-celebrated') || {};
 // achievement date is recorded (Date.now(), not `true`, so the stats
 // sheet can show WHEN each was hit — legacy line/subline keys keep their
 // boolean `true` and are unaffected).
-const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 666, 750, 1000, 1250, 1500, 2000];
+// v7.43: 666 replaced with 600 — an, uh, unfortunate threshold choice that
+// looked much worse as someone's actual next unlock. Any hypothetical
+// stored ms:666 key is simply no longer displayed or counted.
+const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1250, 1500, 2000];
 
 function _ownedCount() {
   let n = 0;

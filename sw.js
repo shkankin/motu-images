@@ -3,6 +3,13 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.17 changelog:
+//   • CACHE bumped to v7.17. SHELL: eggs.js + render.js. App version v7.43.
+//   • Milestone ladder: 666 → 600. User-reported: at 588 owned, the next
+//     unlock displayed as 666, which reads as anything but celebratory.
+//     Orphaned ms:666 keys (none should exist) are ignored harmlessly —
+//     getMilestoneDates() only surfaces thresholds present in MILESTONES.
+//
 // v7.16 changelog:
 //   • CACHE bumped to v7.16. SHELL: stats.js + eggs.js + photos.js + app.js
 //     + render.js. App version v7.42 — feature release after a competitive
@@ -1010,7 +1017,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.16';
+const CACHE = 'motu-vault-v7.17';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
