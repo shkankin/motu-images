@@ -235,10 +235,16 @@ async function fetchFigs(manual = false, firstLoad = false) {
           // v6.39: inject custom sublines defined in loadouts.json into the
           // shared SUBLINES constant so the UI renders them without source edits.
           // Format: { "customSublines": { "my-line": [{ key, label, groups[] }] } }
-          if (ld && ld.customSublines && typeof ld.customSublines === 'object') {
-            S._repoCustomSublines = ld.customSublines;
-            _mergeCustomSublines(SUBLINES, ld.customSublines);
-          }
+          // v7.41: the merge now runs unconditionally with a {} fallback.
+          // Previously it was gated on the key existing — so deleting the
+          // whole customSublines key from loadouts.json (as opposed to
+          // emptying it) skipped the merge and re-opened the stale-in-memory
+          // trap that clear-then-merge (see _mergeCustomSublines) closes:
+          // entries merged during an earlier load in the same tab would
+          // survive until a full reload.
+          const cs = (ld && ld.customSublines && typeof ld.customSublines === 'object') ? ld.customSublines : {};
+          S._repoCustomSublines = cs;
+          _mergeCustomSublines(SUBLINES, cs);
           // v6.43: restore user-defined subline display order
           if (ld && ld.sublineOrder && typeof ld.sublineOrder === 'object') {
             S._sublineOrder = ld.sublineOrder;

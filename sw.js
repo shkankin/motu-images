@@ -4,8 +4,21 @@
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
 // v7.15 changelog:
-//   • CACHE bumped to v7.15. SHELL: data.js + render.js + delegate-handlers.js.
-//     App version v7.41. The deliberate window-bridge sweep (handoff §1),
+//   • CACHE bumped to v7.15. SHELL: data.js + render.js + delegate-handlers.js
+//     + share.js. App version v7.41. Also ships desktop.html v1.7 and
+//     lint_handlers.mjs v1.1 (neither is SHELL-cached).
+//   • share.js: want-list encoding no longer assumes catalog trailing
+//     numbers are unique — a real collision exists in the live catalog
+//     (13924: "Battle for Eternia" vs "Grayskull and Snake Mountain
+//     Strongholds", both kids-core), the same silent-substitution failure
+//     v7.35 fixed for manual figures, found by round-tripping the entire
+//     catalog through encode→decode→resolve. Ambiguous figures now encode
+//     by FULL id inside the existing 0x01 string-token type (no new type
+//     byte — old links and old decoders unaffected); resolution in both
+//     checkShareLink and desktop.html tries the manual-code map, then a
+//     new full-id map. Verified: all 1291 catalog figures round-trip
+//     exactly, zero shadowing between manual codes and full ids.
+//   • The deliberate window-bridge sweep (handoff §1),
 //     done proactively this time:
 //       – delegate-handlers.js: removed a dead block registering the five
 //         'title-tap-*' actions against window.titleTap* functions that were
@@ -23,7 +36,10 @@
 //     (merged entries carry a _custom marker, stripped before each merge) —
 //     fixes the documented trap where stale custom sublines persisted in an
 //     open tab's memory after loadouts.json was corrected, until a full
-//     reload. Also removed the dead PER_COPY_FIELDS const/export and its
+//     reload — and the merge call site now runs unconditionally with a {}
+//     fallback, so deleting the customSublines key entirely (its current
+//     state in the live file) syncs the same way as emptying it. Also
+//     removed the dead PER_COPY_FIELDS const/export and its
 //     unused import in render.js (flagged in v7.28, confirmed no consumers).
 //
 // v7.14 changelog:

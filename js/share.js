@@ -34,6 +34,21 @@ const render = (...a) => window.render?.(...a);
 // descriptive name prefix was never actually needed for uniqueness.
 // Manual figures now encode only that trailing segment.
 function buildShareURL() {
+  // v7.41: trailing digits are no longer assumed unique for catalog
+  // figures — a real collision now exists (two kids-core sets both end in
+  // 13924), the exact silent-substitution failure v7.35 fixed for manual
+  // figures. Any figure whose trailing number is shared by another
+  // catalog figure is encoded as a string token (existing 0x01 type)
+  // carrying its FULL id, which the decoder resolves exactly. Costs
+  // length only for the colliding figures (currently 2 in the catalog);
+  // everything else keeps the 3-byte numeric form. Old links and old
+  // decoders are unaffected — no new type byte.
+  const numCount = new Map();
+  for (const f of S.figs) {
+    if (!f.id || f.id.startsWith('manual-')) continue;
+    const m = f.id.match(/(\d+)$/);
+    if (m) numCount.set(m[1], (numCount.get(m[1]) || 0) + 1);
+  }
   const entries = Object.entries(S.coll)
     .filter(([, c]) => c.status === 'wishlist')
     .map(([id]) => {
@@ -43,7 +58,9 @@ function buildShareURL() {
         return { manual: true, suffix: code };
       }
       const m = id.match(/(\d+)$/);
-      return m ? { manual: false, num: parseInt(m[1], 10) } : null;
+      if (!m) return null;
+      if ((numCount.get(m[1]) || 0) > 1) return { manual: true, suffix: id };  // ambiguous → full id
+      return { manual: false, num: parseInt(m[1], 10) };
     })
     .filter(Boolean);
   if (!entries.length) return null;
@@ -431,22 +448,28 @@ function checkShareLink() {
       if (++_retries > 150) { toast('✗ Could not load want list'); return; }
       setTimeout(show, 200); return;
     }
-    // v7.35: two lookup maps now — bare numeric tokens match a catalog
-    // figure's trailing AF411 id (unique by construction); 'm:' tokens
-    // match a manually-added figure's trailing unique code instead, since
-    // those ids don't have a reliable trailing digit (see buildShareURL's
-    // note above on why that used to silently collide).
-    const byNum = new Map(), byManual = new Map();
+    // v7.35: two lookup maps — bare numeric tokens match a catalog
+    // figure's trailing AF411 id; 'm:' tokens match a manually-added
+    // figure's trailing unique code (see buildShareURL's note on why
+    // that used to silently collide).
+    // v7.41: trailing numbers turned out NOT to be unique by construction
+    // after all (real collision: 13924, two kids-core sets). New links
+    // encode ambiguous figures by full id inside the same string-token
+    // type, so 'm:' resolution now tries the manual map first, then a
+    // full-id map. Old links with an ambiguous bare number can't be
+    // disambiguated — first catalog match wins, as before.
+    const byNum = new Map(), byManual = new Map(), byFullId = new Map();
     S.figs.forEach(f => {
       if (!f.id) return;
+      byFullId.set(f.id, f);
       if (f.id.startsWith('manual-')) {
         const suffix = f.id.slice('manual-'.length);
         const code = suffix.includes('-') ? suffix.slice(suffix.lastIndexOf('-') + 1) : suffix;
         byManual.set(code, f);
       }
-      else { const m = f.id.match(/(\d+)$/); if (m) byNum.set(m[1], f); }
+      else { const m = f.id.match(/(\d+)$/); if (m && !byNum.has(m[1])) byNum.set(m[1], f); }
     });
-    const figs = tokens.map(t => t.startsWith('m:') ? byManual.get(t.slice(2)) : byNum.get(t)).filter(Boolean);
+    const figs = tokens.map(t => t.startsWith('m:') ? (byManual.get(t.slice(2)) || byFullId.get(t.slice(2))) : byNum.get(t)).filter(Boolean);
     if (!figs.length) return;
     // v6.31: record this view in the user's wishlist history so they can
     // revisit it from Settings later. Re-opening the same link bumps the

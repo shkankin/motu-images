@@ -1,10 +1,11 @@
 name: Handler Lint
 
-# v1.0 — guards against "dead button" regressions during the inline→delegation
-# migration: an inline onclick calling an unexposed global, or a data-action
-# with no register() handler, both fail silently at tap time. The linter uses
-# only Node built-ins (no install step). It currently passes on main, so this
-# is a hard gate.
+# v1.1 — guards against "dead button" regressions: an inline onclick calling
+# an unexposed global, a data-action with no register() handler, or (new in
+# v1.1) any window.X read/call with no window.X assignment anywhere in js/ —
+# the silent undefined?.() class that shipped four separate times before this
+# check existed. Uses only Node built-ins (no install step). Passes on main,
+# so this is a hard gate.
 run-name: "Handler Lint · ${{ github.event_name }}"
 
 on:

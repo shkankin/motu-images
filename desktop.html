@@ -9,6 +9,18 @@
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.7
+       • v1.7: Want-list decode: catalog trailing numbers are no longer
+         assumed unique — a real collision exists in the live catalog
+         (13924: "Battle for Eternia" vs "Grayskull and Snake Mountain
+         Strongholds", both kids-core), which silently substituted one
+         figure for the other, the same failure class v1.4 fixed for
+         manual figures. New links (share.js v7.41) encode ambiguous
+         figures by FULL id inside the existing string-token type;
+         resolution here now tries the manual-code map, then a full-id
+         map. Old links unchanged: unambiguous numbers resolve as always,
+         ambiguous ones deterministically take the first catalog match.
+
      desktop.html  v1.6
        • v1.6: Added a "Look this one up" search link to each shared
          want-list card. A non-collector viewing a shared list often
@@ -255,7 +267,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.6</small></div>
+    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.7</small></div>
     <div class="summary" id="summary"></div>
   </header>
 
@@ -628,23 +640,28 @@ async function initSharedView(ids){
     return;
   }
   // v7.35: two lookup maps — bare numeric tokens match a catalog figure's
-  // trailing AF411 id (unique by construction); 'm:' tokens match a
-  // manually-added figure's trailing unique code instead, since those ids
-  // are a randomly-generated string with no reliable trailing digit (see
-  // the matching note in js/share.js's buildShareURL for the real
-  // collision this fixes — confirmed against the actual catalog, not
-  // hypothetical).
-  const byNum = new Map(), byManual = new Map();
+  // trailing AF411 id; 'm:' tokens match a manually-added figure's
+  // trailing unique code, since those ids are a randomly-generated string
+  // with no reliable trailing digit.
+  // v1.7 (matches app v7.41): trailing numbers turned out NOT to be
+  // unique for catalog figures either — a real collision exists (13924,
+  // two kids-core sets), the same silent-substitution failure the manual
+  // fix closed. New links encode ambiguous figures by FULL id inside the
+  // same string-token type, so 'm:' resolution tries the manual map
+  // first, then a full-id map. Old links with an ambiguous bare number
+  // can't be disambiguated — first catalog match wins, as before.
+  const byNum = new Map(), byManual = new Map(), byFullId = new Map();
   (Array.isArray(figs) ? figs : []).forEach(f => {
     if (!f.id) return;
+    byFullId.set(f.id, f);
     if (f.id.startsWith('manual-')) {
       const suffix = f.id.slice('manual-'.length);
       const code = suffix.includes('-') ? suffix.slice(suffix.lastIndexOf('-') + 1) : suffix;
       byManual.set(code, f);
     }
-    else { const m = f.id.match(/(\d+)$/); if (m) byNum.set(m[1], f); }
+    else { const m = f.id.match(/(\d+)$/); if (m && !byNum.has(m[1])) byNum.set(m[1], f); }
   });
-  const wanted = ids.map(t => t.startsWith('m:') ? byManual.get(t.slice(2)) : byNum.get(t)).filter(Boolean);
+  const wanted = ids.map(t => t.startsWith('m:') ? (byManual.get(t.slice(2)) || byFullId.get(t.slice(2))) : byNum.get(t)).filter(Boolean);
 
   if (!wanted.length) {
     sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div></div><div class="state"><h2>Empty want list</h2><div>This link didn't match any figures in the current catalog.</div></div>`;
