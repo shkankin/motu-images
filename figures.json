@@ -6794,15 +6794,15 @@
   },
   {
     "id": "battle-for-eternia-13924",
-    "name": "Battle for Eternia",
-    "sourceName": "Battle for Eternia",
+    "name": "Grayskull and Snake Mountain Strongholds",
+    "sourceName": "Grayskull and Snake Mountain Strongholds",
     "line": "kids-core",
     "sourceLine": "chronicles",
     "group": "Movie (2026)",
     "sourceGroup": "Core (Non-Movie)",
     "wave": "",
     "year": 2026,
-    "retail": 50,
+    "retail": 86.39,
     "slug": "battle-for-eternia-13924",
     "faction": "Other",
     "source": "af411"
@@ -6836,21 +6836,6 @@
     "sourceLine": "chronicles",
     "sourceGroup": "",
     "upc": "194735350520"
-  },
-  {
-    "id": "grayskull-and-snake-mountain-strongholds-13924",
-    "name": "Grayskull and Snake Mountain Strongholds",
-    "sourceName": "Grayskull and Snake Mountain Strongholds",
-    "line": "kids-core",
-    "sourceLine": "chronicles",
-    "group": "Movie",
-    "sourceGroup": "",
-    "wave": "",
-    "year": 2026,
-    "retail": 86.39,
-    "slug": "grayskull-and-snake-mountain-strongholds-13924",
-    "faction": "Other",
-    "source": "af411"
   },
   {
     "id": "he-man-nicholas-galitzine-13549",

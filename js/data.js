@@ -720,10 +720,40 @@ function migrateEntry(c) {
   return out;
 }
 
+// v7.41: figure-id aliases — old id → canonical id. Used when a duplicate
+// catalog entry is merged away. First case: AF411 edited record #13924 in
+// place, renaming "Battle for Eternia" to "Grayskull and Snake Mountain
+// Strongholds"; sync_af411 (pre-v1.8) matched by full slug-id, saw a "new"
+// figure, and appended a duplicate. The duplicate entry was removed from
+// figures.json (the original id keeps the user-stable key and its already-
+// downloaded image; the record itself now carries AF411's updated name and
+// retail). Any user data saved against the duplicate id is remapped here on
+// load. Photos are keyed separately and are not remapped — acceptable: the
+// duplicate existed briefly and only a wishlisted (unowned) figure was
+// plausible under it.
+const FIG_ID_ALIASES = {
+  'grayskull-and-snake-mountain-strongholds-13924': 'battle-for-eternia-13924',
+};
+
 function migrateColl(coll) {
   const out = {};
-  for (const [id, entry] of Object.entries(coll || {})) {
-    out[id] = migrateEntry(entry);
+  // Two passes so canonical entries always win scalar fields regardless of
+  // key order in the stored object: non-aliased ids first, aliased second.
+  const entries = Object.entries(coll || {});
+  for (const aliasPass of [false, true]) {
+    for (const [id, entry] of entries) {
+      const isAlias = Object.prototype.hasOwnProperty.call(FIG_ID_ALIASES, id);
+      if (isAlias !== aliasPass) continue;
+      const canonical = isAlias ? FIG_ID_ALIASES[id] : id;
+      const migrated = migrateEntry(entry);
+      if (!out[canonical]) { out[canonical] = migrated; continue; }
+      // Data under both the alias and the canonical id (rare): keep the
+      // canonical entry's scalar fields, append the alias's copies with
+      // re-issued ids so none collide.
+      const base = out[canonical];
+      let nextId = base.copies.reduce((m, c) => Math.max(m, Number(c.id) || 0), 0) + 1;
+      for (const c of (migrated.copies || [])) base.copies.push({ ...c, id: nextId++ });
+    }
   }
   return out;
 }

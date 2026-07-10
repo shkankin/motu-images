@@ -18,6 +18,24 @@
 //     checkShareLink and desktop.html tries the manual-code map, then a
 //     new full-id map. Verified: all 1291 catalog figures round-trip
 //     exactly, zero shadowing between manual codes and full ids.
+//   • Follow-up: the 13924 "collision" turned out to be one product, not
+//     two — AF411 edited record 13924 in place (renamed "Battle for
+//     Eternia" → "Grayskull and Snake Mountain Strongholds"), and
+//     sync_af411 (which matches by full slug-based id) saw the new slug as
+//     a brand-new figure and appended a duplicate. Three-part fix:
+//     (1) figures.json: duplicate removed; the original entry keeps its
+//     user-stable id and slug/image and adopts AF411's updated name and
+//     retail (manual line/group protections preserved). Catalog back to
+//     zero trailing-number collisions. (2) sync_af411.py v1.8: "new"
+//     candidates whose trailing AF411 number already belongs to an
+//     existing or pending record are classified as renames — suppressed,
+//     never queued, existing record untouched, reported loudly in the
+//     console and CI summary for manual reconciliation. (3) data.js:
+//     FIG_ID_ALIASES remap in migrateColl() — user data saved against the
+//     duplicate id migrates to the canonical id on load, merging copies
+//     with re-issued ids if data exists under both. The share-encoding
+//     ambiguity guard above stays as defense in depth for any future
+//     rename that slips through.
 //   • The deliberate window-bridge sweep (handoff §1),
 //     done proactively this time:
 //       – delegate-handlers.js: removed a dead block registering the five

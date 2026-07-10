@@ -11,6 +11,18 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.8 (2026-07-10) — AF411 rename detection
+    - AF411 sometimes edits an existing product record in place; the URL
+      name-slug (and therefore our slug-based id) changes but the trailing
+      numeric id does not. Full-id matching treated the renamed record as
+      brand-new and appended a duplicate (real case: 13924 shipped as both
+      "Battle for Eternia" and "Grayskull and Snake Mountain Strongholds").
+      "New" candidates whose trailing number already belongs to an existing
+      or pending record are now classified as renames: suppressed from the
+      new buckets, never queued, existing record untouched (never-modify
+      policy), and reported loudly — in the console report and in the CI
+      summary JSON — for the editor to reconcile manually.
+
   v1.7 (2026-06-21) — security/reliability audit
     - Atomic JSON writes. figures.json and figures-pending.json are now
       written via a temp file + os.replace() (see atomic_write_text), so a
@@ -115,7 +127,7 @@ from pathlib import Path
 
 # AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
 # startup banner below) and to ship atomic JSON writes — see atomic_write_text.
-SCRIPT_VERSION = "v1.7"
+SCRIPT_VERSION = "v1.8"
 
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
@@ -674,6 +686,39 @@ def main():
     skipped_rejected = scraped_ids & rejected_ids
     pending_refresh = scraped_ids & pending_ids
     new_candidates = scraped_ids - existing_ids - pending_ids - rejected_ids
+
+    # v1.8: AF411 rename detection. AF411 occasionally EDITS an existing
+    # product record; the URL name-slug (and therefore our slug-based id)
+    # changes while the trailing AF411 numeric id stays stable. Matching by
+    # full id treated the renamed record as brand-new, producing a duplicate
+    # entry for the same product. Real case: 13924 — our captured "Battle
+    # for Eternia" was renamed by AF411 to "Grayskull and Snake Mountain
+    # Strongholds"; the sync appended it as a second figure, and the dupe
+    # shipped (caught later by the v7.41 share-link audit, where the two
+    # colliding trailing ids broke want-list encoding). The numeric id is
+    # the true identity: any "new" candidate whose trailing number already
+    # belongs to an existing or pending record is a rename, not a new
+    # figure. Per the never-modify policy the existing record is left
+    # untouched — the rename is suppressed from the new buckets and
+    # reported loudly for the editor to reconcile by hand (adopt the new
+    # name/fields or keep the local ones; either way, no duplicate).
+    def _af411_num(fid):
+        m = re.search(r"(\d+)$", fid or "")
+        return int(m.group(1)) if m else None
+
+    known_by_num = {}
+    for f in existing + pending:
+        n = _af411_num(f.get("id"))
+        if n is not None and n not in known_by_num:
+            known_by_num[n] = f["id"]
+
+    renamed = []   # (scraped_id, known_id)
+    for fid in sorted(new_candidates):
+        n = _af411_num(fid)
+        if n is not None and n in known_by_num:
+            renamed.append((fid, known_by_num[n]))
+    new_candidates -= {fid for fid, _ in renamed}
+
     new_for_pending = set() if args.no_pending else new_candidates
     new_for_existing = new_candidates if args.no_pending else set()
 
@@ -709,6 +754,8 @@ def main():
     print(f"  New → pending queue: {len(new_for_pending)}")
     if args.no_pending:
         print(f"  New → figures.json:  {len(new_for_existing)}")
+    if renamed:
+        print(f"  ⚠ AF411 RENAMES (suppressed, action needed): {len(renamed)}")
     print(f"  Existing updated:    {len(updated)}")
     if args.upc:
         print(f"  UPC backfill (existing): {len(upc_pending)}")
@@ -719,6 +766,16 @@ def main():
     print()
 
     new_to_show = new_for_pending or new_for_existing
+    if renamed:
+        print(f"  ── AF411 RENAMES DETECTED (same numeric id, new slug) ──")
+        print(f"  (NOT queued or added — the existing record is untouched.")
+        print(f"   Reconcile manually: adopt AF411's new name/fields onto the")
+        print(f"   existing entry, or keep the local ones. See v1.8 note.)")
+        for scraped_id, known_id in renamed:
+            s = scraped_by_id[scraped_id]
+            print(f"    ↻ #{_af411_num(scraped_id)}: '{known_id}' → AF411 now calls it "
+                  f"'{s['name']}' ({scraped_id})")
+        print()
     if new_to_show:
         bucket = "PENDING QUEUE" if new_for_pending else "figures.json (no-pending)"
         print(f"  ── NEW FIGURES → {bucket} ──")
@@ -901,6 +958,11 @@ def main():
                 "new_pending":       new_pending_details,
                 "pending_total":     len(new_pending),
                 "figures_total":     len(merged),
+                "renames_detected":  [
+                    {"num": _af411_num(sid), "existing": kid,
+                     "af411_now": scraped_by_id[sid]["name"], "af411_id": sid}
+                    for sid, kid in renamed
+                ],
                 "images_downloaded": img_downloaded,
                 "images_failed":     img_failed,
                 "line_filter":       args.line or "",
