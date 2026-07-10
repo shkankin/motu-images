@@ -116,7 +116,59 @@ window.playTitleSound = playTitleSound;
 // § CELEBRATIONS ── checkCompletion, celebrateCompletion, spawnConfetti ──
 const _celebrated = store.get('motu-celebrated') || {};
 
+// v7.42: collection-size milestones. Competing trackers gamify nothing;
+// hobbyDB/CLZ have no equivalent. Crossing a threshold of owned figures
+// fires the existing celebration (confetti + horn + toast) once, and the
+// achievement date is recorded (Date.now(), not `true`, so the stats
+// sheet can show WHEN each was hit — legacy line/subline keys keep their
+// boolean `true` and are unaffected).
+const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 666, 750, 1000, 1250, 1500, 2000];
+
+function _ownedCount() {
+  let n = 0;
+  for (const [id, c] of Object.entries(S.coll)) {
+    if (c.status !== 'owned' && c.status !== 'for-sale') continue;
+    const f = figById(id);
+    if (f && !figIsHidden(f)) n++;
+  }
+  return n;
+}
+
+// Returns { n: timestamp|true } for every achieved milestone (true for any
+// that pre-date v7.42's date recording — none exist yet, but cheap safety).
+function getMilestoneDates() {
+  const out = {};
+  for (const n of MILESTONES) {
+    if (_celebrated['ms:' + n]) out[n] = _celebrated['ms:' + n];
+  }
+  return out;
+}
+
+// Fires at most ONE milestone per call (the highest newly-crossed), so a
+// bulk import that jumps 0→300 celebrates once, not seven times. The
+// skipped lower thresholds are still marked achieved (same timestamp) so
+// the stats list stays complete.
+function checkMilestones() {
+  const owned = _ownedCount();
+  let fired = null;
+  for (const n of MILESTONES) {
+    if (owned >= n && !_celebrated['ms:' + n]) {
+      _celebrated['ms:' + n] = Date.now();
+      fired = n;
+    }
+  }
+  if (fired) {
+    store.set('motu-celebrated', _celebrated);
+    celebrateCompletion(fired + ' figures in the Vault!');
+    return true;
+  }
+  return false;
+}
+
 function checkCompletion(fig) {
+  // v7.42: milestone check first — at most one celebration per action, and
+  // "you just hit 100 figures" beats "wave complete" for surprise value.
+  if (checkMilestones()) return;
   // Check line completion
   const lineId = fig.line;
   const lineFigs = S.figs.filter(f => f.line === lineId && !figIsHidden(f));
@@ -577,5 +629,5 @@ window.imgErr = id => { S.imgErrors[id] = true; };
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  SND, getAudioContext, loadAudioBuffer, preloadSound, preloadImage, playSound, getThemeSounds, getThemeIcon, playTitleSound, checkCompletion, celebrateCompletion, spawnConfetti, AF411_GROUP_SLUG
+  SND, getAudioContext, loadAudioBuffer, preloadSound, preloadImage, playSound, getThemeSounds, getThemeIcon, playTitleSound, checkCompletion, celebrateCompletion, spawnConfetti, AF411_GROUP_SLUG, MILESTONES, getMilestoneDates
 };

@@ -3,6 +3,36 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.16 changelog:
+//   • CACHE bumped to v7.16. SHELL: stats.js + eggs.js + photos.js + app.js
+//     + render.js. App version v7.42 — feature release after a competitive
+//     audit of hobbyDB, CLZ, and iCollect Everything.
+//   • Vault Worth over time (stats.js): one compact local snapshot per day
+//     {ts, owned, copies, paid, est. value} recorded on boot (deferred 3s,
+//     throttled to ~20h, same-day refresh when value moves >1% so a bulk
+//     price-fetch shows immediately), capped at 730 entries under
+//     motu-value-history. Stats sheet gains a dual-line SVG trend chart
+//     (market value vs cumulative paid) with a 30-day delta. Per-copy value
+//     precedence matches the insurance report: cached asking price →
+//     retail → paid. This is hobbyDB's flagship paid feature, here local
+//     and free.
+//   • Scan-to-verdict (photos.js): the barcode scanner now announces the
+//     ownership verdict at the shelf instead of echoing digits — "⚠
+//     ALREADY IN YOUR VAULT — <name> (N copies)" / on your want list /
+//     already ordered / found-but-unowned. UPC matching strips leading
+//     zeros on both sides so UPC-A scans match EAN-13 stored codes and
+//     vice versa. Kills the duplicate-purchase story every competitor's
+//     marketing opens with.
+//   • Collection milestones (eggs.js): crossing 10/25/50/…/2000 owned
+//     figures fires the existing confetti+horn celebration once (a bulk
+//     import that jumps several thresholds celebrates only the highest;
+//     the skipped ones are still marked achieved). Achievement DATES are
+//     recorded (Date.now() in the same motu-celebrated store; legacy
+//     line/subline booleans untouched). Stats sheet gains a Milestones
+//     section: achieved trophy chips with dates + a progress bar to the
+//     next threshold. Milestone check runs before line/subline completion
+//     so one action produces at most one celebration.
+//
 // v7.15 changelog:
 //   • CACHE bumped to v7.15. SHELL: data.js + render.js + delegate-handlers.js
 //     + share.js. App version v7.41. Also ships desktop.html v1.7 and
@@ -980,7 +1010,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.15';
+const CACHE = 'motu-vault-v7.16';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

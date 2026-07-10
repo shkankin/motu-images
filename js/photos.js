@@ -779,9 +779,34 @@ window.openBarcodeScanner = async () => {
             if (window.haptic) window.haptic();
             _teardownScanner();
             window.onSearch && window.onSearch(raw);
-            // Surface a no-match hint: onSearch filters; if nothing matched,
-            // the empty-state already explains it, but a toast confirms the read.
-            window.toast && window.toast('Scanned ' + raw);
+            // v7.42: ownership verdict at the shelf. The whole reason a
+            // collector scans in a store is "do I already have this?" —
+            // the #1 duplicate-purchase pain every competing tracker's
+            // marketing leads with. Match the scanned digits against
+            // figure.upc (leading zeros stripped on both sides: UPC-A is
+            // EAN-13 with a leading 0, and scanners report either) and
+            // say the verdict out loud instead of just echoing digits.
+            const norm = s => String(s || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+            const scanned = norm(raw);
+            const hit = scanned ? S.figs.find(f => f.upc && norm(f.upc) === scanned) : null;
+            if (hit) {
+              const c = S.coll[hit.id];
+              const st = c?.status;
+              const copies = c?.copies?.length || 0;
+              if (st === 'owned' || st === 'for-sale') {
+                window.toast && window.toast(`⚠ ALREADY IN YOUR VAULT — ${hit.name}${copies > 1 ? ` (${copies} copies)` : ''}`, { large: true });
+              } else if (st === 'wishlist') {
+                window.toast && window.toast(`🎯 On your want list — ${hit.name}`, { large: true });
+              } else if (st === 'ordered') {
+                window.toast && window.toast(`📦 Already ordered — ${hit.name}`, { large: true });
+              } else {
+                window.toast && window.toast(`Found: ${hit.name} — not in your collection`);
+              }
+            } else {
+              // No UPC match: onSearch already filtered; the empty-state
+              // explains a miss, the toast just confirms the read worked.
+              window.toast && window.toast('Scanned ' + raw + ' — no UPC match');
+            }
             return;
           }
         }

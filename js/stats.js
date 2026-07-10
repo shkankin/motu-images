@@ -19,6 +19,71 @@ import {
   getCachedAskingPrice, isPricingConfigured, fetchPricing,
 } from './pricing.js';
 import { toast } from './render.js';
+import { MILESTONES, getMilestoneDates } from './eggs.js';
+
+// ── v7.42: Vault Worth history ──────────────────────────────────────
+// hobbyDB's flagship (paywalled) feature is "track your collection's value
+// over time"; CLZ/iCollect have no equivalent at all. This records one
+// compact snapshot per day — {t: ts, o: owned figures, c: copies,
+// p: total paid, v: est. market value} — on app boot, entirely local.
+// Value per copy prefers the cached asking price, then retail, then what
+// was paid (same precedence as the insurance report), so the series is
+// meaningful even before a pricing backend is configured. Capped at 730
+// entries (~2 years daily); the array lives under one store key so a
+// snapshot is a single write.
+const VALUE_HISTORY_KEY = 'motu-value-history';
+
+function _computeWorth() {
+  let owned = 0, copies = 0, paid = 0, value = 0;
+  for (const f of S.figs) {
+    if (figIsHidden(f)) continue;
+    const c = S.coll[f.id];
+    const st = c?.status;
+    if (st !== 'owned' && st !== 'for-sale') continue;
+    owned++;
+    const cps = (isMigrated(c) && c.copies?.length) ? c.copies : [{}];
+    const market = getCachedAskingPrice(f);
+    for (const cp of cps) {
+      copies++;
+      const cpPaid = parseFloat(cp.paid);
+      if (Number.isFinite(cpPaid)) paid += cpPaid;
+      const per = market != null ? market
+        : (Number.isFinite(f.retail) ? f.retail
+        : (Number.isFinite(cpPaid) ? cpPaid : 0));
+      value += per;
+    }
+  }
+  return { owned, copies, paid, value };
+}
+
+function getValueHistory() {
+  const h = store.get(VALUE_HISTORY_KEY);
+  return Array.isArray(h) ? h : [];
+}
+
+// Records at most one snapshot per ~20h. Called from app.js boot after the
+// collection is loaded. Also re-records (replaces today's entry) when the
+// value moved >1% within the same day, so a big bulk price-fetch shows up
+// same-day instead of tomorrow.
+function recordValueSnapshot() {
+  try {
+    const w = _computeWorth();
+    if (!w.owned) return;   // nothing to track yet
+    const hist = getValueHistory();
+    const last = hist[hist.length - 1];
+    const snap = { t: Date.now(), o: w.owned, c: w.copies,
+                   p: +w.paid.toFixed(2), v: +w.value.toFixed(2) };
+    if (last && (snap.t - last.t) < 20 * 3600 * 1000) {
+      const moved = last.v > 0 ? Math.abs(snap.v - last.v) / last.v : 1;
+      if (moved <= 0.01 && snap.o === last.o) return;   // nothing new today
+      hist[hist.length - 1] = snap;                     // refresh today's point
+    } else {
+      hist.push(snap);
+    }
+    if (hist.length > 730) hist.splice(0, hist.length - 730);
+    store.set(VALUE_HISTORY_KEY, hist);
+  } catch { /* never let stats bookkeeping break boot */ }
+}
 
 // ── v6.67: bulk price fetch ─────────────────────────────────────────
 // Fetches asking prices for every owned/for-sale figure that has no cached
@@ -158,6 +223,47 @@ function renderStatsSheet() {
         </div>`;
       }
       html += `</div>`;
+    }
+  }
+
+  // ── v7.42: Vault Worth over time ─────────────────────────────────
+  // Dual-series SVG line chart from the daily snapshots: est. market value
+  // (gold) vs cumulative paid (dim). Appears once two snapshots exist;
+  // before that, a one-line note says tracking has started.
+  {
+    const hist = getValueHistory();
+    if (hist.length >= 2) {
+      const W = 320, H = 84, PAD = 4;
+      const t0 = hist[0].t, t1 = hist[hist.length - 1].t || (t0 + 1);
+      const maxY = Math.max(1, ...hist.map(s => Math.max(s.v, s.p)));
+      const px = t => PAD + ((t - t0) / Math.max(1, t1 - t0)) * (W - PAD * 2);
+      const py = y => H - PAD - (y / maxY) * (H - PAD * 2);
+      const pts = key => hist.map(s => `${px(s.t).toFixed(1)},${py(s[key]).toFixed(1)}`).join(' ');
+      const cur = hist[hist.length - 1];
+      const back = hist.find(s => cur.t - s.t <= 30 * 86400000) || hist[0];
+      const delta30 = cur.v - back.v;
+      const dSign = (delta30 >= 0 ? '+' : '−') + '$' + Math.abs(delta30).toFixed(2);
+      const dDays = Math.max(1, Math.round((cur.t - back.t) / 86400000));
+      const fmtD = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      html += `<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:4px;display:flex;align-items:baseline;justify-content:space-between">
+        <span>Vault Worth over time</span>
+        <span style="font-weight:400;color:${delta30 >= 0 ? 'var(--gn)' : 'var(--rd)'};text-transform:none;letter-spacing:0">${dSign} · ${dDays}d</span>
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:10px 8px 6px">
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" preserveAspectRatio="none" role="img" aria-label="Collection value trend">
+          <polyline points="${pts('p')}" fill="none" stroke="var(--t3)" stroke-width="1.5" stroke-linejoin="round" opacity="0.7"/>
+          <polyline points="${pts('v')}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);padding:4px 2px 2px">
+          <span>${fmtD(t0)}</span>
+          <span><span style="color:var(--gold)">━ value</span> · <span>━ paid</span></span>
+          <span>${fmtD(t1)}</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--t3);margin-top:6px">${hist.length} daily snapshots · ${cur.o} figures · ${cur.c} copies tracked</div>`;
+    } else if (hist.length === 1) {
+      html += `<div style="font-size:11px;color:var(--t3);margin:2px 0 12px">📈 Daily worth tracking started ${new Date(hist[0].t).toLocaleDateString()} — the trend chart appears after the next snapshot.</div>`;
     }
   }
 
@@ -347,6 +453,46 @@ function renderStatsSheet() {
     }
   }
 
+  // ── v7.42: Milestones ─────────────────────────────────────────────
+  // Achieved collection-size thresholds (with dates) + progress toward the
+  // next one. Data lives in the same motu-celebrated store the line/subline
+  // trophies use; MILESTONES/getMilestoneDates come from eggs.js, which
+  // owns the celebration itself.
+  {
+    const dates = getMilestoneDates();
+    const achieved = MILESTONES.filter(n => dates[n]);
+    const ownedNow = stats.owned + stats.sale;
+    const next = MILESTONES.find(n => n > (achieved[achieved.length - 1] || 0) && n > ownedNow) ||
+                 MILESTONES.find(n => n > ownedNow);
+    if (achieved.length || (next && ownedNow > 0)) {
+      html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
+        <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Milestones</div>`;
+      if (achieved.length) {
+        html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">` +
+          achieved.map(n => {
+            const d = dates[n];
+            const when = (typeof d === 'number')
+              ? new Date(d).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '';
+            return `<div style="display:flex;flex-direction:column;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);background:color-mix(in srgb,var(--gold) 8%,transparent)" title="${n} figures${when ? ' · ' + when : ''}">
+              <span style="font-family:'Cinzel',serif;font-weight:700;font-size:15px;color:var(--gold)">🏆 ${n}</span>
+              ${when ? `<span style="font-size:9px;color:var(--t3)">${when}</span>` : ''}
+            </div>`;
+          }).join('') + `</div>`;
+      }
+      if (next && ownedNow > 0) {
+        const prevBase = achieved[achieved.length - 1] || 0;
+        const pctNext = Math.min(100, Math.round(((ownedNow - prevBase) / (next - prevBase)) * 100));
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:2px 0">
+          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pctNext}%;background:var(--gold);border-radius:3px"></div>
+          </div>
+          <div style="font-size:12px;color:var(--t2);flex-shrink:0">${ownedNow} / <span style="color:var(--gold);font-weight:700">${next}</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">${next - ownedNow} more to the next milestone</div>`;
+      }
+    }
+  }
+
   // v6.83: Data Completeness — surfaces owned figures missing priority fields
   // (condition, acquired, paid, location) and offers a one-tap gap-CSV export
   // that round-trips back through Import (matched by stable ID).
@@ -385,4 +531,4 @@ function renderStatsSheet() {
   return html;
 }
 
-export { renderStatsSheet };
+export { renderStatsSheet, recordValueSnapshot, getValueHistory };

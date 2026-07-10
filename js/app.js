@@ -36,6 +36,7 @@ import './tutorial.js';
 // backend). The module registers window.refreshPricing on load; the rest is
 // pull-only — render.js calls renderMarketValueBlock when drawing the detail.
 import * as pricing from './pricing.js';
+import { recordValueSnapshot } from './stats.js';
 // v6.29: event delegation. Replaces inline onclick="…" with data-action
 // attributes resolved through a single document-level dispatcher. See
 // delegate.js for rationale.
@@ -312,6 +313,12 @@ async function init() {
       renderMod.toastAction(`${deals} want-list figure${deals === 1 ? '' : 's'} at or below your target price`, 'View', () => window.goToFiltered?.('wishlist'));
     } catch {}
   }, 6000);
+
+  // v7.42: record the daily Vault Worth snapshot (stats.js). Deferred like
+  // the nags so it never competes with first paint; recordValueSnapshot is
+  // internally throttled to one snapshot per ~20h and try/caught, so this
+  // is safe to call unconditionally on every boot.
+  setTimeout(() => recordValueSnapshot(), 3000);
 
   // Check for incoming share link in URL fragment
   checkShareLink();
