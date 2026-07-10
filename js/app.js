@@ -104,7 +104,11 @@ async function init() {
   // one-time migration of any copy still in localStorage, and transparently
   // falls back to localStorage if IndexedDB is unavailable. After it resolves,
   // bigGet()/bigSet() are synchronous, so the rest of boot is unchanged.
-  await idbHydrate(['motu-c2', CACHE_KEY, LOADOUTS_CACHE_KEY]);
+  await idbHydrate(['motu-c2', CACHE_KEY, LOADOUTS_CACHE_KEY,
+                    // v7.44: pricing cache + history moved to IDB (see
+                    // pricing.js _loadCache note — silent localStorage
+                    // quota failures were wiping bulk-fetched prices).
+                    'motu-pricing-cache', 'motu-pricing-history']);
 
   // Load collection (from the IndexedDB mirror)
   let c = bigGet('motu-c2');

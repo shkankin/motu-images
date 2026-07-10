@@ -24,13 +24,14 @@
 //
 // Storage:
 //   localStorage motu-pricing-backend = { url: string, apiKey?: string }
-//   localStorage motu-pricing-cache   = { [figId]: { data, fetchedAt } }
+//   idb-store   motu-pricing-cache   = { [figId]: { data, fetchedAt } }   (v7.44: was localStorage)
 //
 // The cache is honored for CACHE_TTL after which a background refresh
 // runs on next access. Stale-while-revalidate so users never wait.
 // ════════════════════════════════════════════════════════════════════
 
 import { S, store, esc } from './state.js';
+import { bigGet, bigSet, idbAvailable, isHydrated } from './idb-store.js';
 
 const BACKEND_KEY = 'motu-pricing-backend';
 const CACHE_KEY   = 'motu-pricing-cache';
@@ -41,15 +42,46 @@ const REQUEST_TIMEOUT = 8000;                    // 8s — backend SLO
 
 let _cache = null;
 let _backend = null;
+let _persistWarned = false;
 const _inflight = new Map();   // figId → Promise to dedupe concurrent calls
 
+// v7.44: the price cache and history now live in the IndexedDB-backed
+// big-value store (idb-store.js) instead of raw localStorage — the same
+// engine the collection itself uses. ROOT CAUSE of "I bulk-fetched every
+// price and it was all gone hours later": _saveCache() wrote the ENTIRE
+// cache as one localStorage blob via store.set(), which catches
+// QuotaExceededError and returns false — a return value nothing checked.
+// On a large collection sharing localStorage's ~5MB with the collection
+// journal, photo labels, etc., the write silently failed; the in-memory
+// copy kept working for the rest of the session (so everything LOOKED
+// fine), and the next launch loaded whatever stale/empty blob was last
+// successfully written. bigSet() keeps a synchronous in-memory mirror,
+// persists to IndexedDB (quota measured in hundreds of MB) in the
+// background, and falls back to localStorage only when IDB is
+// unavailable. Both keys are in app.js's idbHydrate() list, whose native
+// migration copies any legacy localStorage value into IDB at boot and —
+// only after a CONFIRMED IDB write — removes the localStorage copy,
+// which also frees that quota for everything still living there.
 function _loadCache() {
   if (_cache) return _cache;
-  _cache = store.get(CACHE_KEY) || {};
-  return _cache;
+  const data = bigGet(CACHE_KEY) || {};
+  // Memoize only after IDB hydration: a read that races boot would see
+  // the pre-migration localStorage fallback (or nothing), and caching
+  // that would let a later _saveCache() overwrite the real persisted
+  // cache with fetch-only contents.
+  if (isHydrated()) _cache = data;
+  return data;
 }
 function _saveCache() {
-  if (_cache) store.set(CACHE_KEY, _cache);
+  if (!_cache) return;
+  bigSet(CACHE_KEY, _cache);
+  // bigSet's memory mirror always succeeds; the only true persistence
+  // failure left is IDB unavailable AND localStorage broken. Say so ONCE,
+  // loudly, instead of the old silent data loss.
+  if (!idbAvailable() && store.isBroken() && !_persistWarned) {
+    _persistWarned = true;
+    try { window.toast?.('⚠ Prices fetched but can\'t be saved — storage is full. They\'ll be lost when the app closes.', { large: true }); } catch {}
+  }
 }
 function _loadBackend() {
   if (_backend !== null) return _backend;
@@ -163,7 +195,8 @@ export async function fetchPricing(figId, opts = {}) {
 // Drop everything cached. Useful for a Settings "clear pricing cache" button.
 export function clearPricingCache() {
   _cache = {};
-  store.set(CACHE_KEY, {});
+  bigSet(CACHE_KEY, {});                              // v7.44: IDB-backed
+  try { localStorage.removeItem(CACHE_KEY); } catch {} // and any legacy copy
 }
 
 // ── Validation / sanitization ───────────────────────────────────────
@@ -273,8 +306,10 @@ const HISTORY_KEY = 'motu-pricing-history';
 const HISTORY_CAP = 40;
 let _history = null;
 function _loadHistory() {
-  if (!_history) _history = store.get(HISTORY_KEY) || {};
-  return _history;
+  if (_history) return _history;
+  const data = bigGet(HISTORY_KEY) || {};  // v7.44: IDB-backed, see _loadCache note
+  if (isHydrated()) _history = data;       // same race guard as _loadCache
+  return data;
 }
 function _recordHistory(figId, data, line) {
   const prefersSealed = !VINTAGE_LINES.has(line);
@@ -289,7 +324,7 @@ function _recordHistory(figId, data, line) {
   if (last && last.d === day) last.p = price;
   else arr.push({ d: day, p: price });
   if (arr.length > HISTORY_CAP) arr.splice(0, arr.length - HISTORY_CAP);
-  store.set(HISTORY_KEY, h);
+  bigSet(HISTORY_KEY, h);   // v7.44: IDB-backed
 }
 export function getPriceHistory(figId) {
   return _loadHistory()[figId] || [];

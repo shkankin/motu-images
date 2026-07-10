@@ -3,6 +3,32 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.18 changelog:
+//   • CACHE bumped to v7.18. SHELL: pricing.js + app.js + render.js. App
+//     version v7.44.
+//   • FIX (user-reported): bulk-fetched prices vanished "hours later" —
+//     i.e. on the next launch. Root cause: pricing.js persisted the whole
+//     cache as ONE localStorage blob via store.set(), which catches
+//     QuotaExceededError and returns false, and _saveCache() never checked
+//     the return. On a large collection sharing localStorage's ~5MB with
+//     the collection journal, photo labels, etc., the write silently
+//     failed; the in-memory copy kept working all session (everything
+//     looked fine), then the next boot loaded the last blob that DID fit —
+//     stale or empty. motu-pricing-cache and motu-pricing-history now live
+//     in the IndexedDB big-value store (idb-store.js), same engine as the
+//     collection: synchronous memory mirror, background IDB writes
+//     (hundreds-of-MB quota), localStorage only as a fallback. Both keys
+//     are hydrated at boot; hydrate()'s native migration adopts any legacy
+//     localStorage copy into IDB and frees the old key after a CONFIRMED
+//     write — which also returns that quota to everything still in
+//     localStorage. Reads are guarded against memoizing a pre-hydration
+//     fallback (which could otherwise shadow and later overwrite the real
+//     persisted cache). If persistence genuinely can't happen (no IDB AND
+//     localStorage broken), a loud one-time toast says so instead of the
+//     old silent loss. Verified with a full-lifecycle simulation:
+//     legacy-migration boot → 600-figure bulk fetch → fresh launch, cache
+//     intact.
+//
 // v7.17 changelog:
 //   • CACHE bumped to v7.17. SHELL: eggs.js + render.js. App version v7.43.
 //   • Milestone ladder: 666 → 600. User-reported: at 588 owned, the next
@@ -1017,7 +1043,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.17';
+const CACHE = 'motu-vault-v7.18';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
