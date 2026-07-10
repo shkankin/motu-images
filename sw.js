@@ -1,7 +1,30 @@
-// MOTU Vault — Service Worker v7.14
+// MOTU Vault — Service Worker v7.15
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v7.15 changelog:
+//   • CACHE bumped to v7.15. SHELL: data.js + render.js + delegate-handlers.js.
+//     App version v7.41. The deliberate window-bridge sweep (handoff §1),
+//     done proactively this time:
+//       – delegate-handlers.js: removed a dead block registering the five
+//         'title-tap-*' actions against window.titleTap* functions that were
+//         never defined anywhere — the block was silently overwritten by the
+//         later (correct) registrations mapping to eggs.js's trigger*Egg
+//         bridges, while emitting five '[delegate] re-registering' console
+//         warnings at every boot;
+//       – 'title-tap-skeletor' pointed at window.triggerSkeletorEgg, which
+//         does not exist (Skeletor's egg is the title-cycle path) — now a
+//         documented render() fallback, same as the light theme;
+//       – lint_handlers.mjs v1.1 adds a third check that makes this whole
+//         bug class a CI failure: every window.X read/call in a window-only
+//         module must have a window.X assignment somewhere in the app.
+//     data.js: _mergeCustomSublines() is now a true clear-then-merge sync
+//     (merged entries carry a _custom marker, stripped before each merge) —
+//     fixes the documented trap where stale custom sublines persisted in an
+//     open tab's memory after loadouts.json was corrected, until a full
+//     reload. Also removed the dead PER_COPY_FIELDS const/export and its
+//     unused import in render.js (flagged in v7.28, confirmed no consumers).
 //
 // v7.14 changelog:
 //   • Both the HTML/navigate fetch and the "everything else" (JS/CSS/etc.)
@@ -923,7 +946,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.14';
+const CACHE = 'motu-vault-v7.15';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

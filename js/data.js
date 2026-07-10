@@ -36,13 +36,31 @@ import { checkCompletion } from './eggs.js';
 // v6.40: merge custom subline arrays into SUBLINES without clobbering existing
 // entries. Object.assign would replace a whole line's array (e.g. 'origins')
 // if customSublines defines any entries for it — this appends instead, deduped by key.
+// v7.41: made this a true sync instead of append-only. Previously, if
+// loadouts.json was fixed while a tab was already open, entries merged
+// during an earlier load persisted in memory — an emptier customSublines
+// has nothing to iterate, so it could never undo a prior merge; only a
+// full reload cleared it (confirmed cause of "I fixed the file but the
+// dupes are still showing"). Now every merged entry carries a _custom
+// marker, and each merge first strips previously-merged entries before
+// appending the current set — the in-memory state always mirrors the
+// latest JSON. Hardcoded SUBLINES entries never carry _custom, so they
+// are never touched.
 function _mergeCustomSublines(target, custom) {
+  // Strip everything a previous merge added (marked _custom), on every
+  // line — not just lines present in the new payload, so an entry removed
+  // from the JSON disappears here too.
+  for (const lineId of Object.keys(target)) {
+    if (target[lineId].some(e => e._custom)) {
+      target[lineId] = target[lineId].filter(e => !e._custom);
+    }
+  }
   for (const [lineId, entries] of Object.entries(custom)) {
     if (!Array.isArray(entries)) continue;
     if (!target[lineId]) { target[lineId] = []; }
     for (const entry of entries) {
       if (!target[lineId].some(e => e.key === entry.key)) {
-        target[lineId].push(entry);
+        target[lineId].push({ ...entry, _custom: true });
       }
     }
   }
@@ -916,9 +934,16 @@ function setStatus(id, status) {
   if (newStatus === 'owned' && fig) checkCompletion(fig);
 }
 
-// Per-copy field names (write into copies[0]). The UI may submit 'variants'
-// (legacy plural) which is normalized to 'variant' (singular) in the schema.
-const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'variants', 'acquired', 'asking']);
+// v7.28: removed updateColl() + updateCollDebounced() + their half of
+// flushFieldDebounces() — confirmed dead. The multi-copy migration made
+// every actual field write go through updateCopy()/updateCopyDebounced()
+// instead (copy-level, not collection-level); nothing outside this file
+// called either of these, and nothing inside it did either once you
+// exclude their own now-removed debounce/flush plumbing.
+// v7.41: PER_COPY_FIELDS removed too — its only real consumer was the
+// updateColl() removed above; it then sat exported-but-unused (and
+// imported-but-unused in render.js) for thirteen versions. Confirmed no
+// consumer anywhere (js/, html tools, scripts) before deletion.
 
 // v6.23: conditions that imply the copy contains all loadout accessories.
 // MIB/MOC/New-Sealed are packaged; Loose Complete is a user assertion.
@@ -926,16 +951,6 @@ const PER_COPY_FIELDS = new Set(['condition', 'paid', 'notes', 'variant', 'varia
 const AUTOFILL_CONDITIONS = new Set([
   'Mint in Box', 'Mint on Card', 'New/Sealed', 'Loose Complete',
 ]);
-
-// v7.28: removed updateColl() + updateCollDebounced() + their half of
-// flushFieldDebounces() — confirmed dead. The multi-copy migration made
-// every actual field write go through updateCopy()/updateCopyDebounced()
-// instead (copy-level, not collection-level); nothing outside this file
-// called either of these, and nothing inside it did either once you
-// exclude their own now-removed debounce/flush plumbing. PER_COPY_FIELDS
-// (just above) is now effectively dead too — its only real consumer was
-// updateColl — but it's still imported (unused) in render.js; left alone
-// since removing it wasn't asked for and it's harmless either way.
 
 // ─── Multi-Copy Operations (v4.43) ───────────────────────────────
 // addCopy / removeCopy / updateCopy work directly on the copies array
@@ -2605,5 +2620,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, PER_COPY_FIELDS, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
 };

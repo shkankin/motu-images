@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — handler lint (v1.0)
+// MOTU Vault — handler lint (v1.1)
 // ────────────────────────────────────────────────────────────────────
 // Catches "dead button" bugs that the JS engine never reports, because
 // inline handlers fail silently at click time:
@@ -16,6 +16,15 @@
 //      are dispatched through delegate.js. If no module called
 //      `register('foo', …)` / `registerAll({ foo… })`, the tap hits the
 //      dispatcher's "no handler for" branch and silently does nothing.
+//
+//   3. (v1.1) UNBRIDGED window refs — `window.fooBar?.()` (or any read of
+//      `window.fooBar`) where no module ever assigns `window.fooBar = …`.
+//      This is the §1-handoff bug class that shipped three separate times:
+//      a function exists as an ES export but was never bridged to window,
+//      so the optional-chained call resolves to undefined?.() — no error,
+//      no console output, "nothing happens when I tap". Every window.X
+//      READ in js/ must resolve to a window.X ASSIGNMENT somewhere in js/
+//      (or a browser built-in on the whitelist below).
 //
 // This is the safety net for the inline→delegation migration (it's what lets
 // you eventually drop script-src 'unsafe-inline' from the app CSP): run it in
@@ -42,11 +51,16 @@ const all = Object.values(sources).join('\n');
 const globals = new Set();
 //   window.NAME = …
 for (const m of all.matchAll(/\bwindow\.([A-Za-z_$][\w$]*)\s*=/g)) globals.add(m[1]);
-//   Object.assign(window, { NAME, NAME2: …, … }) — strip `: value` expressions
-//   first so only the KEYS remain (a naive comma-delimited scan drops every
-//   other shorthand key because the delimiter gets consumed).
+//   Object.assign(window, { NAME, NAME2: …, … }) — strip comments first
+//   (a comment containing ':' would otherwise swallow the next key: the
+//   `: value` stripper matched across newlines, so `// v6.28: pricing layer`
+//   consumed everything up to the next comma INCLUDING the following key —
+//   found via lint self-test in v1.1), then strip `: value` expressions so
+//   only the KEYS remain (a naive comma-delimited scan drops every other
+//   shorthand key because the delimiter gets consumed).
 for (const blk of all.matchAll(/Object\.assign\(\s*window\s*,\s*\{([\s\S]*?)\}\s*\)/g)) {
-  const keysOnly = blk[1].replace(/:\s*[^,}]+/g, '');   // remove `: someValue`
+  const noComments = stripComments(blk[1]);
+  const keysOnly = noComments.replace(/:\s*[^,}\n]+/g, '');   // remove `: someValue` (bounded at EOL)
   for (const k of keysOnly.matchAll(/([A-Za-z_$][\w$]*)/g)) globals.add(k[1]);
 }
 
@@ -77,6 +91,34 @@ for (const [file, raw] of Object.entries(sources)) {
 // ── Walk references, skipping comments & template-doc noise ──
 const inlineOrphans = new Map();   // name -> [file:line]
 const actionOrphans = new Map();   // action -> [file:line]
+const windowOrphans = new Map();   // name -> [file:line]  (check 3, v1.1)
+
+// Browser-provided window properties that legitimately have no in-repo
+// assignment. Add here (with a comment) if a new platform API is adopted.
+const WINDOW_BUILTINS = new Set([
+  // navigation / environment
+  'location', 'history', 'navigator', 'origin', 'name', 'parent', 'top',
+  'self', 'opener', 'frames', 'document', 'console', 'screen',
+  'devicePixelRatio', 'innerWidth', 'innerHeight', 'isSecureContext',
+  'visualViewport', 'performance', 'crypto', 'indexedDB', 'caches',
+  'localStorage', 'sessionStorage', 'launchQueue',
+  // events / timing
+  'addEventListener', 'removeEventListener', 'dispatchEvent', 'event',
+  'onerror', 'onunhandledrejection', 'onload',
+  'requestAnimationFrame', 'cancelAnimationFrame',
+  'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval',
+  // scrolling / geometry
+  'scrollTo', 'scrollBy', 'scrollY', 'scrollX', 'pageYOffset', 'pageXOffset',
+  'getComputedStyle', 'getSelection', 'matchMedia',
+  // dialogs / windows
+  'alert', 'confirm', 'prompt', 'open', 'close', 'focus', 'blur', 'print',
+  // data / net / files
+  'fetch', 'btoa', 'atob', 'structuredClone', 'URL', 'URLSearchParams',
+  'Blob', 'File', 'FileReader', 'FormData', 'DOMParser', 'Image', 'Audio',
+  'AudioContext', 'webkitAudioContext', 'showSaveFilePicker',
+  // feature-detected platform APIs (photos.js barcode scanner)
+  'BarcodeDetector',
+]);
 
 function stripComments(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))   // block comments
@@ -111,6 +153,20 @@ for (const [file, raw] of Object.entries(sources)) {
     if (!actionOrphans.has(action)) actionOrphans.set(action, []);
     if (!actionOrphans.get(action).includes(key)) actionOrphans.get(action).push(key);
   }
+
+  // (3) window.NAME reads/calls that no module ever assigns. An occurrence
+  // immediately followed by `=` (but not `==`/`===`) is the assignment
+  // itself and is skipped; everything else — window.X(), window.X?.(),
+  // window.X.prop, bare window.X — must resolve to `globals` or a builtin.
+  for (const w of src.matchAll(/\bwindow\.([A-Za-z_$][\w$]*)/g)) {
+    const name = w[1];
+    if (WINDOW_BUILTINS.has(name) || globals.has(name)) continue;
+    const rest = src.slice(w.index + w[0].length);
+    if (/^\s*=(?![=>])/.test(rest)) continue;   // it's the assignment site
+    const key = `${file}:${lineAt(w.index)}`;
+    if (!windowOrphans.has(name)) windowOrphans.set(name, []);
+    if (!windowOrphans.get(name).includes(key)) windowOrphans.get(name).push(key);
+  }
 }
 
 // ── Report ──
@@ -129,10 +185,19 @@ if (actionOrphans.size) {
   for (const [action, locs] of actionOrphans) console.log(`   "${action}"  —  ${locs.join(', ')}`);
   console.log('');
 }
+if (windowOrphans.size) {
+  bad = true;
+  console.log(`✗ ${windowOrphans.size} window.* reference(s) never assigned anywhere:`);
+  for (const [name, locs] of windowOrphans) console.log(`   window.${name}  —  ${locs.join(', ')}`);
+  console.log('');
+}
 
 if (bad) {
   console.log('Dead-button risk: these fire silently at tap time. Expose the global');
   console.log('(window.X = … / Object.assign(window, {X})) or register the action.');
+  console.log('For window.* orphans: add the bridge line in the defining module,');
+  console.log('or whitelist it in WINDOW_BUILTINS if it is a real platform API.');
   process.exit(1);
 }
-console.log('✓ Every inline handler resolves to a global and every data-action is registered.');
+console.log('✓ Every inline handler resolves, every data-action is registered,');
+console.log('  and every window.* reference has a matching assignment.');

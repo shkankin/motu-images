@@ -489,15 +489,13 @@ registerAll({
   // Theme sheet
   'set-theme': (e, el, d) => window.setTheme?.(d.theme),
 
-  // Title tap (dynamic — action name set at render time to theme-specific value)
-  // The title uses data-action="${titleClick}" where titleClick is e.g. 'title-tap-eternia'.
-  // The eggs.js module registers its own specific actions; we register a safe no-op
-  // fallback so delegate doesn't warn on unknown actions for unconfigured themes.
-  'title-tap-eternia':  (e, el) => window.titleTapEternia?.(e, el),
-  'title-tap-skeletor': (e, el) => window.titleTapSkeletor?.(e, el),
-  'title-tap-heman':    (e, el) => window.titleTapHeman?.(e, el),
-  'title-tap-grayskull':(e, el) => window.titleTapGrayskull?.(e, el),
-  'title-tap-light':    (e, el) => window.titleTapLight?.(e, el),
+  // Title tap: the theme-specific 'title-tap-*' actions are registered in
+  // the "Dynamic title/sync actions" block further down, mapped to the
+  // real trigger*Egg() bridges in eggs.js. A previous fallback block here
+  // (v7.41 removal) registered the same five names against window.titleTap*
+  // functions that were never defined anywhere — dead on arrival, then
+  // silently overwritten by the later registrations, while still emitting
+  // five '[delegate] re-registering' warnings at every boot.
 
   // Sync button — action name is dynamic ('sync-now' or 'sync-bg') set at render time
   // Both are registered above; this comment is for reference only.
@@ -629,7 +627,13 @@ registerAll({
   'title-tap-eternia':   () => window.triggerEterniaEgg?.(),
   'title-tap-heman':     () => window.triggerHeManEgg?.(),
   'title-tap-grayskull': () => window.triggerGrayskullEgg?.(),
-  'title-tap-skeletor':  () => window.triggerSkeletorEgg?.(),
+  // Skeletor's "egg" is the 3-title cycle + per-title sound, so its title
+  // renders data-action="title-cycle", never this name (render.js only
+  // emits 'title-tap-skeletor' for a single-title theme). There is no
+  // window.triggerSkeletorEgg anywhere — the old handler here called it
+  // via ?. and would have silently no-opped if the theme ever dropped to
+  // one title (v7.41). Fall back to a plain re-render like the light theme.
+  'title-tap-skeletor':  () => window.render?.(),
   'title-tap-light':     () => window.render?.(),   // light theme has no egg currently
   'go-home':             () => window.goHome?.(),
 
