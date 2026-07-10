@@ -789,7 +789,11 @@ function renderEditFigureSheet() {
 
   h += row('name', 'Name',
     `<input type="text" value="${esc(ov.name || f.name || '')}" data-change-action="edit-set-name" data-fig-id="${esc(figId)}">`,
-    sourceName ? `Source: ${esc(sourceName)}` : ''
+    // v7.45: was a bare `sourceName` — a ReferenceError that crashed the
+    // whole Edit sheet for every figure the moment it rendered ("sourceName
+    // is not defined" on the error screen). Same source-hint pattern as
+    // the group/wave/year/retail rows above.
+    f.sourceName && !ov.name ? `Source: ${esc(f.sourceName)}` : ''
   );
 
   if (has) {

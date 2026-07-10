@@ -3,6 +3,22 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.19 changelog:
+//   • CACHE bumped to v7.19. SHELL: ui-sheets.js + render.js. App v7.45.
+//   • FIX (user-reported with screenshot): tapping Edit on the figure
+//     detail screen crashed to the error boundary with "sourceName is not
+//     defined". ui-sheets.js's edit sheet Name row referenced a bare
+//     `sourceName` identifier — a ReferenceError thrown the moment the
+//     sheet rendered, for EVERY figure, since the line landed. (Bare
+//     identifiers in template literals are valid syntax, so node --check
+//     and the handler lint can't see this class; it only explodes at
+//     render time.) Now `f.sourceName && !ov.name`, the same source-hint
+//     pattern as the group/wave/year/retail rows beside it. A heuristic
+//     sweep of all 15 modules for the same bug class (bare identifiers in
+//     ${...} with no declaration in scope) found no other genuine
+//     instance — every other hit resolved to a declared local or
+//     parameter on inspection.
+//
 // v7.18 changelog:
 //   • CACHE bumped to v7.18. SHELL: pricing.js + app.js + render.js. App
 //     version v7.44.
@@ -1043,7 +1059,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.18';
+const CACHE = 'motu-vault-v7.19';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
