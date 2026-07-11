@@ -3,6 +3,16 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.23 changelog:
+//   • CACHE bumped to v7.23. SHELL: render.js. App v7.49.
+//   • Removed the v7.46 status chip row from the Collection tab (user
+//     feedback with screenshot): every option it offered (All / Owned /
+//     Ordered / Want List / For Sale) already exists as a Status chip in
+//     the filter sheet, so the row was redundant UI occupying prime list
+//     space. The v7.46 semantics stay: wishlist remains excluded from the
+//     default Collection view and reachable via the filter sheet; the
+//     Recently-changed fix and the aligned nav badge are untouched.
+//
 // v7.22 changelog:
 //   • CACHE bumped to v7.22. SHELL: eggs.js + render.js. App v7.48.
 //   • FIX round 2 (user-reported with screenshot): AF411 still blocked by
@@ -1116,7 +1126,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.22';
+const CACHE = 'motu-vault-v7.23';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

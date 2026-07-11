@@ -517,7 +517,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.48</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.49</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1426,26 +1426,13 @@ function renderFigList() {
       <button class="${gridActive}" data-action="set-view" data-view="grid" title="Grid view">${icon(ICO.lines,14)}</button>
     </div>
   </div>`;
-  // v7.46: one-tap status chips on the Collection tab. "All" = the default
-  // membership (owned + ordered + for-sale — see _computeSortedFigs);
-  // Want List brings wishlist figures back on demand now that they're out
-  // of the default view. Reuses the existing 'filter' action / filterStatus
-  // plumbing, so the filter sheet and "Reset all filters" stay in sync.
-  if (S.tab === 'collection' && !S.search) {
-    const cst = getStats();
-    const chips = [
-      { v: '',         l: 'All',       n: cst.owned + cst.ord + cst.sale },
-      { v: 'owned',    l: 'Owned',     n: cst.owned },
-      { v: 'ordered',  l: 'Ordered',   n: cst.ord },
-      { v: 'wishlist', l: 'Want List', n: cst.wish },
-      { v: 'for-sale', l: 'For Sale',  n: cst.sale },
-    ];
-    html += `<div style="display:flex;gap:6px;overflow-x:auto;padding:0 4px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none">` +
-      chips.map(c => {
-        const active = S.filterStatus === c.v;
-        return `<button class="chip ${active ? 'active' : ''}" data-action="filter" data-filter-op="status" data-filter-val="${esc(c.v)}" style="flex-shrink:0">${c.l}${c.n ? ` <span style="opacity:0.65;font-size:11px">${c.n}</span>` : ''}</button>`;
-      }).join('') + `</div>`;
-  }
+  // v7.46 added a status chip row here (All / Owned / Ordered / Want List /
+  // For Sale); v7.49 removed it on user feedback — every one of those
+  // options already exists as a Status chip in the filter sheet, so the row
+  // was redundant UI in prime list space. The v7.46 membership change it
+  // shipped alongside (wishlist excluded from the default Collection view,
+  // see _computeSortedFigs) is unaffected: wishlist remains reachable via
+  // the filter sheet's Status → Wishlist chip.
   if (!figs.length) {
     // v5.01: clearer empty state on Collection tab when nothing has been
     // collected yet. Distinguish "you have nothing yet" from "your filters
