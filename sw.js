@@ -3,6 +3,24 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.21 changelog:
+//   • CACHE bumped to v7.21. SHELL: eggs.js + render.js. App v7.47.
+//   • FIX (user-reported): the AF411 button on the figure detail screen
+//     opened a "blocked by Cloudflare" page from inside the installed PWA
+//     while the same URL opened fine in Chrome. openAF411 used
+//     window.open(url, '_blank', 'noopener') — a window-FEATURES string as
+//     the third argument makes the call a POPUP, and from a standalone
+//     PWA on Android that popup gets a stripped browsing context
+//     (partitioned cookies, popup disposition) that fails Cloudflare's
+//     bot challenge. All three AF411 open paths (figure deep link, group
+//     index, all-figures fallback) now go through a new openExternal()
+//     helper that synthesizes a real anchor click — normal navigation
+//     semantics, so Android hands the URL to a full Chrome Custom Tab
+//     with first-party cookies, matching Chrome-app behavior. These were
+//     the only three window.open call sites in the app; the static
+//     external links in the About/onboarding sheets were already real
+//     <a target="_blank"> anchors and were never affected.
+//
 // v7.20 changelog:
 //   • CACHE bumped to v7.20. SHELL: render.js + data.js. App v7.46.
 //   • FIX (user-reported with screenshot): "Recently changed" on the
@@ -1081,7 +1099,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.20';
+const CACHE = 'motu-vault-v7.21';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

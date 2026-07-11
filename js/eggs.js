@@ -377,6 +377,27 @@ const AF411_GROUP_SLUG = {
   'mondo|Action Figures':            'action-figures',
 };
 
+// v7.47: open an external URL from inside the standalone PWA.
+// FIX (user-reported): the AF411 button opened a "blocked by Cloudflare"
+// page from within the PWA while the same URL opened fine in Chrome.
+// Cause: window.open(url, '_blank', 'noopener') — the presence of a
+// window-FEATURES string (the third argument) makes browsers treat the
+// call as a POPUP, and from a standalone-display PWA on Android that
+// popup gets a stripped browsing context (partitioned cookies, popup
+// disposition) that fails Cloudflare's bot check. A synthesized real
+// anchor click carries normal navigation semantics, so Android hands the
+// URL to a full Chrome Custom Tab with first-party cookies and the
+// challenge passes exactly like it does in the Chrome app.
+function openExternal(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener external';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 window.openAF411 = figId => {
   const fig = figById(figId);
   if (!fig) return;
@@ -395,14 +416,14 @@ window.openAF411 = figId => {
   //  3. Else fall back to the all-figures index.
   const af411IdPattern = /-\d{3,6}$/.test(fig.id);
   if (groupSlug && af411IdPattern) {
-    window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`, '_blank', 'noopener');
+    openExternal(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`);
     return;
   }
   if (groupSlug) {
-    window.open(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/`, '_blank', 'noopener');
+    openExternal(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/`);
     return;
   }
-  window.open('https://www.actionfigure411.com/masters-of-the-universe/all-action-figures.php', '_blank', 'noopener');
+  openExternal('https://www.actionfigure411.com/masters-of-the-universe/all-action-figures.php');
 };
 
 // v4.91: Breadcrumb-specific handlers. Previously "Lines" used goBack() and
