@@ -3,12 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MOTU Vault — Desktop</title>
+<title>MOTU Collector — Desktop</title>
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.8
+       • v1.8: Rebrand — all visible "MOTU VAULT" branding became
+         "MOTU COLLECTOR" (title, header brand, shared-view headers).
+         Internal identifiers deliberately unchanged: the IndexedDB name
+         ('motu-vault'), storage keys, and the motu-vault.html filename
+         (it is every installed PWA's start_url) — renaming those risks
+         user data or breaks installed apps for zero user-visible gain.
+
      desktop.html  v1.7
        • v1.7: Want-list decode: catalog trailing numbers are no longer
          assumed unique — a real collision exists in the live catalog
@@ -267,7 +275,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> VAULT <small>DESKTOP · v1.7</small></div>
+    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.8</small></div>
     <div class="summary" id="summary"></div>
   </header>
 
@@ -628,7 +636,7 @@ async function initSharedView(ids){
   $('normalView').style.display = 'none';
   const sv = $('sharedView');
   sv.style.display = 'block';
-  sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div><h2>Loading want list…</h2></div>`;
+  sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> COLLECTOR</div><h2>Loading want list…</h2></div>`;
 
   let figs;
   try {
@@ -636,7 +644,7 @@ async function initSharedView(ids){
     if (!r.ok) throw new Error('HTTP ' + r.status);
     figs = await r.json();
   } catch (err) {
-    sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div></div><div class="state"><h2>Couldn't load this want list</h2><div>${esc(err.message)} — check your connection and reload.</div></div>`;
+    sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> COLLECTOR</div></div><div class="state"><h2>Couldn't load this want list</h2><div>${esc(err.message)} — check your connection and reload.</div></div>`;
     return;
   }
   // v7.35: two lookup maps — bare numeric tokens match a catalog figure's
@@ -664,7 +672,7 @@ async function initSharedView(ids){
   const wanted = ids.map(t => t.startsWith('m:') ? (byManual.get(t.slice(2)) || byFullId.get(t.slice(2))) : byNum.get(t)).filter(Boolean);
 
   if (!wanted.length) {
-    sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> VAULT</div></div><div class="state"><h2>Empty want list</h2><div>This link didn't match any figures in the current catalog.</div></div>`;
+    sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> COLLECTOR</div></div><div class="state"><h2>Empty want list</h2><div>This link didn't match any figures in the current catalog.</div></div>`;
     return;
   }
 
@@ -679,7 +687,7 @@ async function initSharedView(ids){
 
   sv.innerHTML = `
     <div class="shared-head">
-      <div class="brand"><b>MOTU</b> VAULT</div>
+      <div class="brand"><b>MOTU</b> COLLECTOR</div>
       <h1>Want List</h1>
       <p>${wanted.length} figure${wanted.length === 1 ? '' : 's'}</p>
     </div>

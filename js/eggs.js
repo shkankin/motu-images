@@ -162,7 +162,7 @@ function checkMilestones() {
   }
   if (fired) {
     store.set('motu-celebrated', _celebrated);
-    celebrateCompletion(fired + ' figures in the Vault!');
+    celebrateCompletion(fired + ' figures in your collection!');   // v7.52 rebrand
     return true;
   }
   return false;

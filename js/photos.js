@@ -794,7 +794,7 @@ window.openBarcodeScanner = async () => {
               const st = c?.status;
               const copies = c?.copies?.length || 0;
               if (st === 'owned' || st === 'for-sale') {
-                window.toast && window.toast(`⚠ ALREADY IN YOUR VAULT — ${hit.name}${copies > 1 ? ` (${copies} copies)` : ''}`, { large: true });
+                window.toast && window.toast(`⚠ ALREADY IN YOUR COLLECTION — ${hit.name}${copies > 1 ? ` (${copies} copies)` : ''}`, { large: true });
               } else if (st === 'wishlist') {
                 window.toast && window.toast(`🎯 On your want list — ${hit.name}`, { large: true });
               } else if (st === 'ordered') {

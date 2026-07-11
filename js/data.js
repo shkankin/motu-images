@@ -1768,7 +1768,7 @@ function exportCSV(filter) {
   }
   const csv = [h, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const suffix = filter ? '-' + filter : '';
-  _downloadBlobSafe(new Blob([csv],{type:'text/csv'}), 'motu' + suffix + '.csv');   // v7.50: delayed revoke
+  _downloadBlobSafe(new Blob([csv],{type:'text/csv'}), 'motu-collector' + suffix + '.csv');   // v7.50: delayed revoke
   const summary = totalRowCount === list.length
     ? `✓ Exported ${list.length} figures`
     : `✓ Exported ${list.length} figures · ${totalRowCount} rows`;
@@ -1944,7 +1944,7 @@ window.exportPhotosZip = async () => {
   });
   const zip = await buildZip(entries);
   const ts = new Date().toISOString().slice(0, 10);
-  _downloadBlobSafe(zip, `motu-vault-photos-${ts}.zip`);   // v7.50: delayed revoke
+  _downloadBlobSafe(zip, `motu-collector-photos-${ts}.zip`);   // v7.50: delayed revoke
   toast(`✓ Exported ${total} photos`);
 };
 
@@ -2078,7 +2078,7 @@ window.buildInsuranceReport = async () => {
 `;
   const parts = [doc, ...rowParts, '</body></html>'];
   const blob = new Blob(parts, { type: 'text/html' });
-  _downloadBlobSafe(blob, `motu-vault-inventory-${now.toISOString().slice(0, 10)}.html`);
+  _downloadBlobSafe(blob, `motu-collector-inventory-${now.toISOString().slice(0, 10)}.html`);
   toast(`✓ Report saved · ${figs.length} figures${photoN ? ` · ${photoN} photos` : ''} · ${(blob.size / 1048576).toFixed(1)}MB`);
   } catch (e) {
     console.error('Report failed:', e);
@@ -2142,7 +2142,7 @@ async function exportJSON() {
     pendingToast = true;
     toast('Building backup…', { duration: 8000 });
     const { blob, totalPhotos } = await _buildBackupBlob();
-    _downloadBlobSafe(blob, 'motu-vault-backup.json');   // v7.50: delayed revoke, see helper
+    _downloadBlobSafe(blob, 'motu-collector-backup.json');   // v7.50: delayed revoke, see helper
     toast(`✓ Backup saved · ${totalPhotos} photo${totalPhotos===1?'':'s'}`);
     markBackupDone();
   } catch (e) {
@@ -2372,7 +2372,7 @@ window.exportSettings = () => {
   }
   const payload = { version: 'motu-vault-settings-v1', exportedAt: Date.now(), settings };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  _downloadBlobSafe(blob, `motu-vault-settings-${new Date().toISOString().slice(0,10)}.json`);   // v7.50
+  _downloadBlobSafe(blob, `motu-collector-settings-${new Date().toISOString().slice(0,10)}.json`);   // v7.50
   toast('✓ Settings exported');
 };
 

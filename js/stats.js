@@ -247,7 +247,7 @@ function renderStatsSheet() {
       const fmtD = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
       html += `<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>
       <div class="label text-upper text-dim text-xs" style="margin-bottom:4px;display:flex;align-items:baseline;justify-content:space-between">
-        <span>Vault Worth over time</span>
+        <span>Collection Worth over time</span>
         <span style="font-weight:400;color:${delta30 >= 0 ? 'var(--gn)' : 'var(--rd)'};text-transform:none;letter-spacing:0">${dSign} · ${dDays}d</span>
       </div>
       <div style="background:var(--bg2);border-radius:8px;padding:10px 8px 6px">

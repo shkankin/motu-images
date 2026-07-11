@@ -1,7 +1,33 @@
-// MOTU Vault — Service Worker v7.15
+// MOTU Collector — Service Worker v7.15
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v7.26 changelog:
+//   • CACHE bumped to v7.26. SHELL: data.js + eggs.js + photos.js +
+//     stats.js + render.js. App v7.52. Also ships README.md (new),
+//     desktop.html v1.8, deploy.html v1.12, figures-editor v1.30.0,
+//     lint.yml (README freshness step).
+//   • Rebrand: all USER-VISIBLE "MOTU Vault" became "MOTU Collector" —
+//     desktop/deploy/editor titles and headers, the shared-want-list
+//     headers, download filenames (motu-collector-backup.json,
+//     -inventory-*.html, -photos-*.zip, -settings-*.json, .csv, repo
+//     zip), the milestone toast ("figures in your collection!"), the
+//     scan verdict ("ALREADY IN YOUR COLLECTION"), and the stats label
+//     ("Collection Worth over time"). INTERNAL identifiers deliberately
+//     keep the old name — IndexedDB database 'motu-vault', every
+//     motu-* storage key, this cache-name prefix, backup/settings
+//     format strings (motu-vault-backup-v*, motu-vault-settings-v1),
+//     and the motu-vault.html filename (every installed PWA's
+//     start_url) — because renaming any of them risks orphaning user
+//     data or breaking installed apps for zero visible gain. Import
+//     paths match on file CONTENT, not filename, so old backups with
+//     old filenames restore fine.
+//   • README.md added: purpose, differentiators, quick start, feature
+//     tour, data/privacy policy, dev notes. Written version-agnostic
+//     (capabilities, not versions; sw.js remains the changelog of
+//     record) and guarded by a new CI step that fails if required
+//     sections disappear or a version string sneaks in.
 //
 // v7.25 changelog:
 //   • CACHE bumped to v7.25. SHELL: data.js + app.js + render.js +
@@ -1172,7 +1198,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.25';
+const CACHE = 'motu-vault-v7.26';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

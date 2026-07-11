@@ -80,7 +80,7 @@
      can break that local workflow in some browsers. Add the CSP at the
      hosting layer (or ship a hosted-only copy).
      ════════════════════════════════════════════════════════════════ -->
-<title>MOTU Vault — Figures Editor</title>
+<title>MOTU Collector — Figures Editor</title>
 <!-- Standalone editor for the figures-pending review queue.
 
      Usage:
@@ -427,7 +427,7 @@
 </head>
 <body>
 <div class="container">
-  <h1>MOTU Vault — Figures Editor <span id="editorVersionBadge" style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:8px"></span></h1>
+  <h1>MOTU Collector — Figures Editor <span id="editorVersionBadge" style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:8px"></span></h1>
   <div class="subtitle">Auto-loads the current figures.json, loadouts.json and review queue from the repo on open — no manual file loading. Review pending figures or edit existing ones, then commit; new figures are appended to figures.json, never replace it.</div>
 
   <div class="toolbar">
@@ -648,7 +648,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.29.0';
+const EDITOR_VERSION = 'v1.30.0';   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;

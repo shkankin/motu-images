@@ -44,3 +44,16 @@ jobs:
         run: npm install --no-save eslint@9 globals
       - name: ESLint no-undef
         run: npx eslint --config eslint.config.mjs js/*.js sw.js
+      # v7.52: README freshness guard. The README documents capabilities,
+      # not versions (policy in its Development section) — this check keeps
+      # it structurally present and version-free so it can't silently rot:
+      # required sections must exist, and no app version string may appear.
+      - name: README freshness
+        run: |
+          test -f README.md
+          for h in "Why this instead" "Quick start" "Feature tour" "Data & privacy" "Development"; do
+            grep -q "$h" README.md || { echo "README missing section: $h"; exit 1; }
+          done
+          if grep -qE "v7\.[0-9]+" README.md; then
+            echo "README contains a version string — it documents capabilities, not versions"; exit 1;
+          fi
