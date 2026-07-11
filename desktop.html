@@ -9,6 +9,13 @@
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.9
+       • v1.9: "Use the full app →" header link (motu-vault.html?m=1).
+         Pairs with the app's new desktop routing: plain desktop visits
+         to motu-vault.html now land here automatically; ?m=1 opts out
+         stickily (localStorage motu-prefer-full on the app's origin).
+         This page never auto-redirects, so no loop is possible.
+
      desktop.html  v1.8
        • v1.8: Rebrand — all visible "MOTU VAULT" branding became
          "MOTU COLLECTOR" (title, header brand, shared-view headers).
@@ -275,7 +282,8 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.8</small></div>
+    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.9</small></div>
+    <a href="motu-vault.html?m=1" style="font-size:12px;color:var(--acc);text-decoration:none;margin-left:12px" title="Open the full app in this browser (remembered for next time)">Use the full app →</a>
     <div class="summary" id="summary"></div>
   </header>
 

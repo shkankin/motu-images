@@ -58,6 +58,7 @@ Your collection lives on your device; the app is just a static site.
   dashboard, collection-worth-over-time chart, milestones, data-gap audit.
 - **Pricing** — optional self-hosted pricing worker fetches eBay sold
   medians; values are cached on-device and drive stats and reports.
+  Setup guide: [`backend/README.md`](backend/README.md).
 - **Photos** — per-figure photo gallery with per-copy assignment, stored
   on-device (OPFS), exportable as a ZIP.
 - **Sharing** — compact want-list links (with QR) that open a read-only
@@ -65,8 +66,10 @@ Your collection lives on your device; the app is just a static site.
 - **Import/Export** — JSON backup/restore, CSV export, CSV import
   (including AF411-format), settings-only transfer for new devices.
 - **Desktop / tools** — `desktop.html` (read-only desktop viewer and
-  shared-list target), `figures-editor.html` (catalog maintenance),
-  `deploy.html` (release tool).
+  shared-list target; plain desktop-browser visits to the app are routed
+  here automatically — "Use the full app →" opts out, remembered),
+  `figures-editor.html` (catalog maintenance), `deploy.html` (release
+  tool).
 
 ## Data & privacy
 

@@ -13,6 +13,11 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Collector — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
+     deploy.html  v1.13
+       • v1.13: PATH_MAP entry 'backend-README.md' → backend/README.md.
+         Flat zips can only carry one README.md, so the backend's ships
+         under a distinct flat name.
+
      deploy.html  v1.12
        • v1.12: MOTU Collector rebrand (title, h1 — the h1 badge also
          hadn't been bumped to v1.11 with the header note; both fixed
@@ -340,7 +345,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.12</span></h1>
+  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.13</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -445,6 +450,7 @@ const PATH_MAP = {
   'lint.yml':                 '.github/workflows/lint.yml',
   'eslint.config.mjs':        'eslint.config.mjs',   // v1.11: root eslint config (no-undef gate)
   'README.md':                'README.md',           // v1.12: repo README (root)
+  'backend-README.md':        'backend/README.md',   // v1.13: pricing backend README (flat name avoids colliding with root README.md in a flat zip)
 };
 
 // ── State ──────────────────────────────────────────────────────────

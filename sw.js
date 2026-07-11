@@ -3,6 +3,29 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.27 changelog:
+//   • CACHE bumped to v7.27. SHELL: render.js (+ motu-vault.html, which is
+//     network-first). App v7.53. Also ships desktop.html v1.9,
+//     deploy.html v1.13, backend/README.md (new), README.md (updated).
+//   • Desktop routing: plain desktop-browser visits to motu-vault.html now
+//     redirect to desktop.html via an inline head script. Capability-based
+//     (fine pointer + hover + ≥700px shorter screen edge), with hard
+//     guards: installed apps (standalone display / navigator.standalone)
+//     are NEVER redirected away from their start_url; mobile UAs and
+//     coarse-pointer devices (iPads masquerading as Macs) stay; ?m=1 opts
+//     out stickily (localStorage motu-prefer-full; ?m=0 forgets); search
+//     and hash are preserved so #wl= share links land on desktop.html's
+//     shared view. desktop.html gains a "Use the full app →" header link
+//     and never auto-redirects, so loops are impossible. Neither the
+//     manifest nor the SW does this: the manifest can't branch, and the
+//     SW doesn't control first visits (and only sees UA hints on
+//     Chromium) — the inline script runs everywhere including offline,
+//     since the page itself is SW-cached.
+//   • backend/README.md: user-facing deploy guide for the pricing worker —
+//     routes, provider chain, 15-minute Cloudflare setup (KV, secrets,
+//     ALLOWED_ORIGINS), caching/rate-limit behavior, security posture.
+//     Version-agnostic like the root README.
+//
 // v7.26 changelog:
 //   • CACHE bumped to v7.26. SHELL: data.js + eggs.js + photos.js +
 //     stats.js + render.js. App v7.52. Also ships README.md (new),
@@ -1198,7 +1221,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.26';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.27';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
