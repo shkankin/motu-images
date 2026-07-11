@@ -377,22 +377,38 @@ const AF411_GROUP_SLUG = {
   'mondo|Action Figures':            'action-figures',
 };
 
-// v7.47: open an external URL from inside the standalone PWA.
-// FIX (user-reported): the AF411 button opened a "blocked by Cloudflare"
-// page from within the PWA while the same URL opened fine in Chrome.
-// Cause: window.open(url, '_blank', 'noopener') — the presence of a
-// window-FEATURES string (the third argument) makes browsers treat the
-// call as a POPUP, and from a standalone-display PWA on Android that
-// popup gets a stripped browsing context (partitioned cookies, popup
-// disposition) that fails Cloudflare's bot check. A synthesized real
-// anchor click carries normal navigation semantics, so Android hands the
-// URL to a full Chrome Custom Tab with first-party cookies and the
-// challenge passes exactly like it does in the Chrome app.
+// v7.47/v7.48: open an external URL from inside the standalone PWA.
+// FIX (user-reported, two rounds): the AF411 button hit a Cloudflare
+// block from inside the installed PWA while the same URL opened fine in
+// the Chrome app. Round 1 (v7.47) removed the window.open FEATURES string
+// so the navigation got a real Custom Tab instead of a stripped popup —
+// screenshot confirmed the Custom Tab, but AF411's WAF still served the
+// hard "Attention Required" block. A Custom Tab launched from an
+// installed web app still differs from plain Chrome in ways web code
+// cannot change: it carries the app's Referer and (on many versions) an
+// X-Requested-With: <package> header, and either is enough for a WAF
+// rule to match. Round 2 (v7.48): stop using a Custom Tab entirely — on
+// Android in standalone display mode, navigate to an intent:// URL,
+// which asks Android to open the link in the DEFAULT BROWSER APP — the
+// exact context the user confirmed works. S.browser_fallback_url keeps
+// the old behavior on any device that can't resolve the intent. All
+// other platforms (browser tab, iOS) use a plain anchor click, now with
+// noreferrer so the PWA origin is never sent as a Referer anywhere.
 function openExternal(url) {
+  const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  if (isStandalone && isAndroid) {
+    try {
+      const u = new URL(url);
+      const scheme = u.protocol.replace(':', '');
+      location.href = `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${scheme};S.browser_fallback_url=${encodeURIComponent(url)};end`;
+      return;
+    } catch { /* malformed URL — fall through to the anchor path */ }
+  }
   const a = document.createElement('a');
   a.href = url;
   a.target = '_blank';
-  a.rel = 'noopener external';
+  a.rel = 'noopener noreferrer external';
   document.body.appendChild(a);
   a.click();
   a.remove();

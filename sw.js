@@ -3,6 +3,23 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.22 changelog:
+//   • CACHE bumped to v7.22. SHELL: eggs.js + render.js. App v7.48.
+//   • FIX round 2 (user-reported with screenshot): AF411 still blocked by
+//     Cloudflare from inside the PWA after v7.47. The screenshot confirmed
+//     v7.47 did produce a real Custom Tab — but AF411's WAF serves the
+//     hard "Attention Required" block for it anyway. A Custom Tab
+//     launched from an installed web app is still distinguishable from
+//     plain Chrome (app-origin Referer; X-Requested-With package header
+//     on many versions) and web code cannot strip either. openExternal()
+//     now escapes the Custom Tab entirely: on Android in standalone
+//     display mode it navigates to an intent:// URL, which Android
+//     resolves to the DEFAULT BROWSER APP — the exact context the user
+//     confirmed works — with S.browser_fallback_url preserving the old
+//     behavior anywhere intents don't resolve. Non-standalone and
+//     non-Android contexts keep the anchor path, now with noreferrer so
+//     the PWA origin is never sent as a Referer.
+//
 // v7.21 changelog:
 //   • CACHE bumped to v7.21. SHELL: eggs.js + render.js. App v7.47.
 //   • FIX (user-reported): the AF411 button on the figure detail screen
@@ -1099,7 +1116,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.21';
+const CACHE = 'motu-vault-v7.22';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
