@@ -517,7 +517,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.45</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.46</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -553,7 +553,7 @@ function renderMain() {
   <div class="bottom-nav${S.selectMode ? ' hidden' : ''}" id="bottomNav">
     ${renderNavBtn('lines', ICO.lines, 'Lines')}
     ${renderNavBtn('all', ICO.list, 'All', `<span class="badge">${stats.total}</span>`)}
-    ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned}</span>`)}
+    ${renderNavBtn('collection', ICO.heart, 'Collection', `<span class="badge">${stats.owned + stats.ord + stats.sale}</span>`)}
   </div>`;
 
   if (isSelecting()) html += renderSelectActionbar();
@@ -1426,6 +1426,26 @@ function renderFigList() {
       <button class="${gridActive}" data-action="set-view" data-view="grid" title="Grid view">${icon(ICO.lines,14)}</button>
     </div>
   </div>`;
+  // v7.46: one-tap status chips on the Collection tab. "All" = the default
+  // membership (owned + ordered + for-sale — see _computeSortedFigs);
+  // Want List brings wishlist figures back on demand now that they're out
+  // of the default view. Reuses the existing 'filter' action / filterStatus
+  // plumbing, so the filter sheet and "Reset all filters" stay in sync.
+  if (S.tab === 'collection' && !S.search) {
+    const cst = getStats();
+    const chips = [
+      { v: '',         l: 'All',       n: cst.owned + cst.ord + cst.sale },
+      { v: 'owned',    l: 'Owned',     n: cst.owned },
+      { v: 'ordered',  l: 'Ordered',   n: cst.ord },
+      { v: 'wishlist', l: 'Want List', n: cst.wish },
+      { v: 'for-sale', l: 'For Sale',  n: cst.sale },
+    ];
+    html += `<div style="display:flex;gap:6px;overflow-x:auto;padding:0 4px 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none">` +
+      chips.map(c => {
+        const active = S.filterStatus === c.v;
+        return `<button class="chip ${active ? 'active' : ''}" data-action="filter" data-filter-op="status" data-filter-val="${esc(c.v)}" style="flex-shrink:0">${c.l}${c.n ? ` <span style="opacity:0.65;font-size:11px">${c.n}</span>` : ''}</button>`;
+      }).join('') + `</div>`;
+  }
   if (!figs.length) {
     // v5.01: clearer empty state on Collection tab when nothing has been
     // collected yet. Distinguish "you have nothing yet" from "your filters
@@ -1484,7 +1504,21 @@ function renderFigList() {
     }
     // Recently changed section for collection tab
     if (S.tab === 'collection' && !S.search && !hf && S._recentChanges?.length) {
-      const recent = S._recentChanges.slice(0, 5).map(id => figById(id)).filter(Boolean);
+      // v7.46 FIX (user-reported with screenshot): the pinned strip
+      // rendered figById(id) with NO status check, so a figure whose
+      // change was UNDONE (status cleared — e.g. an accidental "owned"
+      // tap reverted) stayed pinned on the Collection tab even though it
+      // was no longer in the collection. Pin only figures whose current
+      // status is part of the collection view (owned / for-sale /
+      // ordered — same membership rule as the list itself, see
+      // _computeSortedFigs). The id stays in the recent ring, so if the
+      // figure is re-statused it reappears here.
+      const recent = S._recentChanges.slice(0, 5).map(id => figById(id))
+        .filter(Boolean)
+        .filter(f => {
+          const st = S.coll[f.id]?.status;
+          return !!st && st !== 'wishlist';
+        });
       if (recent.length) {
         recent.forEach(f => pinnedIds.add(f.id));
         html += `<div style="padding:4px 4px 2px;font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:1.5px">Recently changed</div>`;

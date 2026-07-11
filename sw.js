@@ -3,6 +3,28 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.20 changelog:
+//   • CACHE bumped to v7.20. SHELL: render.js + data.js. App v7.46.
+//   • FIX (user-reported with screenshot): "Recently changed" on the
+//     Collection tab kept showing a figure whose status change had been
+//     UNDONE (accidental "owned" tap, reverted). The pinned strip rendered
+//     the recent ids with no status check, so a figure that was no longer
+//     in the collection stayed pinned on the collection page. The strip
+//     now pins only figures whose current status is part of the
+//     collection view; the id stays in the recent ring so re-statusing a
+//     figure brings it back.
+//   • Collection tab semantics (user feedback): the tab now means
+//     "figures in or on the way into your possession" — owned, for-sale,
+//     and ordered. Wishlist is out of the DEFAULT view (a want list is a
+//     shopping list, not a collection; ordered stays because it's
+//     paid-for and incoming) but one tap away via a new status chip row
+//     on the tab: All · Owned · Ordered · Want List · For Sale, with live
+//     counts. Chips reuse the existing filterStatus plumbing, so the
+//     filter sheet and "Reset all filters" stay in sync. The bottom-nav
+//     Collection badge now counts owned + ordered + for-sale to match
+//     what the default view actually shows (previously owned only, while
+//     the list displayed every status including wishlist).
+//
 // v7.19 changelog:
 //   • CACHE bumped to v7.19. SHELL: ui-sheets.js + render.js. App v7.45.
 //   • FIX (user-reported with screenshot): tapping Edit on the figure
@@ -1059,7 +1081,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.19';
+const CACHE = 'motu-vault-v7.20';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

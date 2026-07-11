@@ -1587,7 +1587,18 @@ function _computeSortedFigs() {
     const sl = subs.find(s => s.key === S.activeSubline);
     if (sl) list = list.filter(f => sl.groups.includes(f.group));
   }
-  if (!isSearch && S.tab === 'collection') list = list.filter(f => S.coll[f.id]?.status);
+  // v7.46: the Collection tab now means "figures in (or on the way into)
+  // your possession": owned, for-sale, and ordered. Wishlist entries are
+  // no longer part of the DEFAULT collection view — a want list is a
+  // shopping list, not a collection (user feedback; ordered stays because
+  // it's paid-for and incoming). Wishlist remains one tap away via the
+  // status chips on the tab (and the filter sheet): when ANY explicit
+  // status filter is active, the base membership admits every statused
+  // figure and the filterStatus pass below does the narrowing.
+  if (!isSearch && S.tab === 'collection') list = list.filter(f => {
+    const st = S.coll[f.id]?.status;
+    return !!st && (S.filterStatus ? true : st !== 'wishlist');
+  });
   if (S.filterLine) list = list.filter(f => f.line === S.filterLine);
   // v6.68: wave checklist filter. Set via the Waves section in Stats (no
   // chip UI in the filter sheet yet) — cleared by "Reset all filters".
