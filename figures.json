@@ -6793,21 +6793,6 @@
     "upc": "194735350544"
   },
   {
-    "id": "battle-for-eternia-13924",
-    "name": "Grayskull and Snake Mountain Strongholds",
-    "sourceName": "Grayskull and Snake Mountain Strongholds",
-    "line": "kids-core",
-    "sourceLine": "chronicles",
-    "group": "Movie (2026)",
-    "sourceGroup": "Core (Non-Movie)",
-    "wave": "",
-    "year": 2026,
-    "retail": 86.39,
-    "slug": "battle-for-eternia-13924",
-    "faction": "Other",
-    "source": "af411"
-  },
-  {
     "id": "beast-man-13550",
     "name": "Beast Man",
     "line": "kids-core",
@@ -6836,6 +6821,21 @@
     "sourceLine": "chronicles",
     "sourceGroup": "",
     "upc": "194735350520"
+  },
+  {
+    "id": "battle-for-eternia-13924",
+    "name": "Grayskull and Snake Mountain Strongholds",
+    "sourceName": "Grayskull and Snake Mountain Strongholds",
+    "line": "kids-core",
+    "sourceLine": "chronicles",
+    "group": "Movie (2026)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 86.39,
+    "slug": "battle-for-eternia-13924",
+    "faction": "Other",
+    "source": "af411"
   },
   {
     "id": "he-man-nicholas-galitzine-13549",
@@ -18856,6 +18856,34 @@
     "upc": "746775350420"
   },
   {
+    "id": "manual-battle-armor-he-man-mrfpdfy3",
+    "name": "Battle Armor He-Man",
+    "sourceName": "Battle Armor He-Man",
+    "line": "mighty-masters",
+    "sourceLine": "mighty-masters",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Heroic Warriors",
+    "wave": "2",
+    "year": 2026,
+    "slug": "manual-battle-armor-he-man-mrfpdfy3",
+    "source": "manual"
+  },
+  {
+    "id": "manual-battle-armor-skeletor-mrfpeabx",
+    "name": "Battle Armor Skeletor",
+    "sourceName": "Battle Armor Skeletor",
+    "line": "mighty-masters",
+    "sourceLine": "mighty-masters",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Evil Warriors",
+    "wave": "2",
+    "year": 2026,
+    "slug": "manual-battle-armor-skeletor-mrfpeabx",
+    "source": "manual"
+  },
+  {
     "id": "manual-beast-man-mqptisfy",
     "name": "Beast Man",
     "sourceName": "Beast Man",
@@ -18869,6 +18897,20 @@
     "faction": "Evil Warriors",
     "retail": 4.99,
     "upc": "194735422555"
+  },
+  {
+    "id": "manual-fisto-mrfpby88",
+    "name": "Fisto",
+    "sourceName": "Fisto",
+    "line": "mighty-masters",
+    "sourceLine": "mighty-masters",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Heroic Warriors",
+    "wave": "2",
+    "year": 2026,
+    "slug": "manual-fisto-mrfpby88",
+    "source": "manual"
   },
   {
     "id": "manual-he-man-mqpsslfi",
@@ -18912,6 +18954,20 @@
     "group": "Action Figures",
     "faction": "Evil Warriors",
     "upc": "194735422562"
+  },
+  {
+    "id": "manual-trap-jaw-mrfpcsiu",
+    "name": "Trap Jaw",
+    "sourceName": "Trap Jaw",
+    "line": "mighty-masters",
+    "sourceLine": "mighty-masters",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Evil Warriors",
+    "wave": "2",
+    "year": 2026,
+    "slug": "manual-trap-jaw-mrfpcsiu",
+    "source": "manual"
   },
   {
     "id": "manual-beast-man-mqvpymw2",
