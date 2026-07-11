@@ -1761,12 +1761,8 @@ function exportCSV(filter) {
     }
   }
   const csv = [h, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  const a = document.createElement('a');
   const suffix = filter ? '-' + filter : '';
-  a.href = url; a.download = 'motu' + suffix + '.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  _downloadBlobSafe(new Blob([csv],{type:'text/csv'}), 'motu' + suffix + '.csv');   // v7.50: delayed revoke
   const summary = totalRowCount === list.length
     ? `✓ Exported ${list.length} figures`
     : `✓ Exported ${list.length} figures · ${totalRowCount} rows`;
@@ -1833,11 +1829,7 @@ function exportGaps() {
   }
   if (!rows.length) { toast('✓ No gaps — every owned figure has its data'); return; }
   const csv = [h, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
-  const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  const a = document.createElement('a');
-  a.href = url; a.download = 'motu-gaps.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  _downloadBlobSafe(new Blob([csv],{type:'text/csv'}), 'motu-gaps.csv');   // v7.50: delayed revoke, see helper
   toast(`✓ Exported ${rows.length} rows · ${figCount} figures need data`);
 }
 window.exportGaps = exportGaps;
@@ -1945,12 +1937,8 @@ window.exportPhotosZip = async () => {
     blob: new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' }),
   });
   const zip = await buildZip(entries);
-  const url = URL.createObjectURL(zip);
-  const a = document.createElement('a');
   const ts = new Date().toISOString().slice(0, 10);
-  a.href = url; a.download = `motu-vault-photos-${ts}.zip`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  _downloadBlobSafe(zip, `motu-vault-photos-${ts}.zip`);   // v7.50: delayed revoke
   toast(`✓ Exported ${total} photos`);
 };
 
@@ -1960,16 +1948,61 @@ window.exportPhotosZip = async () => {
 // per figure and grand totals. Photos optional (first photo per figure,
 // embedded as data URLs — adds size but insurers want them). Print via the
 // browser's Share/Print → Save as PDF.
+// v7.50: blob download with DELAYED revoke. The report (and other
+// exports) revoked the object URL synchronously after a.click() — but the
+// click only QUEUES the download; Android's download manager fetches the
+// blob URL out-of-process afterwards, and an already-revoked URL fails
+// the download instantly ("Download failed" notification — the
+// user-reported "fails immediately"). Small files sometimes win that
+// race, which is why JSON backups appeared fine while the larger HTML
+// report did not. 60s keeps the URL alive far past any queue delay; the
+// blob itself is freed on revoke or page close.
+function _downloadBlobSafe(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// v7.50: downscale a photo data URL for report embedding. Full-size photo
+// data URLs made the with-photos report a multi-hundred-MB string build —
+// the tab silently ground away for minutes (user-reported "does nothing")
+// or died. 320px JPEG ≈ 20–40KB each: hundreds of photos come to a few MB,
+// and 320px prints perfectly well at the report's 64px display size.
+function _shrinkForReport(dataUrl, max = 320, quality = 0.72) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        if (scale === 1 && dataUrl.length < 80000) return resolve(dataUrl);
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.width * scale));
+        cv.height = Math.max(1, Math.round(img.height * scale));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        resolve(cv.toDataURL('image/jpeg', quality));
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
 window.buildInsuranceReport = async () => {
   const withPhotos = await (window.appConfirm
     ? window.appConfirm('Include photos in the report? (Bigger file, better documentation.)', { ok: 'With photos', cancel: 'Without' })
     : Promise.resolve(false));
+  // v7.50: the whole build is try/caught — it previously had NO handler,
+  // so any failure was an unhandled rejection with zero user feedback.
+  try {
   toast('Building report…', { duration: 8000 });
   const escH = str => String(str ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const figs = S.figs
     .filter(f => { const st = S.coll[f.id]?.status; return st === 'owned' || st === 'for-sale'; })
     .sort((a, b) => (ln(a.line) || '').localeCompare(ln(b.line) || '') || a.name.localeCompare(b.name));
-  let rows = '', totalPaid = 0, totalMarket = 0, copyCount = 0, pricedFigs = 0, photoN = 0;
+  const rowParts = [];   // v7.50: array-join instead of quadratic += concat
+  let totalPaid = 0, totalMarket = 0, copyCount = 0, pricedFigs = 0, photoN = 0;
   for (let fi = 0; fi < figs.length; fi++) {
     const f = figs[fi];
     const c = S.coll[f.id];
@@ -1980,9 +2013,13 @@ window.buildInsuranceReport = async () => {
     if (withPhotos) {
       try {
         const photos = await photoStore.exportAllAsDataURLs(f.id);
-        if (photos.length) { img = photos[0].dataUrl; photoN++; }
+        if (photos.length) {
+          const small = await _shrinkForReport(photos[0].dataUrl);   // v7.50
+          if (small) { img = small; photoN++; }
+        }
       } catch {}
       if (fi % 20 === 0) await new Promise(r => setTimeout(r, 0));
+      if (fi > 0 && fi % 100 === 0) toast(`Building report… ${fi}/${figs.length}`, { duration: 3000 });
     }
     const copyRows = copies.map((cp, i) => {
       const paid = parseFloat(cp.paid);
@@ -1997,7 +2034,7 @@ window.buildInsuranceReport = async () => {
         <td>${escH(cp.variant || '')}</td>
       </tr>`;
     }).join('');
-    rows += `<div class="fig">
+    rowParts.push(`<div class="fig">
       <div class="fig-head">
         ${img ? `<img src="${img}" alt="">` : ''}
         <div>
@@ -2007,7 +2044,7 @@ window.buildInsuranceReport = async () => {
         </div>
       </div>
       <table><thead><tr><th></th><th>Condition</th><th>Paid</th><th>Acquired</th><th>Location</th><th>Variant/Notes</th></tr></thead><tbody>${copyRows}</tbody></table>
-    </div>`;
+    </div>`);
   }
   const now = new Date();
   const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Collection Inventory — ${now.toLocaleDateString()}</title>
@@ -2032,15 +2069,15 @@ window.buildInsuranceReport = async () => {
   Total paid (where recorded): <strong>$${totalPaid.toFixed(2)}</strong><br>
   Estimated market value (${pricedFigs} of ${figs.length} priced, eBay BIN medians): <strong>$${totalMarket.toFixed(2)}</strong>
 </div>
-${rows}
-</body></html>`;
-  const blob = new Blob([doc], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `motu-vault-inventory-${now.toISOString().slice(0, 10)}.html`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast(`✓ Report saved · ${figs.length} figures`);
+`;
+  const parts = [doc, ...rowParts, '</body></html>'];
+  const blob = new Blob(parts, { type: 'text/html' });
+  _downloadBlobSafe(blob, `motu-vault-inventory-${now.toISOString().slice(0, 10)}.html`);
+  toast(`✓ Report saved · ${figs.length} figures${photoN ? ` · ${photoN} photos` : ''} · ${(blob.size / 1048576).toFixed(1)}MB`);
+  } catch (e) {
+    console.error('Report failed:', e);
+    toast('✗ Report failed: ' + (e?.message || 'unknown error').slice(0, 60));
+  }
 };
 
 // v7.38: backup-blob building split out of exportJSON as its own helper.
@@ -2099,11 +2136,7 @@ async function exportJSON() {
     pendingToast = true;
     toast('Building backup…', { duration: 8000 });
     const { blob, totalPhotos } = await _buildBackupBlob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'motu-vault-backup.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    _downloadBlobSafe(blob, 'motu-vault-backup.json');   // v7.50: delayed revoke, see helper
     toast(`✓ Backup saved · ${totalPhotos} photo${totalPhotos===1?'':'s'}`);
     markBackupDone();
   } catch (e) {
@@ -2333,13 +2366,7 @@ window.exportSettings = () => {
   }
   const payload = { version: 'motu-vault-settings-v1', exportedAt: Date.now(), settings };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `motu-vault-settings-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  _downloadBlobSafe(blob, `motu-vault-settings-${new Date().toISOString().slice(0,10)}.json`);   // v7.50
   toast('✓ Settings exported');
 };
 

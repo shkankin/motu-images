@@ -3,6 +3,29 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.24 changelog:
+//   • CACHE bumped to v7.24. SHELL: data.js + render.js. App v7.50.
+//   • FIX (user-reported): Itemized Report (HTML) — "without photos"
+//     failed instantly, "with photos" silently did nothing for 10+
+//     minutes. Two root causes:
+//     (1) Delivery: the report revoked its blob object-URL synchronously
+//     after a.click(). The click only QUEUES the download — Android's
+//     download manager fetches the blob URL afterwards, and a revoked
+//     URL fails the download on the spot. Small files (JSON backup)
+//     usually won the race; the larger HTML report lost it. New
+//     _downloadBlobSafe() helper revokes after 60s; ALL six blob
+//     download sites converted (report, JSON backup, both CSVs, photo
+//     ZIP, settings) so the race is dead app-wide.
+//     (2) Scale: with-photos embedded each photo's FULL-SIZE data URL
+//     and grew the document by quadratic string concatenation — a
+//     multi-hundred-MB string build that ground silently. Photos are
+//     now canvas-downscaled to 320px JPEG (~20–40KB each) via
+//     _shrinkForReport(), the document assembles as an array of parts
+//     handed straight to the Blob, a progress toast ticks every 100
+//     figures, and the whole build is try/caught with a visible error
+//     toast (previously an unhandled rejection with zero feedback). The
+//     success toast now reports the file size.
+//
 // v7.23 changelog:
 //   • CACHE bumped to v7.23. SHELL: render.js. App v7.49.
 //   • Removed the v7.46 status chip row from the Collection tab (user
@@ -1126,7 +1149,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.23';
+const CACHE = 'motu-vault-v7.24';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
