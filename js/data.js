@@ -15,6 +15,12 @@ const openSheet = (...a) => window.openSheet?.(...a);
 // setStatus calls them via window.* to break the data→render cycle.
 // ════════════════════════════════════════════════════════════════════
 
+// v7.51: getCachedAskingPrice was used by buildInsuranceReport (v6.69)
+// but NEVER imported — a bare-identifier ReferenceError that made the
+// report throw on its first market-value lookup every time. Silent until
+// v7.50's try/catch surfaced it in the user's error toast. pricing.js
+// imports only state.js + idb-store.js, so no import cycle.
+import { getCachedAskingPrice } from './pricing.js';
 import {
   S, store, ICO, icon, IMG, FIGS_URL, LOADOUTS_URL, KIDS_CORE_KEY,
   CUSTOM_FIGS_KEY, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL,
@@ -2419,7 +2425,10 @@ window.handleImportFile = input => {
     reader.readAsText(file);
     return;
   }
-  handleCSV(input);
+  // v7.51: explicit window. — handleCSV is a window-assigned function in
+  // photos.js; the bare reference worked only because window props are in
+  // the global scope chain. Explicit is honest (and eslint-clean).
+  window.handleCSV?.(input);
 };
 
 function renderExportSheet() {

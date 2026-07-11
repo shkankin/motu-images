@@ -10,7 +10,13 @@
 // build on it; render.js exposes window.render which data.js + photos.js
 // call lazily to break circular refs).
 import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL, IMG, SUBLINES } from './state.js';
-import { hydrate as idbHydrate, bigGet } from './idb-store.js';
+// v7.51: bigSet added — the boot journal-recovery path called it WITHOUT
+// importing it, a ReferenceError swallowed by the surrounding try{}catch{}.
+// Net effect: a recovered journal was applied in-memory but never written
+// back to IDB, and the journal file was deleted on the next line — so if
+// the session ended without another collection write, the journaled
+// changes were silently lost. Found by the new eslint no-undef gate.
+import { hydrate as idbHydrate, bigGet, bigSet } from './idb-store.js';
 import {
   initOPFS, loadPhotoLabels, loadPhotoCopyMap,
   photoStore, _opfsReady,

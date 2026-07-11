@@ -318,8 +318,12 @@ const store = {
       }
       if (quota && !_quotaWarned) {
         _quotaWarned = true;
-        // toast is defined later; guarded in case of early failure
-        try { toast('✗ Storage full — changes may not persist', { duration: 8000 }); } catch {}
+        // v7.51: explicit window.toast — state.js is the leaf module and
+        // cannot import render.js; the bare `toast` resolved only via the
+        // Object.assign(window,…) side effect in app.js. Optional-chained:
+        // before app.js runs (or if it never does), this quietly no-ops,
+        // which is exactly what the old try/catch was hedging against.
+        try { window.toast?.('✗ Storage full — changes may not persist', { duration: 8000 }); } catch {}
       }
       return false;
     }

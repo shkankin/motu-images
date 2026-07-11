@@ -34,3 +34,13 @@ jobs:
 
       - name: Lint inline handlers & data-actions
         run: node scripts/lint_handlers.mjs js
+      # v7.51: no-undef gate. Two shipped bugs (Edit-sheet sourceName crash,
+      # insurance report's unimported getCachedAskingPrice) plus two more
+      # found on its first run (app.js bigSet in journal recovery, render.js
+      # KIDS_CORE_KEY in the Kids Core sheet) were bare-identifier
+      # ReferenceErrors that node --check and the handler lint cannot see.
+      # Single-purpose config: eslint.config.mjs enables ONLY no-undef.
+      - name: Install eslint (no-undef gate)
+        run: npm install --no-save eslint@9 globals
+      - name: ESLint no-undef
+        run: npx eslint --config eslint.config.mjs js/*.js sw.js

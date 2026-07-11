@@ -3,6 +3,29 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.25 changelog:
+//   • CACHE bumped to v7.25. SHELL: data.js + app.js + render.js +
+//     share.js + state.js. App v7.51. Also ships deploy.html v1.11,
+//     eslint.config.mjs (new), lint.yml (new CI step).
+//   • FIX (user-reported with screenshot — the v7.50 error toast working
+//     as designed): both report buttons failed with "getCachedAskingPrice
+//     is not defined". buildInsuranceReport (v6.69) called it without
+//     importing it from pricing.js — the report has thrown on its first
+//     market-value lookup since the day it shipped; pre-v7.50 that was a
+//     silent unhandled rejection.
+//   • That's the SECOND shipped bare-identifier ReferenceError (after
+//     v7.45's sourceName), so the promised permanent gate is now in:
+//     eslint no-undef in CI (single-rule config, eslint.config.mjs). Its
+//     first run found FOUR more: two real crashes — app.js journal
+//     recovery called bigSet unimported inside a silent catch{}, so
+//     recovered journal changes were applied in-memory but never
+//     persisted and the journal was then deleted (quiet data-loss path);
+//     render.js's Kids Core admin sheet used KIDS_CORE_KEY unimported and
+//     crashed on open — and two working-by-luck bare references to
+//     window-assigned functions (data.js handleCSV, share.js qrEncode)
+//     plus state.js's quota-warning toast, all made explicit window.*
+//     calls. ESLint now passes clean on all 15 modules + sw.js.
+//
 // v7.24 changelog:
 //   • CACHE bumped to v7.24. SHELL: data.js + render.js. App v7.50.
 //   • FIX (user-reported): Itemized Report (HTML) — "without photos"
@@ -1149,7 +1172,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.24';
+const CACHE = 'motu-vault-v7.25';
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -299,7 +299,7 @@ function decodeShareURL(hash) {
 })();
 
 function renderQR(str, px=4) {
-  const result = qrEncode(str);
+  const result = window.qrEncode(str);   // v7.51: explicit window. (see data.js handleCSV note)
   if (!result) return '<div class="text-sm text-dim">URL too long for QR</div>';
   const {mat, size} = result;
   const quiet = 2; // quiet zone modules

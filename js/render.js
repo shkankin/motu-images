@@ -27,6 +27,11 @@ import {
   S, store, ICO, icon, IMG, THEMES, LINES, FACTIONS, ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, SUBLINES, CONDITIONS,
   SERIES_MAP, COND_MAP, GROUP_MAP, DEFAULT_TITLE,
+  // v7.51: KIDS_CORE_KEY was used twice in renderKidsCoreAdminSheet but
+  // never imported — the sheet threw a ReferenceError the moment it
+  // opened (same class as the v7.45 Edit-sheet sourceName crash). Found
+  // by the new eslint no-undef gate.
+  KIDS_CORE_KEY,
   ln, normalize, esc, jsArg, isSelecting, _clone, getThemeTitles,
 } from './state.js';
 import {
@@ -517,7 +522,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.50</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.51</span></div>
         </div>
       </div>
       <div class="header-actions">
