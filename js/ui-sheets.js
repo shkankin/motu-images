@@ -387,12 +387,12 @@ function renderAboutSheet() {
   </div>
 
   <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Links</div>
-  <a href="https://shkankin.github.io/motu-images/" target="_blank" rel="noopener noreferrer"
+  <a href="https://motucollector.app/" target="_blank" rel="noopener noreferrer"
     style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-decoration:none;color:var(--t1);font-size:14px">
     <span style="color:var(--acc);font-size:16px">⌂</span>
     <div style="flex:1">
       <div style="font-weight:600">GitHub Repository</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:2px">shkankin.github.io/motu-images</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">motucollector.app</div>
     </div>
     <span style="color:var(--t3)">↗</span>
   </a>

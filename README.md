@@ -4,6 +4,8 @@ A fast, private, installable web app for tracking a Masters of the Universe
 action-figure collection — every line from vintage to Origins, Masterverse,
 Turtles of Grayskull, and beyond.
 
+**Official site: [motucollector.app](https://motucollector.app)**
+
 **No account. No server holding your data. No ads. Free.**
 Your collection lives on your device; the app is just a static site.
 

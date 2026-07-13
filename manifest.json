@@ -2,8 +2,8 @@
   "name": "MOTU Collector",
   "short_name": "MOTU Collector",
   "description": "Masters of the Universe figure catalog and collection tracker",
-  "start_url": "https://shkankin.github.io/motu-images/motu-vault.html",
-  "scope": "https://shkankin.github.io/motu-images/",
+  "start_url": "https://motucollector.app/motu-vault.html",
+  "scope": "https://motucollector.app/",
   "display": "standalone",
   "display_override": [
     "standalone",
@@ -35,7 +35,7 @@
       "name": "Share Want List",
       "short_name": "Want List",
       "description": "Open the share sheet for your want list",
-      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=share-wantlist",
+      "url": "https://motucollector.app/motu-vault.html?action=share-wantlist",
       "icons": [
         {
           "src": "images/icon-192.png",
@@ -48,7 +48,7 @@
       "name": "Collection Stats",
       "short_name": "Stats",
       "description": "View collection stats",
-      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=stats",
+      "url": "https://motucollector.app/motu-vault.html?action=stats",
       "icons": [
         {
           "src": "images/icon-192.png",
@@ -61,7 +61,7 @@
       "name": "Quick Sync",
       "short_name": "Sync",
       "description": "Force-sync the catalog from AF411",
-      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=sync",
+      "url": "https://motucollector.app/motu-vault.html?action=sync",
       "icons": [
         {
           "src": "images/icon-192.png",
@@ -74,7 +74,7 @@
       "name": "Settings",
       "short_name": "Settings",
       "description": "Open app settings",
-      "url": "https://shkankin.github.io/motu-images/motu-vault.html?action=menu",
+      "url": "https://motucollector.app/motu-vault.html?action=menu",
       "icons": [
         {
           "src": "images/icon-192.png",
@@ -84,5 +84,5 @@
       ]
     }
   ],
-  "id": "https://shkankin.github.io/motu-images/motu-vault.html"
+  "id": "https://motucollector.app/motu-vault.html"
 }

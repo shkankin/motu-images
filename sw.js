@@ -3,6 +3,25 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.28 changelog:
+//   • CACHE bumped to v7.28. SHELL: ui-sheets.js + render.js. App v7.54 —
+//     THE DOMAIN MIGRATION RELEASE. Also ships manifest.json, CNAME (new),
+//     deploy.html v1.14, README.md.
+//   • Origin move: shkankin.github.io/motu-images → motucollector.app.
+//     manifest start_url/scope/id and all four shortcut URLs now point at
+//     the new origin at root (a Pages custom domain serves the project at
+//     /, so the /motu-images path prefix disappears; every in-app asset
+//     reference was already relative). The CNAME file is the switch —
+//     deploying it activates the domain and github.io URLs begin 301ing.
+//     About sheet self-link updated. DELIBERATELY UNCHANGED: the catalog
+//     ROOT (raw.githubusercontent.com — the repo, not Pages, so the move
+//     doesn't touch it), the deploy/editor GitHub API repo targets, and
+//     every internal storage identifier per the v7.26 policy.
+//   • Post-deploy checklist lives in the release notes: DNS A records,
+//     cert wait (.app is HSTS-preloaded — HTTPS only), one-time backup
+//     export/import to move the sole existing collection across origins,
+//     pricing-worker ALLOWED_ORIGINS addition.
+//
 // v7.27 changelog:
 //   • CACHE bumped to v7.27. SHELL: render.js (+ motu-vault.html, which is
 //     network-first). App v7.53. Also ships desktop.html v1.9,
@@ -1221,7 +1240,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.27';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.28';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
