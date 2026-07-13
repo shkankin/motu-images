@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- v7.55: root forwarder. The domain root 404'd after the motucollector.app
+     migration because Pages serves index.html at / and the app's entry
+     point is motu-vault.html — which cannot be renamed (it is every
+     installed PWA's start_url and the SW SHELL/share-link target).
+     This stub forwards immediately, preserving search + hash so
+     motucollector.app#wl=… share links land on the app, whose own
+     router then sends desktop browsers to desktop.html. The meta
+     refresh is the no-JS fallback. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOTU Collector</title>
+<meta http-equiv="refresh" content="0; url=motu-vault.html">
+<script>location.replace('motu-vault.html' + location.search + location.hash);</script>
+<style>body{background:#0d0616;color:#cbbde2;font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0}</style>
+</head>
+<body><noscript><a href="motu-vault.html" style="color:#cbbde2">Open MOTU Collector →</a></noscript></body>
+</html>

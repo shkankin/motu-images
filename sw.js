@@ -3,6 +3,18 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.29 changelog:
+//   • CACHE bumped to v7.29. SHELL: + index.html (new). App v7.55.
+//   • FIX (user-reported during migration): motucollector.app/ returned
+//     404 — Pages serves index.html at the root and the repo never had
+//     one, since the entry point has always been motu-vault.html (kept —
+//     it is every installed PWA's start_url). New root index.html
+//     forwards instantly to motu-vault.html preserving search + hash
+//     (bare-domain #wl= share links land correctly; the app's v7.53
+//     router then handles desktop → desktop.html). Meta-refresh no-JS
+//     fallback. Added to SHELL so an offline visit to the bare root
+//     also resolves.
+//
 // v7.28 changelog:
 //   • CACHE bumped to v7.28. SHELL: ui-sheets.js + render.js. App v7.54 —
 //     THE DOMAIN MIGRATION RELEASE. Also ships manifest.json, CNAME (new),
@@ -1240,7 +1252,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.28';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.29';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -1318,6 +1330,7 @@ function _revalidateImage(request) {
 
 const SHELL = [
   'motu-vault.html',
+  'index.html',            // v7.29: root forwarder (motucollector.app/ → app)
   'manifest.json',
   'masters_logo.png',
   'main-theme.mp3',
