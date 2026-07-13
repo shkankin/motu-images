@@ -3,6 +3,19 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.30 changelog:
+//   • CACHE bumped to v7.30. SHELL: + js/route.js (new); motu-vault.html
+//     changed. App v7.56.
+//   • FIX (user-reported): the v7.53 desktop router never redirected in
+//     ANY browser — it shipped as an inline <script>, and motu-vault.html's
+//     own strict CSP (script-src 'self', no 'unsafe-inline'; the v7.00
+//     hardening) silently refused to execute it. CSP violations don't
+//     surface to users, and the root index.html forwarder DID work (no
+//     CSP on the stub), which masked it until real desktop testing. The
+//     router now lives in js/route.js, loaded via <script src> — permitted
+//     by 'self', logic byte-identical, hardening untouched. Lesson filed
+//     in the route.js header: this page allows no inline scripts, ever.
+//
 // v7.29 changelog:
 //   • CACHE bumped to v7.29. SHELL: + index.html (new). App v7.55.
 //   • FIX (user-reported during migration): motucollector.app/ returned
@@ -1252,7 +1265,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.29';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.30';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -1331,6 +1344,7 @@ function _revalidateImage(request) {
 const SHELL = [
   'motu-vault.html',
   'index.html',            // v7.29: root forwarder (motucollector.app/ → app)
+  'js/route.js',           // v7.30: desktop router (external — page CSP blocks inline scripts)
   'manifest.json',
   'masters_logo.png',
   'main-theme.mp3',
