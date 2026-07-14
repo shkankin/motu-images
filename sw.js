@@ -3,6 +3,25 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.35 changelog:
+//   • CACHE bumped to v7.35. SHELL: ui-sheets.js + render.js. App v7.61.
+//     Also ships desktop.html v1.13. A REVERSAL release, and rightly so.
+//   • User verdict on the v1.12 mobile→app share handoff after real use:
+//     the app's recipient sheet was uglier than desktop.html's shared
+//     view (which also has the per-figure Google search link the sheet
+//     never gained), and background-refresh artifacts persisted. Rather
+//     than a fourth round of polishing the sheet, the handoff is
+//     REVERTED: all recipients land on desktop.html again, and
+//     scan-to-verify was PORTED THERE (v1.13, self-contained
+//     BarcodeDetector overlay with continuous ✓/✗ verdicts and
+//     camera-recovery instructions). Phones lose nothing; the liked
+//     view returns unchanged with its Google links, big cards, notes,
+//     prices, UPCs, and lightbox. The app's own shared sheet remains
+//     functional for direct #wl= visits to the app page but is no
+//     longer the recipient path.
+//   • "Past want lists" removed from the shared-view footer (user
+//     request); the history sheet stays reachable from Settings.
+//
 // v7.34 changelog:
 //   • CACHE bumped to v7.34. SHELL: ui-sheets.js + share.js +
 //     delegate-handlers.js + photos.js + render.js. App v7.60. Recipient
@@ -1354,7 +1373,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.34';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.35';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -9,6 +9,17 @@
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.13
+       • v1.13: the v1.12 mobile→app handoff is REVERTED — after real use
+         the user's verdict was clear: this page's shared view (big cards,
+         per-figure Google search, lightbox) is the better recipient
+         experience on every device. Instead of sending phones away,
+         scan-to-verify now lives HERE: a self-contained BarcodeDetector
+         scanner (feature-gated; Chrome/Android) with an on-screen verdict
+         — ✓ ON THE LIST / ✗ NOT ON THE LIST (naming what it actually is)
+         / no-match — that keeps scanning so a whole shelf can be checked
+         in one session. Camera-denied shows recovery instructions.
+
      desktop.html  v1.12
        • v1.12: FIX (user-reported, share link "loads indefinitely"): the
          v1.11 sharedCardHTML gained a `price` PARAMETER that collided
@@ -304,7 +315,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.12</small></div>
+    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.13</small></div>
     <a href="motu-vault.html?m=1" style="font-size:12px;color:var(--acc);text-decoration:none;margin-left:12px" title="Open the full app in this browser (remembered for next time)">Use the full app →</a>
     <div class="summary" id="summary"></div>
   </header>
@@ -688,16 +699,12 @@ function sharedCardHTML(f, owned, note, targetPrice){
 }
 
 async function initSharedView(ids){
-  // v1.12: share links have ALWAYS opened desktop.html (buildShareURL
-  // targets it), which meant PHONE recipients also landed here — so the
-  // app's richer shared view (v7.57 scan-to-verify, v7.58 found-it
-  // checklist) was effectively unreachable; user-reported as "no scan
-  // button anywhere". Coarse-pointer/mobile visitors are handed to the
-  // app page, hash intact. Loop-safe: the app's route.js keeps mobile
-  // there and only sends fine-pointer desktops back here.
-  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
-    !(window.matchMedia && matchMedia('(pointer: fine)').matches && matchMedia('(hover: hover)').matches);
-  if (mobile) { location.replace('motu-vault.html' + location.search + location.hash); return; }
+  // v1.13: the v1.12 mobile→app handoff is REVERTED (user verdict after
+  // real use: this page's shared view is simply better — bigger cards,
+  // per-figure Google search — and the app sheet fought three releases
+  // of polish without winning anyone over). ALL recipients land here
+  // again; scan-to-verify now lives on THIS page (below) so phones lose
+  // nothing by staying.
   $('normalView').style.display = 'none';
   const sv = $('sharedView');
   sv.style.display = 'block';
@@ -765,14 +772,77 @@ async function initSharedView(ids){
     ov.addEventListener('click', () => ov.remove());
     document.body.appendChild(ov);
   });
+  // v1.13: scan-to-verify (ported from the app's v7.57 feature, now living
+  // where recipients actually are). Feature-gated on BarcodeDetector
+  // (Chrome/Android — exactly the phone-in-a-store case it serves).
+  const norm = s => String(s || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
+  const byUpc = new Map();
+  for (const it of wanted) if (it.fig.upc) byUpc.set(norm(it.fig.upc), it.fig);
+  const scannable = byUpc.size;
+  const scanBtn = ('BarcodeDetector' in window && scannable)
+    ? `<button id="scanVerify" style="margin-top:10px;padding:11px 22px;border-radius:10px;border:1px solid var(--acc);background:transparent;color:var(--acc);font-size:14px;font-weight:700;cursor:pointer">📷 Scan a barcode to verify</button>
+       <div style="font-size:11px;color:var(--t3);margin-top:5px">${scannable} of ${wanted.length} can be verified by barcode</div>`
+    : '';
   sv.innerHTML = `
     <div class="shared-head">
       <div class="brand"><b>MOTU</b> COLLECTOR</div>
       <h1>Want List</h1>
       <p>${wanted.length} figure${wanted.length === 1 ? '' : 's'}</p>
+      ${scanBtn}
     </div>
     ${wanted.map(it => sharedCardHTML(it.fig, isOwned(it.fig), it.note, it.price)).join('')}
   `;
+
+  const btn = document.getElementById('scanVerify');
+  if (btn) btn.addEventListener('click', async () => {
+    // camera
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    } catch (err) {
+      const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      alert(denied ? 'Camera blocked. Tap the lock icon in the address bar → Permissions → Camera → Allow, then try again.' : 'Could not start the camera.');
+      return;
+    }
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:#000;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center';
+    ov.innerHTML = `<video playsinline muted style="max-width:100%;max-height:70vh"></video>
+      <div id="svHint" style="color:#fff;font-size:15px;margin:14px;text-align:center;padding:0 16px">Point at the barcode on the box</div>
+      <button id="svClose" style="padding:10px 26px;border-radius:10px;border:1px solid #777;background:transparent;color:#fff;font-size:14px">Close</button>`;
+    document.body.appendChild(ov);
+    const video = ov.querySelector('video');
+    video.srcObject = stream;
+    try { await video.play(); } catch {}
+    let live = true;
+    const stop = () => { live = false; stream.getTracks().forEach(t => t.stop()); ov.remove(); };
+    ov.querySelector('#svClose').addEventListener('click', stop);
+    let detector;
+    try { detector = new BarcodeDetector({ formats: ['upc_a', 'upc_e', 'ean_13', 'ean_8'] }); }
+    catch { detector = new BarcodeDetector(); }
+    const hint = ov.querySelector('#svHint');
+    const tick = async () => {
+      if (!live) return;
+      try {
+        const codes = await detector.detect(video);
+        const raw = codes.length ? String(codes[0].rawValue || '').replace(/[^0-9]/g, '') : '';
+        if (raw.length >= 6) {
+          const hit = byUpc.get(norm(raw));
+          if (hit) { hint.innerHTML = `<span style="color:#3ecf6a;font-weight:800;font-size:17px">✓ ON THE LIST</span><br>${esc(hit.name)}`; }
+          else {
+            // known catalog figure that's just not wanted? name it.
+            const other = (Array.isArray(figs) ? figs : []).find(f => f.upc && norm(f.upc) === norm(raw));
+            hint.innerHTML = other
+              ? `<span style="color:#e5533d;font-weight:800;font-size:17px">✗ NOT ON THE LIST</span><br>This is "${esc(other.name)}"`
+              : `<span style="color:#e5a13d;font-weight:800;font-size:17px">? No match for ${esc(raw)}</span><br>Can't verify this one by barcode`;
+          }
+          setTimeout(tick, 1600);   // hold the verdict, keep scanning
+          return;
+        }
+      } catch {}
+      setTimeout(tick, 250);
+    };
+    tick();
+  });
 }
 
 (async function init(){

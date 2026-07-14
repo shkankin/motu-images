@@ -112,8 +112,9 @@ function renderSheet() {
         <!-- v7.60 (user request): the pitch + history links returned. Closing
              the sheet lands the visitor in the full app they're already
              running — the cheapest "try it yourself" there is. -->
+        <!-- v7.61: "Past want lists" removed on user request; the history
+             sheet remains reachable from Settings as before. -->
         <button data-action="close-sheet" style="display:inline-block;padding:10px 20px;border-radius:10px;background:var(--acc);color:var(--btn-t);border:none;font-size:13px;font-weight:700;margin:0 4px 8px">Track your own collection — free</button>
-        <button data-action="open-sheet" data-sheet="wishlistHistory" style="display:inline-block;padding:10px 16px;border-radius:10px;background:var(--bg3);color:var(--t1);border:1px solid var(--bd);font-size:13px;font-weight:600;margin:0 4px 8px">Past want lists</button>
         <div style="font-size:12px;color:var(--t3);margin-top:4px"><a href="https://www.actionfigure411.com/masters-of-the-universe/" target="_blank" rel="noopener" style="color:var(--t2)">Browse the full MOTU catalog on AF411 →</a></div>
       </div>` : ''}
     </div>
