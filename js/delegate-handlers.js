@@ -311,6 +311,7 @@ registerAll({
     window.openBarcodeScanner?.();
   },
   'shared-toggle-found': (e, el) => window.toggleSharedFound?.(el.dataset.figId),
+  'shared-img-zoom': (e, el) => window.sharedImgZoom?.(el.src),
   'toggle-share-extras': () => {
     window.store?.set('motu-share-extras', window.store?.get('motu-share-extras') ? '' : 1);
     window.renderSheetBody?.();

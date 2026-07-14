@@ -44,6 +44,29 @@ jobs:
         run: npm install --no-save eslint@9 globals
       - name: ESLint no-undef
         run: npx eslint --config eslint.config.mjs js/*.js sw.js
+      # v7.59: inline-HTML-script syntax gate. desktop.html shipped a
+      # SyntaxError (duplicate identifier) that killed its whole module —
+      # "share link loads indefinitely" — because the tool pages' inline
+      # <script> blocks are invisible to node --check on js/*.js and to
+      # eslint's glob. Extract each page's script and parse it for real.
+      - name: Inline HTML script syntax
+        run: |
+          for f in desktop.html deploy.html figures-editor.html motu-vault.html index.html; do
+            python3 - "$f" <<'PY'
+          import re, sys
+          src = open(sys.argv[1]).read()
+          # strip HTML comments first — the tool pages' doc comments contain
+          # literal "<script>" text that the tag regex would otherwise match
+          src = re.sub(r'<!--.*?-->', '', src, flags=re.S)
+          for i, m in enumerate(re.finditer(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', src, re.S)):
+              open(f'/tmp/inline_{i}.mjs', 'w').write(m.group(1))
+          PY
+            for s in /tmp/inline_*.mjs; do
+              [ -e "$s" ] || continue
+              node --check "$s" || { echo "SYNTAX ERROR in $f ($s)"; exit 1; }
+              rm -f "$s"
+            done
+          done
       # v7.52: README freshness guard. The README documents capabilities,
       # not versions (policy in its Development section) — this check keeps
       # it structurally present and version-free so it can't silently rot:

@@ -9,6 +9,17 @@
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.12
+       • v1.12: FIX (user-reported, share link "loads indefinitely"): the
+         v1.11 sharedCardHTML gained a `price` PARAMETER that collided
+         with the function's existing `const price` — a SyntaxError, so
+         the whole module failed to parse and the page never booted. The
+         parameter is now targetPrice. Also: mobile recipients of a
+         share link are handed to the app page (motu-vault.html, hash
+         intact) where scan-to-verify and the found-it checklist live —
+         previously unreachable since links always target this page —
+         and card thumbnails open a full-size lightbox on click.
+
      desktop.html  v1.11
        • v1.11: decodes the v7.58 extras tokens — the sender's per-figure
          note (0x02) and target price (0x03) render on each shared card.
@@ -293,7 +304,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.11</small></div>
+    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.12</small></div>
     <a href="motu-vault.html?m=1" style="font-size:12px;color:var(--acc);text-decoration:none;margin-left:12px" title="Open the full app in this browser (remembered for next time)">Use the full app →</a>
     <div class="summary" id="summary"></div>
   </header>
@@ -637,7 +648,7 @@ function decodeShareURL(hash){
   } catch { return null; }
 }
 
-function sharedCardHTML(f, owned, note, price){
+function sharedCardHTML(f, owned, note, targetPrice){
   const img = f.slug
     ? `<img class="shared-thumb" loading="lazy" src="${IMG}/${esc(f.slug)}.jpg" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shared-thumb ph',textContent:'—'}))">`
     : `<span class="shared-thumb ph">—</span>`;
@@ -650,7 +661,7 @@ function sharedCardHTML(f, owned, note, price){
   const upc = f.upc ? `<div class="price" style="font-family:monospace" title="Barcode on the box">UPC ${esc(f.upc)}</div>` : '';
   // v1.11: sender's note and target price (opt-in on the sending side).
   const noteHtml = note ? `<div class="price" style="font-style:italic;color:var(--t2)">💬 ${esc(note)}</div>` : '';
-  const priceHtml = price ? `<div class="price" style="color:var(--gold)">Try to pay ≤ $${price}</div>` : '';
+  const priceHtml = targetPrice ? `<div class="price" style="color:var(--gold)">Try to pay ≤ $${targetPrice}</div>` : '';
   // v7.39: someone viewing a shared want list is often not a collector —
   // they need to identify the ONE correct product, not just "He-Man" in
   // general (Origins/Masterverse/Classics/200x He-Man are all different,
@@ -677,6 +688,16 @@ function sharedCardHTML(f, owned, note, price){
 }
 
 async function initSharedView(ids){
+  // v1.12: share links have ALWAYS opened desktop.html (buildShareURL
+  // targets it), which meant PHONE recipients also landed here — so the
+  // app's richer shared view (v7.57 scan-to-verify, v7.58 found-it
+  // checklist) was effectively unreachable; user-reported as "no scan
+  // button anywhere". Coarse-pointer/mobile visitors are handed to the
+  // app page, hash intact. Loop-safe: the app's route.js keeps mobile
+  // there and only sends fine-pointer desktops back here.
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    !(window.matchMedia && matchMedia('(pointer: fine)').matches && matchMedia('(hover: hover)').matches);
+  if (mobile) { location.replace('motu-vault.html' + location.search + location.hash); return; }
   $('normalView').style.display = 'none';
   const sv = $('sharedView');
   sv.style.display = 'block';
@@ -733,6 +754,17 @@ async function initSharedView(ids){
   try { localColl = await loadCollection(); } catch {}
   const isOwned = f => { const s = localColl[f.id] && localColl[f.id].status; return s === 'owned' || s === 'for-sale'; };
 
+  // v1.12: click a card thumbnail for a full-size view (user request).
+  sv.addEventListener('click', e => {
+    const t = e.target.closest('.shared-thumb');
+    if (!t || !t.src) return;
+    const full = t.src.replace(/(\.jpg)$/, '$1');   // same asset; browsers scale up cleanly
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(6,3,12,0.92);z-index:999;display:grid;place-items:center;cursor:zoom-out';
+    ov.innerHTML = `<img src="${full}" alt="" style="max-width:92vw;max-height:92vh;border-radius:12px">`;
+    ov.addEventListener('click', () => ov.remove());
+    document.body.appendChild(ov);
+  });
   sv.innerHTML = `
     <div class="shared-head">
       <div class="brand"><b>MOTU</b> COLLECTOR</div>

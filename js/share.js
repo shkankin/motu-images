@@ -12,7 +12,7 @@
 // openSheet() are reached via window.* (bridged in app.js / eggs.js) to
 // avoid a circular import with render.js — same recipe as stats.js (v6.80).
 
-import { S, store, ICO, icon, esc, ln, STATUS_HEX, STATUS_LABEL } from './state.js';
+import { S, store, ICO, icon, esc, ln, IMG, STATUS_HEX, STATUS_LABEL } from './state.js';
 import { fetchFigs, figIsHidden } from './data.js';
 import { pushNav } from './handlers.js';
 import { toast } from './render.js';
@@ -595,6 +595,21 @@ function _sharedFound() {
   const all = store.get('motu-shared-found') || {};
   return new Set(all[_sharedFoundKey()] || []);
 }
+// v7.59: full-size image overlay for the shared view. Built via DOM (the
+// app page's CSP forbids inline scripts; delegated data-action + this
+// window fn is the house pattern). Tap anywhere to dismiss.
+window.sharedImgZoom = src => {
+  if (!src) return;
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(6,3,12,0.92);z-index:9999;display:grid;place-items:center;cursor:zoom-out';
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:94vw;max-height:90vh;border-radius:12px';
+  ov.appendChild(img);
+  ov.addEventListener('click', () => ov.remove());
+  document.body.appendChild(ov);
+};
+
 window.toggleSharedFound = figId => {
   const all = store.get('motu-shared-found') || {};
   const key = _sharedFoundKey();
@@ -640,14 +655,18 @@ function renderWantListViewSheet() {
     const s = String(u || '');
     return /^(https?:|data:image\/)/i.test(s) ? esc(s) : '';
   };
+  // v7.59: catalog figures get their real catalog image (custom figures
+  // keep their own f.image), and tapping any thumbnail opens a full-size
+  // view — buying the right release is easier with a big picture.
+  const cardImg = f => safeImgSrc(f.image) || (f.slug ? esc(`${IMG}/${f.slug}.jpg`) : '');
   items.forEach(({ fig: f, note, price }) => {
     const entry = S.coll[f.id];
     const owned = entry?.status === 'owned' || entry?.status === 'for-sale';
     const isFound = found.has(f.id);
-    const imgSrc = safeImgSrc(f.image);
+    const imgSrc = cardImg(f);
     h += `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border:1px solid ${isFound?'var(--gn)':owned?'var(--gn)':'var(--bd)'};border-radius:10px;margin-bottom:8px;${isFound?'opacity:0.55':''}">
       <button data-action="shared-toggle-found" data-fig-id="${esc(f.id)}" title="Mark as found" style="width:26px;height:26px;border-radius:50%;border:2px solid ${isFound?'var(--gn)':'var(--bd)'};background:${isFound?'var(--gn)':'transparent'};color:var(--btn-t);font-size:14px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center">${isFound?'✓':''}</button>
-      ${imgSrc ? `<img src="${imgSrc}" alt="" data-error-action="img-hide" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd)">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
+      ${imgSrc ? `<img src="${imgSrc}" alt="" data-action="shared-img-zoom" data-error-action="img-hide" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd);cursor:zoom-in">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
         <div style="font-size:11px;color:var(--t3)">${esc([ln(f.line), f.wave ? 'W' + f.wave : null, f.year].filter(Boolean).join(' · '))}${Number.isFinite(f.retail) ? ` · $${f.retail.toFixed(2)} MSRP` : ''}</div>

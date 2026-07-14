@@ -3,6 +3,31 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.33 changelog:
+//   • CACHE bumped to v7.33. SHELL: share.js + delegate-handlers.js +
+//     render.js. App v7.59. Also ships desktop.html v1.12 and lint.yml.
+//   • FIX (user-reported): v7.58 share links "loaded indefinitely".
+//     desktop.html v1.11's sharedCardHTML gained a `price` PARAMETER
+//     colliding with the function's existing `const price` — a
+//     SyntaxError, so the ENTIRE module failed to parse and the page
+//     never booted past its static loading state. Renamed to
+//     targetPrice. Two process failures fixed with it: the release-time
+//     "syntax check" piped node --check through head, reading head's
+//     exit code (always 0); and the tool pages' inline <script> blocks
+//     were invisible to every CI gate. New CI step extracts each HTML
+//     page's inline scripts and node --checks them for real.
+//   • FIX (user-reported): the v7.57 scan-to-verify button was invisible
+//     because share links have ALWAYS opened desktop.html — including on
+//     phones — so the app's richer recipient view was unreachable.
+//     desktop.html v1.12 hands mobile/coarse-pointer visitors with a
+//     #wl= hash to motu-vault.html (hash intact), where scan-to-verify
+//     and the found-it checklist live. Loop-safe with route.js.
+//   • Shared-view thumbnails (user request): in-app recipient cards now
+//     show the CATALOG image for catalog figures (custom figures keep
+//     f.image), and tapping any thumbnail opens a full-size overlay
+//     (DOM-built — the app page's CSP forbids inline handlers).
+//     desktop.html cards get a click lightbox too.
+//
 // v7.32 changelog:
 //   • CACHE bumped to v7.32. SHELL: share.js + delegate-handlers.js +
 //     render.js. App v7.58. Also ships desktop.html v1.11.
@@ -1306,7 +1331,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.32';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.33';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
