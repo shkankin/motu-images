@@ -43,8 +43,13 @@ import { renderStatsSheet } from './stats.js';
 import { pushNav } from './handlers.js';
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
-function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations'};
+// v7.60: the sheet-body builder, extracted from renderSheet so a sheet can
+// refresh ITS OWN body without a full app render. Full render() rebuilds
+// everything behind the overlay (the app visibly repaints "in the
+// background") and replaces the sheet wholesale, losing scroll position —
+// user-reported as "clicking [the found circle] refreshes the whole page
+// and resets you to the top".
+function buildSheetBody() {
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
@@ -63,6 +68,25 @@ function renderSheet() {
   else if (S.sheet === 'wishlistHistory') body = renderWishlistHistorySheet();
   else if (S.sheet === 'about') body = renderAboutSheet();
   else if (S.sheet === 'locations') body = renderLocationsSheet();
+  return body;
+}
+
+// Scroll-preserving in-place refresh of the open sheet's body. Bridged to
+// window for share.js / delegate handlers.
+function refreshSheetBody() {
+  const el = document.querySelector('.sheet-body');
+  if (!el || !S.sheet) { render(); return; }
+  const top = el.scrollTop;
+  const body = buildSheetBody();
+  if (!body) { render(); return; }   // unknown sheet → let renderSheet's fallback handle it
+  el.innerHTML = body;
+  el.scrollTop = top;
+}
+window.refreshSheetBody = refreshSheetBody;
+
+function renderSheet() {
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations'};
+  let body = buildSheetBody();
 
   // v6.30: Defensive fallback. If a deep link / shortcut / typo lands us on
   // an unknown sheet name, S.sheet is set but no body renders. Without this,
@@ -85,8 +109,12 @@ function renderSheet() {
       </div>
       <div class="sheet-body">${body}</div>
       ${S.sheet === 'wantListView' ? `<div class="sheet-footer" style="text-align:center">
-        <div style="font-size:12px;color:var(--t3);margin-bottom:10px">Browse the full MOTU catalog</div>
-        <a href="https://www.actionfigure411.com/masters-of-the-universe/" target="_blank" rel="noopener" style="display:inline-block;padding:10px 24px;border-radius:10px;background:var(--acc);color:var(--btn-t);font-size:13px;font-weight:700;text-decoration:none">View on AF411</a>
+        <!-- v7.60 (user request): the pitch + history links returned. Closing
+             the sheet lands the visitor in the full app they're already
+             running — the cheapest "try it yourself" there is. -->
+        <button data-action="close-sheet" style="display:inline-block;padding:10px 20px;border-radius:10px;background:var(--acc);color:var(--btn-t);border:none;font-size:13px;font-weight:700;margin:0 4px 8px">Track your own collection — free</button>
+        <button data-action="open-sheet" data-sheet="wishlistHistory" style="display:inline-block;padding:10px 16px;border-radius:10px;background:var(--bg3);color:var(--t1);border:1px solid var(--bd);font-size:13px;font-weight:600;margin:0 4px 8px">Past want lists</button>
+        <div style="font-size:12px;color:var(--t3);margin-top:4px"><a href="https://www.actionfigure411.com/masters-of-the-universe/" target="_blank" rel="noopener" style="color:var(--t2)">Browse the full MOTU catalog on AF411 →</a></div>
       </div>` : ''}
     </div>
   </div>`;

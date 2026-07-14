@@ -3,6 +3,29 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.34 changelog:
+//   • CACHE bumped to v7.34. SHELL: ui-sheets.js + share.js +
+//     delegate-handlers.js + photos.js + render.js. App v7.60. Recipient
+//     shared-view polish round (five user reports from real phone use):
+//   • FIX "clicking [found] refreshes the whole page / resets to top" +
+//     "motu-vault flashes in the background": the found-toggle (and the
+//     extras toggle) triggered FULL app renders — everything behind the
+//     translucent overlay repainted (the flash) and the sheet was
+//     rebuilt wholesale (scroll lost). ui-sheets gains buildSheetBody()
+//     (extracted from renderSheet) + refreshSheetBody(): in-place,
+//     scroll-preserving body refresh for the open sheet, bridged to
+//     window; both toggles now use it.
+//   • Recipient cards enlarged — 72px catalog thumbnails (tap to zoom),
+//     15px names, roomier padding, 30px found circles; parity in
+//     information density with the old desktop cards the user preferred.
+//   • Camera-denied toast is now actionable (lock icon → Permissions →
+//     Camera → Allow) — a browser visitor on the new origin has no
+//     camera grant and one mis-tap on Block previously dead-ended.
+//   • Want-list footer regains its links (user request): "Track your own
+//     collection — free" (closes the sheet into the full app the visitor
+//     is already running), "Past want lists" (the existing
+//     wishlistHistory sheet), and the AF411 catalog link.
+//
 // v7.33 changelog:
 //   • CACHE bumped to v7.33. SHELL: share.js + delegate-handlers.js +
 //     render.js. App v7.59. Also ships desktop.html v1.12 and lint.yml.
@@ -1331,7 +1354,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.33';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.34';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -314,7 +314,11 @@ registerAll({
   'shared-img-zoom': (e, el) => window.sharedImgZoom?.(el.src),
   'toggle-share-extras': () => {
     window.store?.set('motu-share-extras', window.store?.get('motu-share-extras') ? '' : 1);
-    window.renderSheetBody?.();
+    // v7.60: refreshSheetBody (generic, scroll-preserving) — the previous
+    // renderSheetBody bridge is data.js's accessoryPicker-scoped one,
+    // which fell back to a FULL render here (background flash + scroll
+    // reset, same class as the found-toggle report).
+    window.refreshSheetBody ? window.refreshSheetBody() : window.render?.();
   },
 
   // Lines grid — reorder (drag handled separately in handlers.js; this is

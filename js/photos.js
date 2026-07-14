@@ -756,7 +756,12 @@ window.openBarcodeScanner = async () => {
   } catch (err) {
     _teardownScanner();
     const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
-    window.toast && window.toast(denied ? 'Camera permission denied' : 'Could not start camera');
+    // v7.60: actionable recovery text — a browser visitor on the new
+    // origin has no camera grant yet, and one mis-tap on "Block" leaves
+    // them stuck with no hint (user-reported "permission denied").
+    window.toast && window.toast(denied
+      ? '⚠ Camera blocked. To allow: tap the lock icon (or ⋮) in the address bar → Permissions → Camera → Allow, then try again.'
+      : 'Could not start camera', { large: true });
     return;
   }
   video.srcObject = _scanStream;

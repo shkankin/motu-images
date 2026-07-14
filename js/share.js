@@ -620,7 +620,11 @@ window.toggleSharedFound = figId => {
   const keys = Object.keys(all);
   if (keys.length > 20) delete all[keys[0]];
   store.set('motu-shared-found', all);
-  render();
+  // v7.60: refresh the sheet body IN PLACE (scroll preserved). A full
+  // render() rebuilt the entire app behind the overlay — visible flash
+  // of the app "in the background" — and replaced the sheet, resetting
+  // scroll to the top on every tap. User-reported, and fair.
+  window.refreshSheetBody ? window.refreshSheetBody() : render();
 };
 
 function renderWantListViewSheet() {
@@ -664,15 +668,15 @@ function renderWantListViewSheet() {
     const owned = entry?.status === 'owned' || entry?.status === 'for-sale';
     const isFound = found.has(f.id);
     const imgSrc = cardImg(f);
-    h += `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border:1px solid ${isFound?'var(--gn)':owned?'var(--gn)':'var(--bd)'};border-radius:10px;margin-bottom:8px;${isFound?'opacity:0.55':''}">
-      <button data-action="shared-toggle-found" data-fig-id="${esc(f.id)}" title="Mark as found" style="width:26px;height:26px;border-radius:50%;border:2px solid ${isFound?'var(--gn)':'var(--bd)'};background:${isFound?'var(--gn)':'transparent'};color:var(--btn-t);font-size:14px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center">${isFound?'✓':''}</button>
-      ${imgSrc ? `<img src="${imgSrc}" alt="" data-action="shared-img-zoom" data-error-action="img-hide" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd);cursor:zoom-in">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
+    h += `<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg3);border:1px solid ${isFound?'var(--gn)':owned?'var(--gn)':'var(--bd)'};border-radius:12px;margin-bottom:10px;${isFound?'opacity:0.55':''}">
+      <button data-action="shared-toggle-found" data-fig-id="${esc(f.id)}" title="Mark as found" style="width:30px;height:30px;border-radius:50%;border:2px solid ${isFound?'var(--gn)':'var(--bd)'};background:${isFound?'var(--gn)':'transparent'};color:var(--btn-t);font-size:16px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center">${isFound?'✓':''}</button>
+      ${imgSrc ? `<img src="${imgSrc}" alt="" data-action="shared-img-zoom" data-error-action="img-hide" style="width:72px;height:72px;object-fit:cover;border-radius:8px;flex-shrink:0;background:var(--bd);cursor:zoom-in">` : `<div style="width:72px;height:72px;border-radius:8px;flex-shrink:0;background:var(--bd)"></div>`}
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
-        <div style="font-size:11px;color:var(--t3)">${esc([ln(f.line), f.wave ? 'W' + f.wave : null, f.year].filter(Boolean).join(' · '))}${Number.isFinite(f.retail) ? ` · $${f.retail.toFixed(2)} MSRP` : ''}</div>
-        ${f.upc ? `<div style="font-size:10px;color:var(--t3);font-family:monospace;letter-spacing:0.5px;margin-top:2px" title="Barcode on the box">▌${esc(f.upc)}</div>` : ''}
-        ${note ? `<div style="font-size:11px;color:var(--t2);font-style:italic;margin-top:3px">💬 ${esc(note)}</div>` : ''}
-        ${price ? `<div style="font-size:11px;color:var(--gold);margin-top:2px">Try to pay ≤ $${price}</div>` : ''}
+        <div style="font-size:15px;font-weight:700;color:var(--t1);line-height:1.25">${esc(f.name)}</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:2px">${esc([ln(f.line), f.wave ? 'W' + f.wave : null, f.year].filter(Boolean).join(' · '))}${Number.isFinite(f.retail) ? ` · $${f.retail.toFixed(2)} MSRP` : ''}</div>
+        ${f.upc ? `<div style="font-size:11px;color:var(--t3);font-family:monospace;letter-spacing:0.5px;margin-top:3px" title="Barcode on the box">▌${esc(f.upc)}</div>` : ''}
+        ${note ? `<div style="font-size:12px;color:var(--t2);font-style:italic;margin-top:4px">💬 ${esc(note)}</div>` : ''}
+        ${price ? `<div style="font-size:12px;color:var(--gold);font-weight:600;margin-top:2px">Try to pay ≤ $${price}</div>` : ''}
       </div>
       ${owned ? `<div style="font-size:11px;font-weight:700;color:var(--gn)">✓ You own it</div>` : ''}
     </div>`;
