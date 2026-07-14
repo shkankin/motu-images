@@ -9,6 +9,11 @@
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.10
+       • v1.10: UPC printed on each shared-list card (when the catalog has
+         it) so a buyer can match the number on the box to the exact
+         release. Pairs with the app's new scan-to-verify on mobile.
+
      desktop.html  v1.9
        • v1.9: "Use the full app →" header link (motu-vault.html?m=1).
          Pairs with the app's new desktop routing: plain desktop visits
@@ -282,7 +287,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.9</small></div>
+    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.10</small></div>
     <a href="motu-vault.html?m=1" style="font-size:12px;color:var(--acc);text-decoration:none;margin-left:12px" title="Open the full app in this browser (remembered for next time)">Use the full app →</a>
     <div class="summary" id="summary"></div>
   </header>
@@ -618,6 +623,9 @@ function sharedCardHTML(f, owned){
   const lnName = lineName(f.line);
   const meta = [lnName, sub ? sub.label : null, f.year].filter(Boolean).join(' · ');
   const price = Number.isFinite(f.retail) ? `<div class="price">$${f.retail.toFixed(2)} MSRP</div>` : '';
+  // v1.10: barcode number on the card — the buyer can compare it against
+  // the box (or their phone's scanner) to confirm the exact release.
+  const upc = f.upc ? `<div class="price" style="font-family:monospace" title="Barcode on the box">UPC ${esc(f.upc)}</div>` : '';
   // v7.39: someone viewing a shared want list is often not a collector —
   // they need to identify the ONE correct product, not just "He-Man" in
   // general (Origins/Masterverse/Classics/200x He-Man are all different,
@@ -634,6 +642,7 @@ function sharedCardHTML(f, owned){
       <div class="n">${esc(f.name)}</div>
       <div class="meta">${esc(meta)}</div>
       ${price}
+    ${upc}
       <a class="shared-search-link" href="${esc(searchUrl)}" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Look this one up</span></a>
     </div>
     ${owned ? `<div class="shared-owned-badge">✓ You already<br>have this</div>` : ''}

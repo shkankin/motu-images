@@ -778,7 +778,6 @@ window.openBarcodeScanner = async () => {
             done = true;
             if (window.haptic) window.haptic();
             _teardownScanner();
-            window.onSearch && window.onSearch(raw);
             // v7.42: ownership verdict at the shelf. The whole reason a
             // collector scans in a store is "do I already have this?" —
             // the #1 duplicate-purchase pain every competing tracker's
@@ -789,6 +788,27 @@ window.openBarcodeScanner = async () => {
             const norm = s => String(s || '').replace(/[^0-9]/g, '').replace(/^0+/, '');
             const scanned = norm(raw);
             const hit = scanned ? S.figs.find(f => f.upc && norm(f.upc) === scanned) : null;
+            // v7.57: VERIFY mode — set by the shared want-list view's
+            // "Scan to verify" button (S._scanVerifyIds = Set of the
+            // shared list's figure ids). The person holding the phone is
+            // often buying FOR a collector and can't tell an Origins
+            // He-Man from a Masterverse one; the verdict does it for
+            // them. One-shot: cleared after each scan, the sheet's
+            // button re-arms it. In verify mode we do NOT run onSearch —
+            // the person stays on the shared list.
+            if (S._scanVerifyIds) {
+              const ids = S._scanVerifyIds;
+              S._scanVerifyIds = null;
+              if (hit && ids.has(hit.id)) {
+                window.toast && window.toast(`✓ ON THE LIST — ${hit.name}`, { large: true });
+              } else if (hit) {
+                window.toast && window.toast(`✗ NOT on the list — this is "${hit.name}" (${hit.line})`, { large: true });
+              } else {
+                window.toast && window.toast(`✗ No match for ${raw} — can't verify this one by barcode`, { large: true });
+              }
+              return;
+            }
+            window.onSearch && window.onSearch(raw);
             if (hit) {
               const c = S.coll[hit.id];
               const st = c?.status;

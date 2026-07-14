@@ -3,6 +3,25 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.31 changelog:
+//   • CACHE bumped to v7.31. SHELL: share.js + photos.js +
+//     delegate-handlers.js + render.js. App v7.57. Also ships
+//     desktop.html v1.10.
+//   • Shared want list, buyer-protection release (user request): the
+//     person holding a shared list is often buying FOR a collector and
+//     can't tell releases apart, so the list now carries every
+//     disambiguator the catalog has. In-app recipient view: line + wave +
+//     year + MSRP per figure, the UPC printed in monospace (eyeball it
+//     against the box even without a scanner), and a "Scan a barcode to
+//     verify" button — reuses the search scanner in a new verify mode
+//     (S._scanVerifyIds) whose verdict is list-membership: "✓ ON THE
+//     LIST — <name>", "✗ NOT on the list — this is '<other figure>'", or
+//     no-match. One-shot per tap, feature-gated on BarcodeDetector with a
+//     graceful hint otherwise, never runs onSearch (the viewer stays on
+//     the list). desktop.html v1.10 prints the UPC on each shared card.
+//     986 of 1290 catalog figures carry a UPC today; the view says how
+//     many of THIS list are scan-verifiable.
+//
 // v7.30 changelog:
 //   • CACHE bumped to v7.30. SHELL: + js/route.js (new); motu-vault.html
 //     changed. App v7.56.
@@ -1265,7 +1284,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.30';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.31';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

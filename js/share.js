@@ -524,7 +524,24 @@ function renderWantListViewSheet() {
   const figs = S._sharedWantList || [];
   if (!figs.length) return '<div class="text-sm text-dim">Empty want list.</div>';
   const scrollHint = figs.length > 4 ? '<div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:8px">↕ Scroll to see all</div>' : '';
-  let h = `<div style="font-size:13px;color:var(--t2);margin-bottom:6px">${figs.length} figure${figs.length===1?'':'s'} wanted</div>${scrollHint}`;
+  let h = `<div style="font-size:13px;color:var(--t2);margin-bottom:6px">${figs.length} figure${figs.length===1?'':'s'} wanted</div>`;
+  // v7.57: scan-to-verify for the person HOLDING the list. Collectors are
+  // exact about releases (an Origins He-Man ≠ a Masterverse He-Man); the
+  // recipient often isn't a collector at all. In a store, they can point
+  // the scanner at a box and get a plain verdict: on the list, or not
+  // (and if not, what it actually is). Uses the same BarcodeDetector
+  // scanner as the app's search; S._scanVerifyIds switches its verdict
+  // to list-membership. Feature-gated: no BarcodeDetector → a quiet hint
+  // instead of a dead button. UPCs are printed per figure below too, so
+  // even without the scanner the number on the box can be eyeballed.
+  const scannable = figs.filter(f => f.upc).length;
+  if ('BarcodeDetector' in window && scannable) {
+    h += `<button data-action="shared-scan-verify" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--acc);background:var(--bg3);color:var(--acc);font-size:14px;font-weight:700;margin-bottom:6px">${icon(ICO.camera || ICO.search, 15)} Scan a barcode to verify</button>
+    <div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:10px">${scannable} of ${figs.length} on this list can be verified by barcode</div>`;
+  } else if (scannable) {
+    h += `<div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:10px">Tip: barcode numbers are shown below — compare against the box. (Scanning needs Chrome on Android.)</div>`;
+  }
+  h += scrollHint;
   // v6.26: only allow http(s) and data: image URLs. Custom figures can carry
   // user-controlled image fields, so reject anything else (javascript:, etc.)
   // and HTML-escape what we keep so it can't break out of the src attribute.
@@ -540,7 +557,8 @@ function renderWantListViewSheet() {
       ${imgSrc ? `<img src="${imgSrc}" alt="" data-error-action="img-hide" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd)">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
-        <div style="font-size:11px;color:var(--t3)">${esc([f.line, f.wave].filter(Boolean).join(' · '))}</div>
+        <div style="font-size:11px;color:var(--t3)">${esc([ln(f.line), f.wave ? 'W' + f.wave : null, f.year].filter(Boolean).join(' · '))}${Number.isFinite(f.retail) ? ` · $${f.retail.toFixed(2)} MSRP` : ''}</div>
+        ${f.upc ? `<div style="font-size:10px;color:var(--t3);font-family:monospace;letter-spacing:0.5px;margin-top:2px" title="Barcode on the box">▌${esc(f.upc)}</div>` : ''}
       </div>
       ${owned ? `<div style="font-size:11px;font-weight:700;color:var(--gn)">✓ You own it</div>` : ''}
     </div>`;

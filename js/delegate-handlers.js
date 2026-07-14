@@ -300,6 +300,14 @@ registerAll({
   'dismiss-onboard':  () => { window.S.onboarded = true; window.store?.set('motu-onboarded', 1); window.render?.(); },
   'toggle-reorder':   () => window.toggleReorder?.(),
   'open-barcode-scanner': () => window.openBarcodeScanner?.(),
+  // v7.57: shared want-list "Scan to verify" — arms the scanner's verify
+  // mode (see photos.js) against the currently viewed shared list, then
+  // opens the same scanner. One-shot per tap.
+  'shared-scan-verify': () => {
+    const figs = window.S?._sharedWantList || [];
+    window.S._scanVerifyIds = new Set(figs.map(f => f.id));
+    window.openBarcodeScanner?.();
+  },
 
   // Lines grid — reorder (drag handled separately in handlers.js; this is
   // just the per-row Hide toggle, still a plain click action)
