@@ -55,16 +55,26 @@ function buildShareURL() {
       if (id.startsWith('manual-')) {
         const suffix = id.slice('manual-'.length);
         const code = suffix.includes('-') ? suffix.slice(suffix.lastIndexOf('-') + 1) : suffix;
-        return { manual: true, suffix: code };
+        return { manual: true, suffix: code, id };
       }
       const m = id.match(/(\d+)$/);
       if (!m) return null;
-      if ((numCount.get(m[1]) || 0) > 1) return { manual: true, suffix: id };  // ambiguous → full id
-      return { manual: false, num: parseInt(m[1], 10) };
+      if ((numCount.get(m[1]) || 0) > 1) return { manual: true, suffix: id, id };  // ambiguous → full id
+      return { manual: false, num: parseInt(m[1], 10), id };
     })
     .filter(Boolean);
   if (!entries.length) return null;
 
+  // v7.58: optional per-figure extras, emitted AFTER the figure's token —
+  // 0x02 = note (len + utf8, notes trimmed to 120 chars), 0x03 = target
+  // price (2 bytes, whole dollars). Off by default and gated behind the
+  // share sheet's "Include notes & target prices" toggle
+  // (motu-share-extras): notes are private annotations and shouldn't leak
+  // into a link by surprise. Both deployed decoders ship in the same
+  // release, and links are always minted fresh, so no compatibility
+  // window exists; old links simply contain no 0x02/0x03 tokens.
+  const extras = !!store.get('motu-share-extras');
+  const coll = S.coll;
   const bytes = [0xFE];
   const enc = new TextEncoder();
   for (const e of entries) {
@@ -74,6 +84,16 @@ function buildShareURL() {
       bytes.push(0x01, strBytes.length, ...strBytes);
     } else if (e.num <= 0xFFFF) {
       bytes.push(0x00, (e.num >> 8) & 0xFF, e.num & 0xFF);
+    } else { continue; }
+    if (extras && e.id) {
+      const c = coll[e.id];
+      const note = String(c?.copies?.[0]?.notes || '').trim().slice(0, 120);
+      if (note) {
+        const nb = enc.encode(note);
+        if (nb.length <= 255) bytes.push(0x02, nb.length, ...nb);
+      }
+      const tp = Math.round(parseFloat(c?.targetPrice));
+      if (Number.isFinite(tp) && tp > 0 && tp <= 0xFFFF) bytes.push(0x03, (tp >> 8) & 0xFF, tp & 0xFF);
     }
     // ids over 65535 silently skipped — none exist in the catalog today
     // (max ~14,000); the old text format is still readable as a fallback
@@ -100,30 +120,47 @@ function decodeShareURL(hash) {
     // the two formats apart. Old-format links already sent out before
     // this change still decode correctly via the fallback below.
     if (bin.charCodeAt(0) === 0xFE) {
-      const tokens = [];
+      // v7.58: items are now objects { t, note?, price? }. 0x02 (note) and
+      // 0x03 (target price, whole dollars) attach to the most recent
+      // figure token. Links without extras decode to items with just t.
+      const items = [];
       let i = 1;
+      const readStr = () => {
+        if (i + 1 > bin.length) return null;
+        const len = bin.charCodeAt(i++);
+        if (i + len > bin.length) return null;
+        const strBytes = new Uint8Array(len);
+        for (let j = 0; j < len; j++) strBytes[j] = bin.charCodeAt(i + j);
+        i += len;
+        return new TextDecoder().decode(strBytes);
+      };
       while (i < bin.length) {
         const type = bin.charCodeAt(i++);
         if (type === 0x00) {
           if (i + 2 > bin.length) break;
           const num = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
           i += 2;
-          tokens.push(String(num));
+          items.push({ t: String(num) });
         } else if (type === 0x01) {
-          if (i + 1 > bin.length) break;
-          const len = bin.charCodeAt(i++);
-          if (i + len > bin.length) break;
-          const strBytes = new Uint8Array(len);
-          for (let j = 0; j < len; j++) strBytes[j] = bin.charCodeAt(i + j);
-          i += len;
-          tokens.push('m:' + new TextDecoder().decode(strBytes));
+          const s = readStr();
+          if (s === null) break;
+          items.push({ t: 'm:' + s });
+        } else if (type === 0x02) {
+          const s = readStr();
+          if (s === null) break;
+          if (items.length) items[items.length - 1].note = s;
+        } else if (type === 0x03) {
+          if (i + 2 > bin.length) break;
+          const p = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
+          i += 2;
+          if (items.length) items[items.length - 1].price = p;
         } else {
           break;  // unrecognized type byte — stop rather than misread the rest
         }
       }
-      return tokens;
+      return items;
     }
-    return bin.split(',').map(n => n.trim()).filter(Boolean);
+    return bin.split(',').map(n => n.trim()).filter(Boolean).map(t => ({ t }));
   } catch { return null; }
 }
 
@@ -334,6 +371,24 @@ function renderShareSheet() {
       <div style="display:inline-block;padding:10px;background:#fff;border-radius:12px;margin-bottom:14px">${qrSvg}</div>
       <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Scan to view want list</div>
     </div>
+    ${(() => {
+      // v7.58: notes & target prices are OPT-IN — notes are private
+      // annotations and must not leak into a link by surprise. The toggle
+      // persists (motu-share-extras); flipping it re-renders this sheet,
+      // which re-mints the URL and QR above with/without 0x02/0x03 tokens.
+      const on = !!store.get('motu-share-extras');
+      let carrying = 0;
+      for (const f2 of wishFigs) {
+        const c2 = S.coll[f2.id];
+        if (String(c2?.copies?.[0]?.notes || '').trim() || (parseFloat(c2?.targetPrice) > 0)) carrying++;
+      }
+      if (!carrying) return '';
+      return `<button data-action="toggle-share-extras" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;border:1px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:var(--bg3);margin-bottom:12px;text-align:left">
+        <div style="width:18px;height:18px;border-radius:5px;border:2px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:${on ? 'var(--acc)' : 'transparent'};color:var(--btn-t);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on ? '✓' : ''}</div>
+        <div style="flex:1"><div style="font-size:13px;color:var(--t1)">Include notes & target prices</div>
+        <div style="font-size:11px;color:var(--t3)">${carrying} figure${carrying === 1 ? ' has' : 's have'} them · makes the link longer</div></div>
+      </button>`;
+    })()}
     <div style="background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
       <div style="flex:1;font-size:11px;color:var(--t3);word-break:break-all;font-family:monospace;line-height:1.4">${esc(url)}</div>
       <button data-action="copy-share-url" style="flex-shrink:0;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--acc);font-size:12px;font-weight:600">Copy</button>
@@ -469,14 +524,21 @@ function checkShareLink() {
       }
       else { const m = f.id.match(/(\d+)$/); if (m && !byNum.has(m[1])) byNum.set(m[1], f); }
     });
-    const figs = tokens.map(t => t.startsWith('m:') ? (byManual.get(t.slice(2)) || byFullId.get(t.slice(2))) : byNum.get(t)).filter(Boolean);
-    if (!figs.length) return;
-    // v6.31: record this view in the user's wishlist history so they can
-    // revisit it from Settings later. Re-opening the same link bumps the
-    // timestamp instead of duplicating.
-    try { window.recordWishlistView?.(tokens, figs); } catch {}
+    // v7.58: tokens are item objects { t, note?, price? }; the shared list
+    // is now [{ fig, note, price }] so the view can show the sender's note
+    // and target price. recordWishlistView keeps its old (tokens, figs)
+    // string/figure shapes.
+    const items = tokens
+      .map(it => {
+        const t = it.t;
+        const fig = t.startsWith('m:') ? (byManual.get(t.slice(2)) || byFullId.get(t.slice(2))) : byNum.get(t);
+        return fig ? { fig, note: it.note, price: it.price } : null;
+      })
+      .filter(Boolean);
+    if (!items.length) return;
+    try { window.recordWishlistView?.(tokens.map(it => it.t), items.map(it => it.fig)); } catch {}
     S.sheet = 'wantListView';
-    S._sharedWantList = figs;
+    S._sharedWantList = items;
     pushNav();
     render();
   }
@@ -520,9 +582,37 @@ window.shareTradeList = async () => {
   }
 };
 
+// v7.58: local-only "found it" checklist for the recipient — someone
+// working a shared list at a convention or across stores ticks items off
+// as they find them. Keyed by a prefix of the link payload so different
+// shared lists keep separate checklists; stored locally, never sent
+// anywhere, invisible to the sender.
+function _sharedFoundKey() {
+  const m = location.hash.match(/[#&]wl=([A-Za-z0-9\-_]+)/);
+  return m ? 'wl:' + m[1].slice(0, 24) : 'wl:current';
+}
+function _sharedFound() {
+  const all = store.get('motu-shared-found') || {};
+  return new Set(all[_sharedFoundKey()] || []);
+}
+window.toggleSharedFound = figId => {
+  const all = store.get('motu-shared-found') || {};
+  const key = _sharedFoundKey();
+  const set = new Set(all[key] || []);
+  set.has(figId) ? set.delete(figId) : set.add(figId);
+  all[key] = [...set];
+  // keep the store tidy: cap at 20 remembered lists, oldest-ish out
+  const keys = Object.keys(all);
+  if (keys.length > 20) delete all[keys[0]];
+  store.set('motu-shared-found', all);
+  render();
+};
+
 function renderWantListViewSheet() {
-  const figs = S._sharedWantList || [];
+  const items = (S._sharedWantList || []).map(x => x.fig ? x : { fig: x });  // tolerate legacy shape
+  const figs = items.map(x => x.fig);
   if (!figs.length) return '<div class="text-sm text-dim">Empty want list.</div>';
+  const found = _sharedFound();
   const scrollHint = figs.length > 4 ? '<div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:8px">↕ Scroll to see all</div>' : '';
   let h = `<div style="font-size:13px;color:var(--t2);margin-bottom:6px">${figs.length} figure${figs.length===1?'':'s'} wanted</div>`;
   // v7.57: scan-to-verify for the person HOLDING the list. Collectors are
@@ -541,6 +631,7 @@ function renderWantListViewSheet() {
   } else if (scannable) {
     h += `<div style="font-size:11px;color:var(--t3);text-align:center;margin-bottom:10px">Tip: barcode numbers are shown below — compare against the box. (Scanning needs Chrome on Android.)</div>`;
   }
+  if (found.size) h += `<div style="font-size:12px;color:var(--gn);text-align:center;margin-bottom:8px">✓ ${found.size} of ${figs.length} found</div>`;
   h += scrollHint;
   // v6.26: only allow http(s) and data: image URLs. Custom figures can carry
   // user-controlled image fields, so reject anything else (javascript:, etc.)
@@ -549,16 +640,20 @@ function renderWantListViewSheet() {
     const s = String(u || '');
     return /^(https?:|data:image\/)/i.test(s) ? esc(s) : '';
   };
-  figs.forEach(f => {
+  items.forEach(({ fig: f, note, price }) => {
     const entry = S.coll[f.id];
     const owned = entry?.status === 'owned' || entry?.status === 'for-sale';
+    const isFound = found.has(f.id);
     const imgSrc = safeImgSrc(f.image);
-    h += `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border:1px solid ${owned?'var(--gn)':'var(--bd)'};border-radius:10px;margin-bottom:8px">
+    h += `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border:1px solid ${isFound?'var(--gn)':owned?'var(--gn)':'var(--bd)'};border-radius:10px;margin-bottom:8px;${isFound?'opacity:0.55':''}">
+      <button data-action="shared-toggle-found" data-fig-id="${esc(f.id)}" title="Mark as found" style="width:26px;height:26px;border-radius:50%;border:2px solid ${isFound?'var(--gn)':'var(--bd)'};background:${isFound?'var(--gn)':'transparent'};color:var(--btn-t);font-size:14px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center">${isFound?'✓':''}</button>
       ${imgSrc ? `<img src="${imgSrc}" alt="" data-error-action="img-hide" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--bd)">` : `<div style="width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--bd)"></div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
         <div style="font-size:11px;color:var(--t3)">${esc([ln(f.line), f.wave ? 'W' + f.wave : null, f.year].filter(Boolean).join(' · '))}${Number.isFinite(f.retail) ? ` · $${f.retail.toFixed(2)} MSRP` : ''}</div>
         ${f.upc ? `<div style="font-size:10px;color:var(--t3);font-family:monospace;letter-spacing:0.5px;margin-top:2px" title="Barcode on the box">▌${esc(f.upc)}</div>` : ''}
+        ${note ? `<div style="font-size:11px;color:var(--t2);font-style:italic;margin-top:3px">💬 ${esc(note)}</div>` : ''}
+        ${price ? `<div style="font-size:11px;color:var(--gold);margin-top:2px">Try to pay ≤ $${price}</div>` : ''}
       </div>
       ${owned ? `<div style="font-size:11px;font-weight:700;color:var(--gn)">✓ You own it</div>` : ''}
     </div>`;

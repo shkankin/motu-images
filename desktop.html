@@ -9,6 +9,12 @@
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
 <!-- ════════════════════════════════════════════════════════════════
+     desktop.html  v1.11
+       • v1.11: decodes the v7.58 extras tokens — the sender's per-figure
+         note (0x02) and target price (0x03) render on each shared card.
+         Old links (no extras) decode identically; the legacy text format
+         still falls through.
+
      desktop.html  v1.10
        • v1.10: UPC printed on each shared-list card (when the catalog has
          it) so a buyer can match the number on the box to the exact
@@ -287,7 +293,7 @@
 <body>
 <div class="wrap" id="normalView">
   <header>
-    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.10</small></div>
+    <div class="brand"><b>MOTU</b> COLLECTOR <small>DESKTOP · v1.11</small></div>
     <a href="motu-vault.html?m=1" style="font-size:12px;color:var(--acc);text-decoration:none;margin-left:12px" title="Open the full app in this browser (remembered for next time)">Use the full app →</a>
     <div class="summary" id="summary"></div>
   </header>
@@ -590,32 +596,48 @@ function decodeShareURL(hash){
     const b64 = m[1].replace(/-/g,'+').replace(/_/g,'/');
     const bin = atob(b64);
     if (bin.charCodeAt(0) === 0xFE) {
-      const tokens = [];
+      // v1.11 (matches app v7.58): items are { t, note?, price? } — 0x02
+      // note and 0x03 target price attach to the preceding figure token.
+      const items = [];
       let i = 1;
+      const readStr = () => {
+        if (i + 1 > bin.length) return null;
+        const len = bin.charCodeAt(i++);
+        if (i + len > bin.length) return null;
+        const strBytes = new Uint8Array(len);
+        for (let j = 0; j < len; j++) strBytes[j] = bin.charCodeAt(i + j);
+        i += len;
+        return new TextDecoder().decode(strBytes);
+      };
       while (i < bin.length) {
         const type = bin.charCodeAt(i++);
         if (type === 0x00) {
           if (i + 2 > bin.length) break;
           const num = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
           i += 2;
-          tokens.push(String(num));
+          items.push({ t: String(num) });
         } else if (type === 0x01) {
-          if (i + 1 > bin.length) break;
-          const len = bin.charCodeAt(i++);
-          if (i + len > bin.length) break;
-          const strBytes = new Uint8Array(len);
-          for (let j = 0; j < len; j++) strBytes[j] = bin.charCodeAt(i + j);
-          i += len;
-          tokens.push('m:' + new TextDecoder().decode(strBytes));
+          const s = readStr();
+          if (s === null) break;
+          items.push({ t: 'm:' + s });
+        } else if (type === 0x02) {
+          const s = readStr();
+          if (s === null) break;
+          if (items.length) items[items.length - 1].note = s;
+        } else if (type === 0x03) {
+          if (i + 2 > bin.length) break;
+          const p = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
+          i += 2;
+          if (items.length) items[items.length - 1].price = p;
         } else break;
       }
-      return tokens;
+      return items;
     }
-    return bin.split(',').map(n => n.trim()).filter(Boolean);
+    return bin.split(',').map(n => n.trim()).filter(Boolean).map(t => ({ t }));
   } catch { return null; }
 }
 
-function sharedCardHTML(f, owned){
+function sharedCardHTML(f, owned, note, price){
   const img = f.slug
     ? `<img class="shared-thumb" loading="lazy" src="${IMG}/${esc(f.slug)}.jpg" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'shared-thumb ph',textContent:'—'}))">`
     : `<span class="shared-thumb ph">—</span>`;
@@ -626,6 +648,9 @@ function sharedCardHTML(f, owned){
   // v1.10: barcode number on the card — the buyer can compare it against
   // the box (or their phone's scanner) to confirm the exact release.
   const upc = f.upc ? `<div class="price" style="font-family:monospace" title="Barcode on the box">UPC ${esc(f.upc)}</div>` : '';
+  // v1.11: sender's note and target price (opt-in on the sending side).
+  const noteHtml = note ? `<div class="price" style="font-style:italic;color:var(--t2)">💬 ${esc(note)}</div>` : '';
+  const priceHtml = price ? `<div class="price" style="color:var(--gold)">Try to pay ≤ $${price}</div>` : '';
   // v7.39: someone viewing a shared want list is often not a collector —
   // they need to identify the ONE correct product, not just "He-Man" in
   // general (Origins/Masterverse/Classics/200x He-Man are all different,
@@ -643,6 +668,8 @@ function sharedCardHTML(f, owned){
       <div class="meta">${esc(meta)}</div>
       ${price}
     ${upc}
+    ${noteHtml}
+    ${priceHtml}
       <a class="shared-search-link" href="${esc(searchUrl)}" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Look this one up</span></a>
     </div>
     ${owned ? `<div class="shared-owned-badge">✓ You already<br>have this</div>` : ''}
@@ -686,7 +713,11 @@ async function initSharedView(ids){
     }
     else { const m = f.id.match(/(\d+)$/); if (m && !byNum.has(m[1])) byNum.set(m[1], f); }
   });
-  const wanted = ids.map(t => t.startsWith('m:') ? (byManual.get(t.slice(2)) || byFullId.get(t.slice(2))) : byNum.get(t)).filter(Boolean);
+  const wanted = ids.map(it => {
+    const t = it.t;
+    const fig = t.startsWith('m:') ? (byManual.get(t.slice(2)) || byFullId.get(t.slice(2))) : byNum.get(t);
+    return fig ? { fig, note: it.note, price: it.price } : null;   // v1.11: carry note/price
+  }).filter(Boolean);
 
   if (!wanted.length) {
     sv.innerHTML = `<div class="shared-head"><div class="brand"><b>MOTU</b> COLLECTOR</div></div><div class="state"><h2>Empty want list</h2><div>This link didn't match any figures in the current catalog.</div></div>`;
@@ -708,7 +739,7 @@ async function initSharedView(ids){
       <h1>Want List</h1>
       <p>${wanted.length} figure${wanted.length === 1 ? '' : 's'}</p>
     </div>
-    ${wanted.map(f => sharedCardHTML(f, isOwned(f))).join('')}
+    ${wanted.map(it => sharedCardHTML(it.fig, isOwned(it.fig), it.note, it.price)).join('')}
   `;
 }
 

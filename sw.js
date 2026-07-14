@@ -3,6 +3,28 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.32 changelog:
+//   • CACHE bumped to v7.32. SHELL: share.js + delegate-handlers.js +
+//     render.js. App v7.58. Also ships desktop.html v1.11.
+//   • Share-link extras (user request, all three ideas from v7.57's
+//     notes): the wl= encoding gains two optional per-figure tokens —
+//     0x02 note (utf8, sender's copy notes trimmed to 120 chars) and
+//     0x03 target price (2 bytes, whole dollars, from targetPrice).
+//     OPT-IN via a persisted "Include notes & target prices" toggle in
+//     the share sheet (default OFF — notes are private annotations and
+//     must not leak into a link by surprise); the sheet shows how many
+//     figures carry extras and re-mints URL+QR live when toggled. Both
+//     decoders (app + desktop v1.11) now return { t, note?, price? }
+//     items; recipient views render the note (💬 italic) and "Try to
+//     pay ≤ $X". Old links decode identically; the legacy text format
+//     still falls through; unknown future token types still stop the
+//     read. Round-trip tested incl. unicode notes and extras-off.
+//   • Recipient "found it" checklist (in-app shared view): tap the
+//     circle on each item to tick it off while working the list across
+//     stores — local-only (motu-shared-found, keyed per link, capped at
+//     20 remembered lists), never sent anywhere, invisible to the
+//     sender. Shows "✓ N of M found".
+//
 // v7.31 changelog:
 //   • CACHE bumped to v7.31. SHELL: share.js + photos.js +
 //     delegate-handlers.js + render.js. App v7.57. Also ships
@@ -1284,7 +1306,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.31';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.32';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

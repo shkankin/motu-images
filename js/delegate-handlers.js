@@ -304,9 +304,16 @@ registerAll({
   // mode (see photos.js) against the currently viewed shared list, then
   // opens the same scanner. One-shot per tap.
   'shared-scan-verify': () => {
-    const figs = window.S?._sharedWantList || [];
-    window.S._scanVerifyIds = new Set(figs.map(f => f.id));
+    // v7.58: shared list items are { fig, note, price }; tolerate the
+    // pre-7.58 plain-figure shape too.
+    const items = window.S?._sharedWantList || [];
+    window.S._scanVerifyIds = new Set(items.map(x => (x.fig || x).id));
     window.openBarcodeScanner?.();
+  },
+  'shared-toggle-found': (e, el) => window.toggleSharedFound?.(el.dataset.figId),
+  'toggle-share-extras': () => {
+    window.store?.set('motu-share-extras', window.store?.get('motu-share-extras') ? '' : 1);
+    window.renderSheetBody?.();
   },
 
   // Lines grid — reorder (drag handled separately in handlers.js; this is
