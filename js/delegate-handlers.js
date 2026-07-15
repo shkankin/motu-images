@@ -508,18 +508,26 @@ registerAll({
   'set-theme': (e, el, d) => window.setTheme?.(d.theme),
   // v7.62: Line Art settings (Theme sheet). Full render on purpose — the
   // Lines tab updating behind the sheet is the live preview.
+  // v7.66: no more render() here — the full re-render behind the sheet
+  // was the "awkward refresh" (user report). Scrim and height are pure
+  // CSS states (body class / --line-h var): instant, flicker-free.
+  // refreshSheetBody() repaints only the sheet's own controls.
   'toggle-line-art': () => {
-    window.store?.set('motu-line-art', window.store?.get('motu-line-art') === '0' ? '' : '0');
-    window.render?.();
+    const off = window.store?.get('motu-line-art') !== '0';
+    window.store?.set('motu-line-art', off ? '0' : '');
+    document.body.classList.toggle('no-line-art', off);
+    window.refreshSheetBody?.();
   },
   'toggle-art-scrim': () => {
-    window.store?.set('motu-art-scrim', window.store?.get('motu-art-scrim') === '0' ? '' : '0');
-    window.render?.();
+    const off = window.store?.get('motu-art-scrim') !== '0';
+    window.store?.set('motu-art-scrim', off ? '0' : '');
+    document.body.classList.toggle('no-art-scrim', off);
+    window.refreshSheetBody?.();
   },
   'set-line-height': (e, el, d) => {
     window.store?.set('motu-line-h', d.h);
     document.documentElement.style.setProperty('--line-h', d.h + 'px');
-    window.render?.();
+    window.refreshSheetBody?.();
   },
 
   // Title tap: the theme-specific 'title-tap-*' actions are registered in

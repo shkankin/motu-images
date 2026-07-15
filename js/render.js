@@ -522,7 +522,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.65</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.66</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1019,10 +1019,15 @@ function renderLinesGrid() {
         // and hides (img-hide) for lines without art, so coverage can grow
         // line by line. Art off = no <img> at all — zero requests.
         const artOn = store.get('motu-line-art') !== '0';
-        const scrimOn = store.get('motu-art-scrim') !== '0';
+        // v7.66: the scrim div is ALWAYS emitted on art rows; whether it
+        // shows is body.no-art-scrim's decision (see vault.css). That
+        // makes the Theme-sheet toggle a pure CSS flip — no re-render.
+        // The art pref still gates the <img> itself (art off = zero
+        // requests on natural renders; a live art-ON flip completes on
+        // the next render, e.g. closing the sheet).
         html += `<button class="line-row${newCount>0?' has-new':''}${artOn?' has-art':''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
           ${artOn ? `<img class="line-hero" loading="lazy" src="${IMG}/${esc(l.id)}-hero.webp" alt="" data-error-action="img-hide">` : ''}
-          ${artOn && scrimOn ? '<div class="line-scrim"></div>' : ''}
+          ${artOn ? '<div class="line-scrim"></div>' : ''}
           <!-- v7.63: badge thumbnail removed (user request) — the hero art
                IS the identity now, and the badge covered its left third. -->
           <div class="line-row-info">

@@ -3,6 +3,25 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.40 changelog:
+//   • CACHE bumped to v7.40. SHELL: render.js + delegate-handlers.js +
+//     app.js + vault.css. App v7.66. Two Line-Art refinements (user
+//     requests):
+//   • Scrim-off legibility: with the scrim disabled, white text sank
+//     into bright art. no-scrim mode now applies a heavy text halo —
+//     tight dark core + wide soft bloom on the line name, a lighter
+//     version on the meta line — art rows only, via body.no-art-scrim.
+//   • The "awkward refresh" on Theme-sheet Line-Art controls is gone:
+//     handlers no longer call render(). Scrim and art visibility are
+//     body classes, row height is the --line-h var — all pure CSS
+//     flips, instant behind the sheet — and refreshSheetBody() repaints
+//     just the sheet's own controls. The scrim div is now always
+//     emitted on art rows (visibility is CSS's decision); the art pref
+//     still gates the <img> so art-off keeps its zero-request promise
+//     on natural renders (a live art-ON flip completes on the next
+//     render, e.g. closing the sheet). Boot applies the body classes
+//     from the store so state always matches.
+//
 // v7.39 changelog:
 //   • CACHE bumped to v7.39. SHELL: render.js. App v7.65.
 //   • Hidden sublines now disappear from the line browse screen entirely
@@ -1426,7 +1445,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.39';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.40';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

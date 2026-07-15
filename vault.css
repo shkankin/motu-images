@@ -522,6 +522,22 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   position: relative; z-index: 2;
 }
 .line-row.has-art .line-row-name { text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+/* v7.66: the Line Art settings act through body classes + the --line-h
+   var, NOT re-renders — flipping them is instant and the "awkward
+   refresh" is gone. The scrim element always exists on art rows; this
+   class is its only off-switch. */
+body.no-line-art .line-hero, body.no-line-art .line-scrim { display: none; }
+body.no-art-scrim .line-scrim { display: none; }
+/* v7.66: scrim-off legibility (user request): without the gradient, white
+   text sinks into bright art — so no-scrim mode trades the scrim for a
+   heavy text halo. Name gets a tight dark core + wide soft bloom; the
+   meta line gets a lighter version. Only applies on art rows. */
+body.no-art-scrim .line-row.has-art .line-row-name {
+  text-shadow: 0 0 3px rgba(0,0,0,0.95), 0 2px 5px rgba(0,0,0,0.9), 0 0 14px rgba(0,0,0,0.65);
+}
+body.no-art-scrim .line-row.has-art .line-row-info > div:not(.line-row-name) {
+  text-shadow: 0 0 3px rgba(0,0,0,0.95), 0 1px 3px rgba(0,0,0,0.85);
+}
 .line-row:active { transform: scale(0.98); }
 .line-row.has-new { border-left: 3px solid var(--acc); padding-left: 9px; }
 .line-row-thumb {

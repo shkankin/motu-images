@@ -91,6 +91,11 @@ async function init() {
   // v7.62: saved Lines-tab row height applies before first paint.
   const _lh = store.get('motu-line-h');
   if (_lh) document.documentElement.style.setProperty('--line-h', _lh + 'px');
+  // v7.66: art/scrim prefs live as body classes so the Theme-sheet
+  // toggles are pure CSS flips (no re-render). Applied here once so
+  // boot state matches the store.
+  document.body.classList.toggle('no-line-art', store.get('motu-line-art') === '0');
+  document.body.classList.toggle('no-art-scrim', store.get('motu-art-scrim') === '0');
   // Splash-first: let the browser commit the splash animation's first frames
   // before we kick off heavy work (OPFS init, localStorage parsing, render,
   // figures.json fetch). Two rAFs ≈ 16-33ms — invisible to the user but
