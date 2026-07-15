@@ -3,6 +3,20 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.37 changelog:
+//   • CACHE bumped to v7.37. SHELL: render.js + delegate-handlers.js.
+//     App v7.63 — Lines tab decluttered for the hero art (user request
+//     with annotated screenshot).
+//   • Lines tab is LIST-ONLY now: the v5.04 header ("N Lines" count +
+//     list/grid toggle) is removed, the entire grid branch and its
+//     'set-lines-view' handler are deleted, and the motu-lines-view
+//     pref is retired (harmless if present in old stores; nothing reads
+//     it). Rows start directly under the search bar.
+//   • The square badge thumbnail is removed from each row — with the
+//     v7.62 hero art carrying the line's identity, the badge was
+//     covering the art's left third. The {id}.jpg badges remain in use
+//     elsewhere (subline headers etc.); only the Lines rows drop them.
+//
 // v7.36 changelog:
 //   • CACHE bumped to v7.36. SHELL: render.js + ui-sheets.js +
 //     delegate-handlers.js + app.js + vault.css. App v7.62 — the line-art
@@ -1395,7 +1409,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.36';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.37';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -349,10 +349,8 @@ registerAll({
   },
 
   // Lines view toggle
-  'set-lines-view': (e, el, d) => {
-    window.store?.set('motu-lines-view', d.view);
-    window.render?.();
-  },
+  // v7.63: 'set-lines-view' removed — the Lines tab is list-only now
+  // (grid branch deleted in render.js alongside the header/toggle).
 
   // Figure list controls
   'enter-select': () => window.enterSelectMode?.(),

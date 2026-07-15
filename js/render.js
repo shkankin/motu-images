@@ -522,7 +522,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.62</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.63</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -990,24 +990,19 @@ function renderLinesGrid() {
     });
     html += '</div>';
   } else {
-    // v5.01: lines screen now supports list view too. State key 'motu-lines-view'
+    // v5.01 added a list/grid choice here; v7.63 made list the only view.
     // is separate from 'motu-view' (which controls figures-list view) so users
     // can pick independently for each screen.
-    const linesView = store.get('motu-lines-view') || 'grid';
+    // v7.63: the Lines tab is list-only now (user request, with the hero
+    // art shipped in v7.62 doing the visual work the grid used to do).
+    // Removed: the v5.04 lines-header (count + list/grid toggle — the
+    // count was decoration, and the toggle's grid branch is deleted
+    // below) and the motu-lines-view pref, which no longer has choices
+    // to remember. Rows begin immediately under the search bar so the
+    // art gets the space.
     const visibleOrdered = ordered.filter(l => !isLineFullyHidden(l.id));
-    // v5.04: section header with line count on the left, view toggle on the
-    // right. Matches the visual rhythm of other section headers in the app
-    // (proper margin from the search bar above, consistent padding).
-    html += `<div class="lines-header">
-      <div class="lines-header-count">${visibleOrdered.length} ${visibleOrdered.length === 1 ? 'Line' : 'Lines'}</div>
-      <div class="lines-view-toggle" role="group" aria-label="View mode">
-        <button class="${linesView==='list'?'active':''}" data-action="set-lines-view" data-view="list" title="List view" aria-label="List view">${icon(ICO.list,15)}</button>
-        <button class="${linesView==='grid'?'active':''}" data-action="set-lines-view" data-view="grid" title="Grid view" aria-label="Grid view">${icon(ICO.lines,15)}</button>
-      </div>
-    </div>`;
-    if (linesView === 'list') {
-      // List rows: thumb + name/year on left, progress + count + NEW badge on right
-      html += '<div class="lines-list">';
+    {
+      html += '<div class="lines-list" style="margin-top:10px">';
       visibleOrdered.forEach(l => {
         const completeCls = l.pct === 100 ? 'complete' : '';
         let newCount = 0;
@@ -1028,9 +1023,8 @@ function renderLinesGrid() {
         html += `<button class="line-row${newCount>0?' has-new':''}${artOn?' has-art':''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
           ${artOn ? `<img class="line-hero" loading="lazy" src="${IMG}/${esc(l.id)}-hero.webp" alt="" data-error-action="img-hide">` : ''}
           ${artOn && scrimOn ? '<div class="line-scrim"></div>' : ''}
-          <div class="line-row-thumb">
-            <img src="${IMG}/${l.id}.jpg" alt="" data-error-action="img-fallback" data-fallback-src="${IMG}/${l.id}.png" loading="lazy">
-          </div>
+          <!-- v7.63: badge thumbnail removed (user request) — the hero art
+               IS the identity now, and the badge covered its left third. -->
           <div class="line-row-info">
             <div class="line-row-name font-display">${esc(l.name)}</div>
             <div class="line-row-meta">${l.yr}${l.total > 0 ? ` · ${l.owned}/${l.total} · ${l.pct}%` : ''}</div>
@@ -1039,36 +1033,6 @@ function renderLinesGrid() {
           ${newPill}
           <div class="line-row-arrow">${icon(ICO.chevR,16)}</div>
         </button>`;
-      });
-      html += '</div>';
-    } else {
-      html += '<div class="lines-grid">';
-      visibleOrdered.forEach(l => {
-        const completeCls = l.pct === 100 ? 'complete' : '';
-        // v4.91: count new figures in this line so the user can see at a glance
-        // which lines have recently added figures.
-        let newCount = 0;
-        if (S.newFigIds.size > 0) {
-          for (const f of S.figs) {
-            if (f.line === l.id && S.newFigIds.has(f.id)) newCount++;
-          }
-        }
-        const newBadge = newCount > 0
-          ? `<div class="new-count-badge" title="${newCount} new figure${newCount===1?'':'s'} in this line">${newCount} NEW</div>`
-          : '';
-        html += `<div class="line-card${newCount > 0 ? ' has-new' : ''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
-          <img src="${IMG}/${l.id}.jpg" alt="${esc(l.name)}" data-error-action="img-fallback" data-fallback-src="${IMG}/${l.id}.png" loading="lazy">
-          <div class="overlay"></div>
-          ${newBadge}
-          <div class="card-info">
-            <div class="card-name font-display">${esc(l.name)}</div>
-            <div class="card-year">${l.yr}</div>
-            ${l.total > 0 ? `
-              <div class="progress-bar"><div class="progress-fill ${completeCls}" style="width:${l.pct}%"></div></div>
-              <div class="card-stats ${completeCls}">${l.owned}/${l.total} · ${l.pct}%</div>
-            ` : ''}
-          </div>
-        </div>`;
       });
       html += '</div>';
     }
