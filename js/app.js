@@ -88,6 +88,9 @@ Object.assign(window, {
 
 // § INIT ── init(), OPFS setup, cache load, splash removal ─────────
 async function init() {
+  // v7.62: saved Lines-tab row height applies before first paint.
+  const _lh = store.get('motu-line-h');
+  if (_lh) document.documentElement.style.setProperty('--line-h', _lh + 'px');
   // Splash-first: let the browser commit the splash animation's first frames
   // before we kick off heavy work (OPFS init, localStorage parsing, render,
   // figures.json fetch). Two rAFs ≈ 16-33ms — invisible to the user but

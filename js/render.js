@@ -522,7 +522,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.61</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.62</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1019,7 +1019,15 @@ function renderLinesGrid() {
         const newPill = newCount > 0
           ? `<span class="new-count-badge new-count-badge-subline" title="${newCount} new">${newCount} NEW</span>`
           : '';
-        html += `<button class="line-row${newCount>0?' has-new':''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
+        // v7.62: {id}-hero.webp row art, graduated from the art-preview
+        // sandbox. Gated by the Theme-sheet settings; the img simply 404s
+        // and hides (img-hide) for lines without art, so coverage can grow
+        // line by line. Art off = no <img> at all — zero requests.
+        const artOn = store.get('motu-line-art') !== '0';
+        const scrimOn = store.get('motu-art-scrim') !== '0';
+        html += `<button class="line-row${newCount>0?' has-new':''}${artOn?' has-art':''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
+          ${artOn ? `<img class="line-hero" loading="lazy" src="${IMG}/${esc(l.id)}-hero.webp" alt="" data-error-action="img-hide">` : ''}
+          ${artOn && scrimOn ? '<div class="line-scrim"></div>' : ''}
           <div class="line-row-thumb">
             <img src="${IMG}/${l.id}.jpg" alt="" data-error-action="img-fallback" data-fallback-src="${IMG}/${l.id}.png" loading="lazy">
           </div>

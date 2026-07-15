@@ -3,6 +3,28 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.36 changelog:
+//   • CACHE bumped to v7.36. SHELL: render.js + ui-sheets.js +
+//     delegate-handlers.js + app.js + vault.css. App v7.62 — the line-art
+//     release, graduated from the art-preview sandbox after user
+//     approval of the actual art.
+//   • Lines tab (list view): each line row renders {id}-hero.webp from
+//     the image repo as an absolutely positioned background layer under
+//     a theme-aware scrim (color-mix on the active theme's --bg — every
+//     theme darkens in its own palette; the sandbox's hardcoded rgba
+//     generalized). Missing art 404s into the v7.09 img-hide delegation:
+//     flat row, zero layout shift, coverage grows line by line. Art
+//     assets ride IMG_CACHE like all catalog images. Wordmark gets a
+//     text-shadow seatbelt on art rows.
+//   • Theme sheet gains a "Line Art" section (user request — sandbox
+//     controls promoted to real settings): background art on/off (off =
+//     no <img> rendered at all, zero requests), darkening scrim on/off,
+//     and Compact/Standard/Tall row height (82/95/110px, persisted,
+//     applied pre-paint at boot). Controls full-render live so the
+//     Lines tab updates behind the sheet as you tap. Sandbox width
+//     presets intentionally NOT promoted — real devices provide their
+//     own width.
+//
 // v7.35 changelog:
 //   • CACHE bumped to v7.35. SHELL: ui-sheets.js + render.js. App v7.61.
 //     Also ships desktop.html v1.13. A REVERSAL release, and rightly so.
@@ -1373,7 +1395,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.35';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.36';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

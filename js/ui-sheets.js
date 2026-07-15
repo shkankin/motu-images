@@ -860,7 +860,26 @@ window.openFigureEditor = figId => {
 };
 
 function renderThemeSheet() {
-  return Object.entries(THEMES).map(([key, th]) =>
+  // v7.62: Line Art controls, graduated from the art-preview sandbox on
+  // user request ("users would like these"). Live preview: each control
+  // triggers a full render, so the Lines tab updates visibly behind the
+  // translucent sheet — here that flash IS the feature.
+  const artOn = store.get('motu-line-art') !== '0';
+  const scrimOn = store.get('motu-art-scrim') !== '0';
+  const lineH = String(store.get('motu-line-h') || '95');
+  const hBtn = (label, v) => `<button data-action="set-line-height" data-h="${v}" style="flex:1;padding:9px 0;border-radius:9px;border:1px solid ${lineH === v ? 'var(--acc)' : 'var(--bd)'};background:var(--bg3);color:${lineH === v ? 'var(--acc)' : 'var(--t2)'};font-size:12px;font-weight:600">${label}</button>`;
+  const toggleRow = (label, sub, on, action) => `<button data-action="${action}" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;border:1px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:var(--bg3);margin-bottom:8px;text-align:left">
+    <div style="width:18px;height:18px;border-radius:5px;border:2px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:${on ? 'var(--acc)' : 'transparent'};color:var(--btn-t);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on ? '✓' : ''}</div>
+    <div style="flex:1"><div style="font-size:13px;color:var(--t1)">${label}</div>
+    <div style="font-size:11px;color:var(--t3)">${sub}</div></div>
+  </button>`;
+  const artSection = `
+    <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--t3);text-transform:uppercase;margin:16px 0 8px">Line Art</div>
+    ${toggleRow('Line background art', 'Hero artwork behind each line on the Lines tab', artOn, 'toggle-line-art')}
+    ${artOn ? toggleRow('Darkening scrim', 'Keeps names readable over bright art', scrimOn, 'toggle-art-scrim') : ''}
+    ${artOn ? `<div style="font-size:11px;color:var(--t3);margin:2px 0 6px">Row height</div>
+    <div style="display:flex;gap:8px">${hBtn('Compact', '82')}${hBtn('Standard', '95')}${hBtn('Tall', '110')}</div>` : ''}`;
+  return artSection + '<div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--t3);text-transform:uppercase;margin:16px 0 8px">Theme</div>' + Object.entries(THEMES).map(([key, th]) =>
     `<button class="theme-option" style="border-color:${S.theme===key?th.acc:'var(--bd)'};background:${th.bg}" data-action="set-theme" data-theme="${esc(key)}">
       <div class="swatch" style="background:linear-gradient(135deg,${th.gold},${th.acc})"></div>
       <div style="flex:1">

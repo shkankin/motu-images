@@ -508,6 +508,21 @@ registerAll({
 
   // Theme sheet
   'set-theme': (e, el, d) => window.setTheme?.(d.theme),
+  // v7.62: Line Art settings (Theme sheet). Full render on purpose — the
+  // Lines tab updating behind the sheet is the live preview.
+  'toggle-line-art': () => {
+    window.store?.set('motu-line-art', window.store?.get('motu-line-art') === '0' ? '' : '0');
+    window.render?.();
+  },
+  'toggle-art-scrim': () => {
+    window.store?.set('motu-art-scrim', window.store?.get('motu-art-scrim') === '0' ? '' : '0');
+    window.render?.();
+  },
+  'set-line-height': (e, el, d) => {
+    window.store?.set('motu-line-h', d.h);
+    document.documentElement.style.setProperty('--line-h', d.h + 'px');
+    window.render?.();
+  },
 
   // Title tap: the theme-specific 'title-tap-*' actions are registered in
   // the "Dynamic title/sync actions" block further down, mapped to the

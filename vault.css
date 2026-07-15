@@ -490,8 +490,38 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   cursor: pointer;
   text-align: left;
   transition: border-color 0.15s, transform 0.15s;
+  /* v7.62: hero-art support. position+overflow contain the absolutely
+     positioned art layer; min-height comes from the user's row-height
+     setting (Theme sheet). Rows without art are unaffected: the img
+     404s and img-hide removes it, and min-height 0 falls back to
+     content height. */
+  position: relative; overflow: hidden;
+  min-height: var(--line-h, 0px);
 }
 .line-row:hover { border-color: var(--acc); }
+/* v7.62: line hero art layers. The scrim color derives from the active
+   theme's --bg via color-mix, so every theme darkens its rows in its own
+   palette — the sandbox's hardcoded rgba(9,2,18,…) generalized. Content
+   children get z-index above the layers; the wordmark gains a shadow so
+   bright art can't wash it out (the scrim handles 90% of it; the shadow
+   is the seatbelt). */
+.line-hero {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center; z-index: 0;
+}
+.line-scrim {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--bg) 96%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 78%, transparent) 34%,
+    color-mix(in srgb, var(--bg) 28%, transparent) 55%,
+    color-mix(in srgb, var(--bg) 12%, transparent) 78%,
+    color-mix(in srgb, var(--bg) 55%, transparent) 100%);
+}
+.line-row > .line-row-thumb, .line-row > .line-row-info, .line-row > .line-row-arrow {
+  position: relative; z-index: 2;
+}
+.line-row.has-art .line-row-name { text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
 .line-row:active { transform: scale(0.98); }
 .line-row.has-new { border-left: 3px solid var(--acc); padding-left: 9px; }
 .line-row-thumb {
