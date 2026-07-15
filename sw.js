@@ -3,6 +3,23 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.39 changelog:
+//   • CACHE bumped to v7.39. SHELL: render.js. App v7.65.
+//   • Hidden sublines now disappear from the line browse screen entirely
+//     (user request, completing v7.64's button removal) — no "(hidden)"
+//     placeholder rows. Manage Collections remains the one place that
+//     lists every subline, hidden included, and toggles them.
+//
+// v7.38 changelog:
+//   • CACHE bumped to v7.38. SHELL: render.js. App v7.64.
+//   • Per-subline Hide/Show button removed from the subline headers on
+//     the line browse screen (user request): hiding is managed solely in
+//     Manage Collections now, which kept its Show/Hide controls (same
+//     toggle-subline-hidden handler, still live for that sheet). Hidden
+//     sublines still render on the browse screen with their "(hidden)"
+//     label so they remain discoverable; unhiding is a Manage
+//     Collections action.
+//
 // v7.37 changelog:
 //   • CACHE bumped to v7.37. SHELL: render.js + delegate-handlers.js.
 //     App v7.63 — Lines tab decluttered for the hero art (user request
@@ -1409,7 +1426,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.37';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.39';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -522,7 +522,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.63</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.65</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1091,6 +1091,10 @@ function renderSublines() {
   html += '<div style="height:1px;background:var(--bd);margin:0 4px"></div>';
   populated.forEach(({ sl, slFigs }) => {
     const hidden = isSublineHidden(S.activeLine, sl.key);
+    // v7.65: hidden sublines no longer render here at all (user request,
+    // completing v7.64) — hiding/unhiding and the full subline list live
+    // in Manage Collections.
+    if (hidden) return;
     const visibleFigs = hidden ? [] : slFigs;
     const owned = visibleFigs.filter(f => S.coll[f.id]?.status === 'owned').length;
     const pct = visibleFigs.length ? Math.round(owned/visibleFigs.length*100) : 0;
@@ -1110,9 +1114,11 @@ function renderSublines() {
         ${!hidden ? `<div class="subline-progress"><div class="subline-progress-fill ${pct===100?'complete':''}" style="width:${pct}%"></div></div>` : ''}
       </div>
       ${newInSub > 0 ? `<div class="new-count-badge new-count-badge-subline">${newInSub} NEW</div>` : ''}
-      <button class="hide-btn" data-action="toggle-subline-hidden" data-line-id="${esc(S.activeLine)}" data-subline="${esc(sl.key)}" style="padding:4px 10px;border-radius:8px;border:1px solid ${hidden?'var(--rd)':'var(--bd)'};background:${hidden?'color-mix(in srgb, var(--rd) 10%, transparent)':'var(--bg3)'};color:${hidden?'var(--rd)':'var(--t3)'};font-size:10px;flex-shrink:0">
-        ${hidden?'Show':'Hide'}
-      </button>
+      <!-- v7.64: per-subline Hide button removed (user request) — hiding
+           now lives solely in Manage Collections (the reorder sheet keeps
+           its Show/Hide, and the same toggle-subline-hidden handler
+           serves it). Hidden sublines still render here with the
+           "(hidden)" label so they stay discoverable. -->
     </div>`;
   });
   html += '</div>';
