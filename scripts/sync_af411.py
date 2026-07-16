@@ -11,6 +11,18 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.9.2 (2026-07-15) — fix KeyError crash when a claim resolves a pending figure
+    - v1.9.1 made claims dequeue a pending figure they resolve (pending /
+      pending_ids updated in place), but pending_refresh — the set the
+      later "refresh pending metadata" step iterates — was computed
+      earlier in the diff pass, before that dequeue, and still held the
+      now-removed id. The refresh loop's new_pending_by_id[fid] lookup
+      then KeyError'd and crashed --commit after the report had already
+      printed and images had already downloaded (run #125: 'tauraton-14049').
+      pending_refresh now has claimed_ids subtracted alongside
+      new_candidates, so a figure claimed and dequeued in the same run is
+      no longer also treated as needing an in-queue refresh.
+
   v1.9.1 (2026-07-15) — claims trump the pending queue
     - v1.9 matched claims only against new_candidates, which had already
       subtracted pending and rejected ids — so a claimed figure that hit
@@ -160,7 +172,7 @@ from pathlib import Path
 
 # AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
 # startup banner below) and to ship atomic JSON writes — see atomic_write_text.
-SCRIPT_VERSION = "v1.9.1"
+SCRIPT_VERSION = "v1.9.2"
 
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
@@ -781,6 +793,14 @@ def main():
             claim_resolved_pending.append(fid)
     claimed_ids = {fid for fid, _, _ in claim_merged}
     new_candidates -= claimed_ids
+    # v1.9.2: pending_refresh was computed (line ~720) before claims are
+    # resolved, so it can still hold ids this block is about to drop from
+    # `pending` below. Left uncorrected, the refresh loop's
+    # new_pending_by_id[fid] lookup KeyErrors on any figure that was both
+    # due a metadata refresh AND claim-merged in the same run (real case:
+    # #14049/#14050 — pending entries claimed the same sync that would
+    # have refreshed them). Same fix shape as new_candidates above.
+    pending_refresh -= claimed_ids
     if claim_resolved_pending:
         # v1.9.1: dissolve claimed figures out of the pending queue — the
         # merge already carried their data into the manual entry.
