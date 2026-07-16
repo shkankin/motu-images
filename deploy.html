@@ -13,6 +13,21 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Collector — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
+     deploy.html  v1.17
+       • v1.17: Pages Status latch — a SHA confirmed live (green) can no
+         longer be shown regressing to Building (yellow) by a later poll.
+         Observed directly: same commit reported Live at 6:12:38 PM, then
+         Building twice, then Live again at 6:22:47 PM — the deployments
+         API returned a later poll with an older-looking status for a SHA
+         already confirmed. _confirmedLiveSha remembers the last SHA
+         proven live; a subsequent pending/in_progress/queued report for
+         that same SHA is treated as a stale/duplicate deployment record,
+         not a real rebuild, and is logged quietly rather than regressing
+         the status shown to the user. A genuinely new commit's real
+         build progression (different SHA) is unaffected — verified
+         against both the exact observed sequence and a fresh-commit
+         sequence in a standalone simulation before shipping.
+
      deploy.html  v1.16
        • v1.16: PATH_MAP entry route.js → js/route.js.
 
@@ -818,6 +833,17 @@ function setProgress(pct, show = true) {
 let _pagesPoller = null;   // setInterval handle
 let _targetSha   = null;   // SHA we're waiting for Pages to deploy
 let _checkSeq    = 0;      // incremented on each checkPagesStatus call + on pollPagesUntilLive start
+// v1.9.2: once a SHA has been reported genuinely live (green, provably
+// current), remember it here. GitHub's Deployments API can report a
+// *later* poll with an older-looking status for a SHA already confirmed
+// live — observed directly: same commit reported "Live" at 6:12:38 PM,
+// then "Building" at two subsequent polls, then "Live" again at 6:22:47
+// PM, all for the identical SHA. _checkSeq only protects against
+// out-of-order async responses across DIFFERENT checkPagesStatus() calls;
+// it does nothing when polls resolve in order but the underlying API
+// genuinely reports a regression for a SHA already confirmed. Once a SHA
+// is in this set, later polls are not allowed to downgrade its status.
+let _confirmedLiveSha = null;
 // v1.4: did the last commit touch any Pages-served file? null = unknown (e.g.
 // a manual Check with no deploy context). Used so a 'built' status behind HEAD
 // is only treated as live when no Pages rebuild was expected (backend/scripts
@@ -908,12 +934,28 @@ async function checkPagesStatus() {
         // ever appear for it — the last successful one (even if behind
         // HEAD) genuinely means live, not "still building."
         const noRebuildExpected = _lastCommitHadWebFiles === false;
+        // v1.9.2: if this exact SHA was already confirmed live, don't let a
+        // later poll regress the UI back to yellow/grey for it. Observed
+        // directly against this repo: the same SHA reported success, then
+        // pending/in_progress on the next poll(s), then success again — a
+        // real "went live, then un-published, then went live again" never
+        // happens for a static Pages deploy, so treat a downgrade for an
+        // already-confirmed SHA as a stale/duplicate deployment record
+        // rather than a genuine rebuild.
+        const alreadyConfirmed = _confirmedLiveSha === deplSha;
         if (st === 'success' && isCurrentCommit) {
+          _confirmedLiveSha = deplSha;
           setPagesStatus(seq, 'green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`);
           stopPolling();
         } else if (st === 'success' && !isCurrentCommit && noRebuildExpected) {
+          _confirmedLiveSha = deplSha;
           setPagesStatus(seq, 'green', `✓ Live — ${shortLatest} at ${timestamp}`, `No Pages rebuild needed (backend/scripts only) · last deployed ${shortSha}`);
           stopPolling();
+        } else if (alreadyConfirmed && (st === 'pending' || st === 'in_progress' || st === 'queued')) {
+          // Same SHA we already called live — a duplicate/late deployment
+          // record for it, not a real rebuild. Keep the green status, skip
+          // the log line (quiet), and keep polling stopped.
+          setPagesStatus(seq, 'green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`, true);
         } else if (st === 'success' && !isCurrentCommit) {
           setPagesStatus(seq, 'yellow', `Building — last deployed ${shortSha}, HEAD is ${shortLatest}`, `Waiting for a deployment of HEAD · last success ${timestamp}`);
         } else if (st === 'pending' || st === 'in_progress' || st === 'queued') {
