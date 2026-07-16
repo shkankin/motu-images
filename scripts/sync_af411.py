@@ -11,6 +11,28 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.9 (2026-07-15) — manual-claim merge (opt-in af411 field)
+    - A manual entry (id manual-*) may carry an integer `af411` field —
+      set in the figures editor — meaning: "this AF411 product number IS
+      this figure; when AF411 lists it, merge their data into me." When a
+      scraped new candidate's trailing number matches a claim, it is NOT
+      added as a new figure (no duplicate) and, as the one explicit
+      exception to the never-modify policy (the claim itself is the
+      user's written consent), the manual entry is updated in place:
+      * fill-only-missing for identity fields (name, variant, faction,
+        year, wave, series, group, image) — anything the user typed wins;
+      * upc and retail always refresh when scraped (objective data, same
+        rationale as the v1.6 upc backfill);
+      * af411_id records the full scraped id (slug-num) so the app can
+        deep-link the AF411 button for merged figures.
+      Merges are reported loudly in the console and CI summary. The
+      manual id stays canonical forever: collection entries and photos
+      are keyed by it, so identity adoption would orphan user data.
+    - Rename detection hardening: manual-* ids are excluded from the
+      trailing-number map — a random manual code ending in a digit
+      (…-mrfpdfy3 → "3") could previously collide with a genuine AF411
+      number and misclassify it as a rename.
+
   v1.8 (2026-07-10) — AF411 rename detection
     - AF411 sometimes edits an existing product record in place; the URL
       name-slug (and therefore our slug-based id) changes but the trailing
@@ -127,7 +149,7 @@ from pathlib import Path
 
 # AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
 # startup banner below) and to ship atomic JSON writes — see atomic_write_text.
-SCRIPT_VERSION = "v1.8"
+SCRIPT_VERSION = "v1.9"
 
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
@@ -706,8 +728,42 @@ def main():
         m = re.search(r"(\d+)$", fid or "")
         return int(m.group(1)) if m else None
 
+    # v1.9: manual-claim merge. See header changelog for the policy.
+    claimed_by_num = {}
+    for f in existing:
+        if str(f.get("id", "")).startswith("manual-") and isinstance(f.get("af411"), int):
+            claimed_by_num.setdefault(f["af411"], f)
+
+    # NOTE: the final combined figure list later in main() is named
+    # `merged` — this report list is deliberately `claim_merged` to
+    # avoid shadowing it (caught in review: the collision would have
+    # serialized these tuples into figures.json).
+    MERGE_FILL_ONLY = ("name", "variant", "faction", "year", "wave", "series", "group", "image")
+    MERGE_ALWAYS = ("upc", "retail")
+    claim_merged = []   # (scraped_id, manual_id, [changed fields])
+    for fid in sorted(new_candidates):
+        n = _af411_num(fid)
+        if n is None or n not in claimed_by_num:
+            continue
+        target, sf, changes = claimed_by_num[n], scraped_by_id.get(fid, {}), []
+        for k in MERGE_FILL_ONLY:
+            if not target.get(k) and sf.get(k):
+                target[k] = sf[k]; changes.append(k)
+        for k in MERGE_ALWAYS:
+            if sf.get(k) and target.get(k) != sf.get(k):
+                target[k] = sf[k]; changes.append(k)
+        if target.get("af411_id") != fid:
+            target["af411_id"] = fid; changes.append("af411_id")
+        claim_merged.append((fid, target["id"], changes))
+    new_candidates -= {fid for fid, _, _ in claim_merged}
+
     known_by_num = {}
     for f in existing + pending:
+        # v1.9: manual ids are excluded — their random code can end in a
+        # digit ("…-mrfpdfy3" → 3) and pollute the number map, so a real
+        # AF411 product with that number would misclassify as a rename.
+        if str(f.get("id", "")).startswith("manual-"):
+            continue
         n = _af411_num(f.get("id"))
         if n is not None and n not in known_by_num:
             known_by_num[n] = f["id"]
@@ -756,6 +812,8 @@ def main():
         print(f"  New → figures.json:  {len(new_for_existing)}")
     if renamed:
         print(f"  ⚠ AF411 RENAMES (suppressed, action needed): {len(renamed)}")
+    if claim_merged:
+        print(f"  ⇄ MANUAL CLAIMS MERGED (af411 field): {len(claim_merged)}")
     print(f"  Existing updated:    {len(updated)}")
     if args.upc:
         print(f"  UPC backfill (existing): {len(upc_pending)}")
@@ -766,6 +824,13 @@ def main():
     print()
 
     new_to_show = new_for_pending or new_for_existing
+    if claim_merged:
+        print(f"  ── MANUAL CLAIMS MERGED (v1.9 af411 field) ──")
+        print(f"  (No duplicates created; the manual entry stays canonical and")
+        print(f"   absorbed AF411's data per the claim the editor recorded.)")
+        for scraped_id, manual_id, changes in claim_merged:
+            print(f"    ⇄ #{_af411_num(scraped_id)}: '{manual_id}' absorbed '{scraped_id}'"
+                  f" — updated: {', '.join(changes) if changes else 'nothing (already complete)'}")
     if renamed:
         print(f"  ── AF411 RENAMES DETECTED (same numeric id, new slug) ──")
         print(f"  (NOT queued or added — the existing record is untouched.")

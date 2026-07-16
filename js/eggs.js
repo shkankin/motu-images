@@ -417,6 +417,17 @@ function openExternal(url) {
 window.openAF411 = figId => {
   const fig = figById(figId);
   if (!fig) return;
+  // v7.67: a manual entry merged with its AF411 counterpart (sync v1.9
+  // claim) carries af411_id — the full AF411 slug-num id — so it can
+  // deep-link like a native AF411 figure instead of falling back to the
+  // group index.
+  if (fig.af411_id) {
+    const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + (fig.group || '')] || '';
+    if (groupSlug) {
+      openExternal(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.af411_id}.php`);
+      return;
+    }
+  }
   // v4.95: previously gated on fig.source==='af411'. Now any non-Kids-Core,
   // non-custom figure can use it — falls back to AF411's site search by name
   // when we don't have a deep-link slug for the group.

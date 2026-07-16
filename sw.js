@@ -3,6 +3,28 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.41 changelog:
+//   • CACHE bumped to v7.41. SHELL: eggs.js + render.js. App v7.67. Also
+//     ships figures-editor.html v1.31.0 and scripts/sync_af411.py v1.9.
+//   • Manual↔AF411 claim merge (user-designed, and their instinct was
+//     the right architecture): a manual entry may claim an AF411 product
+//     number via a new editor field. When AF411 later lists that number,
+//     sync v1.9 creates NO duplicate — it merges AF411's data into the
+//     manual entry (fill-only for identity fields so user-typed values
+//     win; upc/retail always refreshed as objective data; af411_id
+//     records the full AF411 id) and reports loudly. The manual id stays
+//     canonical FOREVER because collection entries and OPFS photos are
+//     keyed by it — adopting AF411's identity would orphan user data
+//     (the same physics behind the v7.41 battle-for-eternia decision).
+//   • openAF411 deep-links merged manual figures via af411_id instead of
+//     falling back to the group index.
+//   • sync v1.9 also hardens rename detection: manual-* ids are excluded
+//     from the trailing-number map (a random manual code ending in a
+//     digit could collide with a real AF411 number). Review also caught
+//     and fixed a variable collision where the merge-report list
+//     shadowed the script's final `merged` figures list — which would
+//     have written report tuples into figures.json.
+//
 // v7.40 changelog:
 //   • CACHE bumped to v7.40. SHELL: render.js + delegate-handlers.js +
 //     app.js + vault.css. App v7.66. Two Line-Art refinements (user
@@ -1445,7 +1467,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.40';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.41';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
