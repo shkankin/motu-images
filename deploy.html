@@ -13,6 +13,40 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Collector — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
+     deploy.html  v1.18
+       • v1.18: the reason v1.17 was needed. The poller never actually
+         stopped when the FIRST check reported Live: pollPagesUntilLive()
+         assigns _pagesPoller = setInterval(...) AFTER its awaited first
+         check, so the stopPolling() that check calls on success finds
+         _pagesPoller still null, clears nothing, and the interval is
+         created a moment later anyway. Every "Live" from the first check
+         (the common case — Pages is usually done inside the 15s delay)
+         left the tool polling a deployment it had already declared live
+         for up to 5 more minutes. That is what put the deployments API's
+         flapping on screen at all; v1.17's latch stopped the flap from
+         being *displayed*, but the pointless polling behind it stayed,
+         and after 5 minutes the MAX_WAIT branch still logged a red
+         "Pages build did not complete within 5 minutes" underneath a
+         green ✓ Live card. Fixes: (a) _pollActive — set when a watch
+         cycle starts, cleared by stopPolling(); the interval is only
+         created if the first check left the cycle unresolved. (b) a
+         _pollCycle token so a superseded watch cycle's pending first
+         check can't install an orphan interval over a newer one's.
+         (c) the v1.17 latch branch now calls stopPolling() itself, as
+         its own comment always claimed it did.
+       • v1.18: latch stores the confirmed STATUS, not just the SHA
+         (_confirmedLive replaces _confirmedLiveSha). The no-rebuild-
+         expected branch declares HEAD live while latching the older
+         deployment's SHA, so replaying the latch re-rendered the card
+         as "✓ Live — <a different, older SHA>": still green, but the
+         commit shown flipped under the user. The latch now replays the
+         exact text/detail that was proven live.
+       • v1.18: version badge in the <h1> (the one you actually read)
+         was still v1.16 while this comment said v1.17. Every live
+         version marker in this file is now checked by grep before
+         release; the PATH_MAP "added in vX" citations below are
+         historical and correctly stay put.
+
      deploy.html  v1.17
        • v1.17: Pages Status latch — a SHA confirmed live (green) can no
          longer be shown regressing to Building (yellow) by a later poll.
@@ -372,7 +406,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.16</span></h1>
+  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.18</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -831,9 +865,11 @@ function setProgress(pct, show = true) {
 // whether the live site has caught up yet.
 
 let _pagesPoller = null;   // setInterval handle
+let _pollActive  = false;  // v1.18: a watch cycle is running and still unresolved
+let _pollCycle   = 0;      // v1.18: identifies the current watch cycle (see pollPagesUntilLive)
 let _targetSha   = null;   // SHA we're waiting for Pages to deploy
 let _checkSeq    = 0;      // incremented on each checkPagesStatus call + on pollPagesUntilLive start
-// v1.9.2: once a SHA has been reported genuinely live (green, provably
+// v1.17: once a SHA has been reported genuinely live (green, provably
 // current), remember it here. GitHub's Deployments API can report a
 // *later* poll with an older-looking status for a SHA already confirmed
 // live — observed directly: same commit reported "Live" at 6:12:38 PM,
@@ -843,7 +879,11 @@ let _checkSeq    = 0;      // incremented on each checkPagesStatus call + on pol
 // it does nothing when polls resolve in order but the underlying API
 // genuinely reports a regression for a SHA already confirmed. Once a SHA
 // is in this set, later polls are not allowed to downgrade its status.
-let _confirmedLiveSha = null;
+// v1.18: stores the whole confirmed status, not just the SHA — the
+// no-rebuild-expected branch below declares HEAD live while the deployment
+// record it latches is an OLDER sha, so replaying by sha alone re-rendered
+// the card with a different commit number than the one it had just shown.
+let _confirmedLive = null;   // { sha, text, detail } of the status proven live
 // v1.4: did the last commit touch any Pages-served file? null = unknown (e.g.
 // a manual Check with no deploy context). Used so a 'built' status behind HEAD
 // is only treated as live when no Pages rebuild was expected (backend/scripts
@@ -934,7 +974,7 @@ async function checkPagesStatus() {
         // ever appear for it — the last successful one (even if behind
         // HEAD) genuinely means live, not "still building."
         const noRebuildExpected = _lastCommitHadWebFiles === false;
-        // v1.9.2: if this exact SHA was already confirmed live, don't let a
+        // v1.17: if this exact SHA was already confirmed live, don't let a
         // later poll regress the UI back to yellow/grey for it. Observed
         // directly against this repo: the same SHA reported success, then
         // pending/in_progress on the next poll(s), then success again — a
@@ -942,20 +982,29 @@ async function checkPagesStatus() {
         // happens for a static Pages deploy, so treat a downgrade for an
         // already-confirmed SHA as a stale/duplicate deployment record
         // rather than a genuine rebuild.
-        const alreadyConfirmed = _confirmedLiveSha === deplSha;
+        const alreadyConfirmed = !!_confirmedLive && _confirmedLive.sha === deplSha;
         if (st === 'success' && isCurrentCommit) {
-          _confirmedLiveSha = deplSha;
-          setPagesStatus(seq, 'green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`);
+          const text   = `✓ Live — ${shortSha} at ${timestamp}`;
+          const detail = `Commit ${shortSha} is live · HEAD is ${shortLatest}`;
+          _confirmedLive = { sha: deplSha, text, detail };
+          setPagesStatus(seq, 'green', text, detail);
           stopPolling();
         } else if (st === 'success' && !isCurrentCommit && noRebuildExpected) {
-          _confirmedLiveSha = deplSha;
-          setPagesStatus(seq, 'green', `✓ Live — ${shortLatest} at ${timestamp}`, `No Pages rebuild needed (backend/scripts only) · last deployed ${shortSha}`);
+          const text   = `✓ Live — ${shortLatest} at ${timestamp}`;
+          const detail = `No Pages rebuild needed (backend/scripts only) · last deployed ${shortSha}`;
+          _confirmedLive = { sha: deplSha, text, detail };
+          setPagesStatus(seq, 'green', text, detail);
           stopPolling();
         } else if (alreadyConfirmed && (st === 'pending' || st === 'in_progress' || st === 'queued')) {
           // Same SHA we already called live — a duplicate/late deployment
-          // record for it, not a real rebuild. Keep the green status, skip
-          // the log line (quiet), and keep polling stopped.
-          setPagesStatus(seq, 'green', `✓ Live — ${shortSha} at ${timestamp}`, `Commit ${shortSha} is live · HEAD is ${shortLatest}`, true);
+          // record for it, not a real rebuild. Replay the exact status that
+          // was proven live (v1.18: not a re-derived one — see the latch var),
+          // skip the log line (quiet), and stop polling: v1.17 said it kept
+          // polling stopped but never called stopPolling(), so a first-check
+          // green (which never stopped the poller either — see v1.18 above)
+          // kept the cycle alive all the way to the 5-minute timeout.
+          setPagesStatus(seq, 'green', _confirmedLive.text, _confirmedLive.detail, true);
+          stopPolling();
         } else if (st === 'success' && !isCurrentCommit) {
           setPagesStatus(seq, 'yellow', `Building — last deployed ${shortSha}, HEAD is ${shortLatest}`, `Waiting for a deployment of HEAD · last success ${timestamp}`);
         } else if (st === 'pending' || st === 'in_progress' || st === 'queued') {
@@ -1035,7 +1084,9 @@ function pollPagesUntilLive(commitSha) {
   const seq = ++_checkSeq;  // this poll cycle's own sequence number — a newer commit's
                              // pollPagesUntilLive() call bumps _checkSeq again, which
                              // correctly discards anything still in flight from this one
-  stopPolling();
+  stopPolling();          // NB: clears _pollActive — re-arm it below, not before
+  const cycle = ++_pollCycle;
+  _pollActive = true;
   setPagesStatus(seq, 'yellow', 'Waiting for Pages build to start…');
   log('inf', '  Watching Pages — will update when live…');
 
@@ -1046,7 +1097,15 @@ function pollPagesUntilLive(commitSha) {
   const MAX_WAIT = 300000; // 5 min timeout
 
   setTimeout(async () => {
+    if (cycle !== _pollCycle) return;   // a newer watch cycle superseded this one
     await checkPagesStatus();
+    // v1.18: only NOW is it safe to arm the interval. The old code armed it
+    // unconditionally right here, so a first check that reported Live (or
+    // failed) — and duly called stopPolling() — was polling again a line
+    // later, because _pagesPoller was still null when it tried to clear it.
+    // _pollActive is the state stopPolling() actually owns; _checkSeq can't
+    // serve here because checkPagesStatus() bumps it on every call.
+    if (!_pollActive || cycle !== _pollCycle) return;
     _pagesPoller = setInterval(async () => {
       elapsed += POLL_INTERVAL;
       await checkPagesStatus();
@@ -1062,6 +1121,7 @@ function pollPagesUntilLive(commitSha) {
 }
 
 function stopPolling() {
+  _pollActive = false;   // v1.18: also stops a cycle whose interval isn't armed yet
   if (_pagesPoller) { clearInterval(_pagesPoller); _pagesPoller = null; }
 }
 

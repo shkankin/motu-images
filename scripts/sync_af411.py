@@ -11,6 +11,31 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.9.3 (2026-07-15) — the third instance of the v1.9.2 bug: a claim merge
+      that never touches the pending queue was reported, then discarded.
+    - v1.9.2 taught two call sites that a claim-driven DEQUEUE is a real
+      change (claim_resolved_pending). It did not teach anything that a
+      claim-driven MERGE is a real change. So the normal claim path — AF411
+      lists a claimed product for the first time, or the claimed product is
+      on the rejected list, and nothing else changed that run — merged the
+      data into the manual entry in memory, printed "MANUAL CLAIMS MERGED:
+      1 — updated: image, upc, retail, af411_id", then hit the
+      "Everything is in sync!" early-return and exited 0 without ever
+      writing figures.json. Every subsequent run repeated it identically:
+      the merge could never converge, and v1.9.1's "claims trump the
+      rejected list" was true in the report and false on disk. Only the
+      in-queue case (the one v1.9.2 was found through) actually worked,
+      because claim_resolved_pending happened to be non-empty there.
+      Fix: claim_changed — the claim merges whose `changes` list is
+      non-empty — is now a fourth reason the early-return must not fire.
+      figures.json's write is unconditional past that point, so no
+      write-guard change is needed. Claim merges that change nothing
+      (every run after the first) still report "nothing (already
+      complete)" and still take the early-return: no git churn.
+      Verified by running main() --commit against fixture repos for all
+      three claim shapes (in-pending / never-queued / rejected) and
+      re-running each to confirm the second run is a clean no-op.
+
   v1.9.2 (2026-07-15) — two claim-merge/pending-queue bugs from the same root cause
     - Fix 1: KeyError crash when a claim resolves a pending figure.
       pending_refresh was computed earlier in the diff pass, before the
@@ -186,7 +211,7 @@ from pathlib import Path
 
 # AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
 # startup banner below) and to ship atomic JSON writes — see atomic_write_text.
-SCRIPT_VERSION = "v1.9.2"
+SCRIPT_VERSION = "v1.9.3"
 
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
@@ -806,6 +831,14 @@ def main():
         if fid in pending_ids:
             claim_resolved_pending.append(fid)
     claimed_ids = {fid for fid, _, _ in claim_merged}
+    # v1.9.3: the claims that actually WROTE something into a manual entry.
+    # claim_merged is non-empty on every run once a claim exists (the merge
+    # is re-evaluated from scratch each time and is idempotent), so it can't
+    # gate anything by itself — but a merge with a non-empty `changes` list
+    # has just mutated a figures.json record in memory, and that is a real,
+    # unwritten change. See the v1.9.3 changelog: without this, the
+    # "Everything is in sync!" early-return threw those merges away.
+    claim_changed = [fid for fid, _, changes in claim_merged if changes]
     new_candidates -= claimed_ids
     # v1.9.2: pending_refresh was computed (line ~720) before claims are
     # resolved, so it can still hold ids this block is about to drop from
@@ -947,7 +980,12 @@ def main():
             print(f"    ? [{f.get('line','')}] {f.get('name',fid)}")
         print()
 
-    if not new_for_pending and not new_for_existing and not updated and not pending_refresh and not upc_pending and not claim_resolved_pending:
+    # v1.9.3: claim_changed is the fourth reason this run has real work to
+    # do. A claim merge that filled/refreshed fields on a manual entry must
+    # reach the write below even when it added nothing to any queue —
+    # that is the ordinary claim path, not an edge case.
+    if not new_for_pending and not new_for_existing and not updated and not pending_refresh \
+       and not upc_pending and not claim_resolved_pending and not claim_changed:
         print("  ✓ Everything is in sync!\n")
         return
 
