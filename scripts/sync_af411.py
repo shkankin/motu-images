@@ -11,17 +11,31 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
-  v1.9.2 (2026-07-15) — fix KeyError crash when a claim resolves a pending figure
-    - v1.9.1 made claims dequeue a pending figure they resolve (pending /
-      pending_ids updated in place), but pending_refresh — the set the
-      later "refresh pending metadata" step iterates — was computed
-      earlier in the diff pass, before that dequeue, and still held the
-      now-removed id. The refresh loop's new_pending_by_id[fid] lookup
-      then KeyError'd and crashed --commit after the report had already
-      printed and images had already downloaded (run #125: 'tauraton-14049').
+  v1.9.2 (2026-07-15) — two claim-merge/pending-queue bugs from the same root cause
+    - Fix 1: KeyError crash when a claim resolves a pending figure.
+      pending_refresh was computed earlier in the diff pass, before the
+      claim-merge block dequeues resolved figures from `pending` —
+      so it could still hold an id the dequeue had just removed. The
+      later refresh loop's new_pending_by_id[fid] lookup then KeyError'd
+      and crashed --commit after the report had already printed and
+      images had already downloaded (run #125: 'tauraton-14049').
       pending_refresh now has claimed_ids subtracted alongside
-      new_candidates, so a figure claimed and dequeued in the same run is
-      no longer also treated as needing an in-queue refresh.
+      new_candidates, so a figure claimed and dequeued in the same run
+      is no longer also treated as needing an in-queue refresh.
+    - Fix 2: figures-pending.json on disk never updated for a claim-only
+      run. With fix 1 in place, run #126 completed cleanly and reported
+      "0 in pending queue" / "2 resolved from pending queue" — correct,
+      in memory. But the file WRITE was still gated on
+      `if new_for_pending or pending_refresh`, and a claim-only run (no
+      brand-new figures, and — post fix 1 — the claimed ids no longer in
+      pending_refresh either) satisfies neither. figures-pending.json on
+      disk was therefore never rewritten, so `git add` in the workflow's
+      commit step staged a byte-identical file, `git diff --cached
+      --quiet` found nothing, and the commit/push (and the Pages
+      rebuild it would trigger) never happened — despite the run log
+      showing success and the correct dequeue count. The write guard now
+      also fires on `claim_resolved_pending`, the third way `pending`
+      can legitimately change.
 
   v1.9.1 (2026-07-15) — claims trump the pending queue
     - v1.9 matched claims only against new_candidates, which had already
@@ -1044,7 +1058,16 @@ def main():
     # v1.4: write pending queue (only if it changed). When no new figures
     # were added and no pending entries were refreshed, skip the write to
     # avoid spurious git churn.
-    if new_for_pending or pending_refresh:
+    # v1.9.2: a claim merge can shrink `pending` (figures dequeued by
+    # claim_resolved_pending, see above) without adding to new_for_pending
+    # or pending_refresh — neither bucket describes "removed via claim."
+    # Missing that case here left new_pending computed and reported
+    # correctly (console + CI summary both showed the dequeue) while the
+    # actual file on disk was never rewritten, so the claimed figures
+    # stayed committed in figures-pending.json despite the run reporting
+    # "0 in pending queue." Any of the three reasons the queue can change
+    # must trigger the write.
+    if new_for_pending or pending_refresh or claim_resolved_pending:
         new_pending.sort(key=lambda f: (line_order.get(f.get("line", ""), 99), f.get("name", "")))
         atomic_write_text(PENDING_JSON, json.dumps(new_pending, indent=2, ensure_ascii=False))
         print(f"  ✓ Wrote {len(new_pending)} figures to figures-pending.json")
