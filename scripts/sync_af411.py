@@ -11,6 +11,16 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.9.4 (2026-07-16) — rename acknowledgment
+    - Unacknowledged AF411 renames were re-reported on EVERY run forever
+      with no way to resolve them short of adopting the new id (forbidden
+      — repo ids are load-bearing). af411_id now doubles as the
+      acknowledgment: a non-manual figure whose af411_id equals a scraped
+      candidate's id silently absorbs it (counted, not itemized). The
+      rename report prints the exact acknowledgment instruction. Unifies
+      with the v1.9 claim mechanism — af411_id is simply "AF411's current
+      id for me" on any figure; the app already deep-links with it.
+
   v1.9.3 (2026-07-15) — the third instance of the v1.9.2 bug: a claim merge
       that never touches the pending queue was reported, then discarded.
     - v1.9.2 taught two call sites that a claim-driven DEQUEUE is a real
@@ -211,7 +221,7 @@ from pathlib import Path
 
 # AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
 # startup banner below) and to ship atomic JSON writes — see atomic_write_text.
-SCRIPT_VERSION = "v1.9.3"
+SCRIPT_VERSION = "v1.9.4"
 
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
@@ -865,12 +875,30 @@ def main():
         if n is not None and n not in known_by_num:
             known_by_num[n] = f["id"]
 
+    # v1.9.4: rename ACKNOWLEDGMENT. af411_id already means "AF411's
+    # current id for me" (claim merges set it on manual entries; the app
+    # deep-links the AF411 button with it for any figure). A NON-manual
+    # figure carrying af411_id equal to a scraped candidate's id is an
+    # acknowledged rename: the editor has recorded AF411's new slug, the
+    # repo id stays canonical (ids are load-bearing — collection/photos
+    # key on them), and the candidate is skipped SILENTLY instead of
+    # being re-reported on every run forever.
+    ack_by_scraped = {}
+    for f in existing:
+        if not str(f.get("id", "")).startswith("manual-") and f.get("af411_id"):
+            ack_by_scraped[f["af411_id"]] = f["id"]
+
     renamed = []   # (scraped_id, known_id)
+    acknowledged = []   # (scraped_id, existing_id) — silent, counted only
     for fid in sorted(new_candidates):
+        if fid in ack_by_scraped:
+            acknowledged.append((fid, ack_by_scraped[fid]))
+            continue
         n = _af411_num(fid)
         if n is not None and n in known_by_num:
             renamed.append((fid, known_by_num[n]))
     new_candidates -= {fid for fid, _ in renamed}
+    new_candidates -= {fid for fid, _ in acknowledged}
 
     new_for_pending = set() if args.no_pending else new_candidates
     new_for_existing = new_candidates if args.no_pending else set()
@@ -909,6 +937,8 @@ def main():
         print(f"  New → figures.json:  {len(new_for_existing)}")
     if renamed:
         print(f"  ⚠ AF411 RENAMES (suppressed, action needed): {len(renamed)}")
+    if acknowledged:
+        print(f"  ✓ acknowledged renames skipped: {len(acknowledged)}")
     if claim_merged:
         print(f"  ⇄ MANUAL CLAIMS MERGED (af411 field): {len(claim_merged)}"
               + (f" ({len(claim_resolved_pending)} resolved from pending queue)" if claim_resolved_pending else ""))
@@ -939,6 +969,9 @@ def main():
             s = scraped_by_id[scraped_id]
             print(f"    ↻ #{_af411_num(scraped_id)}: '{known_id}' → AF411 now calls it "
                   f"'{s['name']}' ({scraped_id})")
+            print(f"       → to acknowledge: set AF411 current id = '{scraped_id}' on"
+                  f" '{known_id}' in the figures editor. The repo id stays canonical,"
+                  f" this report stops, and the AF411 button deep-links correctly.")
         print()
     if new_to_show:
         bucket = "PENDING QUEUE" if new_for_pending else "figures.json (no-pending)"

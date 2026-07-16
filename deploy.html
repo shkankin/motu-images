@@ -13,6 +13,17 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Collector — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
+     deploy.html  v1.19
+       • v1.19: the MAX_WAIT timeout's grey "Timed out waiting for Pages
+         build" status can now actually display — its seq token was
+         always stale by the time the timeout fired (checkPagesStatus
+         bumps _checkSeq on every poll), so only the log line ever
+         survived. Fresh token (++_checkSeq) at the timeout site, guarded
+         so a status already confirmed live for the watched SHA is never
+         stomped grey (the v1.18 latch/stopPolling interaction handoff5
+         warned about). Found in v1.18's session, deliberately left out
+         of that scope; fixed here with harness verification.
+
      deploy.html  v1.18
        • v1.18: the reason v1.17 was needed. The poller never actually
          stopped when the FIRST check reported Live: pollPagesUntilLive()
@@ -406,7 +417,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.18</span></h1>
+  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.19</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -1113,8 +1124,22 @@ function pollPagesUntilLive(commitSha) {
       // Stop if live (green) or errored (red) — checkPagesStatus calls stopPolling() in those cases
       if (elapsed >= MAX_WAIT) {
         stopPolling();
-        setPagesStatus(seq, 'grey', 'Timed out waiting for Pages build', 'Try the Check button manually');
-        log('err', '  Pages build did not complete within 5 minutes');
+        // v1.19: this grey status could NEVER display — `seq` was captured
+        // at cycle start, and the awaited checkPagesStatus() call above
+        // bumps _checkSeq every poll, so setPagesStatus discarded it as
+        // stale on arrival; only the log line survived (found + left
+        // documented in v1.18's session, fixed now). A fresh token
+        // (++_checkSeq) makes the timeout the newest status. Guarded so a
+        // status already confirmed live for THIS watched SHA is never
+        // stomped grey (handoff5's explicit interaction warning: v1.18's
+        // latch-stopPolling normally prevents the race, but a manual
+        // Check can confirm mid-cycle — belt and suspenders).
+        if (_confirmedLive && _targetSha && _confirmedLive.sha === _targetSha) {
+          log('dim', '  Watch window ended — status already confirmed live');
+        } else {
+          setPagesStatus(++_checkSeq, 'grey', 'Timed out waiting for Pages build', 'Try the Check button manually');
+          log('err', '  Pages build did not complete within 5 minutes');
+        }
       }
     }, POLL_INTERVAL);
   }, FIRST_DELAY);

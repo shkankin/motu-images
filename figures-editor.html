@@ -648,7 +648,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.31.0';   // v1.31.0: AF411 claim field on manual entries, both edit forms (sync v1.9 merge; manual id stays canonical so collection/photos keyed by it are never orphaned)   // v1.30.0: MOTU Collector rebrand (title + h1)
+const EDITOR_VERSION = 'v1.32.0';   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -2087,6 +2087,9 @@ function renderCard(f) {
         ${f.id.startsWith('manual-') ? `<div class="field${e.af411!==undefined?' changed':''}"><label>AF411 # <span style="font-weight:400;color:var(--t3)">(claim — sync merges their data into this entry)</span></label>
           <input type="text" inputmode="numeric" value="${eff('af411') ?? ''}" placeholder="e.g. 14039 — the number at the end of the AF411 URL" oninput="setEdit(${jsArg(f.id)},'af411',this.value?parseInt(this.value.replace(/[^0-9]/g,''),10):undefined)">
         </div>` : ''}
+        <div class="field${e.af411_id!==undefined?' changed':''}"><label>AF411 current id <span style="font-weight:400;color:var(--t3)">(acknowledges a rename; powers the AF411 deep link)</span></label>
+          <input type="text" value="${esc(eff('af411_id') ?? '')}" placeholder="e.g. grayskull-strongholds-10371 — from the sync's rename report" oninput="setEdit(${jsArg(f.id)},'af411_id',this.value.trim()||undefined)">
+        </div>
       </div>
       <details>
         <summary>Accessories / Loadout (${accs.length} selected)</summary>
@@ -2256,6 +2259,9 @@ function renderExistingCard(f) {
         ${f.id.startsWith('manual-') ? `<div class="field${e.af411!==undefined?' changed':''}"><label>AF411 # <span style="font-weight:400;color:var(--t3)">(claim — sync merges their data into this entry)</span></label>
           <input type="text" inputmode="numeric" value="${eff('af411') ?? ''}" placeholder="e.g. 14039 — the number at the end of the AF411 URL" oninput="setEdit(${jsArg(f.id)},'af411',this.value?parseInt(this.value.replace(/[^0-9]/g,''),10):undefined)">
         </div>` : ''}
+        <div class="field${e.af411_id!==undefined?' changed':''}"><label>AF411 current id <span style="font-weight:400;color:var(--t3)">(acknowledges a rename; powers the AF411 deep link)</span></label>
+          <input type="text" value="${esc(eff('af411_id') ?? '')}" placeholder="e.g. grayskull-strongholds-10371 — from the sync's rename report" oninput="setEdit(${jsArg(f.id)},'af411_id',this.value.trim()||undefined)">
+        </div>
       </div>
       <details ${isEdited && hasLoadoutChange(f.id) ? 'open' : ''}>
         <summary>Accessories / Loadout (${accs.length} selected${hasLoadoutChange(f.id) ? ' · changed' : ''})</summary>
