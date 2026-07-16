@@ -11,6 +11,17 @@ Usage:
   python sync_af411.py --audit            # compare only, detailed report
 
 CHANGELOG
+  v1.9.1 (2026-07-15) — claims trump the pending queue
+    - v1.9 matched claims only against new_candidates, which had already
+      subtracted pending and rejected ids — so a claimed figure that hit
+      the pending queue before the claim was set would never merge, and
+      REJECTING the pending copy (the intuitive editor move) would have
+      blocked the merge permanently via rejected_ids. Claims now match
+      against ALL scraped ids; a claimed figure in the pending queue is
+      merged and dropped from the queue automatically, reported as
+      "[was in pending queue — removed]". Editor workflow for a claimed
+      pending figure: do nothing — the next sync resolves it.
+
   v1.9 (2026-07-15) — manual-claim merge (opt-in af411 field)
     - A manual entry (id manual-*) may carry an integer `af411` field —
       set in the figures editor — meaning: "this AF411 product number IS
@@ -149,7 +160,7 @@ from pathlib import Path
 
 # AUDIT FIX v1.7: bumped for visual confirmation in CI logs (printed in the
 # startup banner below) and to ship atomic JSON writes — see atomic_write_text.
-SCRIPT_VERSION = "v1.9"
+SCRIPT_VERSION = "v1.9.1"
 
 BASE = "https://www.actionfigure411.com"
 MOTU = "/masters-of-the-universe"
@@ -738,10 +749,21 @@ def main():
     # `merged` — this report list is deliberately `claim_merged` to
     # avoid shadowing it (caught in review: the collision would have
     # serialized these tuples into figures.json).
+    # v1.9.1: claims are matched against ALL scraped ids, not just
+    # new_candidates. new_candidates already subtracted pending and
+    # rejected ids, so a claimed figure that reached the pending queue
+    # (or was rejected) before the claim was set would NEVER merge —
+    # and rejecting a pending copy would have blocked the merge
+    # permanently. Claims trump the queue: the merge fires wherever the
+    # number is found, and a pending copy is dropped from the queue
+    # automatically (reported as such). The correct editor workflow for
+    # a claimed figure sitting in pending is therefore: do nothing —
+    # the next sync run resolves it.
     MERGE_FILL_ONLY = ("name", "variant", "faction", "year", "wave", "series", "group", "image")
     MERGE_ALWAYS = ("upc", "retail")
     claim_merged = []   # (scraped_id, manual_id, [changed fields])
-    for fid in sorted(new_candidates):
+    claim_resolved_pending = []   # scraped ids dropped from the pending queue by a claim
+    for fid in sorted(scraped_ids):
         n = _af411_num(fid)
         if n is None or n not in claimed_by_num:
             continue
@@ -755,7 +777,15 @@ def main():
         if target.get("af411_id") != fid:
             target["af411_id"] = fid; changes.append("af411_id")
         claim_merged.append((fid, target["id"], changes))
-    new_candidates -= {fid for fid, _, _ in claim_merged}
+        if fid in pending_ids:
+            claim_resolved_pending.append(fid)
+    claimed_ids = {fid for fid, _, _ in claim_merged}
+    new_candidates -= claimed_ids
+    if claim_resolved_pending:
+        # v1.9.1: dissolve claimed figures out of the pending queue — the
+        # merge already carried their data into the manual entry.
+        pending = [f for f in pending if f.get("id") not in claimed_ids]
+        pending_ids -= claimed_ids
 
     known_by_num = {}
     for f in existing + pending:
@@ -813,7 +843,8 @@ def main():
     if renamed:
         print(f"  ⚠ AF411 RENAMES (suppressed, action needed): {len(renamed)}")
     if claim_merged:
-        print(f"  ⇄ MANUAL CLAIMS MERGED (af411 field): {len(claim_merged)}")
+        print(f"  ⇄ MANUAL CLAIMS MERGED (af411 field): {len(claim_merged)}"
+              + (f" ({len(claim_resolved_pending)} resolved from pending queue)" if claim_resolved_pending else ""))
     print(f"  Existing updated:    {len(updated)}")
     if args.upc:
         print(f"  UPC backfill (existing): {len(upc_pending)}")
@@ -829,8 +860,9 @@ def main():
         print(f"  (No duplicates created; the manual entry stays canonical and")
         print(f"   absorbed AF411's data per the claim the editor recorded.)")
         for scraped_id, manual_id, changes in claim_merged:
+            frm = " [was in pending queue — removed]" if scraped_id in claim_resolved_pending else ""
             print(f"    ⇄ #{_af411_num(scraped_id)}: '{manual_id}' absorbed '{scraped_id}'"
-                  f" — updated: {', '.join(changes) if changes else 'nothing (already complete)'}")
+                  f" — updated: {', '.join(changes) if changes else 'nothing (already complete)'}{frm}")
     if renamed:
         print(f"  ── AF411 RENAMES DETECTED (same numeric id, new slug) ──")
         print(f"  (NOT queued or added — the existing record is untouched.")
