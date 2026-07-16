@@ -947,7 +947,7 @@ def main():
             print(f"    ? [{f.get('line','')}] {f.get('name',fid)}")
         print()
 
-    if not new_for_pending and not new_for_existing and not updated and not pending_refresh and not upc_pending:
+    if not new_for_pending and not new_for_existing and not updated and not pending_refresh and not upc_pending and not claim_resolved_pending:
         print("  ✓ Everything is in sync!\n")
         return
 
