@@ -1,7 +1,38 @@
-// MOTU Collector — Service Worker v7.15
+// MOTU Collector — Service Worker (versions live in CACHE + the changelog below)
 // HTML: network-first with cache fallback (always current version on load)
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
+//
+// v7.42 changelog:
+//   • CACHE bumped to v7.42. SHELL: render.js + ui-sheets.js + vault.css.
+//     App v7.68 — Lines-tab legibility + art-off thumbnails (user report
+//     with screenshot).
+//   • Legibility over art: the meta line (years · counts · %) was
+//     tertiary-dim 11px text — "mostly unreadable across the board". On
+//     art rows it is now --t1 at 12px/600 with a text halo; the name
+//     keeps its size but gains the same halo. All halos (including the
+//     v7.66 no-scrim set) are now theme-aware — color-mix on --bg, the
+//     same derivation as the scrim — replacing hardcoded black shadows
+//     that were wrong for the light theme. The no-scrim meta selector
+//     now targets .line-row-meta directly instead of
+//     .line-row-info > div:not(.line-row-name), which also matched the
+//     textless progress-bar div. Non-art rows keep the quiet --t3 meta.
+//   • Art off = classic thumbnails back (user request: rows were too
+//     bare): the {id}.jpg badge removed in v7.63 is restored to every
+//     row's markup, lazy-loaded. CSS hides it on art rows (hidden boxes
+//     never intersect → loading=lazy never fetches, so art-on still
+//     costs zero thumb requests); body.no-line-art (the v7.66 live-flip
+//     mechanism) or rendering with the pref off shows it. Theme-sheet
+//     art-toggle sub-copy updated to say so. v7.62's "art off = no <img>
+//     at all" promise is retired by design.
+//   • Row height (--line-h min-height) now applies only while art is
+//     showing — body:not(.no-line-art) .line-row.has-art — so art-off
+//     rows return to true pre-v7.62 content-height thumbnail rows
+//     instead of tall empty ones. The sheet already hides the height
+//     buttons when art is off.
+//   • sw.js header comment no longer claims a version ("v7.15" had
+//     rotted since v7.15; handoff6 flagged it) — versions live in CACHE
+//     and this changelog.
 //
 // v7.41 changelog:
 //   • CACHE bumped to v7.41. SHELL: eggs.js + render.js. App v7.67. Also
@@ -1467,7 +1498,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.41';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.42';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

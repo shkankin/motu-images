@@ -522,7 +522,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.67</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.68</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1017,7 +1017,16 @@ function renderLinesGrid() {
         // v7.62: {id}-hero.webp row art, graduated from the art-preview
         // sandbox. Gated by the Theme-sheet settings; the img simply 404s
         // and hides (img-hide) for lines without art, so coverage can grow
-        // line by line. Art off = no <img> at all — zero requests.
+        // line by line.
+        // v7.68: the classic {id}.jpg square thumbnail (removed in v7.63)
+        // returns to every row — user request: art-off rows were too bare.
+        // It is ALWAYS emitted but lazy-loaded: on art rows CSS hides its
+        // container (a display:none box never intersects, so loading=lazy
+        // never fetches) and the hero owns the row; with art off — has-art
+        // absent at render time, or body.no-line-art from the live Theme-
+        // sheet flip — the thumb displays and lazy-loads. So "art off = no
+        // <img> at all" (v7.62) is retired by design: art off now means
+        // the pre-v7.63 thumbnail look, not a bare row.
         const artOn = store.get('motu-line-art') !== '0';
         // v7.66: the scrim div is ALWAYS emitted on art rows; whether it
         // shows is body.no-art-scrim's decision (see vault.css). That
@@ -1028,8 +1037,10 @@ function renderLinesGrid() {
         html += `<button class="line-row${newCount>0?' has-new':''}${artOn?' has-art':''}" data-action="go-to-line" data-line-id="${esc(l.id)}">
           ${artOn ? `<img class="line-hero" loading="lazy" src="${IMG}/${esc(l.id)}-hero.webp" alt="" data-error-action="img-hide">` : ''}
           ${artOn ? '<div class="line-scrim"></div>' : ''}
-          <!-- v7.63: badge thumbnail removed (user request) — the hero art
-               IS the identity now, and the badge covered its left third. -->
+          <!-- v7.68: badge thumbnail restored (removed v7.63) — visible
+               only when the hero art is off; see vault.css visibility
+               rules and the comment above. -->
+          <div class="line-row-thumb"><img loading="lazy" src="${IMG}/${esc(l.id)}.jpg" alt="" data-error-action="img-hide"></div>
           <div class="line-row-info">
             <div class="line-row-name font-display">${esc(l.name)}</div>
             <div class="line-row-meta">${l.yr}${l.total > 0 ? ` · ${l.owned}/${l.total} · ${l.pct}%` : ''}</div>

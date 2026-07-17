@@ -491,13 +491,16 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   text-align: left;
   transition: border-color 0.15s, transform 0.15s;
   /* v7.62: hero-art support. position+overflow contain the absolutely
-     positioned art layer; min-height comes from the user's row-height
-     setting (Theme sheet). Rows without art are unaffected: the img
-     404s and img-hide removes it, and min-height 0 falls back to
-     content height. */
+     positioned art layer. Rows without art are unaffected: the img
+     404s and img-hide removes it.
+     v7.68: min-height (the Theme-sheet row-height setting) now applies
+     ONLY while art is actually showing — with art off, tall empty rows
+     were part of the "too bare" report; art-off rows return to the
+     pre-v7.62 content-height thumbnail look. The height buttons were
+     already hidden in the sheet when art is off, so no orphan control. */
   position: relative; overflow: hidden;
-  min-height: var(--line-h, 0px);
 }
+body:not(.no-line-art) .line-row.has-art { min-height: var(--line-h, 0px); }
 .line-row:hover { border-color: var(--acc); }
 /* v7.62: line hero art layers. The scrim color derives from the active
    theme's --bg via color-mix, so every theme darkens its rows in its own
@@ -521,22 +524,62 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .line-row > .line-row-thumb, .line-row > .line-row-info, .line-row > .line-row-arrow {
   position: relative; z-index: 2;
 }
-.line-row.has-art .line-row-name { text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+/* v7.68: legibility over art (user report: line names borderline, the
+   meta details "mostly unreadable across the board"). Two causes fixed:
+   the meta line was tertiary-dim 11px text sitting on busy art, and all
+   halo shadows were hardcoded black — wrong for the light theme, whose
+   scrim (color-mix on --bg) is pale and whose text is dark. Halos now
+   derive from --bg like the scrim does: dark themes halo dark under
+   light text, the light theme halos pale under dark text. Meta is
+   promoted to --t1 at 12px/600 on art rows only; non-art rows keep the
+   quiet --t3 style. */
+.line-row.has-art .line-row-name {
+  color: var(--t1);
+  text-shadow: 0 0 4px color-mix(in srgb, var(--bg) 96%, transparent),
+               0 2px 6px color-mix(in srgb, var(--bg) 88%, transparent),
+               0 0 16px color-mix(in srgb, var(--bg) 55%, transparent);
+}
+.line-row.has-art .line-row-meta {
+  color: var(--t1);
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 0 4px color-mix(in srgb, var(--bg) 96%, transparent),
+               0 1px 4px color-mix(in srgb, var(--bg) 88%, transparent),
+               0 0 12px color-mix(in srgb, var(--bg) 55%, transparent);
+}
+/* v7.68: thumbnail visibility. The {id}.jpg badge (restored in render.js)
+   is in every row's markup; art rows hide it — the hero owns the row and
+   the badge used to cover the art's left third (the v7.63 removal
+   reason). body.no-line-art (live Theme-sheet flip, no re-render — the
+   v7.66 mechanism) overrides the hide so switching art off brings the
+   thumbnails straight back. Rows rendered with the art pref off have no
+   .has-art and show the thumb via the base rule. display:none boxes
+   never intersect, so the lazy-loaded img costs zero requests while
+   hidden. */
+.line-row.has-art .line-row-thumb { display: none; }
+body.no-line-art .line-row.has-art .line-row-thumb { display: block; }
 /* v7.66: the Line Art settings act through body classes + the --line-h
    var, NOT re-renders — flipping them is instant and the "awkward
    refresh" is gone. The scrim element always exists on art rows; this
    class is its only off-switch. */
 body.no-line-art .line-hero, body.no-line-art .line-scrim { display: none; }
 body.no-art-scrim .line-scrim { display: none; }
-/* v7.66: scrim-off legibility (user request): without the gradient, white
-   text sinks into bright art — so no-scrim mode trades the scrim for a
-   heavy text halo. Name gets a tight dark core + wide soft bloom; the
-   meta line gets a lighter version. Only applies on art rows. */
+/* v7.66: scrim-off legibility (user request): without the gradient, text
+   sinks into bright art — so no-scrim mode stacks a heavier halo on top
+   of the v7.68 base treatment above. v7.68: shadows made theme-aware
+   (same --bg color-mix rationale as above; the old hardcoded black
+   broke on the light theme) and the second selector now targets
+   .line-row-meta directly — it previously matched the progress-bar div
+   too, which has no text to shadow. Only applies on art rows. */
 body.no-art-scrim .line-row.has-art .line-row-name {
-  text-shadow: 0 0 3px rgba(0,0,0,0.95), 0 2px 5px rgba(0,0,0,0.9), 0 0 14px rgba(0,0,0,0.65);
+  text-shadow: 0 0 3px color-mix(in srgb, var(--bg) 97%, transparent),
+               0 2px 5px color-mix(in srgb, var(--bg) 92%, transparent),
+               0 0 14px color-mix(in srgb, var(--bg) 70%, transparent);
 }
-body.no-art-scrim .line-row.has-art .line-row-info > div:not(.line-row-name) {
-  text-shadow: 0 0 3px rgba(0,0,0,0.95), 0 1px 3px rgba(0,0,0,0.85);
+body.no-art-scrim .line-row.has-art .line-row-meta {
+  text-shadow: 0 0 3px color-mix(in srgb, var(--bg) 97%, transparent),
+               0 1px 3px color-mix(in srgb, var(--bg) 88%, transparent),
+               0 0 10px color-mix(in srgb, var(--bg) 70%, transparent);
 }
 .line-row:active { transform: scale(0.98); }
 .line-row.has-new { border-left: 3px solid var(--acc); padding-left: 9px; }

@@ -875,7 +875,7 @@ function renderThemeSheet() {
   </button>`;
   const artSection = `
     <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--t3);text-transform:uppercase;margin:16px 0 8px">Line Art</div>
-    ${toggleRow('Line background art', 'Hero artwork behind each line on the Lines tab', artOn, 'toggle-line-art')}
+    ${toggleRow('Line background art', 'Hero artwork behind each line — off shows the classic thumbnails', artOn, 'toggle-line-art')}
     ${artOn ? toggleRow('Darkening scrim', 'Keeps names readable over bright art', scrimOn, 'toggle-art-scrim') : ''}
     ${artOn ? `<div style="font-size:11px;color:var(--t3);margin:2px 0 6px">Row height</div>
     <div style="display:flex;gap:8px">${hBtn('Compact', '82')}${hBtn('Standard', '95')}${hBtn('Tall', '110')}</div>` : ''}`;
