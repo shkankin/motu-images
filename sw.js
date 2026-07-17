@@ -3,6 +3,19 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.43 changelog:
+//   • CACHE bumped to v7.43. SHELL: data.js + render.js. App v7.69 —
+//     alphabetical accessory picker (user request with screenshot: the
+//     thematic order made items hard to find).
+//   • renderAccessoryPickerSheet sorts at DISPLAY time in all three
+//     branches: the normal full-list offer, loadout-active offers, and
+//     Edit Loadout admin mode. Custom items stay pinned on top (now
+//     alphabetical among themselves); 'Other' pins last. The ACCESSORIES
+//     constant keeps its thematic order — display-only change. slice()
+//     before sort everywhere: getLoadout() can return stored arrays by
+//     reference and display order must never mutate stored data
+//     (harness-verified).
+//
 // v7.42 changelog:
 //   • CACHE bumped to v7.42. SHELL: render.js + ui-sheets.js + vault.css.
 //     App v7.68 — Lines-tab legibility + art-off thumbnails (user report
@@ -1498,7 +1511,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.42';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.43';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

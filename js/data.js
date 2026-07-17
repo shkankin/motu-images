@@ -1353,6 +1353,14 @@ function renderAccessoryPickerSheet() {
   const figAvailLocal = localAvail[figId];   // local override only (admin edits this)
   const figLoadout = getLoadout(figId);      // merged: local || repo (normal mode reads this)
   const adminMode = !!S._accPickAdmin;
+  // v7.69: the picker sorts alphabetically at DISPLAY time (user request —
+  // the thematic order made items hard to find in a long flat list).
+  // ACCESSORIES itself keeps its thematic order (it doubles as the
+  // canonical/docs order and other consumers read it); 'Other' pins last
+  // regardless. slice() before sort everywhere — getLoadout() can return
+  // the stored loadout array by reference and display order must never
+  // mutate stored data.
+  const accSort = (a, b) => a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b);
   // In admin mode, ALL global accessories are listed with the figure's
   // available subset checked. Tapping toggles inclusion in the available
   // list (does NOT touch what's on the copy).
@@ -1381,7 +1389,7 @@ function renderAccessoryPickerSheet() {
   h += `<div class="acc-picker-list">`;
   if (adminMode) {
     const figAvailSet = new Set(figAvailLocal || []);
-    ACCESSORIES.forEach(name => {
+    ACCESSORIES.slice().sort(accSort).forEach(name => {
       const on = figAvailSet.has(name);
       h += `<button class="acc-picker-item${on ? ' selected' : ''}" data-action="acc-toggle-avail" data-acc-name="${esc(name)}">
         <span>${esc(name)}</span>
@@ -1390,6 +1398,7 @@ function renderAccessoryPickerSheet() {
     });
   } else {
     const customSelected = current.filter(a => !ACCESSORIES.includes(a) && !(S._repoCustomAccessories || []).includes(a));
+    customSelected.sort(accSort);  // fresh array from filter() — safe to sort in place
     customSelected.forEach(name => {
       h += `<button class="acc-picker-item selected" data-action="acc-toggle-in-picker" data-acc-name="${esc(name)}">
         <span>${esc(name)}</span>
@@ -1403,7 +1412,7 @@ function renderAccessoryPickerSheet() {
       const repoCust = (S._repoCustomAccessories || []).filter(n => !ACCESSORIES.includes(n));
       offerList = [...ACCESSORIES, ...repoCust];
     }
-    offerList.forEach(name => {
+    offerList.slice().sort(accSort).forEach(name => {
       const on = currentSet.has(name);
       h += `<button class="acc-picker-item${on ? ' selected' : ''}" data-action="acc-toggle-in-picker" data-acc-name="${esc(name)}">
         <span>${esc(name)}</span>
