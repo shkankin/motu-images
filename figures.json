@@ -9024,21 +9024,6 @@
     "upc": "887961078121"
   },
   {
-    "id": "evil-seed-2-0-2897",
-    "name": "Evil Seed 2.0",
-    "line": "classics",
-    "group": "Evil Warriors",
-    "wave": "",
-    "year": 2016,
-    "retail": 25,
-    "slug": "evil-seed-2-0-2897",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "classics",
-    "sourceGroup": "",
-    "upc": "887961235272"
-  },
-  {
     "id": "evil-lyn-4045",
     "name": "Evil-Lyn",
     "line": "classics",
@@ -9052,21 +9037,6 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "027084836066"
-  },
-  {
-    "id": "evil-lyn-2-0-2898",
-    "name": "Evil-Lyn 2.0",
-    "line": "classics",
-    "group": "Evil Warriors",
-    "wave": "",
-    "year": 2016,
-    "retail": 20,
-    "slug": "evil-lyn-2-0-2898",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "classics",
-    "sourceGroup": "",
-    "upc": "887961235333"
   },
   {
     "id": "extendar-5137",
@@ -10849,21 +10819,6 @@
     "upc": "0746775338510"
   },
   {
-    "id": "skeletor-2-0-2901",
-    "name": "Skeletor 2.0",
-    "line": "classics",
-    "group": "Evil Warriors",
-    "wave": "",
-    "year": 2016,
-    "retail": 20,
-    "slug": "skeletor-2-0-2901",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "classics",
-    "sourceGroup": "",
-    "upc": "887961235289"
-  },
-  {
     "id": "sky-high-with-jet-sled-5118",
     "name": "Sky High with Jet Sled",
     "line": "classics",
@@ -11341,21 +11296,6 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "027084835984"
-  },
-  {
-    "id": "trap-jaw-2-0-2902",
-    "name": "Trap Jaw 2.0",
-    "line": "classics",
-    "group": "Evil Warriors",
-    "wave": "",
-    "year": 2016,
-    "retail": 20,
-    "slug": "trap-jaw-2-0-2902",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "classics",
-    "sourceGroup": "",
-    "upc": "887961235326"
   },
   {
     "id": "trap-jaw-prince-adam-and-stratos-3-pack-6041",
@@ -17405,6 +17345,21 @@
     "upc": "811169038298"
   },
   {
+    "id": "evil-seed-2-0-2897",
+    "name": "Evil Seed 2.0",
+    "line": "super7",
+    "group": "Club Grayskull",
+    "wave": "",
+    "year": 2016,
+    "retail": 25,
+    "slug": "evil-seed-2-0-2897",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "classics",
+    "sourceGroup": "",
+    "upc": "887961235272"
+  },
+  {
     "id": "evil-lyn-2795",
     "name": "Evil-Lyn",
     "line": "super7",
@@ -17418,6 +17373,21 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "811169038304"
+  },
+  {
+    "id": "evil-lyn-2-0-2898",
+    "name": "Evil-Lyn 2.0",
+    "line": "super7",
+    "group": "Club Grayskull",
+    "wave": "",
+    "year": 2016,
+    "retail": 20,
+    "slug": "evil-lyn-2-0-2898",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "classics",
+    "sourceGroup": "",
+    "upc": "887961235333"
   },
   {
     "id": "faker-2753",
@@ -18004,6 +17974,21 @@
     "upc": "811169038274"
   },
   {
+    "id": "skeletor-2-0-2901",
+    "name": "Skeletor 2.0",
+    "line": "super7",
+    "group": "Club Grayskull",
+    "wave": "",
+    "year": 2016,
+    "retail": 20,
+    "slug": "skeletor-2-0-2901",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "classics",
+    "sourceGroup": "",
+    "upc": "887961235289"
+  },
+  {
     "id": "sorceress-2763",
     "name": "Sorceress",
     "line": "super7",
@@ -18178,6 +18163,21 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "811169033101"
+  },
+  {
+    "id": "trap-jaw-2-0-2902",
+    "name": "Trap Jaw 2.0",
+    "line": "super7",
+    "group": "Club Grayskull",
+    "wave": "",
+    "year": 2016,
+    "retail": 20,
+    "slug": "trap-jaw-2-0-2902",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "classics",
+    "sourceGroup": "",
+    "upc": "887961235326"
   },
   {
     "id": "tri-klops-2760",
