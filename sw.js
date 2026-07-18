@@ -3,6 +3,15 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.45 changelog:
+//   • CACHE bumped to v7.45. SHELL: render.js + vault.css (comment-only).
+//     App v7.71 — line thumbnails switch from {id}.jpg to the new
+//     {id}.webp art the owner produced (all 14 verified present, valid
+//     webp, square except super7 at 256x240 — object-fit:cover absorbs
+//     it). One-line src flip; the old .jpg files are unreferenced after
+//     this and can be deleted from the repo once this version has been
+//     live long enough for cached clients to update.
+//
 // v7.44 changelog:
 //   • CACHE bumped to v7.44. SHELL: data.js + delegate-handlers.js +
 //     render.js. App v7.70 — "Scan for Orphaned Entries" maintenance
@@ -1527,7 +1536,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.44';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.45';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

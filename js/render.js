@@ -522,7 +522,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.70</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.71</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1018,7 +1018,8 @@ function renderLinesGrid() {
         // sandbox. Gated by the Theme-sheet settings; the img simply 404s
         // and hides (img-hide) for lines without art, so coverage can grow
         // line by line.
-        // v7.68: the classic {id}.jpg square thumbnail (removed in v7.63)
+        // v7.68: the classic square thumbnail (removed in v7.63) — since
+        // v7.71 the new {id}.webp art, superseding the original {id}.jpg —
         // returns to every row — user request: art-off rows were too bare.
         // It is ALWAYS emitted but lazy-loaded: on art rows CSS hides its
         // container (a display:none box never intersects, so loading=lazy
@@ -1040,7 +1041,7 @@ function renderLinesGrid() {
           <!-- v7.68: badge thumbnail restored (removed v7.63) — visible
                only when the hero art is off; see vault.css visibility
                rules and the comment above. -->
-          <div class="line-row-thumb"><img loading="lazy" src="${IMG}/${esc(l.id)}.jpg" alt="" data-error-action="img-hide"></div>
+          <div class="line-row-thumb"><img loading="lazy" src="${IMG}/${esc(l.id)}.webp" alt="" data-error-action="img-hide"></div>
           <div class="line-row-info">
             <div class="line-row-name font-display">${esc(l.name)}</div>
             <div class="line-row-meta">${l.yr}${l.total > 0 ? ` · ${l.owned}/${l.total} · ${l.pct}%` : ''}</div>

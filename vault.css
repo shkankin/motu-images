@@ -547,7 +547,8 @@ body:not(.no-line-art) .line-row.has-art { min-height: var(--line-h, 0px); }
                0 1px 4px color-mix(in srgb, var(--bg) 88%, transparent),
                0 0 12px color-mix(in srgb, var(--bg) 55%, transparent);
 }
-/* v7.68: thumbnail visibility. The {id}.jpg badge (restored in render.js)
+/* v7.68: thumbnail visibility. The {id}.webp badge (restored in render.js;
+   .jpg until v7.71)
    is in every row's markup; art rows hide it — the hero owns the row and
    the badge used to cover the art's left third (the v7.63 removal
    reason). body.no-line-art (live Theme-sheet flip, no re-render — the
