@@ -648,7 +648,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.33.0';   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
+const EDITOR_VERSION = 'v1.34.0';   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1721,6 +1721,7 @@ function onLineFilterChange() {
 
 function populateSublineFilter() {
   const sel = document.getElementById('filterSubline');
+  const _prevSubline = sel.value;   // v1.34.0: restored below if the option survives
   const lineId = document.getElementById('filterLine').value;
   if (!lineId) {
     // No line selected — hide subline filter (would be too many options)
@@ -1759,6 +1760,7 @@ function populateSublineFilter() {
     opts.push(`<option value="(no subline)">(no subline) (${counts['(no subline)']})</option>`);
   }
   sel.innerHTML = opts.join('');
+  if (_prevSubline && [...sel.options].some(op => op.value === _prevSubline)) sel.value = _prevSubline;   // v1.34.0
   sel.style.display = '';
 }
 
@@ -1812,11 +1814,24 @@ function refreshUI() {
   const filterStatus = document.getElementById('filterStatus');
   const bulkBtn = document.getElementById('bulkBtn');
   const sourcePool = mode === 'pending' ? pendingFigs : approvedFigs;
+  // v1.34.0: preserve the current selections across the innerHTML rebuild
+  // (user report: changing a figure's line reset every filter to "All
+  // lines" — the "home screen" — while keeping the deep scroll position).
+  // Setting innerHTML on a <select> silently resets it to the first
+  // option; restoring the previous value when its option survives keeps
+  // the user's filter context, and since renderList filters on the
+  // EFFECTIVE line (edits applied), a figure moved out of the filtered
+  // line simply disappears from the list in place. Restore MUST happen
+  // before populateSublineFilter(), which reads filterLine.value.
+  const prevLine = filterLine.value;
+  const prevStatus = filterStatus.value;
   filterLine.innerHTML = '<option value="">All lines</option>' +
     LINES.filter(l => sourcePool.some(f => f.line === l.id || f.sourceLine === l.id))
          .map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+  if (prevLine && [...filterLine.options].some(op => op.value === prevLine)) filterLine.value = prevLine;
 
-  // v1.7: rebuild the subline filter to match the (possibly reset) line filter
+  // v1.7: rebuild the subline filter to match the line filter
+  // (v1.34.0: both filters are now value-preserving)
   populateSublineFilter();
 
   // Status filter options differ per mode. Bulk button only appears in pending.
@@ -1842,6 +1857,11 @@ function refreshUI() {
     bulkBtn.title = 'Discard all edits to existing figures (does not affect pending decisions)';
     bulkBtn.onclick = resetAllExistingEdits;
   }
+
+  // v1.34.0: same preservation for the status filter. Mode switches
+  // rebuild with a different option set, in which case the old value has
+  // no matching option and the select legitimately falls back to All.
+  if (prevStatus && [...filterStatus.options].some(op => op.value === prevStatus)) filterStatus.value = prevStatus;
 
   document.getElementById('filterBar').style.display = haveAny ? 'flex' : 'none';
 
