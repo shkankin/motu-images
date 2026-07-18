@@ -648,7 +648,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.32.0';   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
+const EDITOR_VERSION = 'v1.33.0';   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1663,21 +1663,35 @@ function ingestRejected(data) {
 // renderList() destroys the DOM. Since oninput fires per-keystroke this
 // is mainly a safety net for the line-change path which calls refreshUI()
 // while other cards may have focused inputs.
+// v1.33.0: the saved (pre-edit) figure record for id, across both pools.
+// Manual figures have no saved baseline and return undefined on purpose.
+function _savedFigForEdit(id) {
+  return approvedFigs.find(f => f.id === id) || pendingFigs.find(f => f.id === id);
+}
+
 function flushPendingEdits() {
-  // Only flush inputs whose value actually differs from what is already
-  // stored in edits[]. Firing oninput unconditionally marks every visible
-  // card as edited and triggers setEdit on unchanged fields.
+  // Only flush inputs whose value actually differs from the EFFECTIVE
+  // value the input was rendered with (the edit if one exists, else the
+  // saved figure's value).
+  // v1.33.0 bug fix (user report: changing one figure's line marked ALL
+  // visible figures as edited): the old guard compared against edits[]
+  // alone — for an unedited figure that baseline is '', so every
+  // non-empty input "differed" and fired a synthetic setEdit with its
+  // own unchanged value on every visible card. The baseline for an
+  // unedited field is the saved figure's value, not ''.
   document.querySelectorAll('.fig-card[data-id]').forEach(card => {
     const id = card.dataset.id;
     if (!id) return;
+    const saved = _savedFigForEdit(id);
     card.querySelectorAll('input[type="text"], input[type="number"]').forEach(el => {
       if (typeof el.oninput !== 'function') return;
       const src = el.oninput.toString();
       const m = src.match(/setEdit\([^,]+,\s*['"]([\w]+)['"]/);
       if (!m) return;
       const field = m[1];
-      const stored = String((edits[id] || {})[field] ?? '');
-      if (el.value !== stored) {
+      const hasKey = edits[id] && Object.prototype.hasOwnProperty.call(edits[id], field);
+      const base = hasKey ? edits[id][field] : (saved ? saved[field] : undefined);
+      if (el.value !== String(base ?? '')) {
         el.oninput.call(el, { target: el });
       }
     });
@@ -2297,6 +2311,23 @@ function decide(id, status) {
 }
 
 function setEdit(id, field, val) {
+  // v1.33.0: a write whose value equals the saved figure's value CLEARS
+  // the field's edit instead of storing a no-op — so reverting a field
+  // by hand un-marks the card, and any synthetic no-op writes (defense
+  // in depth vs the flushPendingEdits bug fixed above) leave no trace.
+  const _saved = _savedFigForEdit(id);
+  if (_saved && String(val ?? '') === String(_saved[field] ?? '')) {
+    if (edits[id]) {
+      delete edits[id][field];
+      // A line reverted to its saved value takes the group wipe with it —
+      // the saved figure's own group applies again.
+      if (field === 'line') delete edits[id].group;
+      if (!Object.keys(edits[id]).length) delete edits[id];
+    }
+    if (field === 'line') { flushPendingEdits(); refreshUI(); }
+    else refreshChromeOnly();
+    return;
+  }
   if (!edits[id]) edits[id] = {};
   edits[id][field] = val;
   // v1.6: every edit now triggers refreshUI so the EDITED badge, "Existing
