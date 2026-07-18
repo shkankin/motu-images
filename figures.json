@@ -8469,21 +8469,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "beast-man-2-0-2894",
-    "name": "Beast Man 2.0",
-    "line": "classics",
-    "group": "Evil Warriors",
-    "wave": "",
-    "year": 2016,
-    "retail": 20,
-    "slug": "beast-man-2-0-2894",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "classics",
-    "sourceGroup": "",
-    "upc": "887961235296"
-  },
-  {
     "id": "blade-5150",
     "name": "Blade",
     "line": "classics",
@@ -8732,21 +8717,6 @@
     "year": 2011,
     "retail": 20,
     "slug": "clawful-5080",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "classics",
-    "sourceGroup": "",
-    "upc": "887961235302"
-  },
-  {
-    "id": "clawful-2-0-2896",
-    "name": "Clawful 2.0",
-    "line": "classics",
-    "group": "Evil Warriors",
-    "wave": "",
-    "year": 2016,
-    "retail": 20,
-    "slug": "clawful-2-0-2896",
     "faction": "Evil Warriors",
     "source": "af411",
     "sourceLine": "classics",
@@ -9517,21 +9487,6 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "027084689167"
-  },
-  {
-    "id": "he-man-2-0-2899",
-    "name": "He-Man 2.0",
-    "line": "classics",
-    "group": "Heroic Warriors",
-    "wave": "",
-    "year": 2016,
-    "retail": 20,
-    "slug": "he-man-2-0-2899",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "classics",
-    "sourceGroup": "",
-    "upc": "887961235319"
   },
   {
     "id": "he-ro-4002",
@@ -10912,7 +10867,7 @@
     "id": "sky-high-with-jet-sled-5118",
     "name": "Sky High with Jet Sled",
     "line": "classics",
-    "group": "Heroic Warriors",
+    "group": "Vehicles & Playsets",
     "wave": "",
     "year": 2013,
     "retail": 50,
@@ -17361,6 +17316,21 @@
     "upc": "811169033064"
   },
   {
+    "id": "beast-man-2-0-2894",
+    "name": "Beast Man 2.0",
+    "line": "super7",
+    "group": "Club Grayskull",
+    "wave": "",
+    "year": 2016,
+    "retail": 20,
+    "slug": "beast-man-2-0-2894",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "classics",
+    "sourceGroup": "",
+    "upc": "887961235296"
+  },
+  {
     "id": "buzz-off-2793",
     "name": "Buzz-Off",
     "line": "super7",
@@ -17388,6 +17358,21 @@
     "source": "af411",
     "sourceLine": "super7",
     "sourceGroup": ""
+  },
+  {
+    "id": "clawful-2-0-2896",
+    "name": "Clawful 2.0",
+    "line": "super7",
+    "group": "Club Grayskull",
+    "wave": "",
+    "year": 2016,
+    "retail": 20,
+    "slug": "clawful-2-0-2896",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "classics",
+    "sourceGroup": "",
+    "upc": "887961235302"
   },
   {
     "id": "eldor-2788",
@@ -17567,6 +17552,21 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "811169038281"
+  },
+  {
+    "id": "he-man-2-0-2899",
+    "name": "He-Man 2.0",
+    "line": "super7",
+    "group": "Club Grayskull",
+    "wave": "",
+    "year": 2016,
+    "retail": 20,
+    "slug": "he-man-2-0-2899",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "classics",
+    "sourceGroup": "",
+    "upc": "887961235319"
   },
   {
     "id": "he-ro-3458",
