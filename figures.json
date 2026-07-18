@@ -8754,6 +8754,21 @@
     "upc": "887961235302"
   },
   {
+    "id": "commander-karg-6044",
+    "name": "Commander Karg",
+    "line": "classics",
+    "group": "Evil Warriors",
+    "wave": "",
+    "year": 2019,
+    "retail": 35,
+    "slug": "commander-karg-6044",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "0811169038816"
+  },
+  {
     "id": "count-marzo-4047",
     "name": "Count Marzo",
     "line": "classics",
@@ -8827,6 +8842,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "887961230987"
+  },
+  {
+    "id": "dark-despot-skeletor-6046",
+    "name": "Dark Despot Skeletor",
+    "line": "classics",
+    "group": "Evil Warriors",
+    "wave": "",
+    "year": 2019,
+    "retail": 35,
+    "slug": "dark-despot-skeletor-6046",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "0811169038793"
   },
   {
     "id": "dekker-5092",
@@ -8932,6 +8962,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "887961078220"
+  },
+  {
+    "id": "dylamug-collectors-choice-2775",
+    "name": "Dylamug (Collector's Choice)",
+    "line": "classics",
+    "group": "Evil Horde",
+    "wave": "2",
+    "year": 2018,
+    "retail": 35,
+    "slug": "dylamug-collectors-choice-2775",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "81169030360"
   },
   {
     "id": "eldor-5148",
@@ -9097,6 +9142,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "746775206932"
+  },
+  {
+    "id": "fang-or-6036",
+    "name": "Fang-Or",
+    "line": "classics",
+    "group": "Evil Warriors",
+    "wave": "",
+    "year": 2017,
+    "retail": 35,
+    "slug": "fang-or-6036",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "0086547346177"
   },
   {
     "id": "fearless-photog-5087",
@@ -9279,6 +9339,21 @@
     "upc": "746775338466"
   },
   {
+    "id": "god-skeletor-6047",
+    "name": "God Skeletor",
+    "line": "classics",
+    "group": "Evil Warriors",
+    "wave": "",
+    "year": 2019,
+    "retail": 35,
+    "slug": "god-skeletor-6047",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "0811169038809"
+  },
+  {
     "id": "granamyr-5100",
     "name": "Granamyr",
     "line": "classics",
@@ -9307,6 +9382,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "887961398472"
+  },
+  {
+    "id": "granita-collectors-choice-2777",
+    "name": "Granita (Collector's Choice)",
+    "line": "classics",
+    "group": "Evil Horde",
+    "wave": "2",
+    "year": 2018,
+    "retail": 35,
+    "slug": "granita-collectors-choice-2777",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "811169030377"
   },
   {
     "id": "great-unrest-weapons-pak-7155",
@@ -9397,6 +9487,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "027084836219"
+  },
+  {
+    "id": "hawke-6037",
+    "name": "Hawke",
+    "line": "classics",
+    "group": "Heroic Warriors",
+    "wave": "",
+    "year": 2017,
+    "retail": 35,
+    "slug": "hawke-6037",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "086547346160"
   },
   {
     "id": "he-man-3992",
@@ -9519,6 +9624,21 @@
     "upc": "746775086350"
   },
   {
+    "id": "horde-trooper-6038",
+    "name": "Horde Trooper",
+    "line": "classics",
+    "group": "Evil Horde",
+    "wave": "",
+    "year": 2017,
+    "retail": 35,
+    "slug": "horde-trooper-6038",
+    "faction": "Evil Horde",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "887961235012"
+  },
+  {
     "id": "horde-troopers-5174",
     "name": "Horde Troopers",
     "line": "classics",
@@ -9546,6 +9666,20 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "887961231076"
+  },
+  {
+    "id": "horde-zombie-he-man-6043",
+    "name": "Horde Zombie He-Man",
+    "line": "classics",
+    "group": "Evil Horde",
+    "wave": "",
+    "year": 2019,
+    "retail": 35,
+    "slug": "horde-zombie-he-man-6043",
+    "faction": "Evil Horde",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": ""
   },
   {
     "id": "hover-robots-5186",
@@ -9666,6 +9800,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "746775206956"
+  },
+  {
+    "id": "karg-collectors-choice-2776",
+    "name": "Karg (Collector's Choice)",
+    "line": "classics",
+    "group": "Evil Warriors",
+    "wave": "2",
+    "year": 2018,
+    "retail": 35,
+    "slug": "karg-collectors-choice-2776",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "811169030384"
   },
   {
     "id": "keldor-4046",
@@ -9875,6 +10024,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "887961078183"
+  },
+  {
+    "id": "lodar-6039",
+    "name": "Lodar",
+    "line": "classics",
+    "group": "Evil Warriors",
+    "wave": "",
+    "year": 2017,
+    "retail": 35,
+    "slug": "lodar-6039",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "086547346184"
   },
   {
     "id": "loo-kee-and-kowl-5175",
@@ -10386,6 +10550,21 @@
     "upc": "746775086169"
   },
   {
+    "id": "quakke-6040",
+    "name": "Quakke",
+    "line": "classics",
+    "group": "Evil Mutants",
+    "wave": "",
+    "year": 2017,
+    "retail": 35,
+    "slug": "quakke-6040",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "086547346153"
+  },
+  {
     "id": "queen-grayskull-5200",
     "name": "Queen Grayskull",
     "line": "classics",
@@ -10444,6 +10623,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "746775086343"
+  },
+  {
+    "id": "rebel-leader-he-man-6045",
+    "name": "Rebel Leader He-Man",
+    "line": "classics",
+    "group": "Heroic Warriors",
+    "wave": "",
+    "year": 2019,
+    "retail": 35,
+    "slug": "rebel-leader-he-man-6045",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "0811169038786"
   },
   {
     "id": "rio-blast-5138",
@@ -10730,6 +10924,20 @@
     "upc": "746775207168"
   },
   {
+    "id": "slamurai-and-snake-troopers-6048",
+    "name": "Slamurai and Snake Troopers",
+    "line": "classics",
+    "group": "Packs",
+    "wave": "",
+    "year": 2019,
+    "retail": 100,
+    "slug": "slamurai-and-snake-troopers-6048",
+    "faction": "Snake Men",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": ""
+  },
+  {
     "id": "slush-head-5112",
     "name": "Slush Head",
     "line": "classics",
@@ -10803,6 +11011,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "746775086176"
+  },
+  {
+    "id": "snake-mountain-2779",
+    "name": "Snake Mountain",
+    "line": "classics",
+    "group": "Vehicles & Playsets",
+    "wave": "",
+    "year": 2020,
+    "retail": 750,
+    "slug": "snake-mountain-2779",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "811169037376"
   },
   {
     "id": "snout-spout-5074",
@@ -10955,6 +11178,21 @@
     "upc": "027084723830"
   },
   {
+    "id": "stridor-11056",
+    "name": "Stridor",
+    "line": "classics",
+    "group": "Creatures",
+    "wave": "",
+    "year": 2018,
+    "retail": 60,
+    "slug": "stridor-11056",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "811690306435"
+  },
+  {
     "id": "strobo-5116",
     "name": "Strobo",
     "line": "classics",
@@ -11060,6 +11298,21 @@
     "upc": "746775086459"
   },
   {
+    "id": "terroar-plasmar-and-lord-grasp-3-pack-6042",
+    "name": "Terroar, Plasmar and Lord Gr'asp 3 Pack",
+    "line": "classics",
+    "group": "Packs",
+    "wave": "",
+    "year": 2017,
+    "retail": 100,
+    "slug": "terroar-plasmar-and-lord-grasp-3-pack-6042",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "086547346146"
+  },
+  {
     "id": "the-faceless-one-5077",
     "name": "The Faceless One",
     "line": "classics",
@@ -11148,6 +11401,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "887961235326"
+  },
+  {
+    "id": "trap-jaw-prince-adam-and-stratos-3-pack-6041",
+    "name": "Trap Jaw, Prince Adam and Stratos 3 Pack",
+    "line": "classics",
+    "group": "Packs",
+    "wave": "",
+    "year": 2017,
+    "retail": 100,
+    "slug": "trap-jaw-prince-adam-and-stratos-3-pack-6041",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "0086547346139"
   },
   {
     "id": "tri-klops-4003",
@@ -11357,6 +11625,21 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "0027084976380"
+  },
+  {
+    "id": "wrap-trap-collectors-choice-2778",
+    "name": "Wrap Trap (Collector's Choice)",
+    "line": "classics",
+    "group": "Evil Horde",
+    "wave": "2",
+    "year": 2018,
+    "retail": 35,
+    "slug": "wrap-trap-collectors-choice-2778",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "super7",
+    "sourceGroup": "",
+    "upc": "811169030391"
   },
   {
     "id": "wun-dar-4041",
@@ -17107,51 +17390,6 @@
     "sourceGroup": ""
   },
   {
-    "id": "commander-karg-6044",
-    "name": "Commander Karg",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2019,
-    "retail": 35,
-    "slug": "commander-karg-6044",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "0811169038816"
-  },
-  {
-    "id": "dark-despot-skeletor-6046",
-    "name": "Dark Despot Skeletor",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2019,
-    "retail": 35,
-    "slug": "dark-despot-skeletor-6046",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "0811169038793"
-  },
-  {
-    "id": "dylamug-collectors-choice-2775",
-    "name": "Dylamug (Collector's Choice)",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "2",
-    "year": 2018,
-    "retail": 35,
-    "slug": "dylamug-collectors-choice-2775",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "81169030360"
-  },
-  {
     "id": "eldor-2788",
     "name": "Eldor",
     "line": "super7",
@@ -17212,21 +17450,6 @@
     "upc": "86547344975"
   },
   {
-    "id": "fang-or-6036",
-    "name": "Fang-Or",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2017,
-    "retail": 35,
-    "slug": "fang-or-6036",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "0086547346177"
-  },
-  {
     "id": "fisto-2766",
     "name": "Fisto",
     "line": "super7",
@@ -17242,36 +17465,6 @@
     "upc": "811169033149"
   },
   {
-    "id": "god-skeletor-6047",
-    "name": "God Skeletor",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2019,
-    "retail": 35,
-    "slug": "god-skeletor-6047",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "0811169038809"
-  },
-  {
-    "id": "granita-collectors-choice-2777",
-    "name": "Granita (Collector's Choice)",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "2",
-    "year": 2018,
-    "retail": 35,
-    "slug": "granita-collectors-choice-2777",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "811169030377"
-  },
-  {
     "id": "grizzlor-2767",
     "name": "Grizzlor",
     "line": "super7",
@@ -17285,21 +17478,6 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "811169033156"
-  },
-  {
-    "id": "hawke-6037",
-    "name": "Hawke",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2017,
-    "retail": 35,
-    "slug": "hawke-6037",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "086547346160"
   },
   {
     "id": "he-man-2750",
@@ -17436,50 +17614,6 @@
     "upc": "811169030742"
   },
   {
-    "id": "horde-trooper-6038",
-    "name": "Horde Trooper",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2017,
-    "retail": 35,
-    "slug": "horde-trooper-6038",
-    "faction": "Evil Horde",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "887961235012"
-  },
-  {
-    "id": "horde-zombie-he-man-6043",
-    "name": "Horde Zombie He-Man",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2019,
-    "retail": 35,
-    "slug": "horde-zombie-he-man-6043",
-    "faction": "Evil Horde",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": ""
-  },
-  {
-    "id": "karg-collectors-choice-2776",
-    "name": "Karg (Collector's Choice)",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "2",
-    "year": 2018,
-    "retail": 35,
-    "slug": "karg-collectors-choice-2776",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "811169030384"
-  },
-  {
     "id": "kittrina-2769",
     "name": "Kittrina",
     "line": "super7",
@@ -17493,21 +17627,6 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "811169037819"
-  },
-  {
-    "id": "lodar-6039",
-    "name": "Lodar",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2017,
-    "retail": 35,
-    "slug": "lodar-6039",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "086547346184"
   },
   {
     "id": "man-at-arms-2757",
@@ -17705,21 +17824,6 @@
     "upc": "811169030858"
   },
   {
-    "id": "quakke-6040",
-    "name": "Quakke",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2017,
-    "retail": 35,
-    "slug": "quakke-6040",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "086547346153"
-  },
-  {
     "id": "ram-man-2754",
     "name": "Ram Man",
     "line": "super7",
@@ -17733,21 +17837,6 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "086547344999"
-  },
-  {
-    "id": "rebel-leader-he-man-6045",
-    "name": "Rebel Leader He-Man",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2019,
-    "retail": 35,
-    "slug": "rebel-leader-he-man-6045",
-    "faction": "Heroic Warriors",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "0811169038786"
   },
   {
     "id": "robot-he-man-2784",
@@ -17915,35 +18004,6 @@
     "upc": "811169038274"
   },
   {
-    "id": "slamurai-and-snake-troopers-6048",
-    "name": "Slamurai and Snake Troopers",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2019,
-    "retail": 100,
-    "slug": "slamurai-and-snake-troopers-6048",
-    "faction": "Snake Men",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": ""
-  },
-  {
-    "id": "snake-mountain-2779",
-    "name": "Snake Mountain",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2020,
-    "retail": 750,
-    "slug": "snake-mountain-2779",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "811169037376"
-  },
-  {
     "id": "sorceress-2763",
     "name": "Sorceress",
     "line": "super7",
@@ -18001,21 +18061,6 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "811169038328"
-  },
-  {
-    "id": "stridor-11056",
-    "name": "Stridor",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2018,
-    "retail": 60,
-    "slug": "stridor-11056",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "811690306435"
   },
   {
     "id": "teela-2758",
@@ -18078,21 +18123,6 @@
     "upc": "811169038250"
   },
   {
-    "id": "terroar-plasmar-and-lord-grasp-3-pack-6042",
-    "name": "Terroar, Plasmar and Lord Gr'asp 3 Pack",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2017,
-    "retail": 100,
-    "slug": "terroar-plasmar-and-lord-grasp-3-pack-6042",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "086547346146"
-  },
-  {
     "id": "terror-bat-2804",
     "name": "Terror Bat",
     "line": "super7",
@@ -18150,21 +18180,6 @@
     "upc": "811169033101"
   },
   {
-    "id": "trap-jaw-prince-adam-and-stratos-3-pack-6041",
-    "name": "Trap Jaw, Prince Adam and Stratos 3 Pack",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "",
-    "year": 2017,
-    "retail": 100,
-    "slug": "trap-jaw-prince-adam-and-stratos-3-pack-6041",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "0086547346139"
-  },
-  {
     "id": "tri-klops-2760",
     "name": "Tri-Klops",
     "line": "super7",
@@ -18208,21 +18223,6 @@
     "sourceLine": "super7",
     "sourceGroup": "",
     "upc": "0811169030995"
-  },
-  {
-    "id": "wrap-trap-collectors-choice-2778",
-    "name": "Wrap Trap (Collector's Choice)",
-    "line": "super7",
-    "group": "Classics",
-    "wave": "2",
-    "year": 2018,
-    "retail": 35,
-    "slug": "wrap-trap-collectors-choice-2778",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "super7",
-    "sourceGroup": "",
-    "upc": "811169030391"
   },
   {
     "id": "battle-armor-he-man-5549",
