@@ -667,7 +667,7 @@ registerAll({
   },
   'title-tap-eternia':   () => window.triggerEterniaEgg?.(),
   'title-tap-heman':     () => window.triggerHeManEgg?.(),
-  'title-tap-grayskull': () => window.triggerGrayskullEgg?.(),
+  // 'title-tap-grayskull': () => window.triggerGrayskullEgg?.(),   // v7.72: retired with the green Grayskull theme (render.js no longer emits it)
   // Skeletor's "egg" is the 3-title cycle + per-title sound, so its title
   // renders data-action="title-cycle", never this name (render.js only
   // emits 'title-tap-skeletor' for a single-title theme). There is no

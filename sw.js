@@ -3,6 +3,23 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.46 changelog:
+//   • CACHE bumped to v7.46. SHELL: state.js + eggs.js + render.js +
+//     delegate-handlers.js + vault.css. App v7.72 — theme lineup cut to
+//     four (user request): Eternia (light), Grayskull (dark), Skeletor,
+//     He-Man.
+//   • The green "Grayskull" theme is retired, commented out in parallel
+//     across THEMES (state.js), [data-theme="grayskull"] (vault.css),
+//     its castle egg + powerGrayskull sound preload (eggs.js), the
+//     title-tap-grayskull dispatch branch (render.js) and handler
+//     (delegate-handlers.js).
+//   • The dark theme keyed `eternia` is re-displayed as "Grayskull"
+//     (second display rename for this slot; key frozen per the v6.97
+//     precedent). Its Orko title-tap egg is untouched and still fires.
+//   • Saved motu-theme 'grayskull' values migrate automatically: the
+//     v6.75 THEMES[t] fallback on S.theme init resolves them to
+//     'eternia' — the new Grayskull — with no stored-value rewrite.
+//
 // v7.45 changelog:
 //   • CACHE bumped to v7.45. SHELL: render.js + vault.css (comment-only).
 //     App v7.71 — line thumbnails switch from {id}.jpg to the new
@@ -1536,7 +1553,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.45';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.46';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

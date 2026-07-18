@@ -21,7 +21,7 @@ import { photoStore } from './photos.js';
 // § AUDIO ── SND urls, AudioContext, playSound, preloadSound ─────
 // Shared sound URLs (resolved relative to the motu-images repo).
 const SND = {
-  powerGrayskull: ROOT + '/power_grayskull.mp3',
+  // powerGrayskull: ROOT + '/power_grayskull.mp3',   // v7.72: castle egg retired; entry commented so boot no longer preloads a dead sound
   iHaveThePower:  ROOT + '/i_have_the_power.mp3',
 };
 
@@ -255,45 +255,51 @@ window.triggerHeManEgg = () => {
   setTimeout(() => { overlay.remove(); }, 5200);
 };
 
-// ─── Grayskull Easter Egg ─────────────────────────────────────────
-// Trigger: title tap (grayskull theme). grayskull-icon.png rises from
-// below in full color with green glow. Plays power_grayskull.mp3. ~4.2s.
-window.triggerGrayskullEgg = () => {
-  if (document.querySelector('.egg-overlay')) return;
-  playSound(SND.powerGrayskull);
-  haptic && haptic(30);
+// v7.72: castle easter egg retired with the green Grayskull theme (user
+// request). Kept commented for possible revival — its CSS block in
+// vault.css and the THEMES entry in state.js are commented in parallel,
+// and its title-tap-grayskull dispatch was removed from render.js and
+// delegate-handlers.js.
+// // ─── Grayskull Easter Egg ─────────────────────────────────────────
+// // Trigger: title tap (grayskull theme). grayskull-icon.png rises from
+// // below in full color with green glow. Plays power_grayskull.mp3. ~4.2s.
+// window.triggerGrayskullEgg = () => {
+//   if (document.querySelector('.egg-overlay')) return;
+//   playSound(SND.powerGrayskull);
+//   haptic && haptic(30);
+// 
+//   const stars = Array.from({length: 55}, () => {
+//     const size = 1 + Math.random() * 2.5;
+//     const twinkleDur = 1.2 + Math.random() * 2.5;
+//     const x = Math.random() * 100;
+//     const y = 5 + Math.random() * 60;
+//     return `<div class="egg-star" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;animation-duration:${twinkleDur}s,4.2s"></div>`;
+//   }).join('');
+// 
+//   const overlay = document.createElement('div');
+//   overlay.className = 'egg-overlay';
+//   overlay.innerHTML = `
+//     <div class="egg-eternia-bg"></div>
+//     ${stars}
+//     <div class="egg-castle-wrap">
+//       <img class="egg-grayskull-img" src="${IMG}/grayskull-icon.png" alt="">
+//     </div>
+//   `;
+//   document.body.appendChild(overlay);
+//   overlay.addEventListener('click', () => overlay.remove(), {once: true});
+//   setTimeout(() => { overlay.remove(); }, 4250);
+// };
 
-  const stars = Array.from({length: 55}, () => {
-    const size = 1 + Math.random() * 2.5;
-    const twinkleDur = 1.2 + Math.random() * 2.5;
-    const x = Math.random() * 100;
-    const y = 5 + Math.random() * 60;
-    return `<div class="egg-star" style="left:${x}%;top:${y}%;width:${size}px;height:${size}px;animation-duration:${twinkleDur}s,4.2s"></div>`;
-  }).join('');
-
-  const overlay = document.createElement('div');
-  overlay.className = 'egg-overlay';
-  overlay.innerHTML = `
-    <div class="egg-eternia-bg"></div>
-    ${stars}
-    <div class="egg-castle-wrap">
-      <img class="egg-grayskull-img" src="${IMG}/grayskull-icon.png" alt="">
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', () => overlay.remove(), {once: true});
-  setTimeout(() => { overlay.remove(); }, 4250);
-};
-
-// ─── Snake Mountain Easter Egg (Orko) ─────────────────────────────
-// v6.97: the theme formerly shown as "Eternia" is now "Snake Mountain"
+// ─── Grayskull Easter Egg (Orko) ──────────────────────────────────
+// v7.72: this theme slot is now displayed as "Grayskull" (previously
+// "Snake Mountain" since v6.97, "Eternia" before that)
 // (its key is still `eternia` — see THEMES in state.js — so this title-tap egg
 // still fires for it). The function name + `eternia` key are kept aligned to
 // avoid touching the inline-handler dispatch / saved theme values; only the
 // user-facing theme name changed. The animation itself is unchanged (Orko's
 // portal); swapping it for a Snake-Mountain-specific visual would be a separate
 // art change.
-// Trigger: title tap (Snake Mountain theme). Unstable portal zaps open,
+// Trigger: title tap (Grayskull theme, key `eternia`). Unstable portal zaps open,
 // Orko materialises — hovers, looks around confused, portal collapses.
 // Second flash fires at 3.1s. Icon swaps to Orko for session. ~4s total.
 window.triggerEterniaEgg = () => {

@@ -39,11 +39,13 @@
   --acc: #cbd5e1; --gold: #ff8a1f; --rd: #c43d2a;
   --t1: #fff7ed; --t2: #d6c5b3; --t3: #a38d7a; --btn-t: #000000;
 }
-[data-theme="grayskull"] {
-  --bg: #030d06; --bg2: #091a0f; --bg3: #102919; --bd: #1f3829;
-  --acc: #a3e635; --gold: #b8e070; --gn: #4ade80;
-  --t1: #f0fdf4; --t2: #86a693; --t3: #5b7a67; --btn-t: #022c22;
-}
+/* v7.72: green Grayskull theme retired (see THEMES in state.js).
+   [data-theme="grayskull"] {
+     --bg: #030d06; --bg2: #091a0f; --bg3: #102919; --bd: #1f3829;
+     --acc: #a3e635; --gold: #b8e070; --gn: #4ade80;
+     --t1: #f0fdf4; --t2: #86a693; --t3: #5b7a67; --btn-t: #022c22;
+   }
+*/
 /* v6.97: "Eternia" — a LIGHT theme themed after the Filmation Sorceress of
    Grayskull (sky/falcon blue + falcon orange). Key is still "light"; only the
    display name changed (see THEMES in state.js). Palette from sorcespreview.html.
@@ -2649,7 +2651,10 @@ details.more-details[open] { padding-bottom: 12px; }
   100% { transform: translate(-50%, -180%) scale(22)  rotate(720deg); opacity: 0; }
 }
 
-/* ── Eternia egg ── */
+/* v7.72: castle egg CSS retired with the green Grayskull theme (the
+   triggerGrayskullEgg block in eggs.js is its only consumer; nested comment
+   markers below are defused as /-* *-/ so this outer comment stays valid).
+/-* ── Eternia egg ── *-/
 .egg-eternia-bg {
   position: absolute; inset: 0;
   background: radial-gradient(ellipse at 50% 40%, #0a1628 0%, #020810 70%);
@@ -2661,7 +2666,7 @@ details.more-details[open] { padding-bottom: 12px; }
   75%  { opacity: 1; }
   100% { opacity: 0; }
 }
-/* Stars fade out in sync with castle descent — gone before overlay removes */
+/-* Stars fade out in sync with castle descent — gone before overlay removes *-/
 .egg-star {
   position: absolute;
   background: #fff;
@@ -2679,7 +2684,7 @@ details.more-details[open] { padding-bottom: 12px; }
   88%  { opacity: 0; }
   100% { opacity: 0; }
 }
-/* Castle image — rises, holds, sinks */
+/-* Castle image — rises, holds, sinks *-/
 .egg-castle-wrap {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -2695,10 +2700,12 @@ details.more-details[open] { padding-bottom: 12px; }
 .egg-grayskull-img {
   width: min(320px, 88vw);
   height: auto;
-  /* Full color — no silhouette filter. Green glow behind. */
+  /-* Full color — no silhouette filter. Green glow behind. *-/
   filter: drop-shadow(0 0 20px rgba(42,217,176,0.6))
           drop-shadow(0 0 60px rgba(42,217,176,0.3));
 }
+
+*/
 
 /* ── Eternia egg (Orko) ── */
 

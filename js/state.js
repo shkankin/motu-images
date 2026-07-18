@@ -131,10 +131,20 @@ const OPTIONAL_ACCESSORIES = new Set([
 //     Filmation Sorceress — sky blue + falcon orange). Palette from
 //     sorcespreview.html.
 const THEMES = {
-  eternia:  {name:'Snake Mountain', bg:'#11131a', acc:'#a855f7', gold:'#3b82f6', fg:'#f8fafc', fg2:'#94a3b8', icons:['eternia1-icon.png']},
+  // v7.72: display name "Snake Mountain" -> "Grayskull" (second rename of
+  // this slot; v6.97 was "Eternia" -> "Snake Mountain"). Key stays `eternia`
+  // per house precedent so saved motu-theme values, the title-tap dispatch,
+  // and the Orko egg all keep working untouched.
+  eternia:  {name:'Grayskull',      bg:'#11131a', acc:'#a855f7', gold:'#3b82f6', fg:'#f8fafc', fg2:'#94a3b8', icons:['eternia1-icon.png']},
   skeletor: {name:'Skeletor',      bg:'#090212', acc:'#b14eff', gold:'#f2e162', fg:'#faf5ff', fg2:'#c0a8e6', icons:['skeletor-icon.png'], titles:['MOTU Collector','NYAAAH!','I Must Possess All'], sounds:[null, '/nyaaah.mp3', '/i-must-possess-all.mp3']},
   heman:    {name:'He-Man',        bg:'#140803', acc:'#cbd5e1', gold:'#ff8a1f', fg:'#fff7ed', fg2:'#d6c5b3', icons:['he-man-icon.png']},
-  grayskull:{name:'Grayskull',     bg:'#030d06', acc:'#a3e635', gold:'#b8e070', fg:'#f0fdf4', fg2:'#86a693', icons:['grayskull-icon.png']},
+  // v7.72: green "Grayskull" theme retired (user request — final lineup is
+  // Eternia light / Grayskull dark / Skeletor / He-Man). Entry kept commented
+  // for possible revival; its [data-theme="grayskull"] block in vault.css and
+  // its castle egg in eggs.js are commented out alongside. Saved 'grayskull'
+  // themes auto-fall-back to 'eternia' (now displayed as Grayskull) via the
+  // v6.75 THEMES[t] guard on S.theme below — no separate migration needed.
+  // grayskull:{name:'Grayskull',     bg:'#030d06', acc:'#a3e635', gold:'#b8e070', fg:'#f0fdf4', fg2:'#86a693', icons:['grayskull-icon.png']},
   // Light theme (Filmation Sorceress palette). bg matches vault.css
   // [data-theme="light"] --bg so the picker preview and the dynamic
   // <meta name="theme-color"> stay accurate.
