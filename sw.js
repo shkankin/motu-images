@@ -3,6 +3,26 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.49 changelog:
+//   • CACHE bumped to v7.49. SHELL: photos.js + render.js. App v7.75 —
+//     the self-regenerating "copy · photo #0" phantom is dead (user
+//     report: reconcile prune removed it but it returned every app
+//     open).
+//   • Root cause: migrateLegacyLS runs every boot and its filter
+//     ("motu-photo-* without trailing digits") also matched the RESERVED
+//     bookkeeping keys motu-photo-copy (photo→copy assignment map) and
+//     motu-photo-labels. It fetched the map's JSON as a relative URL
+//     (→ 404 junk), wrote photo-copy-0.jpg, and deleted the map. The
+//     prune then re-armed it: photoStore.remove → setPhotoCopy(null) →
+//     savePhotoCopyMap rewrites motu-photo-copy → next boot re-mints the
+//     phantom. Remove → resurrect, forever.
+//   • Fixes: reserved keys excluded by name; only values that look like
+//     photo payloads (data:) are migrated — anything else is left in
+//     place, never consumed or deleted; boot one-shot-deletes
+//     photo-copy-0.jpg / photo-labels-0.jpg ('copy'/'labels' can never
+//     be real fig ids — verified against the catalog), so affected
+//     devices self-heal with no manual prune needed.
+//
 // v7.48 changelog:
 //   • CACHE bumped to v7.48. SHELL: state.js + render.js + ui-sheets.js
 //     + delegate-handlers.js. App v7.74 — pull-to-refresh toggle fixed +
@@ -1596,7 +1616,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.48';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.49';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

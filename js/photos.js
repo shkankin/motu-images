@@ -350,14 +350,38 @@ const photoStore = {
     if (!_opfsReady) return 0;
     let migrated = 0;
     try {
+      // v7.75: self-regenerating phantom fixed (user report: the reconcile
+      // scan's "copy · photo #0" entry returned on every app open). This
+      // migration's filter — "motu-photo-* without trailing digits" — also
+      // matched the RESERVED bookkeeping keys motu-photo-copy (the
+      // photo→copy assignment map) and motu-photo-labels: it read the
+      // map's JSON as if it were a photo data-URL, fetch()ed it (the
+      // browser resolves it as a relative URL → 404 junk), wrote the junk
+      // to photo-copy-0.jpg, and DELETED the map. Worse, pruning that
+      // phantom calls setPhotoCopy(null) → savePhotoCopyMap(), which
+      // rewrites motu-photo-copy and re-arms the migration for the next
+      // boot: remove → resurrect, forever. Two guards now: the reserved
+      // keys are excluded by name, and only values that actually look
+      // like photo payloads (data:) are migrated — anything else is left
+      // in place, never consumed or deleted.
+      const RESERVED = new Set([PHOTO_COPY_KEY, PHOTO_LABELS_KEY]);
+      // One-shot cleanup of artifacts this bug already minted: 'copy' and
+      // 'labels' can never be real figure ids (verified against the
+      // catalog), so these exact names can only exist as bug output.
+      for (const junk of ['photo-copy-0.jpg', 'photo-labels-0.jpg']) {
+        try { await _opfsDir.removeEntry(junk); } catch {}
+      }
       // Old single-photo format: motu-photo-{figId}  (no trailing -digit)
       const keys = Object.keys(localStorage).filter(k =>
-        k.startsWith('motu-photo-') && !/-\d+$/.test(k)
+        k.startsWith('motu-photo-') && !/-\d+$/.test(k) && !RESERVED.has(k)
       );
       for (const k of keys) {
         const id = k.slice('motu-photo-'.length);
         const dataUrl = localStorage.getItem(k);
-        if (!dataUrl) continue;
+        // v7.75: only migrate values that ARE photos. The old format
+        // stored data-URLs; a JSON map or any other string must be left
+        // untouched — deleting it here is data loss.
+        if (!dataUrl || !dataUrl.startsWith('data:')) continue;
         try {
           const res = await fetch(dataUrl);
           const blob = await res.blob();
