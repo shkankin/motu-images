@@ -2502,8 +2502,71 @@ function renderExportSheet() {
     <span style="color:var(--t3);font-size:12px">theme · sort · order</span>
   </button>`;
   html += '<div class="text-sm text-dim" style="line-height:1.5">Just the preferences — theme, sort order, view mode, line order, hidden items, recent changes. Does NOT include collection data or photos.</div>';
+  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Maintenance</div>';
+  const scan = S._orphanScan;
+  if (scan === undefined) {
+    html += `<button data-action="orphan-scan" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+      <span>Scan for Orphaned Entries</span>
+      <span style="color:var(--t3);font-size:12px">read-only</span>
+    </button>`;
+    html += '<div class="text-sm text-dim" style="line-height:1.5">Finds collection entries whose figure id no longer exists in the database (e.g. after an id rename). Scanning is read-only — nothing is deleted without confirmation.</div>';
+  } else if (scan === null) {
+    html += '<div class="text-sm text-dim" style="line-height:1.5">Figure database isn\'t loaded yet — close this sheet and try again once figures have loaded.</div>';
+  } else if (!scan.length) {
+    html += '<div class="text-sm" style="color:var(--gn);line-height:1.5">✓ No orphaned entries — collection is clean.</div>';
+  } else {
+    html += `<div class="text-sm" style="color:var(--or);margin-bottom:8px">${scan.length} orphaned ${scan.length === 1 ? 'entry' : 'entries'} found:</div>`;
+    scan.forEach(o => {
+      html += `<div style="padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg3);margin-bottom:6px">
+        <div style="font-size:13px;color:var(--t1);word-break:break-all">${esc(o.id)}</div>
+        <div class="text-sm text-dim">${esc(o.status)} · ${o.copies} ${o.copies === 1 ? 'copy' : 'copies'}${o.detail ? ' · ' + esc(o.detail) : ''}</div>
+      </div>`;
+    });
+    html += `<div style="display:flex;gap:8px;margin-top:10px">
+      <button data-action="orphan-clean" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--rd);background:color-mix(in srgb, var(--rd) 10%, transparent);color:var(--rd);font-size:13px;font-weight:600">Delete ${scan.length} ${scan.length === 1 ? 'Entry' : 'Entries'}</button>
+      <button data-action="orphan-cancel" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px">Cancel</button>
+    </div>`;
+  }
   return html;
 }
+
+// v7.70: orphaned-entry maintenance (user request, prompted by a real case:
+// a collection entry keyed to 'beastman-1987-movie-8420' after the master
+// id was renamed to 'beast-man-1987-movie-8420' — leaving an owned copy no
+// UI could reach: orphans render nowhere, backup import assigns per-id and
+// never deletes, and there is no wipe feature). Scan is read-only; deletion
+// is a separate confirmed action. BOTH refuse to run unless the figure DB
+// is actually loaded — otherwise a failed figures.json fetch would flag
+// (or delete) the ENTIRE collection. Deletion re-checks each id at delete time
+// and touches S.coll only: photos, figAdded, and recents tolerate unknown
+// ids and are deliberately left alone.
+function _figsLoaded() { return Array.isArray(S.figs) && S.figs.length > 0 && !!S._collLoaded; }
+function findOrphanedEntries() {
+  if (!_figsLoaded()) return null;   // null = "can't scan", distinct from "clean"
+  const out = [];
+  for (const id in S.coll) {
+    if (figById(id)) continue;
+    const e = S.coll[id];
+    const copies = isMigrated(e) ? e.copies : (e?.status ? [{ id: 1 }] : []);
+    out.push({
+      id, status: e?.status || '—', copies: copies.length,
+      detail: copies.map(cp => [cp.condition, cp.paid ? '$' + cp.paid : '', cp.notes].filter(Boolean).join(' · ')).filter(Boolean).join(' | '),
+    });
+  }
+  return out;
+}
+function cleanOrphanedEntries(ids) {
+  if (!_figsLoaded()) return 0;      // same guard: never delete against an unloaded DB
+  let n = 0;
+  for (const id of ids || []) {
+    if (S.coll[id] && !figById(id)) { delete S.coll[id]; n++; }   // re-verify at delete time
+  }
+  if (n) { saveColl(); flushSaveColl(); }
+  return n;
+}
+window.findOrphanedEntries = findOrphanedEntries;
+window.cleanOrphanedEntries = cleanOrphanedEntries;
 
 function doImport(csvText, overwrite = false) {
   // Detect format: MOTU Vault export has 'Line' header, AF411 has 'Series'
@@ -2712,5 +2775,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
 };

@@ -3,6 +3,22 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.44 changelog:
+//   • CACHE bumped to v7.44. SHELL: data.js + delegate-handlers.js +
+//     render.js. App v7.70 — "Scan for Orphaned Entries" maintenance
+//     action in the Export sheet (user request, prompted by a real
+//     orphan: a collection entry keyed to a pre-rename figure id that
+//     no UI could reach or remove).
+//   • findOrphanedEntries (read-only scan: coll ids with no figById
+//     resolution) + cleanOrphanedEntries (confirmed delete, S.coll
+//     only). BOTH refuse to run unless S.figs is populated AND
+//     S._collLoaded — a failed figures.json fetch must never flag or
+//     delete the whole collection (harness-enforced). Delete re-checks
+//     each id at delete time, saveColl+flushSaveColl persists
+//     immediately. Sheet flow: scan → itemized findings (id, status,
+//     copies, condition/paid/notes) → Delete N / Cancel, refreshed via
+//     refreshSheetBody (v7.60 idiom).
+//
 // v7.43 changelog:
 //   • CACHE bumped to v7.43. SHELL: data.js + render.js. App v7.69 —
 //     alphabetical accessory picker (user request with screenshot: the
@@ -1511,7 +1527,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.43';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.44';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

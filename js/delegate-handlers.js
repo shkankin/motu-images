@@ -690,6 +690,17 @@ registerAll({
   'export-insurance': () => window.buildInsuranceReport?.(),
   'export-photos-zip':() => { window.exportPhotosZip?.(); window.closeSheet?.(); },
   'export-settings':  () => { window.exportSettings?.(); window.closeSheet?.(); },
+  // v7.70: orphaned-entry maintenance (export sheet). Scan is read-only;
+  // clean re-scans afterwards so the sheet always shows post-action truth.
+  'orphan-scan':   () => { window.S._orphanScan = window.findOrphanedEntries?.() ?? null; window.refreshSheetBody?.(); },
+  'orphan-clean':  () => {
+    const scan = window.S._orphanScan || [];
+    const n = window.cleanOrphanedEntries?.(scan.map(o => o.id)) ?? 0;
+    window.toast?.(n ? `✓ Removed ${n} orphaned ${n === 1 ? 'entry' : 'entries'}` : 'Nothing removed');
+    window.S._orphanScan = window.findOrphanedEntries?.() ?? null;
+    window.refreshSheetBody?.();
+  },
+  'orphan-cancel': () => { window.S._orphanScan = undefined; window.refreshSheetBody?.(); },
 
   // Stats sheet
   'go-to-filtered':    (e, el, d) => window.goToFiltered?.(d.status),
