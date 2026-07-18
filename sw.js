@@ -3,6 +3,30 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.48 changelog:
+//   • CACHE bumped to v7.48. SHELL: state.js + render.js + ui-sheets.js
+//     + delegate-handlers.js. App v7.74 — pull-to-refresh toggle fixed +
+//     About page additions (user requests).
+//   • PTR stuck-toggle (user: "turned it on and now i can't turn it
+//     off"): the v5.00 toggle wrote the STRINGS 'true'/'false', and
+//     'false' is truthy at every read site, so once on the flag read as
+//     on forever. New ptrEnabled() (state.js) normalizes booleans AND
+//     the legacy strings — stuck devices self-heal on update, no
+//     migration. Toggle now writes real booleans.
+//   • Second latent bug fixed: the listener unbind lived inside the
+//     enabled-branch, so turning PTR off left live touch listeners on
+//     #contentArea until reload. bindPTR() (extracted from renderMain)
+//     now unbinds unconditionally, then rebinds only if enabled.
+//   • The toggle no longer calls a full render() (that was the "screen
+//     just refreshes" the user saw) — it rebinds via window.bindPTR and
+//     flips the pill with refreshSheetBody.
+//   • About sheet: GitHub Repository card now links to the actual repo
+//     (github.com/shkankin/motu-images; it pointed at motucollector.app);
+//     new Support section (Buy Me a Coffee, buymeacoffee.com/btring);
+//     Links gains Wing Kong Toy Exchange (buying & selling vintage
+//     toys); Credits gains "Database — curated & maintained by
+//     Brand-or" and a Reference row for Figure Realm + He-Man.org.
+//
 // v7.47 changelog:
 //   • CACHE bumped to v7.47. SHELL: photos.js + data.js +
 //     delegate-handlers.js + render.js. App v7.73 — "Scan Photo Index"
@@ -1572,7 +1596,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.47';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.48';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

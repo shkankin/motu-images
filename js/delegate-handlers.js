@@ -465,10 +465,16 @@ registerAll({
     window.closeSheet?.();
     window.startTutorial?.();
   },
+  // v7.74: three fixes. (1) Writes a real boolean — the old string
+  // 'false' was truthy at every read site, making the toggle one-way
+  // (user: "can't turn it off"). (2) Rebinds the listeners in place via
+  // bindPTR() — the old full render() was the "screen just refreshes"
+  // the user saw on every toggle. (3) The sheet pill flips via
+  // refreshSheetBody (scroll-preserving, v7.60 idiom).
   'toggle-ptr': () => {
-    const on = !!window.store?.get('motu-ptr-enabled');
-    window.store?.set('motu-ptr-enabled', on ? 'false' : 'true');
-    window.render?.();
+    window.store?.set('motu-ptr-enabled', !window.ptrEnabled?.());
+    window.bindPTR?.();
+    window.refreshSheetBody?.();
   },
 
   // Pricing sheet

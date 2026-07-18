@@ -17,6 +17,7 @@ import {
   STATUS_LABEL, STATUS_COLOR, STATUS_HEX, ACCESSORIES, CONDITIONS,
   SUBLINES, SERIES_MAP, GROUP_MAP, CACHE_KEY,
   ln, normalize, esc, jsArg, _clone, getThemeTitles,
+  ptrEnabled,
 } from './state.js';
 import { bigGet } from './idb-store.js';
 import {
@@ -240,7 +241,7 @@ function renderMenuSheet() {
       ${m.label}
       <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
     </button>`).join('');
-  const ptrOn = !!store.get('motu-ptr-enabled');
+  const ptrOn = ptrEnabled();   // v7.74: normalized read (legacy 'false' string was truthy — see state.js)
   html += `<div style="height:1px;background:var(--bd);margin:14px 4px"></div>
     <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">Sync</div>
     <button data-action="toggle-ptr" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
@@ -415,13 +416,24 @@ function renderAboutSheet() {
     accessories, and prices paid — all stored on your device, no account needed.
   </div>
 
+  <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Support</div>
+  <a href="https://buymeacoffee.com/btring" target="_blank" rel="noopener noreferrer"
+    style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--gold);background:color-mix(in srgb, var(--gold) 8%, transparent);margin-bottom:8px;text-decoration:none;color:var(--gold);font-size:14px">
+    <span style="font-size:18px">☕</span>
+    <div style="flex:1">
+      <div style="font-weight:600">Buy Me a Coffee</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">Enjoying the app? Fuel the next release.</div>
+    </div>
+    <span style="color:var(--t3)">↗</span>
+  </a>
+
   <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Links</div>
-  <a href="https://motucollector.app/" target="_blank" rel="noopener noreferrer"
+  <a href="https://github.com/shkankin/motu-images" target="_blank" rel="noopener noreferrer"
     style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-decoration:none;color:var(--t1);font-size:14px">
     <span style="color:var(--acc);font-size:16px">⌂</span>
     <div style="flex:1">
       <div style="font-weight:600">GitHub Repository</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:2px">motucollector.app</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">github.com/shkankin/motu-images</div>
     </div>
     <span style="color:var(--t3)">↗</span>
   </a>
@@ -434,11 +446,22 @@ function renderAboutSheet() {
     </div>
     <span style="color:var(--t3)">↗</span>
   </a>
+  <a href="https://wingkongtoyexchange.com" target="_blank" rel="noopener noreferrer"
+    style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-decoration:none;color:var(--t1);font-size:14px">
+    <span style="color:var(--acc);font-size:16px">⇄</span>
+    <div style="flex:1">
+      <div style="font-weight:600">Wing Kong Toy Exchange</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px">Buying &amp; selling vintage toys</div>
+    </div>
+    <span style="color:var(--t3)">↗</span>
+  </a>
 
   <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px;margin-top:18px">Credits</div>
   <div style="padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;line-height:1.7;font-size:13px;color:var(--t2)">
     <div><span style="color:var(--t3);width:80px;display:inline-block">Built by</span> <span style="color:var(--t1);font-weight:600">Brand-or, Defender of the Stash</span></div>
     <div><span style="color:var(--t3);width:80px;display:inline-block">Catalog</span> <a href="https://www.actionfigure411.com/masters-of-the-universe/" target="_blank" rel="noopener noreferrer" style="color:var(--acc);text-decoration:none">ActionFigure411</a></div>
+    <div><span style="color:var(--t3);width:80px;display:inline-block">Database</span> <span style="color:var(--t1)">Curated &amp; maintained by Brand-or</span></div>
+    <div><span style="color:var(--t3);width:80px;display:inline-block">Reference</span> <a href="https://www.figurerealm.com/" target="_blank" rel="noopener noreferrer" style="color:var(--acc);text-decoration:none">Figure Realm</a> <span style="color:var(--t3)">·</span> <a href="https://www.he-man.org/" target="_blank" rel="noopener noreferrer" style="color:var(--acc);text-decoration:none">He-Man.org</a></div>
     <div><span style="color:var(--t3);width:80px;display:inline-block">With</span> <span style="color:var(--t1)">Claude (Anthropic) as a coding collaborator</span></div>
   </div>
 

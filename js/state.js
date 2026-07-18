@@ -307,6 +307,15 @@ function _notifyStorageChange() {
     try { fn(_storageBroken); } catch {}
   }
 }
+// v7.74: normalized read for the pull-to-refresh flag. The v5.00 toggle
+// wrote the STRINGS 'true'/'false' — and JSON-parsed 'false' is a truthy
+// non-empty string, so every read site (`if (store.get(...))`,
+// `!!store.get(...)`) saw "on" forever and the toggle could never turn it
+// off (user report: "turned pull to refresh on and now i can't turn it
+// off"). The toggle now writes real booleans; this helper reads both the
+// new booleans and the legacy strings correctly, self-healing stuck
+// devices without a migration pass. Defined as a function *declaration
+// hoisting isn't needed* — placed right after `store` below.
 const store = {
   get: k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set: (k, v) => {
@@ -342,6 +351,12 @@ const store = {
   // Subscribe to storageBroken transitions. Used by render.js to add/remove
   // the persistent storage banner without needing a full re-render.
   onChange: (fn) => { _storageListeners.add(fn); return () => _storageListeners.delete(fn); },
+};
+
+// (see comment above `store`)
+const ptrEnabled = () => {
+  const v = store.get('motu-ptr-enabled');
+  return v === true || v === 'true';
 };
 
 // § STATE ── Global S object, DEFAULT_TITLE ────────────────────────
@@ -452,5 +467,5 @@ window.getThemeTitles = getThemeTitles;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  ICO, icon, ROOT, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
+  ICO, icon, ROOT, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles, ptrEnabled
 };
