@@ -176,6 +176,46 @@ const photoStore = {
     } catch { return -1; }
   },
 
+  // ── v7.73: photo-index reconcile ──────────────────────────────────
+  // (user report: export sheet counted 1 photo, "Download Photos as ZIP"
+  // said none found). loadAll() derives S.customPhotos from whatever
+  // storage artifacts EXIST — but existence isn't readability: a
+  // zero-byte OPFS file left by an interrupted write, or an empty /
+  // corrupt localStorage fallback value, gets indexed fine yet fails the
+  // fetch() every export path uses (each silently skips failures), so
+  // the count and the exports disagree. The scan re-runs exactly that
+  // fetch per indexed photo; prune re-verifies each row at delete time
+  // and routes removal through photoStore.remove() so ALL artifacts
+  // (OPFS file, fallback key, metadata, label, copy assignment) go
+  // together and the next loadAll() cannot resurrect the row.
+  _readable: async (id, n) => {
+    const url = photoURLs[id + '-' + n];
+    if (!url) return false;
+    try {
+      const blob = await (await fetch(url)).blob();
+      return blob.size > 0;   // a zero-byte "photo" is dead too
+    } catch { return false; }
+  },
+  reconcileIndex: async () => {
+    const dead = [];
+    for (const id of Object.keys(S.customPhotos)) {
+      for (const { n, label } of (S.customPhotos[id] || [])) {
+        if (!(await photoStore._readable(id, n))) dead.push({ id, n, label: label || '' });
+      }
+    }
+    return dead;
+  },
+  pruneDeadPhotos: async rows => {
+    let removed = 0;
+    for (const { id, n } of rows || []) {
+      if (!(S.customPhotos[id] || []).some(p => p.n === n)) continue;
+      if (await photoStore._readable(id, n)) continue;   // re-verify: never delete a readable photo
+      await photoStore.remove(id, n);
+      removed++;
+    }
+    return removed;
+  },
+
   // Async: remove photo at index n for a figure
   remove: async (id, n) => {
     const key = id + '-' + n;
@@ -849,3 +889,7 @@ window.openBarcodeScanner = async () => {
 export {
   MAX_PHOTOS, PHOTO_LABELS_KEY, PHOTO_COPY_KEY, photoURLs, photoStore, _opfsReady, initOPFS, loadPhotoLabels, savePhotoLabels, loadPhotoCopyMap, savePhotoCopyMap, photoCopyOf, setPhotoCopy, getPhotoCopyMap, replacePhotoCopyMap, mergePhotoCopyMap, compressPhoto, initPhotoViewerZoom
 };
+
+// v7.73: maintenance bridges (delegate-handlers call window.*)
+window.reconcilePhotoIndex = () => photoStore.reconcileIndex();
+window.pruneDeadPhotos = rows => photoStore.pruneDeadPhotos(rows);

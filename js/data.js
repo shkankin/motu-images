@@ -2528,6 +2528,35 @@ function renderExportSheet() {
       <button data-action="orphan-cancel" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px">Cancel</button>
     </div>`;
   }
+  // v7.73: photo-index reconcile UI (see photoStore.reconcileIndex in
+  // photos.js for the mechanism). Same lifecycle as the orphan scan
+  // above: undefined = idle, null = can't run, [] = clean, list = confirm.
+  const pscan = S._photoScan;
+  html += '<div style="height:10px"></div>';
+  if (pscan === undefined) {
+    html += `<button data-action="photo-scan" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
+      <span>Scan Photo Index</span>
+      <span style="color:var(--t3);font-size:12px">read-only</span>
+    </button>`;
+    html += '<div class="text-sm text-dim" style="line-height:1.5">Verifies every indexed photo can actually be read back. Finds entries counted by backups but unreadable by exports (e.g. after an interrupted save).</div>';
+  } else if (pscan === null) {
+    html += '<div class="text-sm text-dim" style="line-height:1.5">Photo store isn\'t ready — try again in a moment.</div>';
+  } else if (!pscan.length) {
+    html += '<div class="text-sm" style="color:var(--gn);line-height:1.5">✓ Photo index is clean — every indexed photo reads back.</div>';
+  } else {
+    html += `<div class="text-sm" style="color:var(--or);margin-bottom:8px">${pscan.length} unreadable photo ${pscan.length === 1 ? 'entry' : 'entries'} found:</div>`;
+    pscan.forEach(r => {
+      const fig = figById(r.id);
+      html += `<div style="padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg3);margin-bottom:6px">
+        <div style="font-size:13px;color:var(--t1);word-break:break-all">${esc(fig ? fig.name : r.id)}</div>
+        <div class="text-sm text-dim">photo #${r.n}${r.label ? ' · "' + esc(r.label) + '"' : ''} · indexed but unreadable</div>
+      </div>`;
+    });
+    html += `<div style="display:flex;gap:8px;margin-top:10px">
+      <button data-action="photo-prune" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--rd);background:color-mix(in srgb, var(--rd) 10%, transparent);color:var(--rd);font-size:13px;font-weight:600">Remove ${pscan.length} ${pscan.length === 1 ? 'Entry' : 'Entries'}</button>
+      <button data-action="photo-scan-cancel" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px">Cancel</button>
+    </div>`;
+  }
   return html;
 }
 

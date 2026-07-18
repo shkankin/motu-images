@@ -701,6 +701,17 @@ registerAll({
     window.refreshSheetBody?.();
   },
   'orphan-cancel': () => { window.S._orphanScan = undefined; window.refreshSheetBody?.(); },
+  // v7.73: photo-index reconcile (async — the dispatcher fires and the
+  // handler refreshes the sheet when the scan settles).
+  'photo-scan':   async () => { window.S._photoScan = (await window.reconcilePhotoIndex?.()) ?? null; window.refreshSheetBody?.(); },
+  'photo-prune':  async () => {
+    const rows = window.S._photoScan || [];
+    const n = (await window.pruneDeadPhotos?.(rows)) ?? 0;
+    window.toast?.(n ? `✓ Removed ${n} dead photo ${n === 1 ? 'entry' : 'entries'}` : 'Nothing removed');
+    window.S._photoScan = (await window.reconcilePhotoIndex?.()) ?? null;
+    window.refreshSheetBody?.();
+  },
+  'photo-scan-cancel': () => { window.S._photoScan = undefined; window.refreshSheetBody?.(); },
 
   // Stats sheet
   'go-to-filtered':    (e, el, d) => window.goToFiltered?.(d.status),

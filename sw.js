@@ -3,6 +3,25 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.47 changelog:
+//   • CACHE bumped to v7.47. SHELL: photos.js + data.js +
+//     delegate-handlers.js + render.js. App v7.73 — "Scan Photo Index"
+//     maintenance action (user report: export sheet counted 1 photo,
+//     photos-ZIP said none found).
+//   • Root cause class: loadAll() indexes whatever storage artifacts
+//     EXIST (OPFS files, motu-photo-* fallback values) without testing
+//     readability, while every export path fetch()es each photo and
+//     silently skips failures — so a zero-byte file or empty/corrupt
+//     fallback value is counted but never exported.
+//   • photoStore.reconcileIndex() re-runs the export-path fetch per
+//     indexed row (blob.size>0); pruneDeadPhotos() re-verifies each row
+//     at delete time (never deletes a readable photo) and routes
+//     removal through photoStore.remove() so all artifacts go together
+//     and the next loadAll() cannot resurrect the row
+//     (harness-proven). Export-sheet Maintenance section gains the
+//     scan → findings → Remove/Cancel flow, same lifecycle as v7.70's
+//     orphan scan.
+//
 // v7.46 changelog:
 //   • CACHE bumped to v7.46. SHELL: state.js + eggs.js + render.js +
 //     delegate-handlers.js + vault.css. App v7.72 — theme lineup cut to
@@ -1553,7 +1572,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.46';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.47';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
