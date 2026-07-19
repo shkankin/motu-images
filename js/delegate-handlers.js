@@ -718,6 +718,18 @@ registerAll({
     window.refreshSheetBody?.();
   },
   'photo-scan-cancel': () => { window.S._photoScan = undefined; window.refreshSheetBody?.(); },
+  // v7.76: Identify-by-Photo (sheet logic in js/identify.js)
+  'identify-pick':          () => document.getElementById('identifyCamera')?.click(),
+  'identify-photo':         (e, el) => window.identifyFromInput?.(el),
+  'identify-save-backend':  () => {
+    const url = document.getElementById('identifyUrl')?.value;
+    const secret = document.getElementById('identifySecret')?.value;
+    if (window.saveIdentifyBackend?.(url, secret)) { window.toast?.('✓ Backend saved'); window.refreshSheetBody?.(); }
+    else window.toast?.('✗ Enter a valid https:// URL');
+  },
+  'identify-reset-backend': () => { window.clearIdentifyBackend?.(); window.S._identify = undefined; window.refreshSheetBody?.(); },
+  'identify-open':          (e, el, dd) => { window.S._identify = undefined; window.closeSheet?.(); window.openFig?.(dd.figId); },
+  'identify-retry':         () => { window.S._identify = undefined; window.refreshSheetBody?.(); },
 
   // Stats sheet
   'go-to-filtered':    (e, el, d) => window.goToFiltered?.(d.status),

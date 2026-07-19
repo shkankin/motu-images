@@ -3,6 +3,22 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.50 changelog:
+//   • CACHE bumped to v7.50. SHELL: + js/identify.js (new) + ui-sheets.js
+//     + delegate-handlers.js + render.js. App v7.76 — Identify by Photo.
+//   • New Settings-menu sheet: photo → the owner-deployed identify
+//     worker (workers/identify-worker.js, NOT part of the PWA shell —
+//     deployed separately on Cloudflare like the pricing worker) → vision
+//     model returns {character, ranked line ids, variant hints} → LOCAL
+//     fuzzy match against S.figs → top candidates with thumbs, user
+//     confirms by tap (opens the figure). Never auto-adds: line and
+//     variant calls stay human decisions.
+//   • Backend config mirrors pricing.js: motu-identify-backend
+//     {url, secret?}; the worker enforces an optional shared secret
+//     (owner-only mode), CORS pinned to motucollector.app, 2.5MB size
+//     cap, and a daily budget cap (KV-backed when bound). Photos
+//     downscale to 768px JPEG client-side before upload.
+//
 // v7.49 changelog:
 //   • CACHE bumped to v7.49. SHELL: photos.js + render.js. App v7.75 —
 //     the self-regenerating "copy · photo #0" phantom is dead (user
@@ -1616,7 +1632,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.49';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.50';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -1711,6 +1727,7 @@ const SHELL = [
   'js/eggs.js',
   'js/tutorial.js',
   'js/pricing.js',
+  'js/identify.js',        // v7.76: Identify-by-Photo sheet + matcher
   'js/stats.js',
   'js/share.js',
   'js/delegate.js',

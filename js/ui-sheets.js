@@ -20,6 +20,7 @@ import {
   ptrEnabled,
 } from './state.js';
 import { bigGet } from './idb-store.js';
+import { renderIdentifySheet } from './identify.js';   // v7.76
 import {
   MAX_PHOTOS, photoStore, photoURLs,
 } from './photos.js';
@@ -56,6 +57,7 @@ function buildSheetBody() {
   else if (S.sheet === 'sort') body = renderSortSheet();
   else if (S.sheet === 'import') body = renderImportSheet();
   else if (S.sheet === 'export') body = renderExportSheet();
+  else if (S.sheet === 'identify') body = renderIdentifySheet();   // v7.76
   else if (S.sheet === 'theme') body = renderThemeSheet();
   else if (S.sheet === 'menu') body = renderMenuSheet();
   else if (S.sheet === 'stats') body = renderStatsSheet();
@@ -86,7 +88,7 @@ function refreshSheetBody() {
 window.refreshSheetBody = refreshSheetBody;
 
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', identify:'Identify by Photo', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations'};
   let body = buildSheetBody();
 
   // v6.30: Defensive fallback. If a deep link / shortcut / typo lands us on
@@ -206,6 +208,7 @@ function renderMenuSheet() {
     {label:'Manage Collections',  icon:ICO.sort,    action:'menu-manage-collections'},
     {label:'Import',              icon:ICO.import,  action:'open-sheet', sheet:'import'},
     {label:'Export / Backup' + (backupDue() ? ` <span style="font-size:9px;font-weight:700;color:var(--bg);background:var(--gold);padding:2px 7px;border-radius:99px;vertical-align:1px">${getBackupMeta().changes} UNSAVED</span>` : ''), icon:ICO.export, action:'open-sheet', sheet:'export'},
+    {label:'Identify by Photo',   icon:ICO.camera,  action:'open-sheet', sheet:'identify'},   // v7.76
     {label:'Pricing Backend',     icon:ICO.tag,     action:'open-sheet', sheet:'pricing'},
   ];
   // v6.68: Locations browser — only shown once at least one copy has a

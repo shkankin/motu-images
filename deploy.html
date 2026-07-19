@@ -13,7 +13,9 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Collector — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
-     deploy.html  v1.19
+     deploy.html  v1.20
+       • v1.20: PATH_MAP + identify.js (app v7.76) and identify-worker.js
+         (Cloudflare worker source, repo-versioned only).
        • v1.19: the MAX_WAIT timeout's grey "Timed out waiting for Pages
          build" status can now actually display — its seq token was
          always stale by the time the timeout fired (checkPagesStatus
@@ -417,7 +419,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.19</span></h1>
+  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.20</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -526,6 +528,8 @@ const PATH_MAP = {
   'CNAME':                    'CNAME',               // v1.14: GitHub Pages custom-domain file (motucollector.app)
   'index.html':               'index.html',          // v1.15: root forwarder → motu-vault.html
   'route.js':                 'js/route.js',         // v1.16: desktop router (external for CSP)
+  'identify.js':              'js/identify.js',      // v1.20: Identify-by-Photo module (app v7.76)
+  'identify-worker.js':       'workers/identify-worker.js', // v1.20: identify CF worker source (versioned in repo; deployed on Cloudflare, not Pages)
 };
 
 // ── State ──────────────────────────────────────────────────────────
