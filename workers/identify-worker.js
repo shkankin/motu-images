@@ -1,4 +1,12 @@
-// MOTU Collector — Identify Worker
+// MOTU Collector — Identify Worker  (prompt v2)
+// v2 (calibration round 1): packaging-first line guidance — printed
+// brand wordmarks override sculpt cues, and the 2002-2004 packaging is
+// explicitly mapped to "200x" (fan terminology the box never shows;
+// round 1: a packaged 200x Orko was guessed origins/masterverse).
+// Loose-figure cues sharpened for original-vs-origins (articulation
+// count). If vintage character accuracy stays poor, set the MODEL env
+// var to a stronger tier (e.g. claude-sonnet-4-6) — vision quality is
+// the ceiling there, not the prompt.
 // Deploy as a Cloudflare Worker (module syntax), e.g. motu-vault-identify.
 // Companion to the app's Identify-by-Photo sheet (js/identify.js, app v7.76+).
 //
@@ -66,13 +74,28 @@ Respond with ONLY a JSON object, no prose, no markdown fences:
  "notes": "<one short sentence: what visual features drove the line guesses>"}
 
 Line ids you may use, from these known toy lines: ${LINE_IDS.join(', ')}.
-Key line cues: "original" = 1980s vintage (soft rubbery look, simple paint);
-"origins" = 2020+ vintage-style reissues (crisper plastic, more articulation
-visible at elbows/knees); "masterverse" = modern 7in highly-articulated;
-"classics" = 2008-2018 adult collector 7in; "200x" = 2002 anime-styled;
-"super7" = 5.5in vintage-style or ReAction flat-style; "mondo" = 1/6 scale
-deluxe; "eternia-minis" = 2in stylized minis; "motu-giants" = 12in;
-"new-adventures" = 1989-92 space-themed. Rank 1-3 line ids, best first.
+
+PACKAGED figures — read the packaging first; printed branding overrides
+sculpt cues: a card/box printed with "Origins" = "origins"; "Masterverse"
+= "masterverse"; "Masters of the Universe Classics" = "classics";
+"Turtles of Grayskull" or another crossover brand = "cross-brand";
+Super7 branding (check cardback style/logo) = "super7". 2002-2004
+packaging with the angular flame-styled MOTU logo and NO "Origins"
+wordmark = "200x" (the 2002 Mattel relaunch, Mike Young Productions
+cartoon era — fans call it 200x; the box never says "200x").
+Vintage 1982-1988 cardbacks/boxes = "original".
+
+LOOSE figures — sculpt cues: "original" = 1980s vintage: only 5 points
+of articulation (no elbow/knee joints), chunky soft-detail sculpt, often
+worn paint and loose legs; "origins" = 2020+ reissues of the vintage
+look but with VISIBLE extra joints at elbows, knees and boots, crisper
+plastic and paint; "masterverse" = modern 7in highly-articulated;
+"classics" = 2008-2018 adult-collector 7in, realistic muscle sculpt;
+"200x" = 2002 anime-styled, exaggerated proportions and dynamic sculpt;
+"super7" = 5.5in vintage-style (like original but modern plastic) or
+flat retro ReAction style; "mondo" = 1/6 scale deluxe; "eternia-minis" =
+2in stylized minis; "motu-giants" = 12in; "new-adventures" = 1989-92
+space-themed. Rank 1-3 line ids, best first.
 If you cannot identify the character, use "character": "unknown" and
 confidence 0.`;
 
