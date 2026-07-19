@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — handler lint (v1.1)
+// MOTU Vault — handler lint (v1.2 — type-aware delegated-action check)
 // ────────────────────────────────────────────────────────────────────
 // Catches "dead button" bugs that the JS engine never reports, because
 // inline handlers fail silently at click time:
@@ -82,10 +82,44 @@ const BUILTINS = new Set([
 // registration module(s) — those files exist to hold registerAll maps, so a
 // `'foo-bar':` line there is a registration by construction.
 const actions = new Set();
-for (const m of all.matchAll(/\bregister\(\s*['"]([a-z0-9-]+)['"]/g)) actions.add(m[1]);
+// v1.2: additionally track WHICH event type each action is registered
+// under. The registry in delegate.js is per-type, and a handler in the
+// wrong-type block dispatches to "no handler for" — silently. That class
+// shipped in v7.76 ('identify-photo' registered as click, referenced as
+// data-change-action: taking a photo did nothing). Flat presence isn't
+// enough; the markup's data-<evt>-action must match the registration type.
+const actionsByType = new Map();   // type -> Set(action)
+const addTyped = (type, name) => {
+  if (!actionsByType.has(type)) actionsByType.set(type, new Set());
+  actionsByType.get(type).add(name);
+  actions.add(name);
+};
+for (const m of all.matchAll(/\bregister\(\s*['"]([a-z0-9-]+)['"][\s\S]{0,400}?(?:,\s*['"]([a-z]+)['"])?\s*\)/g)) {
+  addTyped(m[2] || 'click', m[1]);
+}
 for (const [file, raw] of Object.entries(sources)) {
   if (!/registerAll\s*\(/.test(raw)) continue;   // only registration modules
-  for (const k of raw.matchAll(/['"]([a-z][a-z0-9-]+)['"]\s*:/g)) actions.add(k[1]);
+  // Brace-balanced walk of each registerAll({ … }[, 'type']) call so the
+  // keys inside each block inherit that block's event type. (The v1.1
+  // note about brace-balancing being unreliable applied to regex — this
+  // is a character walk, which is exact.)
+  const clean = stripComments(raw);
+  let idx = 0;
+  while ((idx = clean.indexOf('registerAll', idx)) !== -1) {
+    const open = clean.indexOf('{', idx);
+    if (open === -1) break;
+    let depth = 0, i = open;
+    for (; i < clean.length; i++) {
+      if (clean[i] === '{') depth++;
+      else if (clean[i] === '}') { depth--; if (depth === 0) break; }
+    }
+    const body = clean.slice(open + 1, i);
+    const tail = clean.slice(i, clean.indexOf(')', i) + 1);
+    const tm = tail.match(/,\s*['"]([a-z]+)['"]\s*\)/);
+    const type = tm ? tm[1] : 'click';
+    for (const k of body.matchAll(/['"]([a-z][a-z0-9-]+)['"]\s*:/g)) addTyped(type, k[1]);
+    idx = i;
+  }
 }
 
 // ── Walk references, skipping comments & template-doc noise ──
@@ -145,13 +179,19 @@ for (const [file, raw] of Object.entries(sources)) {
     }
   }
 
-  // (2) data-action="…" / data-<evt>-action="…"
-  for (const a of src.matchAll(/data-(?:[a-z]+-)?action\s*=\s*"([a-z0-9-]+)"/g)) {
-    const action = a[1];
-    if (actions.has(action)) continue;
+  // (2) data-action="…" / data-<evt>-action="…" — v1.2: checked against
+  // the registration TYPE, not just flat presence.
+  for (const a of src.matchAll(/data-(?:([a-z]+)-)?action\s*=\s*"([a-z0-9-]+)"/g)) {
+    const type = a[1] || 'click';
+    const action = a[2];
+    if (actionsByType.get(type)?.has(action)) continue;
+    const under = [...actionsByType.entries()].filter(([, set]) => set.has(action)).map(([t]) => t);
+    const label = under.length
+      ? `${action} (referenced as '${type}' but registered under '${under.join("','")}')`
+      : action;
     const key = `${file}:${lineAt(a.index)}`;
-    if (!actionOrphans.has(action)) actionOrphans.set(action, []);
-    if (!actionOrphans.get(action).includes(key)) actionOrphans.get(action).push(key);
+    if (!actionOrphans.has(label)) actionOrphans.set(label, []);
+    if (!actionOrphans.get(label).includes(key)) actionOrphans.get(label).push(key);
   }
 
   // (3) window.NAME reads/calls that no module ever assigns. An occurrence

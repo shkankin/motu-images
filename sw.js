@@ -3,6 +3,23 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.51 changelog:
+//   • CACHE bumped to v7.51. SHELL: delegate-handlers.js + render.js.
+//     App v7.77 — Identify capture input fixed (user report: taking a
+//     photo did nothing, straight back to the idle sheet).
+//   • The delegate registry is PER EVENT TYPE; 'identify-photo' shipped
+//     in a click-typed registerAll block while the input fires
+//     data-change-action — the change dispatch found no handler and
+//     warned silently. Moved into the 'change'-typed block beside
+//     handle-photo.
+//   • Two gates hardened so this class can't ship again:
+//     scripts/lint_handlers.mjs v1.2 checks each data-<evt>-action
+//     against the registration TYPE (brace-balanced registerAll walk;
+//     the pre-fix repo now fails with "referenced as 'change' but
+//     registered under 'click'"), and identify_harness drives the REAL
+//     delegate dispatch with a bubbling change event instead of calling
+//     the handler directly.
+//
 // v7.50 changelog:
 //   • CACHE bumped to v7.50. SHELL: + js/identify.js (new) + ui-sheets.js
 //     + delegate-handlers.js + render.js. App v7.76 — Identify by Photo.
@@ -1632,7 +1649,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.50';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.51';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

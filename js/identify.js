@@ -146,7 +146,7 @@ export function renderIdentifySheet() {
   if (!st) {
     html += `<div class="text-sm text-dim" style="line-height:1.6;margin-bottom:14px">Snap a loose figure and get the closest catalog matches to confirm. Best with one figure, decent light, plain-ish background. Carded figures are faster via the UPC scanner.</div>`;
     html += `<button data-action="identify-pick" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;border-radius:12px;border:1px solid var(--acc);background:color-mix(in srgb, var(--acc) 12%, transparent);color:var(--acc);font-size:15px;font-weight:600">📷 Take / Choose Photo</button>`;
-    html += `<input type="file" id="identifyCamera" accept="image/*" style="display:none" data-change-action="identify-photo">`;
+    html += `<input type="file" id="identifyCamera" accept="image/*" capture="environment" style="display:none" data-change-action="identify-photo">`;
     html += `<button data-action="identify-reset-backend" style="width:100%;margin-top:14px;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t3);font-size:12px">Change backend…</button>`;
     return html;
   }

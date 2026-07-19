@@ -615,6 +615,11 @@ registerAll({
 
   // Photo file inputs
   'handle-photo':      (e, el, d) => window.handlePhoto?.(el, d.figId),
+  // v7.76.1: identify capture input — MUST live in this 'change'-typed
+  // block. It initially shipped in a click block: the delegate registry
+  // is per event type, so the change event found no handler and taking a
+  // photo silently did nothing (user report).
+  'identify-photo':    (e, el) => window.identifyFromInput?.(el),
   'handle-copy-photo': (e, el, d) => window.handleCopyPhoto?.(el, d.figId, d.copyId),
   'handle-import-file': (e, el) => window.handleImportFile?.(el),
 
@@ -720,7 +725,6 @@ registerAll({
   'photo-scan-cancel': () => { window.S._photoScan = undefined; window.refreshSheetBody?.(); },
   // v7.76: Identify-by-Photo (sheet logic in js/identify.js)
   'identify-pick':          () => document.getElementById('identifyCamera')?.click(),
-  'identify-photo':         (e, el) => window.identifyFromInput?.(el),
   'identify-save-backend':  () => {
     const url = document.getElementById('identifyUrl')?.value;
     const secret = document.getElementById('identifySecret')?.value;
