@@ -165,6 +165,22 @@
     "upc": "194735307654"
   },
   {
+    "id": "battle-of-eternia-multipack-10371",
+    "name": "Battle for Eternia Multipack",
+    "line": "origins",
+    "group": "Action Figures",
+    "wave": "",
+    "year": 2025,
+    "retail": 64.99,
+    "slug": "battle-of-eternia-multipack-10371",
+    "faction": "Other",
+    "source": "af411",
+    "sourceLine": "origins",
+    "sourceGroup": "",
+    "upc": "194735307562",
+    "af411_id": "battle-for-eternia-multipack-10371"
+  },
+  {
     "id": "battle-for-subternia-4-pack-14047",
     "name": "Battle for Subternia 4 Pack",
     "sourceName": "Battle for Subternia 4 Pack",
@@ -179,22 +195,6 @@
     "faction": "Other",
     "source": "af411",
     "upc": "194735377718"
-  },
-  {
-    "id": "battle-of-eternia-multipack-10371",
-    "name": "Battle of Eternia Multipack",
-    "line": "origins",
-    "group": "Action Figures",
-    "wave": "",
-    "year": 2025,
-    "retail": 64.99,
-    "slug": "battle-of-eternia-multipack-10371",
-    "faction": "Other",
-    "source": "af411",
-    "sourceLine": "origins",
-    "sourceGroup": "",
-    "upc": "194735307562",
-    "af411_id": "battle-for-eternia-multipack-10371"
   },
   {
     "id": "beast-man-2394",
@@ -6876,6 +6876,21 @@
     "upc": "194735350544"
   },
   {
+    "id": "battle-for-eternia-13924",
+    "name": "Battle for Eternia Playset",
+    "sourceName": "Grayskull and Snake Mountain Strongholds",
+    "line": "kids-core",
+    "sourceLine": "chronicles",
+    "group": "Movie (2026)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 86.39,
+    "slug": "battle-for-eternia-13924",
+    "faction": "Other",
+    "source": "af411"
+  },
+  {
     "id": "beast-man-13550",
     "name": "Beast Man",
     "line": "kids-core",
@@ -6904,21 +6919,6 @@
     "sourceLine": "chronicles",
     "sourceGroup": "",
     "upc": "194735350520"
-  },
-  {
-    "id": "battle-for-eternia-13924",
-    "name": "Grayskull and Snake Mountain Strongholds",
-    "sourceName": "Grayskull and Snake Mountain Strongholds",
-    "line": "kids-core",
-    "sourceLine": "chronicles",
-    "group": "Movie (2026)",
-    "sourceGroup": "Core (Non-Movie)",
-    "wave": "",
-    "year": 2026,
-    "retail": 86.39,
-    "slug": "battle-for-eternia-13924",
-    "faction": "Other",
-    "source": "af411"
   },
   {
     "id": "he-man-nicholas-galitzine-13549",
