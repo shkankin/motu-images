@@ -185,7 +185,7 @@
     "name": "Battle of Eternia Multipack",
     "line": "origins",
     "group": "Action Figures",
-    "wave": "Fan",
+    "wave": "",
     "year": 2025,
     "retail": 64.99,
     "slug": "battle-of-eternia-multipack-10371",
@@ -193,7 +193,8 @@
     "source": "af411",
     "sourceLine": "origins",
     "sourceGroup": "",
-    "upc": "194735307562"
+    "upc": "194735307562",
+    "af411_id": "battle-for-eternia-multipack-10371"
   },
   {
     "id": "beast-man-2394",
@@ -16967,7 +16968,8 @@
     "faction": "Great Rebellion",
     "source": "af411",
     "sourceLine": "mondo",
-    "sourceGroup": ""
+    "sourceGroup": "",
+    "af411_id": "she-ra-exclusive-timed-edition-10488"
   },
   {
     "id": "she-ra-deluxe-timed-edition-14040",
