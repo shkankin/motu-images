@@ -3571,6 +3571,22 @@
     "upc": "194735397426"
   },
   {
+    "id": "skeletor-sketchbook-13980",
+    "name": "Skeletor",
+    "sourceName": "Skeletor (Sketchbook)",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Sketchbook Series",
+    "sourceGroup": "",
+    "wave": "",
+    "year": 2026,
+    "retail": 21.99,
+    "slug": "skeletor-sketchbook-13980",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "upc": "194735333196"
+  },
+  {
     "id": "skeletor-battle-armor-deluxe-2418",
     "name": "Skeletor - Battle Armor (Deluxe)",
     "line": "origins",
@@ -3659,22 +3675,6 @@
     "sourceLine": "origins",
     "sourceGroup": "",
     "upc": "194735401956"
-  },
-  {
-    "id": "skeletor-sketchbook-13980",
-    "name": "Skeletor (Sketchbook)",
-    "sourceName": "Skeletor (Sketchbook)",
-    "line": "origins",
-    "sourceLine": "origins",
-    "group": "Sketchbook Series",
-    "sourceGroup": "",
-    "wave": "",
-    "year": 2026,
-    "retail": 21.99,
-    "slug": "skeletor-sketchbook-13980",
-    "faction": "Evil Warriors",
-    "source": "af411",
-    "upc": "194735333196"
   },
   {
     "id": "skeletor-vintage-sculpt-2463",
