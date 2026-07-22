@@ -1649,7 +1649,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.51';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.78';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

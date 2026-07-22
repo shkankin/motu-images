@@ -1453,23 +1453,47 @@ window.batchUpdateExisting = (presetCondition = '', extras = {}) => {
       touched = true;
     }
 
-    // 2) Copy-field updates — only meaningful for owned / for-sale figures.
+    // 2) Copy-field updates — meaningful for owned / for-sale figures, and
+    //    (v7.78) for 'ordered', which stores its price at entry level as
+    //    orderedPaid (see updateOrderedField / the Order Details tab) rather
+    //    than on copies[0]. Two bugs were fixed here:
+    //      a) status=ordered + paid silently DROPPED the price, because
+    //         'ordered' was not ownedish and so no write ever happened.
+    //      b) "keep current" + paid silently PROMOTED ordered figures to
+    //         owned, because inferring Owned was the only way to make paid
+    //         land anywhere. Statuses that can hold the value are now left
+    //         alone.
     if (hasCopyFields) {
+      // Fields that only exist on a copy — these genuinely imply ownership.
+      const { paid: paidVal, ...copyOnly } = copyFields;
+      const hasCopyOnly = Object.keys(copyOnly).length > 0;
       let ownedish = cur.status === 'owned' || cur.status === 'for-sale';
-      // No explicit status + not owned yet ⇒ infer Owned so details can attach.
-      if (!ownedish && !explicit) {
-        cur.status = 'owned';
-        ownedish = true;
-        promoted++;
-        if (!cur.copies || !cur.copies.length) cur.copies = [{ id: 1 }];
-        if (wasStatus !== 'owned' && cur.copies[0] && !cur.copies[0].acquired && !copyFields.acquired) {
-          cur.copies[0] = { ...cur.copies[0], acquired: stamp };
-        }
-      }
-      if (ownedish) {
-        if (!cur.copies || !cur.copies.length) cur.copies = [{ id: 1 }];
-        cur.copies[0] = { ...cur.copies[0], ...copyFields };
+
+      // 'ordered' can hold a price on its own; route it to orderedPaid and do
+      // NOT promote. Only applies when nothing copy-only was also requested.
+      if (cur.status === 'ordered' && paidVal && !hasCopyOnly) {
+        cur.orderedPaid = paidVal;
         touched = true;
+      } else {
+        // No explicit status + not owned yet ⇒ infer Owned so details can attach.
+        if (!ownedish && !explicit) {
+          cur.status = 'owned';
+          ownedish = true;
+          promoted++;
+          if (!cur.copies || !cur.copies.length) cur.copies = [{ id: 1 }];
+          if (wasStatus !== 'owned' && cur.copies[0] && !cur.copies[0].acquired && !copyFields.acquired) {
+            cur.copies[0] = { ...cur.copies[0], acquired: stamp };
+          }
+        }
+        if (ownedish) {
+          if (!cur.copies || !cur.copies.length) cur.copies = [{ id: 1 }];
+          cur.copies[0] = { ...cur.copies[0], ...copyFields };
+          touched = true;
+        } else if (explicit === 'ordered' && paidVal) {
+          // Explicitly setting status=ordered with a price: store at entry level.
+          cur.orderedPaid = paidVal;
+          touched = true;
+        }
       }
     }
 
