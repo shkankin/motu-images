@@ -1,1 +1,66 @@
-[]
+[
+  {
+    "id": "ram-man-jon-xue-zhang-14074",
+    "name": "Ram Man (Jon Xue Zhang)",
+    "sourceName": "Ram Man (Jon Xue Zhang)",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Core (Non-Movie)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 13.46,
+    "slug": "ram-man-jon-xue-zhang-14074",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "_addedToPending": 1784708613
+  },
+  {
+    "id": "skeletor-special-effects-14071",
+    "name": "Skeletor (Special Effects)",
+    "sourceName": "Skeletor (Special Effects)",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Core (Non-Movie)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 13.46,
+    "slug": "skeletor-special-effects-14071",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "_addedToPending": 1784708613
+  },
+  {
+    "id": "teela-camila-mendes-14072",
+    "name": "Teela (Camila Mendes)",
+    "sourceName": "Teela (Camila Mendes)",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Core (Non-Movie)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 13.46,
+    "slug": "teela-camila-mendes-14072",
+    "faction": "Heroic Warriors",
+    "source": "af411",
+    "_addedToPending": 1784708614
+  },
+  {
+    "id": "tri-klops-kojo-attah-14073",
+    "name": "Tri-Klops (Kojo Attah)",
+    "sourceName": "Tri-Klops (Kojo Attah)",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Core (Non-Movie)",
+    "sourceGroup": "Core (Non-Movie)",
+    "wave": "",
+    "year": 2026,
+    "retail": 13.46,
+    "slug": "tri-klops-kojo-attah-14073",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "_addedToPending": 1784708614
+  }
+]
