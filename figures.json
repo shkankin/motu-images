@@ -9982,6 +9982,18 @@
     "upc": "027084918359"
   },
   {
+    "id": "manual-lex-luthor-vs-skeletor-ms0xyqnn",
+    "name": "Lex Luthor vs. Skeletor",
+    "sourceName": "Lex Luthor vs. Skeletor",
+    "line": "classics",
+    "sourceLine": "classics",
+    "group": "Packs",
+    "sourceGroup": "Packs",
+    "faction": "Evil Warriors",
+    "slug": "manual-lex-luthor-vs-skeletor-ms0xyqnn",
+    "source": "manual"
+  },
+  {
     "id": "light-hope-5144",
     "name": "Light Hope",
     "line": "classics",
