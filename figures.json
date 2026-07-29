@@ -7213,6 +7213,21 @@
     "upc": "194735350704"
   },
   {
+    "id": "manual-gym-bro-skeletor-ms6ompnr",
+    "name": "Gym Bro Skeletor",
+    "sourceName": "Gym Bro Skeletor",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Movie",
+    "sourceGroup": "Movie",
+    "faction": "Evil Warriors",
+    "wave": "SDCC",
+    "year": 2026,
+    "retail": 50,
+    "slug": "manual-gym-bro-skeletor-ms6ompnr",
+    "source": "manual"
+  },
+  {
     "id": "he-man-nicholas-galitzine-13242",
     "name": "He-Man (Nicholas Galitzine)",
     "line": "chronicles",
