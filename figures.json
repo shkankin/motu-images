@@ -5439,6 +5439,20 @@
     "upc": "887961979848"
   },
   {
+    "id": "manual-evil-lyn-ms6p2py3",
+    "name": "Evil-Lyn",
+    "sourceName": "Evil-Lyn",
+    "line": "masterverse",
+    "sourceLine": "masterverse",
+    "group": "Vintage Collection",
+    "sourceGroup": "Vintage Collection",
+    "faction": "Evil Warriors",
+    "year": 2026,
+    "retail": 23.72,
+    "slug": "manual-evil-lyn-ms6p2py3",
+    "source": "manual"
+  },
+  {
     "id": "evil-lyn-skelesorc-5297",
     "name": "Evil-Lyn (Skelesorc)",
     "line": "masterverse",
@@ -6816,6 +6830,19 @@
     "sourceLine": "masterverse",
     "sourceGroup": "",
     "upc": "194735111633"
+  },
+  {
+    "id": "manual-wun-dar-ms6p4s5h",
+    "name": "Wun-Dar",
+    "sourceName": "Wun-Dar",
+    "line": "masterverse",
+    "sourceLine": "masterverse",
+    "group": "Vintage Collection",
+    "sourceGroup": "Vintage Collection",
+    "faction": "Heroic Warriors",
+    "year": 2026,
+    "slug": "manual-wun-dar-ms6p4s5h",
+    "source": "manual"
   },
   {
     "id": "zodac-4221",
