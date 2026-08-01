@@ -7225,6 +7225,20 @@
     "upc": "194735350797"
   },
   {
+    "id": "manual-dream-date-skeletor-msayzo9u",
+    "name": "Dream Date Skeletor",
+    "sourceName": "Dream Date Skeletor",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Movie",
+    "sourceGroup": "Movie",
+    "faction": "Evil Warriors",
+    "year": 2026,
+    "retail": 59.99,
+    "slug": "manual-dream-date-skeletor-msayzo9u",
+    "source": "manual"
+  },
+  {
     "id": "evil-lyn-alison-brie-13554",
     "name": "Evil-Lyn (Alison Brie)",
     "line": "chronicles",
@@ -8414,6 +8428,18 @@
     "upc": "0887961235029"
   },
   {
+    "id": "manual-aquaman-vs-mer-man-msayv9dt",
+    "name": "Aquaman vs. Mer-Man",
+    "sourceName": "Aquaman vs. Mer-Man",
+    "line": "classics",
+    "sourceLine": "classics",
+    "group": "Packs",
+    "sourceGroup": "Packs",
+    "faction": "Other",
+    "slug": "manual-aquaman-vs-mer-man-msayv9dt",
+    "source": "manual"
+  },
+  {
     "id": "arrow-5168",
     "name": "Arrow",
     "line": "classics",
@@ -8576,6 +8602,18 @@
     "source": "af411",
     "sourceLine": "classics",
     "sourceGroup": ""
+  },
+  {
+    "id": "manual-bizarro-vs-faker-msayy34k",
+    "name": "Bizarro vs. Faker",
+    "sourceName": "Bizarro vs. Faker",
+    "line": "classics",
+    "sourceLine": "classics",
+    "group": "Packs",
+    "sourceGroup": "Packs",
+    "faction": "Evil Warriors",
+    "slug": "manual-bizarro-vs-faker-msayy34k",
+    "source": "manual"
   },
   {
     "id": "blade-5150",
@@ -9478,6 +9516,18 @@
     "upc": "027084833065"
   },
   {
+    "id": "manual-green-lantern-vs-zodac-msayxb1i",
+    "name": "Green Lantern vs. Zodac",
+    "sourceName": "Green Lantern vs. Zodac",
+    "line": "classics",
+    "sourceLine": "classics",
+    "group": "Packs",
+    "sourceGroup": "Packs",
+    "faction": "Heroic Warriors",
+    "slug": "manual-green-lantern-vs-zodac-msayxb1i",
+    "source": "manual"
+  },
+  {
     "id": "griffin-5166",
     "name": "Griffin",
     "line": "classics",
@@ -9553,6 +9603,18 @@
     "upc": "086547346160"
   },
   {
+    "id": "manual-hawkman-vs-stratos-msaywdye",
+    "name": "Hawkman vs. Stratos",
+    "sourceName": "Hawkman vs. Stratos",
+    "line": "classics",
+    "sourceLine": "classics",
+    "group": "Packs",
+    "sourceGroup": "Packs",
+    "faction": "Heroic Warriors",
+    "slug": "manual-hawkman-vs-stratos-msaywdye",
+    "source": "manual"
+  },
+  {
     "id": "he-man-3992",
     "name": "He-Man",
     "line": "classics",
@@ -9566,6 +9628,18 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "027084689167"
+  },
+  {
+    "id": "manual-he-man-vs-superman-msayubyy",
+    "name": "He-Man vs. Superman",
+    "sourceName": "He-Man vs. Superman",
+    "line": "classics",
+    "sourceLine": "classics",
+    "group": "Packs",
+    "sourceGroup": "Packs",
+    "faction": "Heroic Warriors",
+    "slug": "manual-he-man-vs-superman-msayubyy",
+    "source": "manual"
   },
   {
     "id": "he-ro-4002",
@@ -11253,6 +11327,18 @@
     "sourceLine": "classics",
     "sourceGroup": "",
     "upc": "0746775214333"
+  },
+  {
+    "id": "manual-supergirl-vs-she-ra-msayyo22",
+    "name": "Supergirl vs  She-Ra",
+    "sourceName": "Supergirl vs  She-Ra",
+    "line": "classics",
+    "sourceLine": "classics",
+    "group": "Packs",
+    "sourceGroup": "Packs",
+    "faction": "Heroic Warriors",
+    "slug": "manual-supergirl-vs-she-ra-msayyo22",
+    "source": "manual"
   },
   {
     "id": "sweet-bee-5143",
