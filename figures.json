@@ -527,6 +527,19 @@
     "upc": "194735307623"
   },
   {
+    "id": "manual-chimera-msxkuuj1",
+    "name": "Chimera",
+    "sourceName": "Chimera",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Powers of Grayskull",
+    "sourceGroup": "Powers of Grayskull",
+    "faction": "Other",
+    "year": 2026,
+    "slug": "manual-chimera-msxkuuj1",
+    "source": "manual"
+  },
+  {
     "id": "chyna-12031",
     "name": "Chyna",
     "line": "origins",
