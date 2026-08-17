@@ -58,6 +58,7 @@ const CACHE_KEY = 'motu-figs-cache';
 const LOADOUTS_CACHE_KEY = 'motu-loadouts-cache'; // v6.24: persisted alongside figs cache
 const KIDS_CORE_KEY = 'motu-kids-core';  // localStorage key for local Kids Core figures
 const CUSTOM_FIGS_KEY = 'motu-custom-figs'; // v5.04: localStorage key for user-defined custom figures
+const PACKS_KEY = 'motu-line-packs';        // v7.79: community line packs (IDB via bigGet/bigSet; hydrated at boot)
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 const LINES = [
@@ -467,5 +468,5 @@ window.getThemeTitles = getThemeTitles;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  ICO, icon, ROOT, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles, ptrEnabled
+  ICO, icon, ROOT, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, PACKS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles, ptrEnabled
 };

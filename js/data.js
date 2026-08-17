@@ -23,7 +23,7 @@ const openSheet = (...a) => window.openSheet?.(...a);
 import { getCachedAskingPrice } from './pricing.js';
 import {
   S, store, ICO, icon, IMG, FIGS_URL, LOADOUTS_URL, KIDS_CORE_KEY,
-  CUSTOM_FIGS_KEY, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL,
+  CUSTOM_FIGS_KEY, PACKS_KEY, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL,
   LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX,
   THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP,
@@ -72,6 +72,209 @@ function _mergeCustomSublines(target, custom) {
   }
 }
 const mergeCustomSublines = _mergeCustomSublines;
+
+// ─── v7.79: Community Line Packs ────────────────────────────────────
+// User-importable JSON packs that add whole lines (line + sublines +
+// figures) to the catalog. Stored in IDB under PACKS_KEY (hydrated at
+// boot in app.js), shaped { [packId]: pack }. Distribution is a plain
+// file (Discord) — no backend, deliberately (see free-forever decision).
+//
+// INVARIANTS (same physics as everything else here):
+//  • Line id is ALWAYS 'pack-' + packId; figure ids ALWAYS
+//    'pack-' + packId + '-…'. Enforced on import regardless of what the
+//    file declares — collision-proof against figures.json, manual-*,
+//    custom-*, kids-core, and every other pack.
+//  • Figure ids are load-bearing (collection/copies/photos key on them).
+//    Re-importing a newer pack version replaces the stored pack but the
+//    per-figure ids come from the file, so authors bump `version` and
+//    keep figure ids stable; the merge is replace-in-place, never
+//    delete-and-recreate.
+//  • applyPacks() is clear-then-merge (the v7.41 subline lesson): pack
+//    rows/lines/sublines are stripped by their marker and re-added, so
+//    a removed pack disappears without a reload and stale cached rows
+//    (CACHE_KEY bakes merged figs) self-heal on the next boot.
+const PACK_FORMAT = 'motu-line-pack-v1';
+const _PACK_ID_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
+const _PACK_RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
+
+function getPacks() {
+  const p = bigGet(PACKS_KEY);
+  return (p && typeof p === 'object' && !Array.isArray(p)) ? p : {};
+}
+
+function _packSlug(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+}
+
+// Validate + sanitize a raw pack object into the stored shape.
+// Returns null when the pack is unusable. Only known fields are copied
+// (a crafted file can't smuggle arbitrary keys), ids are re-namespaced,
+// and numeric fields are coerced (the v5.05 lesson: strict-equality
+// year grouping breaks on strings).
+function sanitizePack(raw) {
+  if (!raw || typeof raw !== 'object' || raw.format !== PACK_FORMAT) return null;
+  const packId = _packSlug(raw.packId);
+  if (!_PACK_ID_RE.test(packId) || _PACK_RESERVED.has(packId)) return null;
+  if (!Array.isArray(raw.figures) || !raw.figures.length || raw.figures.length > 2000) return null;
+  const lineId = 'pack-' + packId;
+  const name = String(raw.name || (raw.line && raw.line.name) || packId).slice(0, 60);
+  const ln0 = (raw.line && typeof raw.line === 'object') ? raw.line : {};
+  const line = {
+    id: lineId, name: String(ln0.name || name).slice(0, 60),
+    yr: String(ln0.yr || '').slice(0, 20), mfr: String(ln0.mfr || '').slice(0, 40),
+    sc: String(ln0.sc || '').slice(0, 20),
+  };
+  const sublines = [];
+  const seenKeys = new Set();
+  for (const sb of (Array.isArray(raw.sublines) ? raw.sublines : [])) {
+    if (!sb || typeof sb !== 'object') continue;
+    const key = _packSlug(sb.key || sb.label);
+    if (!key || seenKeys.has(key) || _PACK_RESERVED.has(key)) continue;
+    seenKeys.add(key);
+    const groups = (Array.isArray(sb.groups) ? sb.groups : [sb.label]).map(g => String(g || '')).filter(Boolean);
+    sublines.push({ key, label: String(sb.label || key).slice(0, 60), groups: groups.length ? groups : [key] });
+  }
+  const figures = [];
+  const seenIds = new Set();
+  for (const f of raw.figures) {
+    if (!f || typeof f !== 'object' || !f.name) continue;
+    let fid = _packSlug(f.id || f.name);
+    if (!fid || _PACK_RESERVED.has(fid)) continue;
+    if (!fid.startsWith(lineId + '-')) fid = lineId + '-' + fid;
+    if (seenIds.has(fid)) continue;   // dupe inside the file — first wins
+    seenIds.add(fid);
+    const out = { id: fid, name: String(f.name).slice(0, 120), line: lineId };
+    if (f.group) out.group = String(f.group).slice(0, 60);
+    if (f.wave) out.wave = String(f.wave).slice(0, 40);
+    if (f.year) { const y = Number(f.year); if (Number.isFinite(y)) out.year = y; }
+    if (f.retail) { const r = Number(f.retail); if (Number.isFinite(r) && r > 0) out.retail = r; }
+    if (f.upc) out.upc = String(f.upc).slice(0, 20);
+    if (f.imageUrl && /^https:\/\//.test(String(f.imageUrl))) out.imageUrl = String(f.imageUrl).slice(0, 300);
+    // Variant links stay inside the pack namespace or they're dropped.
+    if (f.variantOf) {
+      let vo = _packSlug(f.variantOf);
+      if (vo && !vo.startsWith(lineId + '-')) vo = lineId + '-' + vo;
+      if (vo) { out.variantOf = vo; if (f.variantName) out.variantName = String(f.variantName).slice(0, 60); }
+    }
+    if (f.notes) out.notes = String(f.notes).slice(0, 300);
+    figures.push(out);
+  }
+  if (!figures.length) return null;
+  const version = Math.max(1, Math.floor(Number(raw.version) || 1));
+  return {
+    format: PACK_FORMAT, packId, name, version,
+    author: String(raw.author || '').slice(0, 60),
+    updated: String(raw.updated || '').slice(0, 20),
+    notes: String(raw.notes || '').slice(0, 400),
+    line, sublines, figures,
+  };
+}
+
+// Merge every installed pack into LINES / SUBLINES / S.figs.
+// Idempotent and removal-safe: strips its own markers first. Runs at
+// boot (app.js, after the cached-rows custom merge), after every fetch
+// merge, and after any pack install/remove/backup-restore.
+function applyPacks() {
+  const packs = getPacks();
+  // Lines — injected entries carry _pack.
+  for (let i = LINES.length - 1; i >= 0; i--) { if (LINES[i]._pack) LINES.splice(i, 1); }
+  // Sublines — injected entries carry _packSrc (NOT _custom: the repo's
+  // customSublines merge strips _custom wholesale on every load and
+  // would eat pack entries with it).
+  for (const k of Object.keys(SUBLINES)) {
+    if (SUBLINES[k].some(e => e._packSrc)) SUBLINES[k] = SUBLINES[k].filter(e => !e._packSrc);
+    if (!SUBLINES[k].length) delete SUBLINES[k];
+  }
+  // Figures — pack rows carry source 'pack:<packId>'.
+  const kept = S.figs.filter(f => !(typeof f.source === 'string' && f.source.startsWith('pack:')));
+  const keptIds = new Set(kept.map(f => f.id));
+  const added = [];
+  for (const packId of Object.keys(packs)) {
+    if (_PACK_RESERVED.has(packId)) continue;
+    const pack = packs[packId];
+    if (!pack || typeof pack !== 'object' || !pack.line) continue;
+    if (!LINES.some(l => l.id === pack.line.id)) LINES.push({ ...pack.line, _pack: true });
+    if (Array.isArray(pack.sublines) && pack.sublines.length) {
+      if (!SUBLINES[pack.line.id]) SUBLINES[pack.line.id] = [];
+      for (const sb of pack.sublines) {
+        if (!SUBLINES[pack.line.id].some(e => e.key === sb.key)) {
+          SUBLINES[pack.line.id].push({ ...sb, _packSrc: true });
+        }
+      }
+    }
+    for (const f of (pack.figures || [])) {
+      if (keptIds.has(f.id)) continue;   // repo/custom id wins (shouldn't occur — namespaced)
+      keptIds.add(f.id);
+      added.push({ ...f, source: 'pack:' + packId, slug: '', image: f.imageUrl || '' });
+    }
+  }
+  if (added.length || kept.length !== S.figs.length) {
+    S.figs = [...kept, ...added];
+    rebuildFigIndex();
+    _derived.invalidate();
+  }
+}
+
+// Install (or update) a pack from a parsed object. Returns true on success.
+async function importPackObject(raw, { confirmReplace = true } = {}) {
+  const pack = sanitizePack(raw);
+  if (!pack) { toast('Not a valid line pack file'); return false; }
+  const packs = getPacks();
+  const existing = packs[pack.packId];
+  if (existing && confirmReplace) {
+    const ok = await (window.appConfirm
+      ? window.appConfirm(`"${existing.name}" v${existing.version} is already installed. Replace it with v${pack.version}? Your collection entries for its figures are kept.`, { ok: 'Replace' })
+      : Promise.resolve(true));
+    if (!ok) return false;
+  }
+  packs[pack.packId] = pack;
+  bigSet(PACKS_KEY, packs);
+  applyPacks();
+  render();
+  toast(`✓ ${existing ? 'Updated' : 'Installed'} — "${pack.name}" (${pack.figures.length} figures)`);
+  return true;
+}
+
+// Hidden-file-input handler (Manage Collections → Community Packs).
+async function handlePackFile(el) {
+  const file = el && el.files && el.files[0];
+  if (el) el.value = '';   // allow re-selecting the same file
+  if (!file) return;
+  let raw;
+  try { raw = JSON.parse(await file.text()); }
+  catch { toast('Not a valid line pack file'); return; }
+  await importPackObject(raw);
+}
+
+function exportPack(packId) {
+  const pack = getPacks()[packId];
+  if (!pack) { toast('Pack not found'); return; }
+  const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
+  _downloadBlobSafe(blob, `motu-pack-${pack.packId}-v${pack.version}.json`);
+  toast('✓ Pack exported — share the file anywhere');
+}
+
+async function removePack(packId) {
+  const packs = getPacks();
+  const pack = packs[packId];
+  if (!pack) return;
+  const prefix = 'pack-' + pack.packId + '-';
+  const refs = Object.keys(S.coll).filter(id => id.startsWith(prefix) && S.coll[id] && S.coll[id].status).length;
+  const msg = refs
+    ? `Remove "${pack.name}"? ${refs} collection ${refs === 1 ? 'entry references' : 'entries reference'} its figures and will become orphaned (Maintenance → orphan scan can clean them, or re-import the pack to restore).`
+    : `Remove "${pack.name}"?`;
+  const ok = await (window.appConfirm ? window.appConfirm(msg, { danger: true, ok: 'Remove' }) : Promise.resolve(true));
+  if (!ok) return;
+  delete packs[packId];
+  bigSet(PACKS_KEY, packs);
+  applyPacks();
+  render();
+  toast(`Pack removed — "${pack.name}"`);
+}
+
+window.handlePackFile = handlePackFile;
+window.exportPack = exportPack;
+window.removePack = removePack;
 
 // v6.28: persist S.newFigIds across reloads. Stored as { figId: timestamp }
 // so we can age-out stale entries. Default TTL: 14 days.
@@ -311,6 +514,10 @@ async function fetchFigs(manual = false, firstLoad = false) {
       ];
       rebuildFigIndex();
       _derived.invalidate();
+      // v7.79: re-merge community line packs over the fresh catalog (their
+      // rows were just discarded by the S.figs rebuild above). Runs before
+      // the cache write so cached cold boots include them too.
+      applyPacks();
       S.syncTs = Date.now();
       bigSet(CACHE_KEY, { rows: S.figs, ts: S.syncTs });
       // v6.24: persist loadouts so cached cold-start renders show complete badges
@@ -2101,7 +2308,7 @@ window.buildInsuranceReport = async () => {
 // either way and there's no reason to re-merge working code.)
 async function _buildBackupBlob() {
   const backup = {
-    version: 'motu-vault-backup-v5',  // v5: + soldLog (realized sales) + customFigs (user-added figures/variants)
+    version: 'motu-vault-backup-v6',  // v6: + linePacks (community line packs) · v5: + soldLog + customFigs
     exported: new Date().toISOString(),
     collection: S.coll,
     photos: {},
@@ -2109,6 +2316,7 @@ async function _buildBackupBlob() {
     overrides: _overrides,  // {figId: {fields: {...}}} — local field patches
     soldLog: getSoldLog(),  // v6.68: completed sales for realized-gain stats
     customFigs: store.get(CUSTOM_FIGS_KEY) || [],  // v6.68: in-app variants & customs
+    linePacks: getPacks(),  // v7.79: installed community line packs
     figAdded: getFigAdded(),  // v6.82: durable catalog-add timestamps (Recently Added sort)
   };
   // Include custom photos as arrays of {label, dataUrl}.
@@ -2172,7 +2380,7 @@ async function applyImportedBackup(backup) {
   // a crafted backup from manipulating S.coll's prototype via bracket-assignment.
   const RESERVED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
   try {
-    const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4', 'motu-vault-backup-v5'];
+    const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4', 'motu-vault-backup-v5', 'motu-vault-backup-v6'];
     if (!backup || !knownVersions.includes(backup.version)) throw new Error('Unknown format');
     if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
     const overwrite = document.querySelector('.checkbox.checked') !== null;
@@ -2292,6 +2500,26 @@ async function applyImportedBackup(backup) {
         store.set(CUSTOM_FIGS_KEY, existing);
         rebuildFigIndex();
         _derived.invalidate();
+      }
+    }
+    // v7.79: restore community line packs (v6 backups). Installed packs
+    // win over the backup's copy (same non-clobber stance as customs) —
+    // packs are re-importable files, never irreplaceable data. Every
+    // candidate goes through sanitizePack, so a crafted backup can't
+    // smuggle un-namespaced ids or junk fields in through this path.
+    if (backup.linePacks && typeof backup.linePacks === 'object' && !Array.isArray(backup.linePacks)) {
+      const packs = getPacks();
+      let packsRestored = 0;
+      for (const pid of Object.keys(backup.linePacks)) {
+        if (RESERVED_KEYS.has(pid) || packs[pid]) continue;
+        const clean = sanitizePack(backup.linePacks[pid]);
+        if (!clean || clean.packId !== pid) continue;
+        packs[pid] = clean;
+        packsRestored++;
+      }
+      if (packsRestored) {
+        bigSet(PACKS_KEY, packs);
+        applyPacks();
       }
     }
     // v6.82: restore durable catalog-add timestamps (Recently Added sort).
@@ -2804,5 +3032,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack
 };

@@ -3,6 +3,33 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.79 changelog:
+//   • CACHE bumped to v7.79. SHELL: state.js + data.js + app.js +
+//     render.js + delegate-handlers.js. App v7.79 — Community Line Packs.
+//   • Users can import community-made lines (line + sublines + figures)
+//     from a JSON pack file, shared via Discord — no backend. Manage
+//     Collections gains a Community Packs section: Import / Share /
+//     Remove per pack. Packs live in IDB ('motu-line-packs', hydrated
+//     at boot) and merge clear-then-merge into LINES / SUBLINES /
+//     S.figs (markers _pack / _packSrc / source 'pack:<id>'), so
+//     removal needs no reload and stale cached rows self-heal at boot.
+//   • Namespacing is enforced on import: line id 'pack-<packId>',
+//     figure ids 'pack-<packId>-…' — collision-proof against repo /
+//     manual-* / custom-* ids. Figure ids stay stable across pack
+//     versions (they are load-bearing: collection/copies/photos).
+//   • Removing a pack warns with the count of collection entries that
+//     would be orphaned; the v7.70 orphan scan can clean them, and
+//     re-importing the pack restores them.
+//   • Backup format v5 → v6: + linePacks. v6 import restores packs
+//     (installed packs win; every candidate re-sanitized).
+//
+// v7.78 changelog (backfilled — shipped 2026-07-22 without a block):
+//   • CACHE bumped to v7.78 — and the CACHE number aligned with the app
+//     version from here on (v7.51 numbering ends at the entry below).
+//   • Bulk-edit: status 'ordered' + paid no longer drops the price or
+//     silently promotes to Owned; the price lands on entry-level
+//     orderedPaid (handlers.js).
+//
 // v7.51 changelog:
 //   • CACHE bumped to v7.51. SHELL: delegate-handlers.js + render.js.
 //     App v7.77 — Identify capture input fixed (user report: taking a
@@ -1649,7 +1676,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.78';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.79';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

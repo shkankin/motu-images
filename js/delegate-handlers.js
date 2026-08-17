@@ -448,6 +448,13 @@ registerAll({
   'loc-open-fig':   (e, el, d) => { window.closeSheet?.(); window.openFig?.(d.figId); },
   'loc-drill':      (e, el, d) => window.patchLocSheet?.(d.loc),
 
+  // v7.79: Community Packs (Manage Collections section). The file input
+  // itself is data-change-action='handle-pack-file' — registered in the
+  // 'change'-typed block below, NOT here (per-event-type registry).
+  'pack-import': () => document.getElementById('packFileInput')?.click(),
+  'pack-export': (e, el, d) => window.exportPack?.(d.packId),
+  'pack-remove': (e, el, d) => window.removePack?.(d.packId),
+
   // Menu sheet actions
   'menu-manage-collections': () => {
     window.closeSheet?.();
@@ -622,6 +629,8 @@ registerAll({
   'identify-photo':    (e, el) => window.identifyFromInput?.(el),
   'handle-copy-photo': (e, el, d) => window.handleCopyPhoto?.(el, d.figId, d.copyId),
   'handle-import-file': (e, el) => window.handleImportFile?.(el),
+  // v7.79: community line pack import (Manage Collections).
+  'handle-pack-file': (e, el) => window.handlePackFile?.(el),
 
   // Batch edit selects
   'batch-set-status-field': (e, el) => { if (window.S.batchEdit) window.S.batchEdit.status    = el.value; },

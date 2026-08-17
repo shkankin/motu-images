@@ -49,6 +49,7 @@ import {
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
   isMigrated, saveColl, fetchFigs,
   getSoldLog, backupDue,
+  getPacks,
 } from './data.js';
 import {
   playSound, preloadSound, getThemeIcon, getThemeSounds,
@@ -523,7 +524,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.78</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.79</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1007,6 +1008,35 @@ function renderLinesGrid() {
         </button>
       </div>`;
     });
+    html += '</div>';
+    // v7.79: Community Packs live here (Manage Collections — owner
+    // decision). Import goes through a hidden file input: this page's
+    // CSP has no unsafe-inline, so the button is data-action-driven and
+    // the input fires data-CHANGE-action (per-event-type registry — the
+    // v7.77 lesson; it is registered in the 'change' block).
+    const packs = getPacks();
+    const packIds = Object.keys(packs);
+    html += `<div class="font-display text-dim text-upper" style="font-size:12px;margin:20px 6px 8px;letter-spacing:.06em">Community Packs</div>`;
+    html += '<div class="reorder-list">';
+    packIds.forEach(pid => {
+      const pk = packs[pid];
+      html += `<div class="reorder-item" data-key="pack:${esc(pid)}">
+        <div style="flex:1;min-width:0">
+          <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(pk.name)}</div>
+          <div class="text-sm text-dim" style="margin-top:2px">v${pk.version} · ${pk.figures.length} figures${pk.author ? ` · by ${esc(pk.author)}` : ''}</div>
+        </div>
+        <button class="reorder-hide-btn" data-action="pack-export" data-pack-id="${esc(pid)}" aria-label="Export ${esc(pk.name)} pack">Share</button>
+        <button class="reorder-hide-btn" data-action="pack-remove" data-pack-id="${esc(pid)}" aria-label="Remove ${esc(pk.name)} pack">Remove</button>
+      </div>`;
+    });
+    html += `<div class="reorder-item">
+      <div style="flex:1;min-width:0">
+        <div class="font-display" style="font-size:14px;color:var(--t1)">Import a pack</div>
+        <div class="text-sm text-dim" style="margin-top:2px">${packIds.length ? 'Add another community line from a .json pack file' : 'Add community-made lines from a .json pack file (shared on Discord)'}</div>
+      </div>
+      <button class="reorder-hide-btn" data-action="pack-import" aria-label="Import a line pack file">Import</button>
+      <input type="file" id="packFileInput" accept="application/json,.json" style="display:none" data-change-action="handle-pack-file">
+    </div>`;
     html += '</div>';
   } else {
     // v5.01 added a list/grid choice here; v7.63 made list the only view.

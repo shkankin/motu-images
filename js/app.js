@@ -122,7 +122,10 @@ async function init() {
                     // v7.44: pricing cache + history moved to IDB (see
                     // pricing.js _loadCache note — silent localStorage
                     // quota failures were wiping bulk-fetched prices).
-                    'motu-pricing-cache', 'motu-pricing-history']);
+                    'motu-pricing-cache', 'motu-pricing-history',
+                    // v7.79: community line packs (data.js applyPacks reads
+                    // them synchronously right after this hydrate).
+                    'motu-line-packs']);
 
   // Load collection (from the IndexedDB mirror)
   let c = bigGet('motu-c2');
@@ -238,6 +241,12 @@ async function init() {
       }
     }
   }
+  // v7.79: merge community line packs into LINES/SUBLINES/S.figs.
+  // Unconditional (not inside the cached-rows branch): clear-then-merge
+  // is a no-op with no packs installed, and on a cache-less boot with
+  // packs restored from a backup their lines must still exist before
+  // first render.
+  data.applyPacks();
   // Apply theme
   document.documentElement.setAttribute('data-theme', S.theme);
   _syncThemeColor(S.theme);   // v6.94: align browser chrome with a saved theme
