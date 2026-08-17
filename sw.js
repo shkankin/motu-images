@@ -3,6 +3,23 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.80 changelog:
+//   • CACHE bumped to v7.80. SHELL: data.js + render.js. App v7.80 —
+//     pack semantics + repo art (owner feedback on v7.79).
+//   • Pack figures no longer carry variantOf/variantName — "variant"
+//     means the COLLECTOR sense here (factory error / unintended /
+//     limited run, personal, attached on-device via Add-Variant), not
+//     distinct retail releases, which are standalone pack entries.
+//     sanitizePack drops the fields; applyPacks also strips them at
+//     merge time so v7.79-era installed packs self-heal without a
+//     re-import (the variants filter stays clean).
+//   • Curated pack art: a pack figure may carry a namespaced slug
+//     ('pack-<packId>-…', enforced) and its art resolves as
+//     images/<slug>.jpg from the image repo — the exact pipeline and
+//     SW image cache official figures use. Explicit https imageUrl
+//     still wins; neither present = placeholder as before. Missing
+//     repo files degrade through the normal img-error fallback.
+//
 // v7.79 changelog:
 //   • CACHE bumped to v7.79. SHELL: state.js + data.js + app.js +
 //     render.js + delegate-handlers.js. App v7.79 — Community Line Packs.
@@ -1676,7 +1693,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.79';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.80';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -150,12 +150,25 @@ function sanitizePack(raw) {
     if (f.retail) { const r = Number(f.retail); if (Number.isFinite(r) && r > 0) out.retail = r; }
     if (f.upc) out.upc = String(f.upc).slice(0, 20);
     if (f.imageUrl && /^https:\/\//.test(String(f.imageUrl))) out.imageUrl = String(f.imageUrl).slice(0, 300);
-    // Variant links stay inside the pack namespace or they're dropped.
-    if (f.variantOf) {
-      let vo = _packSlug(f.variantOf);
-      if (vo && !vo.startsWith(lineId + '-')) vo = lineId + '-' + vo;
-      if (vo) { out.variantOf = vo; if (f.variantName) out.variantName = String(f.variantName).slice(0, 60); }
+    // v7.80: repo art for curated packs. A figure may carry a slug; its
+    // art then resolves as images/<slug>.jpg from the image repo, same
+    // pipeline (and same SW image cache) as official figures. The slug
+    // is forced into the pack namespace so a pack can't point at (or
+    // spoof) another figure's art. Missing files degrade through the
+    // normal img-error fallback — the same state as any catalog figure
+    // whose art hasn't been uploaded yet.
+    if (f.slug) {
+      let sg = _packSlug(f.slug);
+      if (sg && !sg.startsWith(lineId + '-')) sg = lineId + '-' + sg;
+      if (sg) out.slug = sg;
     }
+    // NOTE — no variantOf here, deliberately (v7.80). "Variant" in this
+    // app means the COLLECTOR sense: factory errors / unintended /
+    // limited runs that only some owners have. Those are personal and
+    // attach to a figure on-device via the existing Add-Variant flow
+    // (custom-var-*, works on pack figures too). Distinct retail
+    // releases — repaints, colorways, deluxe editions — are standalone
+    // catalog entries in the pack, never variant links.
     if (f.notes) out.notes = String(f.notes).slice(0, 300);
     figures.push(out);
   }
@@ -205,7 +218,12 @@ function applyPacks() {
     for (const f of (pack.figures || [])) {
       if (keptIds.has(f.id)) continue;   // repo/custom id wins (shouldn't occur — namespaced)
       keptIds.add(f.id);
-      added.push({ ...f, source: 'pack:' + packId, slug: '', image: f.imageUrl || '' });
+      // v7.80: strip variantOf/variantName here too, so packs installed
+      // under v7.79 (which accepted the fields) self-heal without a
+      // re-import. Art: explicit imageUrl wins, else repo art via slug.
+      const { variantOf, variantName, ...pf } = f;
+      added.push({ ...pf, source: 'pack:' + packId, slug: pf.slug || '',
+                   image: pf.imageUrl || (pf.slug ? `${IMG}/${pf.slug}.jpg` : '') });
     }
   }
   if (added.length || kept.length !== S.figs.length) {
