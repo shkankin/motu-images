@@ -3,6 +3,26 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.81 changelog:
+//   • CACHE bumped to v7.81. SHELL: eggs.js + render.js + photos.js +
+//     delegate-handlers.js. App v7.81 — two owner-reported bug fixes.
+//   • Detail-screen photo swipe no longer flips to the next figure: the
+//     v6.40 detail-swipe handler on #app now ignores gestures starting
+//     inside #photoCarousel (the carousel owns its own horizontal
+//     scroll). The v6.84 CSS fix only stopped scroll hijacking; the JS
+//     touchend still fired figure navigation on top of the photo swipe.
+//   • User-photo thumbnails no longer vanish: S.imgErrors is keyed by
+//     the FAILING URL, not the figure id. The fig-keyed flag meant a
+//     broken catalog image (e.g. pack repo art not uploaded yet)
+//     suppressed the figure's valid user-photo thumbnail; adding a
+//     photo cleared the flag, the next detail render re-404'd the stock
+//     slide and re-tripped it — thumbnails appeared only after a
+//     close/reopen, then "randomly" disappeared. Rows now suppress only
+//     when the exact src they'd render is known-bad. img-error passes
+//     el.currentSrc; readers in render.js (rows, cards, detail stock
+//     slide, identify matcher) and photos.js (slide viewer) updated.
+//     The fig-keyed resets in photos.js add-paths are now inert writes.
+//
 // v7.80 changelog:
 //   • CACHE bumped to v7.80. SHELL: data.js + render.js. App v7.80 —
 //     pack semantics + repo art (owner feedback on v7.79).
@@ -1693,7 +1713,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.80';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.81';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -589,7 +589,7 @@ window.openSlideViewer = (figId, slideIdx) => {
   const fig = figById(figId);
   if (!fig) return;
   const userPhotos = photoStore.getAll(figId);
-  const stockImg = (fig.image && !S.imgErrors[figId]) ? fig.image : null;
+  const stockImg = (fig.image && !S.imgErrors[fig.image]) ? fig.image : null;  // v7.81: URL-keyed
   const slides = [...userPhotos.map(p => ({...p, stock: false}))];
   if (stockImg) slides.push({n: -1, url: stockImg, label: fig.name, stock: true});
   if (!slides.length) return;

@@ -613,6 +613,13 @@ window.goPrevDetail = () => _navigateDetail(-1);
   function attach(el) {
     el.addEventListener('touchstart', e => {
       if (S.screen !== 'figure' || S.sheet || S.photoViewer) return;
+      // v7.81: gestures that START inside the photo carousel belong to
+      // the carousel (its own horizontal scroll-snap strip). The v6.84
+      // CSS (touch-action/overscroll-behavior) only stopped scroll
+      // hijacking — the touchend here still fired figure navigation on
+      // top of the photo swipe. Owner report: photo swipe was flipping
+      // the whole detail screen to the next figure.
+      if (e.target && e.target.closest && e.target.closest('#photoCarousel')) { tracking = false; return; }
       sx = e.touches[0].clientX;
       sy = e.touches[0].clientY;
       tracking = true; locked = false;
@@ -682,7 +689,16 @@ export function _syncThemeColor(t) {
     if (mc && THEMES[t]?.bg) mc.setAttribute('content', THEMES[t].bg);
   } catch {}
 }
-window.imgErr = id => { S.imgErrors[id] = true; };
+// v7.81: errors are keyed by the failing URL, no longer by figure id.
+// The old fig-keyed flag conflated "this catalog image 404'd" with
+// "never show ANY image for this figure" — so a pack figure whose repo
+// art isn't uploaded yet poisoned its own user photos: the list thumb
+// suppressed a valid blob URL, a close/reopen (imgErrors resets at
+// boot) briefly showed it, and the next detail visit re-rendered the
+// broken stock slide, re-tripped the flag, and the thumbnail
+// "randomly" vanished again. URL-keying makes each source stand on its
+// own; the legacy id-only call shape still records something harmless.
+window.imgErr = (id, src) => { if (src) S.imgErrors[src] = true; else if (id) S.imgErrors[id] = true; };
 
 // ── Exports ─────────────────────────────────────────────────
 export {

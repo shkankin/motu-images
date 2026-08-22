@@ -524,7 +524,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.80</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.81</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1199,9 +1199,12 @@ function renderFigRow(f, standalone = false) {
   const copyN = entryCopyCount(c);
   const isNew = S.newFigIds.has(f.id);
   const hasCustom = S.customPhotos[f.id];
-  const imgErr = S.imgErrors[f.id];
-  const showImg = (hasCustom || f.image) && !imgErr;
+  // v7.81: error suppression is per-URL. Only hide the image when THE
+  // SOURCE WE'D RENDER is known-bad — a broken catalog URL (pack art
+  // not uploaded yet, stale repo link) no longer hides a valid user
+  // photo, and a fresh user photo (new blob URL) always gets a chance.
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
+  const showImg = imgSrc && !S.imgErrors[imgSrc];
   const isSelected = S.selectMode && S.selected.has(f.id);
   const eId = esc(f.id);
   // v6.29: row click goes through delegation now. The dispatcher decides
@@ -1348,9 +1351,12 @@ function renderFigCard(f, standalone = false) {
   const copyN = entryCopyCount(c);
   const isNew = S.newFigIds.has(f.id);
   const hasCustom = S.customPhotos[f.id];
-  const imgErr = S.imgErrors[f.id];
-  const showImg = (hasCustom || f.image) && !imgErr;
+  // v7.81: error suppression is per-URL. Only hide the image when THE
+  // SOURCE WE'D RENDER is known-bad — a broken catalog URL (pack art
+  // not uploaded yet, stale repo link) no longer hides a valid user
+  // photo, and a fresh user photo (new blob URL) always gets a chance.
   const imgSrc = (hasCustom && photoStore.get(f.id)) || f.image;
+  const showImg = imgSrc && !S.imgErrors[imgSrc];
   const eId = esc(f.id);
   const badgeAction = c.status ? 'cycle-status' : 'set-status-owned';
   const isSelected = S.selectMode && S.selected.has(f.id);
@@ -1924,7 +1930,7 @@ function renderDetail() {
   const c = S.coll[f.id] || {};
   const userPhotos = photoStore.getAll(f.id);    // [{n, url, label}, ...]
   const hasCustom = userPhotos.length > 0;
-  const stockImg = (f.image && !S.imgErrors[f.id]) ? f.image : null;
+  const stockImg = (f.image && !S.imgErrors[f.image]) ? f.image : null;  // v7.81: URL-keyed
   const pills = [ln(f.line), f.group, f.wave?'Wave '+f.wave:'', f.year, f.faction].filter(Boolean);
   const canAddMore = userPhotos.length < MAX_PHOTOS;
   const defaultN = S.defaultPhoto?.[f.id] ?? (hasCustom ? userPhotos[0].n : -1);
@@ -2011,7 +2017,7 @@ function renderDetail() {
       if (fam.length < 2) return '';
       const chip = (m) => {
         const cur = m.id === f.id;
-        const mImg = (S.customPhotos[m.id] && photoStore.get(m.id)) || (!S.imgErrors[m.id] && m.image) || '';
+        const mImg = (S.customPhotos[m.id] && photoStore.get(m.id)) || (!S.imgErrors[m.image] && m.image) || '';  // v7.81: URL-keyed
         const label = m.id === root.id ? 'Original' : (m.variantName || m.name);
         const owned = S.coll[m.id]?.status === 'owned';
         return `<div class="variant-chip${cur ? ' current' : ''}" ${cur ? '' : `data-action="open-fig" data-fig-id="${esc(m.id)}"`}>

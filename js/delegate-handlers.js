@@ -224,7 +224,9 @@ registerAll({
 // to data-fallback-src once and hides if that also fails.
 
 registerAll({
-  'img-error': (e, el, d) => window.imgErr?.(d.figId),
+  // v7.81: pass the failing URL — imgErr keys errors by src now (a dead
+  // repo link must not poison a figure's valid user-photo thumbnails).
+  'img-error': (e, el, d) => window.imgErr?.(d.figId, el.currentSrc || el.getAttribute('src') || ''),
   'img-hide':  (e, el) => { el.style.display = 'none'; },
   // v7.19: img-fallback previously only tried a different filename (.jpg ->
   // .png), which assumes the failure is "wrong extension." It never
