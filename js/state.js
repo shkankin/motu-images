@@ -208,10 +208,18 @@ const SUBLINES = {
     {key:'creatures',label:'Creatures',groups:['Creatures']},
     {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},
   ],
+  // v7.83: ReAction added. Super7's 3.75" retro-Kenner MOTU line (waves 1-6,
+  // 2015-2019, plus blind boxes, con exclusives and regional cards). It is a
+  // Super7 product, so it belongs here rather than under cross-brand.
+  // NOTE: AF411's super7 checklist has NO ReAction section, so every figure in
+  // this subline is a manual-* entry. sync_af411.py never modifies existing
+  // figures and only *reports* removed_ids, so they are safe — they will simply
+  // be listed under `--audit` as "in figures.json but not on AF411".
   super7: [
     {key:'ultimate',label:'Ultimate',groups:['Ultimate']},
     {key:'club',label:'Club Grayskull',groups:['Club Grayskull']},
     {key:'vintage',label:'Vintage',groups:['Vintage']},
+    {key:'reaction',label:'ReAction',groups:['ReAction']},
     {key:'classics',label:'Classics',groups:['Classics']},
   ],
   chronicles: [
@@ -241,6 +249,10 @@ const SUBLINES = {
     {key:'dolls',label:'Fashion & Collector Dolls',groups:['Fashion & Collector Dolls']},
     {key:'hot-wheels',label:'Hot Wheels & Die-Cast',groups:['Hot Wheels & Die-Cast']},
     {key:'loyal-subjects',label:'Loyal Subjects',groups:['Loyal Subjects']},
+    // v7.83: Fisher-Price Little People Collector MOTU sets. One entry per SET
+    // (they were never sold as singles) — same shape as the Hot Wheels
+    // "5-pack Character Vehicles" row.
+    {key:'little-people',label:'Little People',groups:['Little People']},
   ],
 };
 

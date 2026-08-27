@@ -3,6 +3,26 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.83 changelog:
+//   • CACHE bumped to v7.83. SHELL: state.js. App v7.83 — two new
+//     catalog sublines. NO app-logic change; SUBLINES is a const in
+//     state.js, so the bump is what gets the new sublines to existing
+//     installs. figures.json is network-first, so an approved catalog
+//     batch reaches users without a further bump.
+//   • super7 gains a "ReAction" subline (key `reaction`, between Vintage
+//     and Classics) — Super7's 3.75" retro-Kenner MOTU line. Placed under
+//     super7 rather than cross-brand because it IS a Super7 product.
+//     AF411's super7 checklist has no ReAction section, so every figure
+//     in it is a manual-* entry; sync_af411.py never modifies existing
+//     figures and only reports removed_ids, so they are safe and will
+//     just appear in `--audit` as "not on AF411".
+//   • cross-brand gains a "Little People" subline (key `little-people`,
+//     after Loyal Subjects) — Fisher-Price Little People Collector MOTU
+//     sets, one entry per SET, matching the Hot Wheels 5-pack row.
+//   • Both were mirrored into figures-editor.html's SUBLINES (v1.35.0) —
+//     the two lists MUST stay identical or the editor's group picker
+//     silently drops the new option.
+
 // v7.82 changelog:
 //   • CACHE bumped to v7.82. SHELL: data.js + render.js + ui-sheets.js +
 //     delegate-handlers.js. App v7.82 — pack bundles + in-app pack editing.
@@ -1739,7 +1759,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.82';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.83';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

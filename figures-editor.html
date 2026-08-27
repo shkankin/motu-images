@@ -648,7 +648,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.34.0';   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
+const EDITOR_VERSION = 'v1.35.0';   // v1.35.0: two new sublines mirrored from state.js — super7 'ReAction' (Super7's 3.75" line; not on AF411, so all entries are manual-*) and cross-brand 'Little People' (Fisher-Price Little People Collector sets, one row per set).   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -773,6 +773,9 @@ let SUBLINES = {
     {key:'ultimate', label:'Ultimate',          groups:['Ultimate']},
     {key:'club',     label:'Club Grayskull',    groups:['Club Grayskull']},
     {key:'vintage',  label:'Vintage',           groups:['Vintage']},
+    // v1.35.0: Super7's 3.75" ReAction line. Not on AF411's super7 checklist,
+    // so every entry here is manual-*.
+    {key:'reaction', label:'ReAction',          groups:['ReAction']},
     {key:'classics', label:'Classics',          groups:['Classics']},
   ],
   chronicles: [
@@ -793,11 +796,13 @@ let SUBLINES = {
   // Kept in sync with state.js's SUBLINES. loyal-subjects covers the Loyal
   // Subjects import specifically (48 figures as of this edit); there is no
   // generic minis/games catch-all subline for cross-brand at this time.
+  // v1.35.0: little-people added (Fisher-Price Little People Collector sets).
   'cross-brand': [
     {key:'designer',    label:'Designer & Artist Collaborations',     groups:['Designer & Artist Collaborations']},
     {key:'dolls',       label:'Fashion & Collector Dolls',            groups:['Fashion & Collector Dolls']},
     {key:'hot-wheels',  label:'Hot Wheels & Die-Cast',                groups:['Hot Wheels & Die-Cast']},
     {key:'loyal-subjects', label:'Loyal Subjects',                    groups:['Loyal Subjects']},
+    {key:'little-people',  label:'Little People',                     groups:['Little People']},
   ],
   // mondo: no sublines — flat free-text group field
 };
