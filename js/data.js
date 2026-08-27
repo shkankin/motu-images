@@ -258,19 +258,23 @@ async function handlePackFile(el) {
   const file = el && el.files && el.files[0];
   if (el) el.value = '';   // allow re-selecting the same file
   if (!file) return;
+  // v7.82: bundles (zip: pack.json + photos) come through the same
+  // picker. Detect by magic bytes, not extension — mobile share sheets
+  // rename files freely.
+  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  if (head[0] === 0x50 && head[1] === 0x4b) {   // 'PK'
+    await importPackBundle(await file.arrayBuffer());
+    return;
+  }
   let raw;
   try { raw = JSON.parse(await file.text()); }
   catch { toast('Not a valid line pack file'); return; }
   await importPackObject(raw);
 }
 
-function exportPack(packId) {
-  const pack = getPacks()[packId];
-  if (!pack) { toast('Pack not found'); return; }
-  const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' });
-  _downloadBlobSafe(blob, `motu-pack-${pack.packId}-v${pack.version}.json`);
-  toast('✓ Pack exported — share the file anywhere');
-}
+// v7.82: Share now exports the full BUNDLE (zip of pack.json + photos).
+// The json-only path lives on inside the bundle; anyone can unzip it.
+function exportPack(packId) { return exportPackBundle(packId); }
 
 async function removePack(packId) {
   const packs = getPacks();
@@ -290,9 +294,256 @@ async function removePack(packId) {
   toast(`Pack removed — "${pack.name}"`);
 }
 
+// ── v7.82: pack bundles (json + photos in one zip) + in-app pack editing ──
+//
+// Reader for the zips WE write (buildZip: stored entries) plus method-8
+// (deflate) entries via DecompressionStream when the platform has it —
+// covers a bundle that got re-zipped by a desktop tool along the way.
+async function parseZip(buf) {
+  const u8 = new Uint8Array(buf);
+  const dv = new DataView(buf);
+  // EOCD: scan back for 0x06054b50 (comment can pad the tail)
+  let eocd = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 22 - 65536); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('not a zip');
+  const count = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder();
+  const entries = {};
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true);
+    const csize = dv.getUint32(off + 20, true);
+    const nameLen = dv.getUint16(off + 28, true);
+    const extraLen = dv.getUint16(off + 30, true);
+    const cmtLen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = dec.decode(u8.subarray(off + 46, off + 46 + nameLen));
+    // Local header's own name/extra lengths (may differ from central's)
+    const lNameLen = dv.getUint16(lho + 26, true);
+    const lExtraLen = dv.getUint16(lho + 28, true);
+    const dataStart = lho + 30 + lNameLen + lExtraLen;
+    const raw = u8.slice(dataStart, dataStart + csize);
+    if (method === 0) {
+      entries[name] = raw;
+    } else if (method === 8 && typeof DecompressionStream !== 'undefined') {
+      const ds = new DecompressionStream('deflate-raw');
+      const out = await new Response(new Blob([raw]).stream().pipeThrough(ds)).arrayBuffer();
+      entries[name] = new Uint8Array(out);
+    } else {
+      throw new Error('unsupported zip compression');
+    }
+    off += 46 + nameLen + extraLen + cmtLen;
+  }
+  return entries;
+}
+
+// Fields the Edit-Info (overrides) sheet can set that belong IN a shared
+// pack. line/faction stay out — those are device-local taste (a user
+// re-shelving a figure) rather than pack content.
+const PACK_BAKE_FIELDS = ['name', 'group', 'wave', 'year', 'retail', 'notes', 'upc'];
+
+// The pack as it should be SHARED: stored figures with the owner's
+// Edit-Info overrides baked in. Editing pack figures therefore happens
+// in the editor that already exists; export snapshots it.
+function _bakedPack(pack) {
+  const figures = (pack.figures || []).map(f => {
+    const ov = getOverridesFor(f.id);
+    if (!ov || !Object.keys(ov).length) return { ...f };
+    const out = { ...f };
+    for (const k of PACK_BAKE_FIELDS) {
+      if (ov[k] == null || ov[k] === '') continue;
+      out[k] = (k === 'year' || k === 'retail') ? Number(ov[k]) : String(ov[k]);
+    }
+    return out;
+  });
+  return { ...pack, figures };
+}
+
+// v7.82: exportPack ships a BUNDLE zip — pack.json + this device's
+// photos for the pack's figures + labels/default assignments — per the
+// owner's beta direction: photos travel side by side with the json,
+// user-supplied and locally hosted, no repo hosting.
+// The stored pack is updated to the baked snapshot first; the version
+// auto-bumps only when the content actually changed since last export
+// (edits made in the Edit Pack sheet or via Edit-Info overrides), so
+// re-sharing an untouched pack keeps its number.
+async function exportPackBundle(packId) {
+  const packs = getPacks();
+  const pack = packs[packId];
+  if (!pack) { toast('Pack not found'); return; }
+  const baked = _bakedPack(pack);
+  const changed = pack._edited || JSON.stringify(baked.figures) !== JSON.stringify(pack.figures);
+  if (changed) {
+    baked.version = (pack.version || 1) + 1;
+    baked.updated = new Date().toISOString().slice(0, 10);
+  }
+  delete baked._edited;
+  packs[packId] = baked;
+  bigSet(PACKS_KEY, packs);
+  if (changed) applyPacks();
+  toast('Packaging…');
+  const entries = [{ name: 'pack.json', blob: new Blob([JSON.stringify(baked, null, 2)], { type: 'application/json' }) }];
+  const labels = {}, defaults = {};
+  for (const f of baked.figures) {
+    const shots = await photoStore.getAllAsBlobs(f.id);
+    for (const sh of shots) {
+      entries.push({ name: `photos/photo-${f.id}-${sh.n}.jpg`, blob: sh.blob });
+      if (sh.label) (labels[f.id] = labels[f.id] || {})[sh.n] = sh.label;
+    }
+    if (S.defaultPhoto?.[f.id] != null) defaults[f.id] = S.defaultPhoto[f.id];
+  }
+  if (Object.keys(labels).length || Object.keys(defaults).length) {
+    entries.push({ name: 'photos.json', blob: new Blob([JSON.stringify({ labels, defaults })], { type: 'application/json' }) });
+  }
+  const zip = await buildZip(entries);
+  _downloadBlobSafe(zip, `motu-pack-${baked.packId}-v${baked.version}-bundle.zip`);
+  const nPhotos = entries.length - 1 - (entries.some(e => e.name === 'photos.json') ? 1 : 0);
+  toast(`✓ Bundle exported — pack + ${nPhotos} photo${nPhotos === 1 ? '' : 's'}`);
+}
+
+// Import a bundle's photo entries. Non-clobber: only figures that have
+// NO photos yet receive them (same stance as backup customs/packs — the
+// device's own photos are never displaced by an import).
+async function _importBundlePhotos(entries, pack) {
+  let added = 0;
+  let meta = { labels: {}, defaults: {} };
+  if (entries['photos.json']) {
+    try { meta = JSON.parse(new TextDecoder().decode(entries['photos.json'])); } catch {}
+  }
+  const packIds = new Set((pack.figures || []).map(f => f.id));
+  const byFig = {};
+  for (const name of Object.keys(entries)) {
+    const m = name.match(/^photos\/photo-(.+)-(\d+)\.jpg$/);
+    if (!m || !packIds.has(m[1])) continue;   // only THIS pack's namespace lands
+    (byFig[m[1]] = byFig[m[1]] || []).push({ n: parseInt(m[2], 10), bytes: entries[name] });
+  }
+  for (const figId of Object.keys(byFig)) {
+    if (S.customPhotos[figId]?.length) continue;   // device photos win
+    byFig[figId].sort((a, b) => a.n - b.n);
+    for (const ph of byFig[figId].slice(0, MAX_PHOTOS)) {
+      const label = meta.labels?.[figId]?.[ph.n] || '';
+      const n = await photoStore.add(figId, new Blob([ph.bytes], { type: 'image/jpeg' }), label);
+      if (n >= 0) added++;
+    }
+    const def = meta.defaults?.[figId];
+    if (def != null && S.defaultPhoto[figId] == null && S.customPhotos[figId]?.some(p => p.n === def)) {
+      S.defaultPhoto[figId] = def;
+    }
+  }
+  if (added) store.set('motu-default-photo', S.defaultPhoto);
+  return added;
+}
+
+async function importPackBundle(buf) {
+  let entries;
+  try { entries = await parseZip(buf); }
+  catch (e) { toast(e.message === 'unsupported zip compression' ? 'Zip was recompressed — share the original bundle' : 'Not a valid pack bundle'); return false; }
+  if (!entries['pack.json']) { toast('No pack.json inside the zip'); return false; }
+  let raw;
+  try { raw = JSON.parse(new TextDecoder().decode(entries['pack.json'])); }
+  catch { toast('Not a valid line pack file'); return false; }
+  const ok = await importPackObject(raw);
+  if (!ok) return false;
+  const pack = getPacks()[sanitizePack(raw)?.packId];
+  if (pack) {
+    const added = await _importBundlePhotos(entries, pack);
+    if (added) { render(); toast(`✓ ${added} photo${added === 1 ? '' : 's'} imported`); }
+  }
+  return true;
+}
+
+// ── Pack mutation API (Edit Pack sheet) ──
+// Every mutation: write stored pack, mark _edited (drives the version
+// bump on next export), clear-then-merge via applyPacks, re-render.
+function _savePack(packId, pack) {
+  const packs = getPacks();
+  packs[packId] = { ...pack, _edited: true };
+  bigSet(PACKS_KEY, packs);
+  applyPacks();
+  render();
+}
+
+function updatePackMeta(packId, field, value) {
+  const pack = getPacks()[packId];
+  if (!pack) return;
+  const v = String(value ?? '').trim();
+  if (field === 'name') { if (v) { pack.name = v.slice(0, 60); pack.line.name = pack.name; } }
+  else if (field === 'author') pack.author = v.slice(0, 60);
+  else if (field === 'notes') pack.notes = v.slice(0, 400);
+  else if (field === 'yr') pack.line.yr = v.slice(0, 20);
+  else if (field === 'mfr') pack.line.mfr = v.slice(0, 40);
+  else if (field === 'sc') pack.line.sc = v.slice(0, 20);
+  else return;
+  _savePack(packId, pack);
+}
+
+async function packAddSubline(packId) {
+  const pack = getPacks()[packId];
+  if (!pack) return;
+  const label = await (window.appPromptText ? window.appPromptText('Subline name', { placeholder: 'e.g. Action Figures', ok: 'Add' }) : Promise.resolve(null));
+  if (!label || !label.trim()) return;
+  const key = _packSlug(label);
+  if (!key || (pack.sublines || []).some(sb => sb.key === key)) { toast('That subline already exists'); return; }
+  pack.sublines = [...(pack.sublines || []), { key, label: label.trim().slice(0, 60), groups: [label.trim()] }];
+  _savePack(packId, pack);
+}
+
+function packRemoveSubline(packId, key) {
+  const pack = getPacks()[packId];
+  if (!pack) return;
+  pack.sublines = (pack.sublines || []).filter(sb => sb.key !== key);
+  _savePack(packId, pack);
+}
+
+async function packAddFigure(packId) {
+  const pack = getPacks()[packId];
+  if (!pack) return;
+  const name = await (window.appPromptText ? window.appPromptText('Figure name', { placeholder: 'e.g. Evil-Bay', ok: 'Add' }) : Promise.resolve(null));
+  if (!name || !name.trim()) return;
+  const lineId = 'pack-' + pack.packId;
+  let base = lineId + '-' + _packSlug(name);
+  let fid = base, k = 2;
+  const existing = new Set(pack.figures.map(f => f.id));
+  while (existing.has(fid) || figById(fid)) fid = base + '-' + (k++);
+  pack.figures = [...pack.figures, { id: fid, name: name.trim().slice(0, 120), line: lineId }];
+  _savePack(packId, pack);
+  toast('✓ Added — use Edit Info for year, group, and the rest');
+}
+
+async function packRemoveFigure(packId, figId) {
+  const pack = getPacks()[packId];
+  if (!pack) return;
+  const fig = pack.figures.find(f => f.id === figId);
+  if (!fig) return;
+  const hasEntry = S.coll[figId] && S.coll[figId].status;
+  const msg = hasEntry
+    ? `Remove "${fig.name}" from the pack? Your collection entry for it will become orphaned (Maintenance → orphan scan can clean it).`
+    : `Remove "${fig.name}" from the pack?`;
+  const ok = await (window.appConfirm ? window.appConfirm(msg, { danger: true, ok: 'Remove' }) : Promise.resolve(true));
+  if (!ok) return;
+  pack.figures = pack.figures.filter(f => f.id !== figId);
+  _savePack(packId, pack);
+}
+
+function openPackEdit(packId) {
+  if (!getPacks()[packId]) return;
+  S.editingPackId = packId;
+  S.sheet = 'packEdit';
+  render();
+}
+
 window.handlePackFile = handlePackFile;
 window.exportPack = exportPack;
 window.removePack = removePack;
+window.openPackEdit = openPackEdit;
+window.updatePackMeta = updatePackMeta;
+window.packAddSubline = packAddSubline;
+window.packRemoveSubline = packRemoveSubline;
+window.packAddFigure = packAddFigure;
+window.packRemoveFigure = packRemoveFigure;
 
 // v6.28: persist S.newFigIds across reloads. Stored as { figId: timestamp }
 // so we can age-out stale entries. Default TTL: 14 days.
@@ -3050,5 +3301,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
 };

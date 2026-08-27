@@ -32,6 +32,7 @@ import {
   renderExportSheet, renderSheetBody,
   renderAccessoryPickerSheet, SETTINGS_KEYS,
   _derived, clearOverrides, backupDue, getBackupMeta,
+  getPacks,   // v7.82: Edit Pack sheet
 } from './data.js';
 import {
   renderKidsCoreAdminSheet,
@@ -71,6 +72,7 @@ function buildSheetBody() {
   else if (S.sheet === 'wishlistHistory') body = renderWishlistHistorySheet();
   else if (S.sheet === 'about') body = renderAboutSheet();
   else if (S.sheet === 'locations') body = renderLocationsSheet();
+  else if (S.sheet === 'packEdit') body = renderPackEditSheet();   // v7.82
   return body;
 }
 
@@ -88,7 +90,9 @@ function refreshSheetBody() {
 window.refreshSheetBody = refreshSheetBody;
 
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', identify:'Identify by Photo', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations'};
+  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', identify:'Identify by Photo', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
+    packEdit: 'Edit Pack',
+  };
   let body = buildSheetBody();
 
   // v6.30: Defensive fallback. If a deep link / shortcut / typo lands us on
@@ -875,6 +879,66 @@ window.resetFigureOverrides = async figId => {
 };
 
 // Open the editor for a specific figure id.
+// ── v7.82: Edit Pack sheet ───────────────────────────────────────────
+// Pack-LEVEL editing (meta, sublines, figure add/remove). Per-FIGURE
+// editing deliberately reuses the existing Edit-Info sheet (overrides —
+// they re-apply inside rebuildFigIndex, so they land on pack figures);
+// Share bakes those overrides into the exported pack.json. Owner intent:
+// modifying a pack should feel like editing anything else in the app.
+function renderPackEditSheet() {
+  const packId = S.editingPackId;
+  const pack = packId && getPacks()[packId];
+  if (!pack) return '<div class="text-sm text-dim">Pack not found.</div>';
+  const jP = jsArg(packId);
+  const field = (label, name, value, ph = '') => `
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">${label}</div>
+      <input type="text" value="${esc(value || '')}" placeholder="${esc(ph)}"
+        data-change-action="pack-edit-meta" data-pack-id="${esc(packId)}" data-field="${name}">
+    </div>`;
+
+  let h = `<div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
+    Structural edits to <strong style="color:var(--gold)">${esc(pack.name)}</strong> (v${pack.version}${pack._edited ? ' · edited' : ''}).
+    Figure details (year, group, price…) are edited from each figure's <strong>Edit Info</strong> — Share bakes everything into the file and bumps the version.
+  </div>`;
+
+  h += field('Pack / line name', 'name', pack.name);
+  h += field('Author', 'author', pack.author, 'shown on import');
+  h += `<div style="display:flex;gap:10px">
+    <div style="flex:1">${field('Years', 'yr', pack.line.yr, 'e.g. 2024–')}</div>
+    <div style="flex:1">${field('Maker', 'mfr', pack.line.mfr)}</div>
+    <div style="flex:1">${field('Scale', 'sc', pack.line.sc, 'e.g. 5.5\"')}</div>
+  </div>`;
+  h += field('Notes', 'notes', pack.notes, 'shown on import');
+
+  // Sublines — optional; a pack with none lists its figures flat.
+  h += `<div class="field-label text-dim text-sm" style="margin:16px 0 6px">Sublines <span style="opacity:.7">(optional — none = flat list)</span></div>`;
+  h += (pack.sublines || []).map(sb => `
+    <div class="reorder-item" style="margin-bottom:6px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:var(--t1)">${esc(sb.label)}</div>
+        <div class="text-sm text-dim" style="margin-top:1px">matches: ${esc((sb.groups || []).join(', '))}</div>
+      </div>
+      <button class="reorder-hide-btn" data-action="pack-edit-remove-subline" data-pack-id="${esc(packId)}" data-key="${esc(sb.key)}" aria-label="Remove subline ${esc(sb.label)}">Remove</button>
+    </div>`).join('');
+  h += `<button class="reorder-hide-btn" style="margin-bottom:16px" data-action="pack-edit-add-subline" data-pack-id="${esc(packId)}">+ Add subline</button>`;
+
+  // Figures
+  h += `<div class="field-label text-dim text-sm" style="margin:4px 0 6px">Figures (${pack.figures.length})</div>`;
+  h += pack.figures.map(f => `
+    <div class="reorder-item" style="margin-bottom:6px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:var(--t1)">${esc(f.name)}</div>
+        <div class="text-sm text-dim" style="margin-top:1px">${esc([f.group, f.year].filter(Boolean).join(' · ') || '—')}</div>
+      </div>
+      <button class="reorder-hide-btn" data-action="open-figure-editor" data-fig-id="${esc(f.id)}" aria-label="Edit ${esc(f.name)}">Edit Info</button>
+      <button class="reorder-hide-btn" data-action="pack-edit-remove-fig" data-pack-id="${esc(packId)}" data-fig-id="${esc(f.id)}" aria-label="Remove ${esc(f.name)} from pack">Remove</button>
+    </div>`).join('');
+  h += `<button class="reorder-hide-btn" data-action="pack-edit-add-fig" data-pack-id="${esc(packId)}">+ Add figure</button>`;
+  void jP;
+  return h;
+}
+
 window.openFigureEditor = figId => {
   // Save list scroll position before opening sheet so it's restored on close
   const ca = document.getElementById('contentArea');

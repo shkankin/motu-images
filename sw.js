@@ -3,6 +3,32 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.82 changelog:
+//   • CACHE bumped to v7.82. SHELL: data.js + render.js + ui-sheets.js +
+//     delegate-handlers.js. App v7.82 — pack bundles + in-app pack editing.
+//   • Share now exports a BUNDLE zip: pack.json + this device's photos
+//     for the pack's figures (photos/photo-<figId>-<n>.jpg) + a
+//     photos.json of labels/default assignments — the owner's beta
+//     direction: photos travel side by side with the json, no repo
+//     hosting. Import accepts .json OR bundle .zip through the same
+//     picker (detected by PK magic bytes, not extension). Bundle photos
+//     are non-clobber: only figures with NO photos receive them.
+//     parseZip reads our stored-entry zips and, when the platform has
+//     DecompressionStream, deflate entries from re-zipped bundles.
+//   • Edit Pack sheet (Community Packs → Edit): pack/line meta,
+//     sublines (add/remove; none = flat figure list), figure add (name
+//     prompt; details via the figure's normal Edit Info) and remove
+//     (orphan warning when a collection entry exists). Per-FIGURE
+//     editing deliberately reuses the existing overrides Edit-Info
+//     sheet — overrides re-apply inside rebuildFigIndex, so they land
+//     on pack figures — and Share BAKES those overrides
+//     (name/group/wave/year/retail/notes/upc; never line/faction,
+//     which stay device-local) into the exported pack.json.
+//   • Version discipline: edits mark the pack _edited; Share bumps the
+//     version once IF content actually changed since last export, and
+//     writes the baked snapshot back as the stored pack. Figure ids
+//     remain immutable through all of it.
+//
 // v7.81 changelog:
 //   • CACHE bumped to v7.81. SHELL: eggs.js + render.js + photos.js +
 //     delegate-handlers.js. App v7.81 — two owner-reported bug fixes.
@@ -1713,7 +1739,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.81';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.82';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

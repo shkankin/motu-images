@@ -456,6 +456,13 @@ registerAll({
   'pack-import': () => document.getElementById('packFileInput')?.click(),
   'pack-export': (e, el, d) => window.exportPack?.(d.packId),
   'pack-remove': (e, el, d) => window.removePack?.(d.packId),
+  // v7.82: Edit Pack sheet (pack-level structure; per-figure editing
+  // reuses open-figure-editor / the overrides sheet).
+  'pack-edit': (e, el, d) => window.openPackEdit?.(d.packId),
+  'pack-edit-add-subline': (e, el, d) => window.packAddSubline?.(d.packId),
+  'pack-edit-remove-subline': (e, el, d) => window.packRemoveSubline?.(d.packId, d.key),
+  'pack-edit-add-fig': (e, el, d) => window.packAddFigure?.(d.packId),
+  'pack-edit-remove-fig': (e, el, d) => window.packRemoveFigure?.(d.packId, d.figId),
 
   // Menu sheet actions
   'menu-manage-collections': () => {
@@ -632,7 +639,10 @@ registerAll({
   'handle-copy-photo': (e, el, d) => window.handleCopyPhoto?.(el, d.figId, d.copyId),
   'handle-import-file': (e, el) => window.handleImportFile?.(el),
   // v7.79: community line pack import (Manage Collections).
+  // v7.82: also accepts bundle zips (pack.json + photos).
   'handle-pack-file': (e, el) => window.handlePackFile?.(el),
+  // v7.82: Edit Pack meta fields (change-typed text inputs).
+  'pack-edit-meta': (e, el, d) => window.updatePackMeta?.(d.packId, d.field, el.value),
 
   // Batch edit selects
   'batch-set-status-field': (e, el) => { if (window.S.batchEdit) window.S.batchEdit.status    = el.value; },

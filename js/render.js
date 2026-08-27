@@ -524,7 +524,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.81</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.82</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1025,6 +1025,7 @@ function renderLinesGrid() {
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(pk.name)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">v${pk.version} · ${pk.figures.length} figures${pk.author ? ` · by ${esc(pk.author)}` : ''}</div>
         </div>
+        <button class="reorder-hide-btn" data-action="pack-edit" data-pack-id="${esc(pid)}" aria-label="Edit ${esc(pk.name)} pack">Edit</button>
         <button class="reorder-hide-btn" data-action="pack-export" data-pack-id="${esc(pid)}" aria-label="Export ${esc(pk.name)} pack">Share</button>
         <button class="reorder-hide-btn" data-action="pack-remove" data-pack-id="${esc(pid)}" aria-label="Remove ${esc(pk.name)} pack">Remove</button>
       </div>`;
@@ -1032,10 +1033,10 @@ function renderLinesGrid() {
     html += `<div class="reorder-item">
       <div style="flex:1;min-width:0">
         <div class="font-display" style="font-size:14px;color:var(--t1)">Import a pack</div>
-        <div class="text-sm text-dim" style="margin-top:2px">${packIds.length ? 'Add another community line from a .json pack file' : 'Add community-made lines from a .json pack file (shared on Discord)'}</div>
+        <div class="text-sm text-dim" style="margin-top:2px">${packIds.length ? 'Add another community line from a pack file or bundle' : 'Add community lines from a pack .json or bundle .zip (shared on Discord)'}</div>
       </div>
       <button class="reorder-hide-btn" data-action="pack-import" aria-label="Import a line pack file">Import</button>
-      <input type="file" id="packFileInput" accept="application/json,.json" style="display:none" data-change-action="handle-pack-file">
+      <input type="file" id="packFileInput" accept="application/json,.json,application/zip,.zip" style="display:none" data-change-action="handle-pack-file">
     </div>`;
     html += '</div>';
   } else {
