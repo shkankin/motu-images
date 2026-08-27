@@ -7327,6 +7327,19 @@
     "upc": "194735353989"
   },
   {
+    "id": "manual-king-hiss-mtc45arh",
+    "name": "King Hiss",
+    "sourceName": "King Hiss",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Snake Men",
+    "year": 2026,
+    "slug": "manual-king-hiss-mtc45arh",
+    "source": "manual"
+  },
+  {
     "id": "man-at-arms-idris-elba-13243",
     "name": "Man-At-Arms (Idris Elba)",
     "line": "chronicles",
