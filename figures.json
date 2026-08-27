@@ -7634,6 +7634,21 @@
     "source": "manual"
   },
   {
+    "id": "manual-masters-of-the-universe-evil-warriors-iqgur7mp",
+    "name": "Evil Warriors",
+    "sourceName": "Masters of the Universe: Evil Warriors",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Little People",
+    "sourceGroup": "Little People",
+    "wave": "",
+    "year": 2026,
+    "retail": 27,
+    "slug": "manual-masters-of-the-universe-evil-warriors-iqgur7mp",
+    "faction": "Evil Warriors",
+    "source": "manual"
+  },
+  {
     "id": "manual-evil-lyn-a9bee754",
     "name": "Evil-Lyn",
     "sourceName": "Evil-Lyn",
@@ -7712,6 +7727,21 @@
     "faction": "Heroic Warriors",
     "year": 2017,
     "slug": "manual-he-man-comic-mqxe8fli",
+    "source": "manual"
+  },
+  {
+    "id": "manual-masters-of-the-universe-he-man-battle-cat-2on60sr9",
+    "name": "He-Man & Battle Cat",
+    "sourceName": "Masters of the Universe: He-Man & Battle Cat",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Little People",
+    "sourceGroup": "Little People",
+    "wave": "",
+    "year": 2026,
+    "retail": 27,
+    "slug": "manual-masters-of-the-universe-he-man-battle-cat-2on60sr9",
+    "faction": "Heroic Warriors",
     "source": "manual"
   },
   {
@@ -7885,6 +7915,20 @@
     "slug": "manual-monster-high-skullector-skeletor-doll",
     "source": "manual",
     "retail": 70
+  },
+  {
+    "id": "manual-masters-of-the-universe-4-pack-3ou1dr3p",
+    "name": "MOTU 4-Pack",
+    "sourceName": "Masters of the Universe 4-Pack",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Little People",
+    "sourceGroup": "Little People",
+    "wave": "",
+    "year": 2020,
+    "slug": "manual-masters-of-the-universe-4-pack-3ou1dr3p",
+    "faction": "Other",
+    "source": "manual"
   },
   {
     "id": "manual-orko-677e76c3",
@@ -8171,6 +8215,20 @@
     "sourceLine": "origins",
     "sourceGroup": "",
     "upc": "194735179374"
+  },
+  {
+    "id": "manual-motu-skeletor-s-stronghold-gn3k2r3r",
+    "name": "Skeletor's Stronghold",
+    "sourceName": "MOTU: Skeletor's Stronghold",
+    "line": "cross-brand",
+    "sourceLine": "cross-brand",
+    "group": "Little People",
+    "sourceGroup": "Little People",
+    "wave": "",
+    "year": 2022,
+    "slug": "manual-motu-skeletor-s-stronghold-gn3k2r3r",
+    "faction": "Other",
+    "source": "manual"
   },
   {
     "id": "manual-sorceress-66e7a882",
