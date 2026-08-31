@@ -7337,7 +7337,9 @@
     "faction": "Snake Men",
     "year": 2026,
     "slug": "manual-king-hiss-mtc45arh",
-    "source": "manual"
+    "source": "manual",
+    "af411": 14257,
+    "af411_id": "king-hiss-14257"
   },
   {
     "id": "man-at-arms-idris-elba-13243",
