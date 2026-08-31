@@ -524,7 +524,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.83</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.85</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -619,8 +619,12 @@ function renderMain() {
   // Restore scroll — savedScroll from fig nav takes priority; else preserve across renders
   if (ca) {
     const maxScroll = Math.max(0, ca.scrollHeight - ca.clientHeight);
-    if (S.savedScroll && S.screen === 'main') {
-      ca.scrollTop = Math.min(S.savedScroll, maxScroll);
+    if ((S.savedScroll || S._lastDetailFigId) && S.screen === 'main') {
+      // v7.85: the highlight used to live behind `S.savedScroll &&`, but
+      // ui-sheets.js only records savedScroll when scrollTop > 0 — so
+      // returning to a list that was already at the top gave no highlight
+      // at all. _lastDetailFigId alone is enough to want one.
+      if (S.savedScroll) ca.scrollTop = Math.min(S.savedScroll, maxScroll);
       S.savedScroll = 0;
       // v6.40: after swiping through figures, scroll the list to the last
       // viewed figure and briefly highlight it so the user knows where they are.
@@ -628,7 +632,18 @@ function renderMain() {
         const figId = S._lastDetailFigId;
         S._lastDetailFigId = null;
         requestAnimationFrame(() => {
-          const figEl = ca.querySelector(`[data-fig-id="${CSS.escape(figId)}"]`);
+          // v7.85: a BARE [data-fig-id] selector matched .fig-row-wrap first
+          // (render.js ~1303 puts the id on the wrapper), and the wrapper has
+          // no background of its own while its .fig-row child is deliberately
+          // opaque. The old background-based flash therefore painted BEHIND
+          // the row and the only yellow that escaped was the wrapper's
+          // border-bottom strip — reported as "a yellow line underlines the
+          // figure". Target the actual card/row, and drive the flash off an
+          // inset box-shadow so an opaque child can never mask it again.
+          const figEl = ca.querySelector(`.fig-row[data-fig-id="${CSS.escape(figId)}"]`)
+                     || ca.querySelector(`.fig-card[data-fig-id="${CSS.escape(figId)}"]`)
+                     || ca.querySelector(`[data-fig-id="${CSS.escape(figId)}"]`)?.querySelector('.fig-row, .fig-card')
+                     || ca.querySelector(`[data-fig-id="${CSS.escape(figId)}"]`);
           if (!figEl) return;
           figEl.scrollIntoView({ block: 'nearest' });
           figEl.classList.add('fig-return-highlight');
@@ -769,8 +784,13 @@ function bindPTR() {
   let _ptrStart = 0, _ptrActive = false;
   // v5.00: pull-to-refresh is opt-in. On some devices (sensitive
   // touchscreens) it fires during normal upward scrolling, causing
-  // unwanted constant resyncs. fetchFigs already runs on page load and
-  // every visibilitychange, so PTR is redundant for most users.
+  // unwanted constant resyncs.
+  // v7.85 CORRECTION: this comment used to claim "fetchFigs already runs on
+  // page load and every visibilitychange, so PTR is redundant". Neither half
+  // is true. The boot fetch is TTL-gated (app.js: `if (needsFetch)`, 24h
+  // CACHE_TTL) and there is no visibilitychange→fetchFigs handler anywhere —
+  // the two visibilitychange listeners in data.js only flush pending writes.
+  // With PTR off, the header sync button is the ONLY manual refresh path.
   ca._ptrTouchStart = e => { if (ca.scrollTop <= 0) _ptrStart = e.touches[0].clientY; else _ptrStart = 0; };
   ca._ptrTouchEnd = e => {
     // v5.00: threshold raised 80→120px to reduce false fires on sensitive

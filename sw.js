@@ -3,6 +3,72 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.85 changelog:
+//   • CACHE bumped to v7.85. SHELL: state.js + data.js + app.js + eggs.js +
+//     render.js + stats.js + vault.css. Four owner-reported items.
+//   • AF411 DEEP LINKS REBUILT. openAF411 guessed the {series}/{group} URL
+//     segments from a hand-written AF411_GROUP_SLUG const covering 46 of 61
+//     line|group combos — 339 figures (222 AF411-sourced with valid ids)
+//     silently fell through to the index, and kids-core/custom hit a bare
+//     `return` so the button did nothing at all. Those segments are AF411's
+//     OWN taxonomy and cannot be derived from ours: every "Cartoon
+//     Collection" figure lives under origins/origins-action-figures, and
+//     chronicles is their mattel-chronicles. A live page confirms the
+//     canonical URL has no short form that omits the group, so the pair must
+//     come from AF411. sync_af411.py v1.10 now emits af411-paths.json from
+//     the hrefs it ALREADY parsed and threw away (~40 entries, a couple of
+//     KB — cheaper than ~30 bytes on 1,100+ figures, and figures.json must
+//     stay a flat array anyway). Tier 1 = that generated map, tier 2 = the
+//     legacy const kept ONLY as a bridge so nothing regresses before the
+//     first sync (do not extend it), tier 3 = the MOTU landing page, which
+//     is now the owner-specified fallback for manual/pack/custom figures.
+//     Fetched next to loadouts.json (optional, 404-tolerant) and cached in
+//     IDB so it works on an offline boot. `af411` (bare int) is gone —
+//     af411_id (the slug-num string) is the single field.
+//   • RETURN HIGHLIGHT FIXED (two defects). (a) A bare [data-fig-id]
+//     selector matched .fig-row-wrap first, and the wrapper has no
+//     background while its .fig-row child is deliberately opaque — the
+//     background-based flash painted BEHIND the row, so the only yellow
+//     that escaped was the wrapper's border strip: "a yellow line underlines
+//     the figure". Now targets .fig-row/.fig-card, and the flash is an inset
+//     box-shadow no child can mask. (b) It was gated on `S.savedScroll &&`,
+//     but ui-sheets.js only records savedScroll when scrollTop > 0, so
+//     returning to a list already at the top produced no highlight at all.
+//   • MILESTONES REMOVED (v7.42 → gone) at the owner's direction. The Stats
+//     trophy panel and the count-threshold celebrations are out; the owned
+//     figure count and celebrateCompletion (confetti + sound on completing a
+//     line or subline) are deliberately KEPT. Stored ms:<n> keys are left
+//     alone, just never read.
+//   • Discord sync notification now appends the AF411 id in a backtick code
+//     span (tap-to-copy) so it can be pasted into an existing manual entry.
+//   • render.js PTR comment corrected: it claimed fetchFigs runs on page load
+//     and every visibilitychange. Boot is TTL-gated and no such handler
+//     exists — with PTR off the header sync button is the only manual path.
+
+// v7.84 changelog:
+//   • CACHE bumped to v7.84. SHELL: motu-vault.html + data.js.
+//     PHOTO EXPORT HOTFIX — owner-reported, and a data-loss trap.
+//   • ROOT CAUSE: the v7.00 strict CSP lists blob: under img-src but NOT
+//     under connect-src. Photos live in OPFS as blob: object URLs (with a
+//     localStorage data: fallback), and every read-back path is fetch(url):
+//     photoStore.getAllAsBlobs (all photo/bundle/backup exports) and
+//     photoStore._readable (the reconcile scan). fetch() is policed by
+//     connect-src, not img-src — so photos DISPLAYED fine while every
+//     export silently produced zero and Scan branded every photo
+//     "indexed but unreadable". Prune then offered to delete the OPFS
+//     files of six perfectly intact photos. connect-src now allows
+//     blob: and data:.
+//   • The v7.73 report that prompted the reconcile tool ("export counted 1
+//     photo, ZIP said none found") was this same bug, misdiagnosed as
+//     storage corruption. reconcileIndex stays — it is still the right
+//     tool for genuinely zero-byte files — but it was reporting a false
+//     positive for EVERY photo on EVERY device.
+//   • exportPackBundle no longer records a photos.json `default` for a
+//     photo it did not actually write (that mismatch — defaults naming a
+//     photo with no photos/ dir in the zip — is what exposed the bug),
+//     and now counts indexed-but-unreadable photos and says so in the
+//     toast instead of reporting the reduced count as success.
+
 // v7.83 changelog:
 //   • CACHE bumped to v7.83. SHELL: state.js. App v7.83 — two new
 //     catalog sublines. NO app-logic change; SUBLINES is a const in
@@ -1759,7 +1825,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.83';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.85';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -1906,7 +1972,10 @@ self.addEventListener('fetch', e => {
   // and `caches.match` never finds a previous entry when offline (broken
   // fallback). Normalize to the bare URL so there's one entry, and
   // `match` actually works when the network is down.
-  if (url.pathname.endsWith('figures.json')) {
+  // v7.85: af411-paths.json gets the same network-first + normalized-key
+  // treatment as figures.json — the app cache-busts it with ?t=, and it must
+  // still resolve from cache offline so the AF411 button keeps working.
+  if (url.pathname.endsWith('figures.json') || url.pathname.endsWith('af411-paths.json')) {
     const cacheKey = url.origin + url.pathname;
     e.respondWith(
       fetch(e.request)

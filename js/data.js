@@ -22,7 +22,7 @@ const openSheet = (...a) => window.openSheet?.(...a);
 // imports only state.js + idb-store.js, so no import cycle.
 import { getCachedAskingPrice } from './pricing.js';
 import {
-  S, store, ICO, icon, IMG, FIGS_URL, LOADOUTS_URL, KIDS_CORE_KEY,
+  S, store, ICO, icon, IMG, FIGS_URL, LOADOUTS_URL, AF411_PATHS_URL, AF411_PATHS_CACHE_KEY, KIDS_CORE_KEY,
   CUSTOM_FIGS_KEY, PACKS_KEY, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL,
   LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES,
   STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX,
@@ -387,13 +387,26 @@ async function exportPackBundle(packId) {
   toast('Packaging…');
   const entries = [{ name: 'pack.json', blob: new Blob([JSON.stringify(baked, null, 2)], { type: 'application/json' }) }];
   const labels = {}, defaults = {};
+  // v7.84: `unreadable` counts photos that ARE indexed but whose bytes we
+  // could not read back. Previously this loop just skipped them and the
+  // toast cheerfully reported the reduced count, so a total failure looked
+  // like "you have no photos" (root cause was the connect-src CSP gap — see
+  // motu-vault.html). Silence here is what made that bug invisible.
+  let unreadable = 0;
   for (const f of baked.figures) {
+    const indexed = (S.customPhotos?.[f.id] || []).length;
     const shots = await photoStore.getAllAsBlobs(f.id);
+    unreadable += Math.max(0, indexed - shots.length);
     for (const sh of shots) {
       entries.push({ name: `photos/photo-${f.id}-${sh.n}.jpg`, blob: sh.blob });
       if (sh.label) (labels[f.id] = labels[f.id] || {})[sh.n] = sh.label;
     }
-    if (S.defaultPhoto?.[f.id] != null) defaults[f.id] = S.defaultPhoto[f.id];
+    // v7.84: only claim a default for a photo we ACTUALLY wrote. This used to
+    // be recorded straight off S.defaultPhoto regardless, so a bundle whose
+    // photo export failed still shipped a photos.json naming a default that
+    // wasn't in the zip — the breadcrumb that exposed the CSP bug.
+    const def = S.defaultPhoto?.[f.id];
+    if (def != null && shots.some(sh => sh.n === def)) defaults[f.id] = def;
   }
   if (Object.keys(labels).length || Object.keys(defaults).length) {
     entries.push({ name: 'photos.json', blob: new Blob([JSON.stringify({ labels, defaults })], { type: 'application/json' }) });
@@ -401,7 +414,9 @@ async function exportPackBundle(packId) {
   const zip = await buildZip(entries);
   _downloadBlobSafe(zip, `motu-pack-${baked.packId}-v${baked.version}-bundle.zip`);
   const nPhotos = entries.length - 1 - (entries.some(e => e.name === 'photos.json') ? 1 : 0);
-  toast(`✓ Bundle exported — pack + ${nPhotos} photo${nPhotos === 1 ? '' : 's'}`);
+  toast(unreadable
+    ? `⚠ Bundle exported — pack + ${nPhotos} photo${nPhotos === 1 ? '' : 's'} (${unreadable} could not be read)`
+    : `✓ Bundle exported — pack + ${nPhotos} photo${nPhotos === 1 ? '' : 's'}`);
 }
 
 // Import a bundle's photo entries. Non-clobber: only figures that have
@@ -682,11 +697,15 @@ async function fetchFigs(manual = false, firstLoad = false) {
       // Kids Core figures now live in figures.json with `line: 'kids-core'`,
       // managed by sync_af411.py like every other line. KIDS_CORE_KEY (local
       // admin entries) is still honored for back-compat — those merge in below.
-      const [res, ldRes] = await Promise.all([
+      const [res, ldRes, apRes] = await Promise.all([
         fetch(FIGS_URL + '?t=' + Date.now(), { signal: ctl.signal }),
         // Loadouts is optional; let it share the same abort signal so we don't
         // hold the figures fetch waiting on a stuck loadouts call.
         fetch(LOADOUTS_URL + '?t=' + Date.now(), { signal: ctl.signal }).catch(() => null),
+        // v7.85: af411-paths.json, same deal — optional, 404 is fine (it does
+        // not exist until sync_af411.py has run once). openAF411 degrades to
+        // the legacy map and then the landing page without it.
+        fetch(AF411_PATHS_URL + '?t=' + Date.now(), { signal: ctl.signal }).catch(() => null),
       ]);
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -697,6 +716,15 @@ async function fetchFigs(manual = false, firstLoad = false) {
       // Stored in S._repoLoadouts; merged with local override at read-time
       // by getLoadout(figId). Local entry beats repo entry for the same figId.
       // Schema: { version: 1, loadouts: { [figId]: ['Power Sword', ...] } }
+      if (apRes && apRes.ok) {
+        try {
+          const ap = await apRes.json();
+          if (ap && ap.paths && typeof ap.paths === 'object') {
+            S._af411Paths = ap.paths;
+            bigSet(AF411_PATHS_CACHE_KEY, ap.paths);
+          }
+        } catch {}
+      }
       if (ldRes && ldRes.ok) {
         try {
           const ld = await ldRes.json();

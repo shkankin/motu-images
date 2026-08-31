@@ -116,62 +116,21 @@ window.playTitleSound = playTitleSound;
 // § CELEBRATIONS ── checkCompletion, celebrateCompletion, spawnConfetti ──
 const _celebrated = store.get('motu-celebrated') || {};
 
-// v7.42: collection-size milestones. Competing trackers gamify nothing;
-// hobbyDB/CLZ have no equivalent. Crossing a threshold of owned figures
-// fires the existing celebration (confetti + horn + toast) once, and the
-// achievement date is recorded (Date.now(), not `true`, so the stats
-// sheet can show WHEN each was hit — legacy line/subline keys keep their
-// boolean `true` and are unaffected).
-// v7.43: 666 replaced with 600 — an, uh, unfortunate threshold choice that
-// looked much worse as someone's actual next unlock. Any hypothetical
-// stored ms:666 key is simply no longer displayed or counted.
-const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1250, 1500, 2000];
-
-function _ownedCount() {
-  let n = 0;
-  for (const [id, c] of Object.entries(S.coll)) {
-    if (c.status !== 'owned' && c.status !== 'for-sale') continue;
-    const f = figById(id);
-    if (f && !figIsHidden(f)) n++;
-  }
-  return n;
-}
-
-// Returns { n: timestamp|true } for every achieved milestone (true for any
-// that pre-date v7.42's date recording — none exist yet, but cheap safety).
-function getMilestoneDates() {
-  const out = {};
-  for (const n of MILESTONES) {
-    if (_celebrated['ms:' + n]) out[n] = _celebrated['ms:' + n];
-  }
-  return out;
-}
-
-// Fires at most ONE milestone per call (the highest newly-crossed), so a
-// bulk import that jumps 0→300 celebrates once, not seven times. The
-// skipped lower thresholds are still marked achieved (same timestamp) so
-// the stats list stays complete.
-function checkMilestones() {
-  const owned = _ownedCount();
-  let fired = null;
-  for (const n of MILESTONES) {
-    if (owned >= n && !_celebrated['ms:' + n]) {
-      _celebrated['ms:' + n] = Date.now();
-      fired = n;
-    }
-  }
-  if (fired) {
-    store.set('motu-celebrated', _celebrated);
-    celebrateCompletion(fired + ' figures in your collection!');   // v7.52 rebrand
-    return true;
-  }
-  return false;
-}
+// v7.85: collection-size milestones (v7.42) REMOVED at the owner's
+// direction — "doesn't benefit user and a useless metric". Gone: the
+// MILESTONES thresholds, _ownedCount, getMilestoneDates, checkMilestones,
+// and the Stats trophy panel that read them. Deliberately KEPT: the owned
+// figure COUNT in Stats, and celebrateCompletion (confetti + sound), which
+// still fires on completing a line or subline. Do not reintroduce
+// count-threshold rewards.
+//
+// Stored 'ms:<n>' keys in motu-celebrated are simply never read again. They
+// are left in place rather than migrated away: harmless, a few bytes, and
+// deleting user-scoped history to tidy up is not worth the risk.
 
 function checkCompletion(fig) {
-  // v7.42: milestone check first — at most one celebration per action, and
-  // "you just hit 100 figures" beats "wave complete" for surprise value.
-  if (checkMilestones()) return;
+  // v7.85: the milestone check that used to run first here is gone. Line and
+  // subline completion celebrations below are unchanged.
   // Check line completion
   const lineId = fig.line;
   const lineFigs = S.figs.filter(f => f.line === lineId && !figIsHidden(f));
@@ -423,40 +382,51 @@ function openExternal(url) {
 window.openAF411 = figId => {
   const fig = figById(figId);
   if (!fig) return;
-  // v7.67: a manual entry merged with its AF411 counterpart (sync v1.9
-  // claim) carries af411_id — the full AF411 slug-num id — so it can
-  // deep-link like a native AF411 figure instead of falling back to the
-  // group index.
-  if (fig.af411_id) {
-    const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + (fig.group || '')] || '';
-    if (groupSlug) {
-      openExternal(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.af411_id}.php`);
-      return;
-    }
-  }
-  // v4.95: previously gated on fig.source==='af411'. Now any non-Kids-Core,
-  // non-custom figure can use it — falls back to AF411's site search by name
-  // when we don't have a deep-link slug for the group.
-  if (fig.line === 'kids-core' || fig.line === 'custom') return;
-  const groupSlug = AF411_GROUP_SLUG[fig.line + '|' + fig.group];
-  // v4.98: previously gated on fig.source==='af411'. But many figures are
-  // actually AF411-sourced and just missing that field in figures.json.
-  // Tiered approach:
-  //  1. If we have a group slug AND fig.id matches AF411's <slug>-<NNNNN>
-  //     pattern (numeric suffix is their post ID), build the deep link.
-  //  2. Else if we have a group slug, open the group's index page (the
-  //     user can scroll/Ctrl+F to find their figure).
-  //  3. Else fall back to the all-figures index.
-  const af411IdPattern = /-\d{3,6}$/.test(fig.id);
-  if (groupSlug && af411IdPattern) {
-    openExternal(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/${fig.id}.php`);
+  const BASE = 'https://www.actionfigure411.com/masters-of-the-universe';
+  const LANDING = `${BASE}/all-action-figures.php`;
+
+  // v7.85: rewritten. AF411 deep links are
+  //   /masters-of-the-universe/{series}/{group}/{slug}.php
+  // and the {series}/{group} pair is AF411's OWN taxonomy — it does NOT
+  // track our line/subline names (all "Cartoon Collection" figures sit
+  // under origins/origins-action-figures; our `chronicles` is their
+  // `mattel-chronicles`). The old code guessed with AF411_GROUP_SLUG,
+  // which covered 46 of 61 line|group combos, so 339 figures — 222 of
+  // them AF411-sourced with perfectly deep-linkable ids — silently fell
+  // through to the index. The canonical URL has no short form that omits
+  // the group (verified against a live page), so the pair has to come
+  // from AF411 itself: sync_af411.py now emits af411-paths.json from the
+  // hrefs it already parses, and that is tier 1 below.
+  const key = fig.line + '|' + (fig.group || '');
+
+  // The figure's AF411 slug. af411_id (AF411's current slug-num) wins over
+  // our id when they differ — that is exactly what it records.
+  // v7.85: `af411` (bare int) is gone; af411_id is the single field.
+  const afSlug = fig.af411_id || fig.slug || fig.id;
+  const looksAF411 = /-\d{3,6}$/.test(String(afSlug));
+
+  // Tier 1 — generated map. Accurate and self-healing.
+  const genPath = S._af411Paths?.[key];
+  if (genPath && looksAF411) {
+    openExternal(`${BASE}/${genPath}/${afSlug}.php`);
     return;
   }
-  if (groupSlug) {
-    openExternal(`https://www.actionfigure411.com/masters-of-the-universe/${fig.line}/${groupSlug}/`);
+
+  // Tier 2 — the legacy hand-written map. Kept ONLY as a bridge: it is
+  // still correct for the combos it covers, so behaviour never regresses
+  // on a device that hasn't fetched af411-paths.json yet. Do not extend
+  // it; add nothing here. The sync owns this mapping now.
+  const legacy = AF411_GROUP_SLUG[key];
+  if (legacy && looksAF411) {
+    openExternal(`${BASE}/${fig.line}/${legacy}/${afSlug}.php`);
     return;
   }
-  openExternal('https://www.actionfigure411.com/masters-of-the-universe/all-action-figures.php');
+
+  // Tier 3 — the MOTU landing page. This is the owner-specified fallback
+  // for manual entries, pack figures, customs and anything with no link
+  // back to AF411. v7.85: kids-core and custom used to hit a bare
+  // `return` here, so the button did nothing at all — a dead control.
+  openExternal(LANDING);
 };
 
 // v4.91: Breadcrumb-specific handlers. Previously "Lines" used goBack() and
@@ -702,5 +672,5 @@ window.imgErr = (id, src) => { if (src) S.imgErrors[src] = true; else if (id) S.
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  SND, getAudioContext, loadAudioBuffer, preloadSound, preloadImage, playSound, getThemeSounds, getThemeIcon, playTitleSound, checkCompletion, celebrateCompletion, spawnConfetti, AF411_GROUP_SLUG, MILESTONES, getMilestoneDates
+  SND, getAudioContext, loadAudioBuffer, preloadSound, preloadImage, playSound, getThemeSounds, getThemeIcon, playTitleSound, checkCompletion, celebrateCompletion, spawnConfetti, AF411_GROUP_SLUG
 };

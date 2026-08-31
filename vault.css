@@ -3529,8 +3529,20 @@ html {
 #app.rubber-band-right { animation: rubberBandRight 0.35s cubic-bezier(0.36,0.07,0.19,0.97); }
 
 /* Return-highlight: brief flash on the fig card after exiting detail */
-@keyframes figReturnFlash { 0%{background:transparent} 20%{background:var(--acc-dim, rgba(255,200,50,0.22))} 70%{background:var(--acc-dim, rgba(255,200,50,0.12))} 100%{background:transparent} }
+/* v7.85: was `background`, which an opaque child (.fig-row-wrap > .fig-row
+   sets background:var(--bg) so the swipe panel can't show through) painted
+   straight over — the flash only escaped at the wrapper's border strip and
+   read as a yellow underline. An inset box-shadow paints on the element
+   itself and cannot be masked by a child, so the same flash now works on
+   both the list row and the grid card. */
+@keyframes figReturnFlash {
+  0%   { box-shadow: inset 0 0 0 9999px transparent; }
+  20%  { box-shadow: inset 0 0 0 9999px var(--acc-dim, rgba(255,200,50,0.22)); }
+  70%  { box-shadow: inset 0 0 0 9999px var(--acc-dim, rgba(255,200,50,0.12)); }
+  100% { box-shadow: inset 0 0 0 9999px transparent; }
+}
 .fig-return-highlight { animation: figReturnFlash 1.4s ease-out 0.15s both; }
+@media (prefers-reduced-motion: reduce) { .fig-return-highlight { animation: none; } }
 
 @media (prefers-reduced-motion: reduce) {
   #app.slide-out-left, #app.slide-out-right,

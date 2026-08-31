@@ -9,7 +9,7 @@
 // Side-effect imports (order matters — state.js is the leaf, others
 // build on it; render.js exposes window.render which data.js + photos.js
 // call lazily to break circular refs).
-import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, CACHE_TTL, IMG, SUBLINES } from './state.js';
+import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, AF411_PATHS_CACHE_KEY, CACHE_TTL, IMG, SUBLINES } from './state.js';
 // v7.51: bigSet added — the boot journal-recovery path called it WITHOUT
 // importing it, a ReferenceError swallowed by the surrounding try{}catch{}.
 // Net effect: a recovered journal was applied in-memory but never written
@@ -119,6 +119,7 @@ async function init() {
   // falls back to localStorage if IndexedDB is unavailable. After it resolves,
   // bigGet()/bigSet() are synchronous, so the rest of boot is unchanged.
   await idbHydrate(['motu-c2', CACHE_KEY, LOADOUTS_CACHE_KEY,
+                    AF411_PATHS_CACHE_KEY,   // v7.85: generated AF411 deep-link paths
                     // v7.44: pricing cache + history moved to IDB (see
                     // pricing.js _loadCache note — silent localStorage
                     // quota failures were wiping bulk-fetched prices).
@@ -220,6 +221,10 @@ async function init() {
     // v6.24: restore loadouts so complete badges render correctly before fetch
     // v6.33: cache shape is now {loadouts, customAccessories} but legacy entries
     // are a plain {[figId]: [...]} object — detect and migrate inline.
+    // v7.85: restore the generated AF411 deep-link paths so the AF411 button
+    // works on a cached (offline / pre-fetch) boot, not just after a sync.
+    const cachedAF411Paths = bigGet(AF411_PATHS_CACHE_KEY);
+    if (cachedAF411Paths && typeof cachedAF411Paths === 'object') S._af411Paths = cachedAF411Paths;
     const cachedLoadouts = bigGet(LOADOUTS_CACHE_KEY);
     if (cachedLoadouts && typeof cachedLoadouts === 'object') {
       if (cachedLoadouts.loadouts && typeof cachedLoadouts.loadouts === 'object') {

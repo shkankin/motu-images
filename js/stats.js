@@ -19,7 +19,6 @@ import {
   getCachedAskingPrice, isPricingConfigured, fetchPricing,
 } from './pricing.js';
 import { toast } from './render.js';
-import { MILESTONES, getMilestoneDates } from './eggs.js';
 
 // ── v7.42: Vault Worth history ──────────────────────────────────────
 // hobbyDB's flagship (paywalled) feature is "track your collection's value
@@ -453,45 +452,11 @@ function renderStatsSheet() {
     }
   }
 
-  // ── v7.42: Milestones ─────────────────────────────────────────────
-  // Achieved collection-size thresholds (with dates) + progress toward the
-  // next one. Data lives in the same motu-celebrated store the line/subline
-  // trophies use; MILESTONES/getMilestoneDates come from eggs.js, which
-  // owns the celebration itself.
-  {
-    const dates = getMilestoneDates();
-    const achieved = MILESTONES.filter(n => dates[n]);
-    const ownedNow = stats.owned + stats.sale;
-    const next = MILESTONES.find(n => n > (achieved[achieved.length - 1] || 0) && n > ownedNow) ||
-                 MILESTONES.find(n => n > ownedNow);
-    if (achieved.length || (next && ownedNow > 0)) {
-      html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
-        <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Milestones</div>`;
-      if (achieved.length) {
-        html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">` +
-          achieved.map(n => {
-            const d = dates[n];
-            const when = (typeof d === 'number')
-              ? new Date(d).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '';
-            return `<div style="display:flex;flex-direction:column;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);background:color-mix(in srgb,var(--gold) 8%,transparent)" title="${n} figures${when ? ' · ' + when : ''}">
-              <span style="font-family:'Cinzel',serif;font-weight:700;font-size:15px;color:var(--gold)">🏆 ${n}</span>
-              ${when ? `<span style="font-size:9px;color:var(--t3)">${when}</span>` : ''}
-            </div>`;
-          }).join('') + `</div>`;
-      }
-      if (next && ownedNow > 0) {
-        const prevBase = achieved[achieved.length - 1] || 0;
-        const pctNext = Math.min(100, Math.round(((ownedNow - prevBase) / (next - prevBase)) * 100));
-        html += `<div style="display:flex;align-items:center;gap:10px;padding:2px 0">
-          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${pctNext}%;background:var(--gold);border-radius:3px"></div>
-          </div>
-          <div style="font-size:12px;color:var(--t2);flex-shrink:0">${ownedNow} / <span style="color:var(--gold);font-weight:700">${next}</span></div>
-        </div>
-        <div style="font-size:11px;color:var(--t3);margin-top:4px">${next - ownedNow} more to the next milestone</div>`;
-      }
-    }
-  }
+  // v7.85: the v7.42 Milestones panel (trophy chips + "N more to the next
+  // milestone" progress bar) was REMOVED at the owner's direction — the
+  // collection-size thresholds were judged a useless metric. The owned
+  // figure count above is untouched, and line/subline completion
+  // celebrations still fire from eggs.js checkCompletion.
 
   // v6.83: Data Completeness — surfaces owned figures missing priority fields
   // (condition, acquired, paid, location) and offers a one-tap gap-CSV export
