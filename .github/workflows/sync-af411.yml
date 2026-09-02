@@ -175,11 +175,18 @@ jobs:
             echo "No new pending figures — skipping notification"
             exit 0
           fi
+          # v1.9: append the AF411 id in a backtick code span. Discord renders
+          # that as tap-to-copy, so the owner can paste it straight into a
+          # manual figure they already added instead of digging it out of the
+          # URL. Falls back to .id, which IS the slug-num, for older summaries.
           NAMES=$(jq -r '
             .new_pending
             | (if length > 10 then .[0:10] else . end)
             | map(
-                "• " + .name + (if .line and .line != "" then " (" + .line + ")" else "" end)
+                "• " + .name
+                + (if .line and .line != "" then " (" + .line + ")" else "" end)
+                + ((.af411_id // .id) as $a
+                   | if $a and $a != "" then "  `" + ($a|tostring) + "`" else "" end)
               )
             | join("\n")
           ' "$SUMMARY")

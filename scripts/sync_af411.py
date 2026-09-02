@@ -1148,6 +1148,38 @@ def main():
         print(f"\n  ▸ Open figures-editor.html to review {len(new_for_pending)} new figure(s)")
     print(f"{'═' * 60}\n")
 
+    # ── v1.10: af411-paths.json ────────────────────────────────────────
+    # The app deep-links a figure as
+    #   /masters-of-the-universe/{series}/{group}/{slug}.php
+    # It has {slug} (the figure id) but NOT {series}/{group}. Those are
+    # AF411's OWN taxonomy and do NOT match our line/subline names — every
+    # "Cartoon Collection" figure lives under origins/origins-action-figures,
+    # and our series ids differ too (chronicles → mattel-chronicles). The app
+    # used to guess via a hand-written AF411_GROUP_SLUG const, which covered
+    # 46 of 61 line|group combos and left 339 figures with no working link.
+    #
+    # The scraper has always parsed the real href (af411_url) to pull the id
+    # out of it and then discarded the rest. We now keep the two path
+    # segments and emit them as a tiny generated map — ~40 entries, a couple
+    # of KB — instead of ~30 bytes on every one of 1,100+ figures. It is
+    # regenerated every run, so an AF411 reorganization self-heals.
+    if args.commit and not args.line:
+        paths = {}
+        for s_ in all_scraped:
+            href = s_.get("af411_url") or ""
+            m = re.search(r'/masters-of-the-universe/([a-z0-9-]+)/([a-z0-9-]+)/[a-z0-9-]+-\d+\.php$', href)
+            if not m:
+                continue
+            key = f'{s_["line"]}|{s_.get("group") or ""}'
+            paths.setdefault(key, f"{m.group(1)}/{m.group(2)}")
+        if paths:
+            atomic_write_text(
+                REPO_ROOT / "af411-paths.json",
+                json.dumps({"version": 1, "paths": dict(sorted(paths.items()))},
+                           indent=2, ensure_ascii=False) + "\n",
+            )
+            print(f"  ✓ af411-paths.json — {len(paths)} line|group deep-link paths")
+
     # v1.5: write a sync summary for the GitHub Actions workflow to read.
     # Used to post a Discord notification when new pending figures land.
     # Path is fixed and machine-readable; never committed (in .gitignore /
@@ -1163,6 +1195,10 @@ def main():
                     "id": fid,
                     "name": s.get("name") or fid,
                     "line": s.get("line") or "",
+                    # v1.10: fid IS AF411's slug-num id. Surfaced in the
+                    # Discord embed as a code span so the owner can paste it
+                    # straight into a manual entry they already added.
+                    "af411_id": fid,
                 })
             summary_path.write_text(json.dumps({
                 "new_pending_count": len(new_for_pending),
