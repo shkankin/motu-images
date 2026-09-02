@@ -530,6 +530,8 @@ const PATH_MAP = {
   'route.js':                 'js/route.js',         // v1.16: desktop router (external for CSP)
   'identify.js':              'js/identify.js',      // v1.20: Identify-by-Photo module (app v7.76)
   'identify-worker.js':       'workers/identify-worker.js', // v1.20: identify CF worker source (versioned in repo; deployed on Cloudflare, not Pages)
+  'art-preview.html':         'art-preview.html',    // v1.21: live page (referenced by sw.js, render.js, ui-sheets.js) that had NO deploy route until scripts/check_deployable.mjs found it
+  'check_deployable.mjs':     'scripts/check_deployable.mjs', // v1.21: deployability gate (v7.85 post-mortem)
 };
 
 // ── State ──────────────────────────────────────────────────────────
