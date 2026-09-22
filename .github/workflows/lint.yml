@@ -34,6 +34,13 @@ jobs:
 
       - name: Lint inline handlers & data-actions
         run: node scripts/lint_handlers.mjs js
+
+      # v7.86: deployability gate. Every harness here runs against the working
+      # tree, so a change can pass every check and still have no route to
+      # production — which is exactly how v7.85's sync half was left behind.
+      # This asserts every tracked file has a deploy.html PATH_MAP entry.
+      - name: Deployability
+        run: node scripts/check_deployable.mjs
       # v7.51: no-undef gate. Two shipped bugs (Edit-sheet sourceName crash,
       # insurance report's unimported getCachedAskingPrice) plus two more
       # found on its first run (app.js bigSet in journal recovery, render.js

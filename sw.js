@@ -3,6 +3,40 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.86 changelog:
+//   • CACHE bumped to v7.86. SHELL: sw.js + render.js. Two owner-reported
+//     offline/performance faults, both in the service worker.
+//   • IMAGE CACHING HAS BEEN BROKEN SINCE v7.09. That release added
+//     `if (res.ok)` before the IMG_CACHE put, to stop 404s being cached
+//     forever — right intent, but figure images live on
+//     raw.githubusercontent.com and <img> carries no crossorigin attribute,
+//     so these are no-cors requests whose responses are OPAQUE: status 0,
+//     ok === false. Every image failed that gate and NOTHING was written to
+//     IMG_CACHE for seventeen versions. Only images cached before v7.09
+//     survived, which is exactly why a weak connection showed some figures
+//     and not others. The SW now re-issues the image as an explicit CORS
+//     request: raw.githubusercontent.com sends access-control-allow-origin:*
+//     on both 200 and 404 (verified), so the status is readable — caching
+//     works again AND v7.09's 404 protection is kept. An opaque response
+//     could never give both. If the cors attempt fails, we fall back to the
+//     plain request and serve it uncached.
+//   • SLOW COLD START ON A WEAK CONNECTION. The navigation handler and the
+//     catch-all asset handler were both a bare fetch().catch(cache), so the
+//     cache was only reached after the network FAILED OUTRIGHT — not after a
+//     reasonable wait. The whole shell (html + ~15 modules + css) therefore
+//     sat on its own round-trip before anything rendered. New
+//     networkFirstWithDeadline() races the network against NET_TIMEOUT
+//     (2500ms): fast network is unchanged; slow network with a cached copy
+//     serves cache at the deadline and finishes the fetch in waitUntil so
+//     the cache is fresh next launch; slow network with no cached copy keeps
+//     waiting, there being nothing else to serve. The v6.16 intent (app code
+//     updates without a CACHE bump) is preserved — on a bad connection it
+//     simply lands one launch later.
+//   • Repo hygiene: js/pricing-worker.js deleted — a 14KB orphan differing
+//     from the 35KB backend/pricing-worker.js and referenced nowhere (every
+//     hit was backend/, wrangler.toml's relative main, or the file itself).
+//     scripts/check_deployable.mjs is now wired into lint.yml; it exits 0.
+
 // v7.85 changelog:
 //   • CACHE bumped to v7.85. SHELL: state.js + data.js + app.js + eggs.js +
 //     render.js + stats.js + vault.css. Four owner-reported items.
@@ -1825,7 +1859,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.85';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.86';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -1834,6 +1868,45 @@ const CACHE = 'motu-vault-v7.85';   // cache PREFIX stays motu-vault (internal i
 // (content-addressed by slug on raw.githubusercontent.com), so they never
 // need eviction on app updates. Keeping them here makes them survive bumps.
 const IMG_CACHE = 'motu-vault-images';
+
+// v7.86: network-first WITH A DEADLINE. Both the navigation handler and the
+// catch-all asset handler used to be a bare fetch().catch(cache), so the
+// cache was only ever reached after the network FAILED outright. On a weak
+// connection that meant the whole shell — html + ~15 JS modules + css —
+// each sat waiting on its own round-trip before anything rendered, which is
+// the "long delay opening the app, like it's doing something on the
+// internet" the owner reported. It was: it was doing ~15 of them, serially
+// blocked on the slowest.
+//
+// Now the network races a deadline. Fast network → fresh bytes, cache
+// updated, unchanged behaviour. Slow network with a cached copy → serve the
+// cache at NET_TIMEOUT and let the fetch finish in the background so the
+// cache is fresh for next launch (the v6.16 "updates arrive without a CACHE
+// bump" intent is preserved, just one launch later on a bad connection).
+// Slow network with NO cached copy → keep waiting, since there is nothing
+// else to serve.
+const NET_TIMEOUT = 2500;
+function networkFirstWithDeadline(e, cacheName) {
+  const req = e.request;
+  const net = fetch(req, { cache: 'reload' }).then(res => {
+    if (res.ok && req.method === 'GET') {
+      const clone = res.clone();
+      caches.open(cacheName).then(c => c.put(req, clone)).catch(() => {});
+    }
+    return res;
+  });
+  return caches.match(req).then(cached => {
+    if (!cached) return net.catch(() => caches.match(req));
+    return new Promise(resolve => {
+      let settled = false;
+      const done = v => { if (!settled) { settled = true; resolve(v); } };
+      const timer = setTimeout(() => { e.waitUntil(net.catch(() => {})); done(cached); }, NET_TIMEOUT);
+      net.then(res => { clearTimeout(timer); done(res); })
+         .catch(() => { clearTimeout(timer); done(cached); });
+    });
+  });
+}
+
 
 // ─── Image freshness (v6.98) ──────────────────────────────────────────
 // Images are cached cache-first in the unversioned IMG_CACHE so they survive
@@ -2006,17 +2079,32 @@ self.addEventListener('fetch', e => {
           }));
           return cached;
         }
-        return fetch(e.request).then(res => {
-          // v7.09: only cache successful responses. A 404/5xx (e.g. a
-          // mis-pathed sound, or a transient network blip) was previously
-          // cached and then served from cache indefinitely. Every other
-          // handler in this file already gates its put on res.ok.
+        // v7.86 CRITICAL FIX. v7.09 added `if (res.ok)` here to stop 404s
+        // being cached forever. Correct intent, but it silently disabled
+        // image caching ENTIRELY: images live on raw.githubusercontent.com
+        // and <img> has no crossorigin attribute, so these are no-cors
+        // requests whose responses are OPAQUE — status 0, ok === false,
+        // body unreadable. Every figure image therefore failed that gate
+        // and was never written to IMG_CACHE. Only images cached BEFORE
+        // v7.09 survived, which is why a poor connection showed some
+        // figures and not others. Owner-reported v7.85.
+        //
+        // Re-issuing as an explicit CORS request is what makes this
+        // fixable rather than a trade-off: raw.githubusercontent.com sends
+        // `access-control-allow-origin: *` on BOTH 200 and 404, so a cors
+        // fetch gives us a real, readable status — caching works again AND
+        // v7.09's 404 protection is kept. An opaque response could never
+        // give us both. If the cors attempt fails (headers withdrawn, odd
+        // proxy), fall back to the plain request and serve it WITHOUT
+        // caching, which is exactly the v7.09-era behaviour.
+        const corsReq = new Request(e.request.url, { mode: 'cors', credentials: 'omit' });
+        return fetch(corsReq).then(res => {
           if (res.ok) {
             const clone = res.clone();
             e.waitUntil(caches.open(IMG_CACHE).then(c => c.put(e.request, clone)).then(() => _imgTsSet(e.request.url)));
           }
           return res;
-        });
+        }).catch(() => fetch(e.request));
       })
     );
     return;
@@ -2031,15 +2119,7 @@ self.addEventListener('fetch', e => {
   // a PWA installed on-device this is negligible, and the cache still
   // provides full offline support when the network is unavailable.
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
-    e.respondWith(
-      fetch(e.request, { cache: 'reload' }).then(res => {
-        if (res.ok) {
-          const cacheClone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, cacheClone));
-        }
-        return res;
-      }).catch(() => caches.match(e.request))
-    );
+    e.respondWith(networkFirstWithDeadline(e, CACHE));
     return;
   }
 
@@ -2050,15 +2130,5 @@ self.addEventListener('fetch', e => {
   // Trade-off: one network round-trip per asset when online; for a small
   // app this is invisible, and it eliminates the "bump CACHE every patch"
   // tax that was making iteration painful.
-  e.respondWith(
-    fetch(e.request, { cache: 'reload' })
-      .then(res => {
-        if (res.ok && e.request.method === 'GET' && url.origin === location.origin) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      })
-      .catch(() => caches.match(e.request))
-  );
+  e.respondWith(networkFirstWithDeadline(e, CACHE));
 });
