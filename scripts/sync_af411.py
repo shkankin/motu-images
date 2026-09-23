@@ -1017,6 +1017,66 @@ def main():
     # do. A claim merge that filled/refreshed fields on a manual entry must
     # reach the write below even when it added nothing to any queue —
     # that is the ordinary claim path, not an edge case.
+    # v1.15 PLACEMENT FIX — this block MUST stay ABOVE the "Everything is in
+    # sync" early return below. af411-paths.json is derived from the SCRAPE,
+    # not from the diff, so it has to be rewritten on every full commit run
+    # even when no figure changed. It was originally placed AFTER that return,
+    # so it only regenerated on runs that happened to have catalog work to do.
+    # The 05:49 run on 2026-09-23 had claim merges and wrote the file; every
+    # quiet run after it returned at "Everything is in sync!" and skipped the
+    # block entirely — so the v1.14 coverage fix looked inert across several
+    # green 30-second runs. Do NOT move this back below the return.
+    # ── v1.10: af411-paths.json ────────────────────────────────────────
+    # The app deep-links a figure as
+    #   /masters-of-the-universe/{series}/{group}/{slug}.php
+    # It has {slug} (the figure id) but NOT {series}/{group}. Those are
+    # AF411's OWN taxonomy and do NOT match our line/subline names — every
+    # "Cartoon Collection" figure lives under origins/origins-action-figures,
+    # and our series ids differ too (chronicles → mattel-chronicles). The app
+    # used to guess via a hand-written AF411_GROUP_SLUG const, which covered
+    # 46 of 61 line|group combos and left 339 figures with no working link.
+    #
+    # The scraper has always parsed the real href (af411_url) to pull the id
+    # out of it and then discarded the rest. We now keep the two path
+    # segments and emit them as a tiny generated map — ~40 entries, a couple
+    # of KB — instead of ~30 bytes on every one of 1,100+ figures. It is
+    # regenerated every run, so an AF411 reorganization self-heals.
+    if args.commit and not args.line:
+        # v1.14 COVERAGE FIX. The first version keyed this map by the SCRAPED
+        # line|group — i.e. AF411's own group headers. But openAF411 looks up
+        # `fig.line + '|' + fig.group`, which is the OWNER's taxonomy, and the
+        # two only coincide by accident (200x|Action Figures matches;
+        # origins|Origins Action Figures vs our origins|Action Figures does
+        # not). Result: the first generated file covered 43% of the catalog
+        # and missed the largest groups outright — the exact 339-figure gap
+        # this file exists to close. sourceGroup does not bridge it either
+        # (tested: 44%), because it is mostly empty or a copy of group.
+        #
+        # So emit BOTH keys for every figure: the scraped one AND the one the
+        # catalog actually uses, resolved per-figure through existing_by_id.
+        # They point at the same path, the map stays a few KB, and a lookup
+        # from either taxonomy hits.
+        paths = {}
+        for s_ in all_scraped:
+            href = s_.get("af411_url") or ""
+            m = re.search(r'/masters-of-the-universe/([a-z0-9-]+)/([a-z0-9-]+)/[a-z0-9-]+-\d+\.php$', href)
+            if not m:
+                continue
+            path_val = f"{m.group(1)}/{m.group(2)}"
+            keys = {f'{s_["line"]}|{s_.get("group") or ""}'}
+            cur = existing_by_id.get(s_["id"])
+            if cur:
+                keys.add(f'{cur.get("line") or s_["line"]}|{cur.get("group") or ""}')
+            for key in keys:
+                paths.setdefault(key, path_val)
+        if paths:
+            atomic_write_text(
+                REPO_ROOT / "af411-paths.json",
+                json.dumps({"version": 1, "paths": dict(sorted(paths.items()))},
+                           indent=2, ensure_ascii=False) + "\n",
+            )
+            print(f"  ✓ af411-paths.json — {len(paths)} line|group deep-link paths")
+
     if not new_for_pending and not new_for_existing and not updated and not pending_refresh \
        and not upc_pending and not claim_resolved_pending and not claim_changed:
         print("  ✓ Everything is in sync!\n")
@@ -1148,56 +1208,6 @@ def main():
         print(f"\n  ▸ Open figures-editor.html to review {len(new_for_pending)} new figure(s)")
     print(f"{'═' * 60}\n")
 
-    # ── v1.10: af411-paths.json ────────────────────────────────────────
-    # The app deep-links a figure as
-    #   /masters-of-the-universe/{series}/{group}/{slug}.php
-    # It has {slug} (the figure id) but NOT {series}/{group}. Those are
-    # AF411's OWN taxonomy and do NOT match our line/subline names — every
-    # "Cartoon Collection" figure lives under origins/origins-action-figures,
-    # and our series ids differ too (chronicles → mattel-chronicles). The app
-    # used to guess via a hand-written AF411_GROUP_SLUG const, which covered
-    # 46 of 61 line|group combos and left 339 figures with no working link.
-    #
-    # The scraper has always parsed the real href (af411_url) to pull the id
-    # out of it and then discarded the rest. We now keep the two path
-    # segments and emit them as a tiny generated map — ~40 entries, a couple
-    # of KB — instead of ~30 bytes on every one of 1,100+ figures. It is
-    # regenerated every run, so an AF411 reorganization self-heals.
-    if args.commit and not args.line:
-        # v1.14 COVERAGE FIX. The first version keyed this map by the SCRAPED
-        # line|group — i.e. AF411's own group headers. But openAF411 looks up
-        # `fig.line + '|' + fig.group`, which is the OWNER's taxonomy, and the
-        # two only coincide by accident (200x|Action Figures matches;
-        # origins|Origins Action Figures vs our origins|Action Figures does
-        # not). Result: the first generated file covered 43% of the catalog
-        # and missed the largest groups outright — the exact 339-figure gap
-        # this file exists to close. sourceGroup does not bridge it either
-        # (tested: 44%), because it is mostly empty or a copy of group.
-        #
-        # So emit BOTH keys for every figure: the scraped one AND the one the
-        # catalog actually uses, resolved per-figure through existing_by_id.
-        # They point at the same path, the map stays a few KB, and a lookup
-        # from either taxonomy hits.
-        paths = {}
-        for s_ in all_scraped:
-            href = s_.get("af411_url") or ""
-            m = re.search(r'/masters-of-the-universe/([a-z0-9-]+)/([a-z0-9-]+)/[a-z0-9-]+-\d+\.php$', href)
-            if not m:
-                continue
-            path_val = f"{m.group(1)}/{m.group(2)}"
-            keys = {f'{s_["line"]}|{s_.get("group") or ""}'}
-            cur = existing_by_id.get(s_["id"])
-            if cur:
-                keys.add(f'{cur.get("line") or s_["line"]}|{cur.get("group") or ""}')
-            for key in keys:
-                paths.setdefault(key, path_val)
-        if paths:
-            atomic_write_text(
-                REPO_ROOT / "af411-paths.json",
-                json.dumps({"version": 1, "paths": dict(sorted(paths.items()))},
-                           indent=2, ensure_ascii=False) + "\n",
-            )
-            print(f"  ✓ af411-paths.json — {len(paths)} line|group deep-link paths")
 
     # v1.5: write a sync summary for the GitHub Actions workflow to read.
     # Used to post a Discord notification when new pending figures land.
