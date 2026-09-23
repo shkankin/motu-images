@@ -140,6 +140,19 @@ def main():
           f" {100 - int(after * 100 / before) if before else 0}%)")
     if not write:
         print("\n  DRY RUN — nothing written. Re-run with --commit to apply.")
+
+    # v1.1: publish the count so the workflow's commit step can tell the
+    # difference between "nothing needed doing" and "we rewrote 235 files and
+    # the commit step staged none of them" — which is exactly what happened on
+    # the first real run (a non-matching `images/*.jpeg` pathspec aborted the
+    # whole `git add`, and `2>/dev/null || true` hid the fatal error).
+    gh_out = os.environ.get("GITHUB_OUTPUT")
+    if gh_out:
+        try:
+            with open(gh_out, "a") as fh:
+                fh.write(f"rewritten={changed if write else 0}\n")
+        except Exception:
+            pass
     return 0
 
 

@@ -49,6 +49,7 @@ jobs:
         run: pip install --quiet pillow
 
       - name: Run optimizer
+        id: opt
         # Inputs go through env: rather than ${{ }} interpolation into the
         # script body — same script-injection hardening as the sync workflow
         # (its v1.8 audit fix). max_edge/quality are free-form strings.
@@ -72,14 +73,33 @@ jobs:
           "$@"
 
       - name: Commit optimized images
+        env:
+          REWRITTEN: ${{ steps.opt.outputs.rewritten }}
         run: |
           cd "$GITHUB_WORKSPACE"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Explicit paths only — never `git add -A`. The sync workflow relies
           # on the same discipline to keep __pycache__ and the run summary out.
-          git add "images/*.jpg" "images/*.jpeg" 2>/dev/null || true
-          if git diff --cached --quiet; then
+          #
+          # v1.1: ONE PATHSPEC PER COMMAND. `git add "images/*.jpg" "images/*.jpeg"`
+          # exits 128 and stages NOTHING when either glob matches no files — and
+          # this repo has no .jpeg at all. On the first real run that aborted the
+          # whole add, `2>/dev/null || true` swallowed the fatal error, and the
+          # step cheerfully reported "No image changes to commit" after the
+          # optimizer had just rewritten 235 files.
+          for spec in "images/*.jpg" "images/*.jpeg"; do
+            git add "$spec" || echo "  (no files matched $spec — fine)"
+          done
+          STAGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
+          echo "  staged: $STAGED file(s)"
+          if [ "$STAGED" -eq 0 ]; then
+            # Distinguish "nothing to do" from "the add silently failed".
+            if [ "${REWRITTEN:-0}" -gt 0 ]; then
+              echo "::error::optimizer rewrote $REWRITTEN file(s) but nothing was staged — the add failed"
+              git status --short | head -20
+              exit 1
+            fi
             echo "No image changes to commit"
             exit 0
           fi
