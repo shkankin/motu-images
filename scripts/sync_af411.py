@@ -1164,14 +1164,33 @@ def main():
     # of KB — instead of ~30 bytes on every one of 1,100+ figures. It is
     # regenerated every run, so an AF411 reorganization self-heals.
     if args.commit and not args.line:
+        # v1.14 COVERAGE FIX. The first version keyed this map by the SCRAPED
+        # line|group — i.e. AF411's own group headers. But openAF411 looks up
+        # `fig.line + '|' + fig.group`, which is the OWNER's taxonomy, and the
+        # two only coincide by accident (200x|Action Figures matches;
+        # origins|Origins Action Figures vs our origins|Action Figures does
+        # not). Result: the first generated file covered 43% of the catalog
+        # and missed the largest groups outright — the exact 339-figure gap
+        # this file exists to close. sourceGroup does not bridge it either
+        # (tested: 44%), because it is mostly empty or a copy of group.
+        #
+        # So emit BOTH keys for every figure: the scraped one AND the one the
+        # catalog actually uses, resolved per-figure through existing_by_id.
+        # They point at the same path, the map stays a few KB, and a lookup
+        # from either taxonomy hits.
         paths = {}
         for s_ in all_scraped:
             href = s_.get("af411_url") or ""
             m = re.search(r'/masters-of-the-universe/([a-z0-9-]+)/([a-z0-9-]+)/[a-z0-9-]+-\d+\.php$', href)
             if not m:
                 continue
-            key = f'{s_["line"]}|{s_.get("group") or ""}'
-            paths.setdefault(key, f"{m.group(1)}/{m.group(2)}")
+            path_val = f"{m.group(1)}/{m.group(2)}"
+            keys = {f'{s_["line"]}|{s_.get("group") or ""}'}
+            cur = existing_by_id.get(s_["id"])
+            if cur:
+                keys.add(f'{cur.get("line") or s_["line"]}|{cur.get("group") or ""}')
+            for key in keys:
+                paths.setdefault(key, path_val)
         if paths:
             atomic_write_text(
                 REPO_ROOT / "af411-paths.json",
