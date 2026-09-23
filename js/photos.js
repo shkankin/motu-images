@@ -25,6 +25,60 @@ const PHOTO_COPY_KEY = 'motu-photo-copy';
 const photoURLs = {};   // { "figId-n": objectURL }
 let _opfsDir = null;
 let _opfsReady = false;
+
+// ── v7.87: CSP-independent photo reads ───────────────────────────
+// Every read-back path used to be fetch(objectURL) / fetch(dataURL), which
+// is governed by CSP connect-src — NOT img-src. That coupling caused the
+// v7.84 incident: photos displayed fine while every export returned zero
+// and the reconcile scan branded healthy photos "indexed but unreadable",
+// arming Prune to delete intact files. The policy fix shipped in the same
+// release, but one meta tag is a single point of failure for the user's
+// photo library, and it has now failed to reach production once already.
+//
+// These helpers remove the dependency instead of patching around it:
+// OPFS bytes come straight off the FileSystemFileHandle, and data: URLs are
+// decoded in-process. Neither touches the network stack, so no CSP
+// directive can silently disable photo export again.
+function dataUrlToBlob(u) {
+  const comma = u.indexOf(',');
+  if (comma < 0) throw new Error('not a data URL');
+  const head = u.slice(0, comma);
+  const body = u.slice(comma + 1);
+  const mime = (head.match(/^data:([^;]+)/) || [])[1] || 'image/jpeg';
+  if (!/;base64/i.test(head)) return new Blob([decodeURIComponent(body)], { type: mime });
+  const bin = atob(body);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+// Read one stored photo as a Blob without fetch(). OPFS first (the real
+// store), then the localStorage data: URL fallback. Returns null when the
+// photo genuinely is not there — callers treat null as "dead", which is
+// what makes the reconcile scan trustworthy again.
+async function readPhotoBlob(id, n) {
+  if (_opfsReady) {
+    try {
+      const fh = await _opfsDir.getFileHandle(`photo-${id}-${n}.jpg`);
+      const file = await fh.getFile();
+      if (file && file.size > 0) return file;
+      return null;                       // zero-byte file: genuinely dead
+    } catch { /* fall through to the fallback below */ }
+  }
+  try {
+    const ls = localStorage.getItem(`motu-photo-${id}-${n}`);
+    if (ls && ls.startsWith('data:')) {
+      const b = dataUrlToBlob(ls);
+      return b.size > 0 ? b : null;
+    }
+  } catch {}
+  const url = photoURLs[id + '-' + n];
+  if (url && url.startsWith('data:')) {
+    try { const b = dataUrlToBlob(url); return b.size > 0 ? b : null; } catch {}
+  }
+  return null;
+}
+
 let _photoLabels = {};  // { [figId]: { [n]: label } }
 let _photoCopy = {};    // { [figId]: { [n]: copyId } } — n's copy assignment
 
@@ -189,12 +243,11 @@ const photoStore = {
   // (OPFS file, fallback key, metadata, label, copy assignment) go
   // together and the next loadAll() cannot resurrect the row.
   _readable: async (id, n) => {
-    const url = photoURLs[id + '-' + n];
-    if (!url) return false;
-    try {
-      const blob = await (await fetch(url)).blob();
-      return blob.size > 0;   // a zero-byte "photo" is dead too
-    } catch { return false; }
+    // v7.87: reads the bytes directly (see readPhotoBlob) instead of
+    // fetch(objectURL). A missing photoURLs entry is no longer treated as
+    // death either — the object URL is a session cache, not the store.
+    const blob = await readPhotoBlob(id, n);
+    return !!blob && blob.size > 0;
   },
   reconcileIndex: async () => {
     const dead = [];
@@ -383,8 +436,7 @@ const photoStore = {
         // untouched — deleting it here is data loss.
         if (!dataUrl || !dataUrl.startsWith('data:')) continue;
         try {
-          const res = await fetch(dataUrl);
-          const blob = await res.blob();
+          const blob = dataUrlToBlob(dataUrl);   // v7.87: no fetch()
           const fh = await _opfsDir.getFileHandle(`photo-${id}-0.jpg`, {create: true});
           const writable = await fh.createWritable();
           await writable.write(blob);
@@ -404,15 +456,17 @@ const photoStore = {
     const result = [];
     for (const {n, label} of arr) {
       const key = id + '-' + n;
-      const url = photoURLs[key];
-      if (!url) continue;
       try {
+        // v7.87: read the bytes directly rather than fetch(objectURL). This
+        // is the photos-inside-a-JSON-backup path — it produced silently
+        // photo-less "complete" backups for as long as connect-src lacked
+        // blob:. It no longer depends on photoURLs being populated either.
+        const url = photoURLs[key];
         let dataUrl;
-        if (url.startsWith('data:')) dataUrl = url;
+        if (url && url.startsWith('data:')) dataUrl = url;
         else {
-          // Object URL — need to fetch blob and read as data URL
-          const res = await fetch(url);
-          const blob = await res.blob();
+          const blob = await readPhotoBlob(id, n);
+          if (!blob) continue;
           dataUrl = await new Promise((r, rj) => {
             const fr = new FileReader();
             fr.onload = () => r(fr.result);
@@ -432,14 +486,10 @@ const photoStore = {
     const arr = S.customPhotos[id] || [];
     const result = [];
     for (const {n, label} of arr) {
-      const key = id + '-' + n;
-      const url = photoURLs[key];
-      if (!url) continue;
-      try {
-        const res = await fetch(url);
-        const blob = await res.blob();
-        result.push({n, label: label || '', blob});
-      } catch {}
+      // v7.87: direct read, no fetch() and therefore no connect-src
+      // dependency. This is the call every photo export funnels through.
+      const blob = await readPhotoBlob(id, n);
+      if (blob) result.push({n, label: label || '', blob});
     }
     return result;
   },
@@ -449,8 +499,7 @@ const photoStore = {
     let count = 0;
     for (const p of photos) {
       try {
-        const res = await fetch(p.dataUrl);
-        const blob = await res.blob();
+        const blob = dataUrlToBlob(p.dataUrl);   // v7.87: no fetch()
         const n = await photoStore.add(id, blob, p.label || '');
         if (n >= 0) count++;
       } catch {}

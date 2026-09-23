@@ -232,6 +232,34 @@ if (windowOrphans.size) {
   console.log('');
 }
 
+// v7.87 (BUG-01): runtime-assigned inline handlers. patchFigRow did
+// badge.setAttribute('onclick', ...) on every grid status change. script-src
+// has had no 'unsafe-inline' since v7.00, so the handler never ran — and
+// because data-action was left stale, the second tap on a newly owned card
+// toggled ownership OFF instead of cycling. This lint could not see it: the
+// attribute is written at runtime, not in a template. Now it can.
+const runtimeInline = [];
+for (const [file, src] of Object.entries(sources)) {
+  src.split('\n').forEach((line, i) => {
+    if (/^\s*(\/\/|\*)/.test(line)) return;               // comment line
+    // ONLY the string forms are blocked by script-src. `el.onclick = fn` is
+    // a property assignment and is perfectly legal under CSP — flagging it
+    // would be a false positive (toastUndo/toastAction both use it
+    // correctly). Match setAttribute('on…', …) and `.onclick = "string"`.
+    if (/\.setAttribute\(\s*['"`]on[a-z]+['"`]/.test(line) ||
+        /\.on(click|change|input|submit|keydown|keyup|touchstart|touchend)\s*=\s*['"`]/.test(line)) {
+      runtimeInline.push(`${file}:${i + 1}`);
+    }
+  });
+}
+if (runtimeInline.length) {
+  bad = true;
+  console.log(`✗ ${runtimeInline.length} runtime inline-handler assignment(s) — blocked by script-src:`);
+  for (const loc of runtimeInline) console.log(`   ${loc}`);
+  console.log('   Set el.dataset.action (and dataset.figId) instead; the CSP blocks these.');
+  console.log('');
+}
+
 if (bad) {
   console.log('Dead-button risk: these fire silently at tap time. Expose the global');
   console.log('(window.X = … / Object.assign(window, {X})) or register the action.');

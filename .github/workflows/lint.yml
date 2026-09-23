@@ -41,6 +41,14 @@ jobs:
       # This asserts every tracked file has a deploy.html PATH_MAP entry.
       - name: Deployability
         run: node scripts/check_deployable.mjs
+
+      # v7.87: version-stamp gate. check_deployable proves a changed file made
+      # it into the zip; it cannot prove the file reached production. REL-01 is
+      # what that gap looks like — v7.84's sw.js deployed, motu-vault.html did
+      # not, and the changelog claimed a CSP fix users never got. A stamp that
+      # disagrees with sw.js CACHE means two files came from different releases.
+      - name: Version stamps
+        run: node scripts/check_version_stamps.mjs
       # v7.51: no-undef gate. Two shipped bugs (Edit-sheet sourceName crash,
       # insurance report's unimported getCachedAskingPrice) plus two more
       # found on its first run (app.js bigSet in journal recovery, render.js

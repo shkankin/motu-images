@@ -67,7 +67,7 @@ Your collection lives on your device; the app is just a static site.
   view for trading partners; no account needed on either side.
 - **Import/Export** — JSON backup/restore, CSV export, CSV import
   (including AF411-format), settings-only transfer for new devices.
-- **Desktop / tools** — `desktop.html` (read-only desktop viewer and
+- **Desktop / tools** — `desktop.html` (desktop viewer/editor and
   shared-list target; plain desktop-browser visits to the app are routed
   here automatically — "Use the full app →" opts out, remembered),
   `figures-editor.html` (catalog maintenance), `deploy.html` (release

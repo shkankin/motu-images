@@ -77,7 +77,7 @@ Insights for your account, switch to `community,ebay-sold,ebay-active`.
   cache. Useful for figures eBay searches match poorly.
 - **Security posture:** eBay secrets live only in Worker secrets; the
   app-facing endpoints are read-only; the one write endpoint requires the
-  admin token; CORS restricts which sites may call it at all.
+  admin token; CORS restricts which sites a BROWSER will expose the response to — it does not stop scripts or servers calling the worker directly.
 
 This README documents capabilities, not versions — the worker's changelog
 lives at the top of `pricing-worker.js`.

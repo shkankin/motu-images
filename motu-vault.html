@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#06060c">
@@ -18,8 +18,16 @@
      elements (e.g. --st-c, background gradients, dynamic widths), which
      are distinct from inline <style> blocks and <style> attributes; these
      are already a controlled pattern with no user-controlled data. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
+<!-- v7.87: connect-src includes blob: and data:. HISTORY: v7.84 shipped this
+     same change and it never reached production — the sw.js/data.js half of
+     that release deployed, this file did not, so the changelog claimed a fix
+     users did not have and Prune stayed armed to delete healthy photos. It is
+     belt-and-braces now: js/photos.js v7.87 reads OPFS bytes via
+     getFileHandle().getFile() and decodes data: URLs in-process, so NO photo
+     read path depends on connect-src any more. Keep both. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' blob: data: https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
 
+<meta name="app-version" content="7.87">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="images/icon-192.png">
 <meta name="description" content="Track your Masters of the Universe action figure collection — works offline, no account needed.">

@@ -114,7 +114,7 @@ function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'}
         <div style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:18px;text-align:center">${esc(message)}</div>
         <div style="display:flex;gap:10px">
           <button id="appConfirmCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
-          <button id="appConfirmOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:${danger?'var(--rd)':'var(--acc)'};color:#fff;font-size:15px;font-weight:700">${esc(ok)}</button>
+          <button id="appConfirmOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:${danger?'var(--rd)':'var(--acc)'};color:${danger?'#fff':'var(--btn-t,#fff)'};font-size:15px;font-weight:700">${esc(ok)}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -144,7 +144,7 @@ function appPromptText(message, {placeholder = '', ok = 'OK', cancel = 'Cancel',
                style="width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:15px">
         <div style="display:flex;gap:10px">
           <button id="appPromptCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
-          <button id="appPromptOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--acc);color:#fff;font-size:15px;font-weight:700">${esc(ok)}</button>
+          <button id="appPromptOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--acc);color:var(--btn-t,#fff);font-size:15px;font-weight:700">${esc(ok)}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -343,10 +343,17 @@ function patchFigRow(id) {
     const badge = card.querySelector('.card-status-btn') || card.querySelector('.status-badge');
     if (badge) {
       badge.className = (badge.classList.contains('card-status-btn') ? 'card-status-btn' : 'status-badge') + ' ' + statusCls;
-      const badgeAction = c.status
-        ? `cycleStatus(event,${jId})`
-        : `event.stopPropagation();setStatus(${jId},'owned')`;
-      badge.setAttribute('onclick', badgeAction);
+      // v7.87 BUG-01. This used to be badge.setAttribute('onclick', ...).
+      // script-src has had no 'unsafe-inline' since v7.00, so the handler
+      // never ran AND data-action was never updated: a card first marked
+      // with the + button kept data-action="set-status-owned", so the next
+      // tap called setStatus(id,'owned') again — which setStatus treats as
+      // a repeat of the current status and toggles ownership OFF. In grid
+      // view the commonest action did the opposite of what it says. The
+      // list view rebuilt its button with the right data-action, which is
+      // why only grid was affected. Every patch also logged a CSP violation.
+      badge.dataset.action = c.status ? 'cycle-status' : 'set-status-owned';
+      badge.dataset.figId = id;   // raw id: dataset assignment needs no HTML escaping
       badge.innerHTML = c.status
         ? `<div class="fig-status-dot ${statusCls}"></div>`
         : `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
@@ -524,7 +531,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.86</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.87</span></div>
         </div>
       </div>
       <div class="header-actions">

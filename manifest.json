@@ -60,7 +60,7 @@
     {
       "name": "Quick Sync",
       "short_name": "Sync",
-      "description": "Force-sync the catalog from AF411",
+      "description": "Re-fetch the catalog from the repository",
       "url": "https://motucollector.app/motu-vault.html?action=sync",
       "icons": [
         {
