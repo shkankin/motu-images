@@ -1182,9 +1182,14 @@ def main():
 
     # v1.5: write a sync summary for the GitHub Actions workflow to read.
     # Used to post a Discord notification when new pending figures land.
-    # Path is fixed and machine-readable; never committed (in .gitignore /
-    # ignored by glob below). Only written on a real (--commit) run; audit
-    # runs skip this entirely.
+    # Path is fixed and machine-readable. It is never committed because the
+    # commit step below stages explicit paths only (figures*.json, images/*,
+    # af411-paths.json) — there is no `git add -A` anywhere in the workflows.
+    # v1.12 (DOC-05): this comment used to claim the file was in .gitignore.
+    # The repository has no .gitignore; the path-scoped staging is what
+    # actually keeps it out. If a blanket `git add` is ever introduced here,
+    # this file (and __pycache__) WILL start getting committed.
+    # Only written on a real (--commit) run; audit runs skip this entirely.
     if args.commit:
         try:
             summary_path = Path("/tmp/motu-sync-summary.json")

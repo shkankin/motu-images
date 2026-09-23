@@ -180,6 +180,28 @@ if (zipPath || since) {
     }
     if (!missing && needed.length) console.log('  ✓ every changed deployable file is in the zip');
 
+    // v1.1 ORDERING TRAP. deploy.html routes a zip entry through the PATH_MAP
+    // of the deploy.html ALREADY RUNNING IN THE BROWSER. So a release that
+    // adds a NEW file *and* the PATH_MAP entry that routes it, in one zip,
+    // silently drops the new file: the old deploy.html has never heard of it.
+    // That is exactly how v7.87 shipped lint.yml's "Version stamps" step
+    // while scripts/check_version_stamps.mjs never landed — leaving CI red
+    // with a module-not-found. Deploy deploy.html FIRST, then the new file.
+    const deployHtmlChanged = changed.includes('deploy.html') && inZip.has('deploy.html');
+    if (deployHtmlChanged) {
+      for (const n of inZip) {
+        if (n === 'deploy.html' || !PATH_MAP[n]) continue;
+        const target = PATH_MAP[n];
+        // Was this key absent from the PREVIOUS deploy.html?
+        let prev = '';
+        try { prev = execFileSync('git', ['show', `${since}:deploy.html`], { cwd: repo, encoding: 'utf8' }); } catch {}
+        if (prev && !new RegExp(`'${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'\\s*:`).test(prev)) {
+          bad(`ORDERING: '${n}' (${target}) is routed by a PATH_MAP entry added in THIS release`,
+              'the running deploy.html cannot place it — ship deploy.html first, then this file');
+        }
+      }
+    }
+
     for (const n of inZip) {
       if (!PATH_MAP[n]) bad(`zip entry '${n}' has no PATH_MAP entry — deploy.html will not know where to put it`);
       else if (!changed.includes(PATH_MAP[n]))
