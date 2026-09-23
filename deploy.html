@@ -503,10 +503,20 @@ const PATH_MAP = {
   // root
   'vault.css':            'vault.css',
   'motu-vault.html':      'motu-vault.html',
+  // v1.24 (SEC-01, decided): both admin tools STAY on motucollector.app.
+  // Moving them to a separate origin was evaluated and rejected as not worth
+  // the effort. The accepted residual risk: both hold a write-scoped GitHub
+  // token in localStorage, which is scoped per ORIGIN and not per page, so a
+  // script-injection bug anywhere on this origin could read them and the
+  // network-first service worker would ship the resulting commit to every
+  // user. Mitigated instead by fine-grained tokens limited to this repo with
+  // Contents: write and a 90-day expiry. If that calculus ever changes, the
+  // move is cheap: neither tool reads location.origin and REPO is a hardcoded
+  // constant, so they run unmodified from any host.
   'figures-editor.html':  'figures-editor.html',
+  'deploy.html':          'deploy.html',
   'sw.js':                'sw.js',
   'manifest.json':        'manifest.json',
-  'deploy.html':          'deploy.html',
   'desktop.html':         'desktop.html',
   '.nojekyll':            '.nojekyll',
   // figures data (root)

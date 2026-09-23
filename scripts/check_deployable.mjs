@@ -69,17 +69,32 @@ const bad = (msg, detail = '') => {
 };
 
 // ── Parse PATH_MAP out of deploy.html ─────────────────────────────
+// v1.2: routing table source. deploy.html is the normal source and is what
+// this repo uses today. The deploy-path-map.json branch is a fallback for
+// the case where deploy.html is NOT in the repo — moving the admin tools to
+// a separate origin (SEC-01) was evaluated and rejected as too much effort,
+// but if it is ever revisited this gate keeps working without changes: the
+// tools read no location.origin and REPO is a hardcoded constant, so only
+// this routing table would need relocating. No such JSON exists right now.
 let PATH_MAP = {};
+let mapSource = '';
 try {
-  const src = readFileSync(path.join(repo, 'deploy.html'), 'utf8');
-  const blk = src.match(/const PATH_MAP = \{([\s\S]*?)\n\};/);
-  if (!blk) {
-    console.log('✗ Could not locate PATH_MAP in deploy.html — has it been renamed?');
-    process.exit(1);
-  }
-  for (const m of blk[1].matchAll(/'([^']+)'\s*:\s*'([^']+)'/g)) PATH_MAP[m[1]] = m[2];
-} catch (e) {
-  console.log('✗ Could not read deploy.html: ' + e.message);
+  const j = JSON.parse(readFileSync(path.join(repo, 'deploy-path-map.json'), 'utf8'));
+  if (j && j.paths && typeof j.paths === 'object') { PATH_MAP = j.paths; mapSource = 'deploy-path-map.json'; }
+} catch { /* fall through to deploy.html */ }
+if (!mapSource) {
+  try {
+    const src = readFileSync(path.join(repo, 'deploy.html'), 'utf8');
+    const blk = src.match(/const PATH_MAP = \{([\s\S]*?)\n\};/);
+    if (blk) {
+      for (const m of blk[1].matchAll(/'([^']+)'\s*:\s*'([^']+)'/g)) PATH_MAP[m[1]] = m[2];
+      mapSource = 'deploy.html';
+    }
+  } catch { /* handled below */ }
+}
+if (!mapSource) {
+  console.log('✗ No routing table: deploy.html is not present and no');
+  console.log('  deploy-path-map.json fallback exists either.');
   process.exit(1);
 }
 const targetToKey = new Map(Object.entries(PATH_MAP).map(([k, v]) => [v, k]));
@@ -88,7 +103,7 @@ const git = (...a) => execFileSync('git', a, { cwd: repo, encoding: 'utf8' }).tr
 const tracked = git('ls-files').split('\n').filter(Boolean);
 const exempt = f => EXEMPT.some(rx => rx.test(f));
 
-console.log(`PATH_MAP: ${Object.keys(PATH_MAP).length} entries · tracked files: ${tracked.length}\n`);
+console.log(`PATH_MAP: ${Object.keys(PATH_MAP).length} entries (from ${mapSource}) · tracked files: ${tracked.length}\n`);
 
 // ── 1. Audit: every tracked file needs a route ────────────────────
 console.log('Audit — tracked files with no deploy route:');
@@ -187,17 +202,32 @@ if (zipPath || since) {
     // That is exactly how v7.87 shipped lint.yml's "Version stamps" step
     // while scripts/check_version_stamps.mjs never landed — leaving CI red
     // with a module-not-found. Deploy deploy.html FIRST, then the new file.
-    const deployHtmlChanged = changed.includes('deploy.html') && inZip.has('deploy.html');
-    if (deployHtmlChanged) {
+    // v1.3: compare against the routing table AS IT WAS at `since` — whatever
+    // carried it then (deploy-path-map.json, or deploy.html before it was
+    // taken off the origin). The earlier version only ran when deploy.html
+    // was in the zip, which missed the commoner case: a new file whose route
+    // exists only in the maintainer's LOCAL deploy.html. Either way the
+    // running tool cannot place an entry it has never heard of.
+    let prevKeys = null;
+    for (const [ref, parse] of [
+      [`${since}:deploy-path-map.json`, t => Object.keys((JSON.parse(t).paths) || {})],
+      [`${since}:deploy.html`, t => {
+        const b = t.match(/const PATH_MAP = \{([\s\S]*?)\n\};/);
+        return b ? [...b[1].matchAll(/'([^']+)'\s*:/g)].map(m => m[1]) : null;
+      }],
+    ]) {
+      try {
+        const txt = execFileSync('git', ['show', ref], { cwd: repo, encoding: 'utf8', stdio: ['ignore','pipe','ignore'] });
+        const keys = parse(txt);
+        if (keys && keys.length) { prevKeys = new Set(keys); break; }
+      } catch { /* try the next source */ }
+    }
+    if (prevKeys) {
       for (const n of inZip) {
         if (n === 'deploy.html' || !PATH_MAP[n]) continue;
-        const target = PATH_MAP[n];
-        // Was this key absent from the PREVIOUS deploy.html?
-        let prev = '';
-        try { prev = execFileSync('git', ['show', `${since}:deploy.html`], { cwd: repo, encoding: 'utf8' }); } catch {}
-        if (prev && !new RegExp(`'${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'\\s*:`).test(prev)) {
-          bad(`ORDERING: '${n}' (${target}) is routed by a PATH_MAP entry added in THIS release`,
-              'the running deploy.html cannot place it — ship deploy.html first, then this file');
+        if (!prevKeys.has(n)) {
+          bad(`ORDERING: '${n}' (${PATH_MAP[n]}) is routed by a PATH_MAP entry that did not exist at ${since}`,
+              'the deploy.html doing the upload must already know this route, or the file is silently dropped');
         }
       }
     }
