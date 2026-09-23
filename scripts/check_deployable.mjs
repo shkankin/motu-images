@@ -99,6 +99,27 @@ if (!mapSource) {
 }
 const targetToKey = new Map(Object.entries(PATH_MAP).map(([k, v]) => [v, k]));
 
+// v1.4: deploy.html's resolveRepoPath() falls back to extension rules when a
+// name has no explicit PATH_MAP entry, so a new .py or .yml genuinely IS
+// deployable without one. Mirroring those rules here stops this gate failing
+// on files the tool would place correctly — which it did the moment
+// scripts/optimize_images.py and .github/workflows/optimize-images.yml were
+// added. Keep in sync with resolveRepoPath in deploy.html.
+function fallbackPath(name) {
+  if (/\.js$/i.test(name))                 return 'js/' + name;
+  if (/\.(jpe?g|png|gif|webp)$/i.test(name)) return 'images/' + name;
+  if (/\.py$/i.test(name))                 return 'scripts/' + name;
+  if (/\.ya?ml$/i.test(name))              return '.github/workflows/' + name;
+  if (/\.json$/i.test(name))               return name;
+  if (/\.html$/i.test(name))               return name;
+  return null;
+}
+// A repo path is routable if an explicit entry points at it, OR the extension
+// fallback for its basename resolves to exactly that path.
+const routable = (f) => targetToKey.has(f) || fallbackPath(path.basename(f)) === f;
+// The key deploy.html would use for a repo path (explicit entry, else basename).
+const keyFor = (f) => targetToKey.get(f) || (fallbackPath(path.basename(f)) === f ? path.basename(f) : null);
+
 const git = (...a) => execFileSync('git', a, { cwd: repo, encoding: 'utf8' }).trim();
 const tracked = git('ls-files').split('\n').filter(Boolean);
 const exempt = f => EXEMPT.some(rx => rx.test(f));
@@ -110,7 +131,7 @@ console.log('Audit — tracked files with no deploy route:');
 let unrouted = 0;
 for (const f of tracked) {
   if (exempt(f)) continue;
-  if (!targetToKey.has(f)) { bad(`no PATH_MAP entry: ${f}`); unrouted++; }
+  if (!routable(f)) { bad(`no deploy route (no PATH_MAP entry and no extension fallback): ${f}`); unrouted++; }
 }
 if (!unrouted) console.log('  ✓ every tracked file is routable');
 
@@ -182,12 +203,12 @@ if (zipPath || since) {
     }
 
     const needed = changed.filter(f =>
-      !exempt(f) && !NOT_IN_RELEASE.some(rx => rx.test(f)) && targetToKey.has(f));
+      !exempt(f) && !NOT_IN_RELEASE.some(rx => rx.test(f)) && routable(f));
     console.log(`  changed since ${since}: ${changed.length} · deployable: ${needed.length} · in zip: ${inZip.size}`);
 
     let missing = 0;
     for (const f of needed) {
-      const key = targetToKey.get(f);
+      const key = keyFor(f);
       if (!inZip.has(key)) {
         bad(`CHANGED BUT NOT IN ZIP: ${f}`, `deploy.html expects it as '${key}'`);
         missing++;
@@ -224,6 +245,8 @@ if (zipPath || since) {
     }
     if (prevKeys) {
       for (const n of inZip) {
+        // Only an EXPLICIT entry can be "new"; a file relying on the
+        // extension fallback needs no entry, so it can never hit this trap.
         if (n === 'deploy.html' || !PATH_MAP[n]) continue;
         if (!prevKeys.has(n)) {
           bad(`ORDERING: '${n}' (${PATH_MAP[n]}) is routed by a PATH_MAP entry that did not exist at ${since}`,
@@ -233,8 +256,8 @@ if (zipPath || since) {
     }
 
     for (const n of inZip) {
-      if (!PATH_MAP[n]) bad(`zip entry '${n}' has no PATH_MAP entry — deploy.html will not know where to put it`);
-      else if (!changed.includes(PATH_MAP[n]))
+      if (!PATH_MAP[n] && !fallbackPath(n)) bad(`zip entry '${n}' has no PATH_MAP entry and no extension fallback — deploy.html will not know where to put it`);
+      else if (!changed.includes(PATH_MAP[n] || fallbackPath(n)))
         console.log(`  ⚠ zip contains '${n}' but it did not change since ${since} (harmless, just noise)`);
     }
   }

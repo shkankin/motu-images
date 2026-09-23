@@ -1,0 +1,88 @@
+name: Optimize Catalog Images
+
+# Audit PERF-04. Caps oversized catalog images and recompresses them in place.
+# Deliberately SEPARATE from the AF411 sync: that workflow is the critical
+# catalog path and has been fragile lately, and this needs a Pillow dependency
+# the sync does not otherwise want. Keeping them apart means a failure here can
+# never block a catalog sync.
+#
+# Runs weekly so images that arrive oversized from AF411 get capped without
+# anyone remembering to do it. The script is idempotent — a week with no new
+# oversized images produces no diff and no commit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (report only, commit nothing)"
+        type: boolean
+        default: true
+      max_edge:
+        description: "Longest edge in px (default 1200)"
+        type: string
+        default: ""
+      quality:
+        description: "JPEG quality 1-95 (default 82)"
+        type: string
+        default: ""
+  schedule:
+    - cron: "37 4 * * 0"   # Sundays, offset off the hour to dodge runner contention
+
+permissions:
+  contents: write
+
+concurrency:
+  group: optimize-images
+  cancel-in-progress: false
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pillow
+        run: pip install --quiet pillow
+
+      - name: Run optimizer
+        # Inputs go through env: rather than ${{ }} interpolation into the
+        # script body — same script-injection hardening as the sync workflow
+        # (its v1.8 audit fix). max_edge/quality are free-form strings.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IN_DRY_RUN: ${{ inputs.dry_run }}
+          IN_MAX_EDGE: ${{ inputs.max_edge }}
+          IN_QUALITY: ${{ inputs.quality }}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          set -- python scripts/optimize_images.py
+          # Scheduled runs always commit; manual runs default to dry-run.
+          if [ "$EVENT_NAME" = "schedule" ] || [ "$IN_DRY_RUN" != "true" ]; then
+            set -- "$@" --commit
+          else
+            set -- "$@" --dry-run
+          fi
+          if [ -n "$IN_MAX_EDGE" ]; then set -- "$@" --max-edge "$IN_MAX_EDGE"; fi
+          if [ -n "$IN_QUALITY" ]; then set -- "$@" --quality "$IN_QUALITY"; fi
+          echo "Running: $*"
+          "$@"
+
+      - name: Commit optimized images
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Explicit paths only — never `git add -A`. The sync workflow relies
+          # on the same discipline to keep __pycache__ and the run summary out.
+          git add "images/*.jpg" "images/*.jpeg" 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No image changes to commit"
+            exit 0
+          fi
+          N=$(git diff --cached --name-only | wc -l | tr -d ' ')
+          git commit -m "images: optimize ${N} catalog image(s) — $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
