@@ -793,6 +793,14 @@ window.addEventListener('popstate', e => {
       S.sheet = null;
       S._accPickAdmin = false;
       render();
+      // v7.88 A11Y-03: return focus to whatever opened the sheet. Without
+      // this, focus fell back to <body> on close and a keyboard user was
+      // dumped at the top of the page, losing their place in a long list.
+      const sel = S._sheetOpener;
+      S._sheetOpener = null;
+      if (sel) requestAnimationFrame(() => {
+        try { document.querySelector(sel)?.focus({ preventScroll: true }); } catch {}
+      });
       return;
     }
 
@@ -1668,10 +1676,34 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  // Ignore when a sheet or tutorial is open — those have their own dismissal
-  // flows (sheet has the close button + backdrop tap; tutorial has its own
-  // capture-phase handler).
-  if (S.sheet) return;
+  // v7.88 A11Y-03: sheets used to `return` here outright, on the assumption
+  // they had "their own dismissal flow" — but that flow was the close button
+  // and a backdrop TAP, so keyboard users had no way out at all. (The photo
+  // viewer above carried the same false comment until v6.30.)
+  // Escape closes; Tab/Shift+Tab are trapped inside the panel so focus can't
+  // escape to the page behind a modal. Everything else is still ignored.
+  // The tutorial keeps its own capture-phase handler and is unaffected.
+  if (S.sheet) {
+    const panel = document.querySelector('#sheetOverlay .sheet-panel');
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      window.closeSheet?.();
+    } else if (e.key === 'Tab' && panel) {
+      const focusable = [...panel.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+        'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )].filter(n => n.offsetParent !== null || n === document.activeElement);
+      if (!focusable.length) { e.preventDefault(); panel.focus(); return; }
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      const inside = panel.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === panel || !inside)) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault(); first.focus();
+      }
+    }
+    return;
+  }
   const tag = (e.target && e.target.tagName) || '';
   const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' ||
                   (e.target && e.target.isContentEditable);

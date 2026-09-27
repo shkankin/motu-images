@@ -99,10 +99,32 @@ function dispatch(type, e) {
 
 // ── Boot ────────────────────────────────────────────────────────────
 
+// v7.88 A11Y-02: keyboard activation for non-native controls.
+// Delegation listened for click only, and there was not a single
+// role="button"/tabindex anywhere in the templates, so a <div data-action>
+// could not be operated without a pointer. Native <button>/<a>/<input> already
+// fire click on Enter/Space, so they are skipped — handling them here too
+// would double-fire. Only elements that DECLARE themselves operable
+// (role="button" with a data-action) are activated, which keeps this from
+// hijacking Space-to-scroll or Enter inside text fields anywhere else.
+const NATIVE_ACTIVATES = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY|OPTION)$/;
+function keyActivate(e) {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+  const t = e.target;
+  if (!t || !t.getAttribute) return;
+  if (NATIVE_ACTIVATES.test(t.tagName) || t.isContentEditable) return;
+  if (t.getAttribute('role') !== 'button' || !t.dataset || !t.dataset.action) return;
+  // Space scrolls the page by default; Enter can submit. Neither is wanted here.
+  e.preventDefault();
+  t.click();   // re-enters dispatch() through the normal click path
+}
+
 let _booted = false;
 export function bootDelegation(root = document) {
   if (_booted) return;
   _booted = true;
+  root.addEventListener('keydown', keyActivate);
   for (const type of Object.keys(_registry)) {
     // Capture phase used for 'error'/'load' and 'blur'/'focus' because they
     // don't bubble — capture is the only way a single document-level

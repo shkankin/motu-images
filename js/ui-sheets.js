@@ -107,12 +107,12 @@ function renderSheet() {
   }
 
   return `<div class="sheet-overlay" id="sheetOverlay" data-action="close-sheet-bg">
-    <div class="sheet-backdrop"></div>
-    <div class="sheet-panel">
-      <div class="sheet-handle"><div class="sheet-handle-bar"></div></div>
+    <div class="sheet-backdrop" aria-hidden="true"></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" tabindex="-1">
+      <div class="sheet-handle" aria-hidden="true"><div class="sheet-handle-bar"></div></div>
       <div class="sheet-header">
-        <div class="sheet-title">${titles[S.sheet]||'Options'}</div>
-        <button class="sheet-close" data-action="close-sheet">${icon(ICO.x,20)}</button>
+        <div class="sheet-title" id="sheetTitle">${titles[S.sheet]||'Options'}</div>
+        <button class="sheet-close" data-action="close-sheet" aria-label="Close">${icon(ICO.x,20)}</button>
       </div>
       <div class="sheet-body">${body}</div>
       ${S.sheet === 'wantListView' ? `<div class="sheet-footer" style="text-align:center">

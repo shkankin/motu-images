@@ -644,8 +644,39 @@ window.deleteFig = async id => {
   S.screen = 'main'; render();
 };
 
-window.openSheet = name => { S.sheet = name; pushNav(); render();
-  requestAnimationFrame(() => { const el = document.getElementById('sheetOverlay'); if (el) el.classList.add('visible'); });
+// v7.88 A11Y-03: sheets had no dialog semantics and no focus management —
+// focus stayed on whatever opened them, so screen-reader users wandered the
+// page BEHIND an open sheet and keyboard users had no way to reach its
+// contents. tutorial.js already does this correctly; this ports its pattern.
+// render() rebuilds the whole DOM, so the opener is remembered as a SELECTOR
+// that survives re-rendering, not as a node reference that would go stale.
+function _openerSelector(el) {
+  if (!el || el === document.body || !el.getAttribute) return null;
+  // CSS.escape is universal in every browser this PWA supports; the fallback
+  // only guards an exotic engine and escapes the two characters that can break
+  // an attribute-selector string: backslash and double quote.
+  const esc = v => (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(v) : String(v).replace(/[\\"]/g, m => '\\' + m);
+  if (el.id) return '#' + esc(el.id);
+  const a = el.getAttribute('data-action'), sh = el.getAttribute('data-sheet');
+  if (a && sh) return `[data-action="${esc(a)}"][data-sheet="${esc(sh)}"]`;
+  const fid = el.getAttribute('data-fig-id');
+  if (a && fid) return `[data-action="${esc(a)}"][data-fig-id="${esc(fid)}"]`;
+  if (a) return `[data-action="${esc(a)}"]`;
+  return null;
+}
+window.openSheet = name => {
+  // Only record the opener for the FIRST sheet; a sheet opening another
+  // sheet should still return focus to where the user started.
+  if (!S.sheet) S._sheetOpener = _openerSelector(document.activeElement);
+  S.sheet = name; pushNav(); render();
+  requestAnimationFrame(() => {
+    const el = document.getElementById('sheetOverlay');
+    if (el) el.classList.add('visible');
+    // Focus the panel itself (tabindex=-1) rather than the first control, so
+    // a screen reader announces the dialog's name before its contents and
+    // nothing is accidentally activated by the next keypress.
+    el?.querySelector('.sheet-panel')?.focus({ preventScroll: true });
+  });
 };
 window.closeSheet = () => { history.back(); };
 window.setTheme = t => { S.theme = t; S.titleIdx = 0; S.iconOverride = null; store.set('motu-theme', t); document.documentElement.setAttribute('data-theme', t); _syncThemeColor(t); history.back(); };

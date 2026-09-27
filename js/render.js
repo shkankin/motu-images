@@ -103,6 +103,47 @@ function haptic(ms = 15) {
 // In-app confirmation dialog — replaces blocking confirm()/alert() calls.
 // Returns a Promise<boolean> so callers can await it.
 // danger:true styles the confirm button red for destructive actions.
+// v7.88 A11Y-03: shared modal wiring for appConfirm/appPromptText. Both were
+// bare <div> overlays: no role, no accessible name, no focus containment and
+// no Escape — so a screen reader could wander behind them and a keyboard user
+// could not dismiss them. Returns release(), which the caller runs on close to
+// drop the listener and hand focus back to whatever opened the dialog.
+//
+// e.stopPropagation() is load-bearing, not tidiness: these dialogs routinely
+// open ON TOP OF a sheet, and the sheet has its own document-level Escape and
+// Tab handling (handlers.js). Without stopping propagation, one Escape would
+// cancel the dialog AND close the sheet underneath it, and the two Tab traps
+// would fight over focus.
+function _wireModal(overlay, { labelEl, initial, onEscape }) {
+  const opener = document.activeElement;
+  const dialog = overlay.firstElementChild;
+  dialog.setAttribute('role', 'alertdialog');
+  dialog.setAttribute('aria-modal', 'true');
+  if (labelEl) {
+    labelEl.id = labelEl.id || ('dlg-' + Math.random().toString(36).slice(2, 9));
+    dialog.setAttribute('aria-labelledby', labelEl.id);
+  }
+  const onKey = e => {
+    if (e.key === 'Escape') {
+      e.preventDefault(); e.stopPropagation();
+      onEscape();
+    } else if (e.key === 'Tab') {
+      e.stopPropagation();
+      const f = [...dialog.querySelectorAll('button:not([disabled]), input:not([disabled])')];
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  overlay.addEventListener('keydown', onKey);
+  if (initial) setTimeout(() => initial.focus(), 60);
+  return () => {
+    overlay.removeEventListener('keydown', onKey);
+    try { if (opener && opener.isConnected) opener.focus({ preventScroll: true }); } catch {}
+  };
+}
+
 function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'} = {}) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -111,17 +152,25 @@ function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'}
     overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding-top:max(48px, 10vh)';
     overlay.innerHTML = `
       <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:16px;margin:0 16px;padding:22px 20px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5)">
-        <div style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:18px;text-align:center">${esc(message)}</div>
+        <div data-dlg-msg style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:18px;text-align:center">${esc(message)}</div>
         <div style="display:flex;gap:10px">
           <button id="appConfirmCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
           <button id="appConfirmOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:${danger?'var(--rd)':'var(--acc)'};color:${danger?'#fff':'var(--btn-t,#fff)'};font-size:15px;font-weight:700">${esc(ok)}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
+    // v7.88 A11Y-03: for a DANGEROUS confirm, focus lands on Cancel, so a
+    // stray Enter cannot delete or replace anything. Otherwise on OK.
+    const release = _wireModal(overlay, {
+      labelEl: overlay.querySelector('[data-dlg-msg]'),
+      initial: overlay.querySelector(danger ? '#appConfirmCancel' : '#appConfirmOk'),
+      onEscape: () => finish(false),
+    });
     // Disable buttons after one tap to prevent double-fire on rapid taps
     const finish = result => {
       overlay.querySelector('#appConfirmOk').disabled = true;
       overlay.querySelector('#appConfirmCancel').disabled = true;
+      release();
       overlay.remove();
       resolve(result);
     };
@@ -139,7 +188,7 @@ function appPromptText(message, {placeholder = '', ok = 'OK', cancel = 'Cancel',
     overlay.style.cssText = 'position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding-bottom:calc(16px + var(--safe-bottom,0px))';
     overlay.innerHTML = `
       <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:20px 20px 16px 16px;padding:22px 20px 12px;box-shadow:0 -4px 32px rgba(0,0,0,.4)">
-        <div style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:14px;text-align:center">${esc(message)}</div>
+        <div data-dlg-msg style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:14px;text-align:center">${esc(message)}</div>
         <input id="appPromptInput" type="text" placeholder="${esc(placeholder)}" value="${esc(value)}" maxlength="40"
                style="width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:15px">
         <div style="display:flex;gap:10px">
@@ -149,9 +198,15 @@ function appPromptText(message, {placeholder = '', ok = 'OK', cancel = 'Cancel',
       </div>`;
     document.body.appendChild(overlay);
     const input = overlay.querySelector('#appPromptInput');
+    // Label the input from the message too — it had a placeholder only,
+    // which is not an accessible name.
+    const msgEl = overlay.querySelector('[data-dlg-msg]');
+    const release = _wireModal(overlay, { labelEl: msgEl, initial: null, onEscape: () => finish(null) });
+    if (msgEl) input.setAttribute('aria-labelledby', msgEl.id);
     const finish = result => {
       overlay.querySelector('#appPromptOk').disabled = true;
       overlay.querySelector('#appPromptCancel').disabled = true;
+      release();
       overlay.remove();
       resolve(result);
     };
@@ -275,6 +330,24 @@ function showUpdateBanner() {
   document.body.appendChild(el);
 }
 
+
+// v7.88 A11Y-02: accessible name for a figure row/card. The row is the app's
+// core navigation control but was a bare <div data-action> — no role, no
+// tabindex, no key handling — so keyboard, switch-access and many
+// screen-reader users could not open a figure at all (WCAG 2.1.1, 4.1.2).
+// The name says WHICH figure and its current status, and in select mode what
+// activating it will do, because a list is dozens of otherwise-identical rows.
+function figA11yLabel(f, c) {
+  const parts = [f.name];
+  if (f.line) parts.push(ln(f.line));
+  if (f.wave) parts.push('wave ' + f.wave);
+  const st = c && c.status ? STATUS_LABEL[c.status] : null;
+  parts.push(st || 'not in collection');
+  const verb = S.selectMode
+    ? (S.selected && S.selected.has && S.selected.has(f.id) ? 'selected. Toggle selection' : 'Select')
+    : 'Open details';
+  return esc(parts.join(', ') + '. ' + verb);
+}
 
 function patchFigRow(id) {
   window.cancelLongPress?.();  // v6.73: see render() — same mid-touch rebuild hazard
@@ -531,7 +604,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.87</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.88</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1274,7 +1347,7 @@ function renderFigRow(f, standalone = false) {
   // v7.22: swipe-to-action. Off for select mode (own interaction model),
   // standalone (reused in non-list contexts), and variant-nested rows.
   const swipeEnabled = !S.selectMode && !standalone && !f.variantOf;
-  const rowHtml = `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}">
+  const rowHtml = `<div class="fig-row${isSelected ? ' selected' : ''}${f.variantOf && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${rowAction}" role="button" tabindex="0" aria-label="${figA11yLabel(f, c)}"${S.selectMode ? ` aria-pressed="${isSelected ? 'true' : 'false'}"` : ''}>
     ${S.selectMode ? `<div class="select-checkbox ${isSelected ? 'checked' : ''}">${checkSvg}</div>` : ''}
     <div class="fig-thumb ${statusCls}${copyN > 1 ? ' has-stack' : ''}">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-load-action="img-loaded" data-fig-id="${eId}">` :
@@ -1421,7 +1494,7 @@ function renderFigCard(f, standalone = false) {
   const varCount = varKids.length
     ? ` <span class="variant-count-inline" title="${varKids.length} variant${varKids.length===1?'':'s'}">⧉${varKids.length}</span>` : '';
 
-  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}${isVarFig && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${cardAction}">
+  return `<div class="fig-card ${statusCls}${isSelected ? ' selected' : ''}${stackCls}${isVarFig && !standalone ? ' variant-nested' : ''}" data-fig-id="${eId}" data-action="${cardAction}" role="button" tabindex="0" aria-label="${figA11yLabel(f, c)}"${S.selectMode ? ` aria-pressed="${isSelected ? 'true' : 'false'}"` : ''}>
     <div class="card-image-wrap">
       ${showImg && imgSrc ? `<img src="${esc(imgSrc)}" alt="" loading="lazy" data-error-action="img-error" data-load-action="img-loaded" data-fig-id="${eId}">` :
         `<div class="card-initial">${esc(f.name[0])}</div>`}

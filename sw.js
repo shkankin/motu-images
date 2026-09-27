@@ -3,6 +3,40 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.88 changelog:
+//   • CACHE bumped to v7.88. SHELL: delegate.js + render.js + eggs.js +
+//     handlers.js + ui-sheets.js + vault.css + motu-vault.html (stamp).
+//     Audit A11Y-02 and A11Y-03.
+//   • A11Y-02 (HIGH) keyboard-operable figure rows and cards. The app's core
+//     navigation control was a bare <div data-action="open-fig">: no role, no
+//     tabindex, and delegation listened for click only — not one role="button"
+//     or tabindex existed anywhere in the templates. Keyboard, switch-access
+//     and many screen-reader users could not open a figure at all (WCAG 2.1.1,
+//     4.1.2). Rows/cards now carry role="button" tabindex="0" and an
+//     aria-label naming the figure, line, wave, status and the action (plus
+//     aria-pressed in select mode). delegate.js turns Enter/Space into a click
+//     for role="button" elements ONLY — native controls are skipped so nothing
+//     double-fires, and Space in a text field is never hijacked.
+//     The global :focus-visible outline sits 2px OUTSIDE the element and both
+//     would have clipped it to nothing (.fig-row-wrap overflow-x:hidden for the
+//     swipe panel; .fig-card overflow:hidden + contain:content), so these two
+//     get an INSET ring (outline-offset:-2px).
+//   • A11Y-03 (HIGH) dialog semantics and focus management. Sheets had none:
+//     focus stayed behind them, and handlers.js did `if (S.sheet) return;` on
+//     every key on the assumption sheets "have their own dismissal flow" —
+//     which was a close button and a backdrop TAP, so keyboard users had no
+//     way out. The photo viewer carried the identical false comment until
+//     v6.30. Sheets now have role="dialog" aria-modal aria-labelledby, focus
+//     moves into the panel on open, Tab/Shift+Tab are trapped, Escape closes,
+//     and focus returns to the opener on close. render() rebuilds the DOM, so
+//     the opener is remembered as a selector, not a node that would go stale.
+//     appConfirm/appPromptText share a _wireModal helper: role="alertdialog",
+//     labelled by their message, Escape cancels, focus restored. A DANGEROUS
+//     confirm focuses Cancel, so a stray Enter cannot delete anything. The
+//     helper stopPropagation()s Escape/Tab deliberately — these dialogs open ON
+//     TOP OF sheets, and one Escape would otherwise cancel the confirm AND
+//     close the sheet underneath.
+
 // v7.87 changelog:
 //   • CACHE bumped to v7.87. SHELL: motu-vault.html + photos.js + render.js +
 //     sw.js. Fixes from the external audit of 5d3d7bc (v7.85), verified
@@ -1906,7 +1940,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.87';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.88';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

@@ -2995,6 +2995,19 @@ summary {
   border-radius: 4px;
 }
 
+/* v7.88 A11Y-02: figure rows and cards are now keyboard-focusable
+   (role="button" tabindex="0"), but the global rule above draws the outline
+   2px OUTSIDE the element — and both would clip it to nothing:
+   .fig-row-wrap has overflow-x:hidden (the swipe panel needs it), and
+   .fig-card has overflow:hidden plus contain:content, whose paint
+   containment clips anything drawn outside the box. A negative offset draws
+   the ring INSIDE the element, which survives both. */
+.fig-row:focus-visible,
+.fig-card:focus-visible {
+  outline: 2px solid var(--acc, currentColor);
+  outline-offset: -2px;
+}
+
 /* WCAG 2.4.11 — keep focus from being obscured by sticky bottom nav */
 html {
   scroll-padding-bottom: 76px;
