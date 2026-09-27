@@ -462,6 +462,7 @@ window.goToFiltered = status => {
   S.filterFaction = '';
   S.filterVariants = false;
   S.filterWave = '';
+  S.filterSeries = '';   // v7.89: must clear alongside filterWave or it sticks
   S.activeLine = null;
   S.activeSubline = null;
   S.tab = 'all';
@@ -473,13 +474,14 @@ window.goToFiltered = status => {
 };
 // v6.68: jump to a wave checklist from the Stats sheet. Shows the full
 // wave (owned + unowned, status dots intact) so it reads as a checklist.
-window.goToWave = (lineId, wave) => {
+window.goToWave = (lineId, wave, series) => {
   S.sheet = null;
   S.filterStatus = '';
   S.filterFaction = '';
   S.filterVariants = false;
   S.filterLine = lineId;
   S.filterWave = String(wave);
+  S.filterSeries = series ? String(series) : '';   // v7.89: one series, not every series' wave N
   S.activeLine = null;
   S.activeSubline = null;
   S.tab = 'all';

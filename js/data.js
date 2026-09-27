@@ -2059,6 +2059,7 @@ const _derived = {
       S.filterVariants ? 1 : 0, S.filterLine,
       S.filterLoadout || '',
       S.filterWave || '',
+      S.filterSeries || '',
       S.searchScope || '',
       S.figs.length, S._hiddenKey,
       S._collVersion,
@@ -2122,6 +2123,16 @@ function _computeSortedFigs() {
   // v6.68: wave checklist filter. Set via the Waves section in Stats (no
   // chip UI in the filter sheet yet) — cleared by "Reset all filters".
   if (S.filterWave) list = list.filter(f => String(f.wave || '') === String(S.filterWave));
+  // v7.89: narrow to one SERIES, set by Stats → "View whole wave". Without it
+  // that jump showed every series' wave N in the line at once — the same
+  // pooling bug the Waves panel had. Matched through SUBLINES so a series
+  // spanning group-name aliases keeps all its figures; a line with no subline
+  // config falls back to treating the value as a literal group name.
+  if (S.filterSeries) {
+    const sub = (SUBLINES[S.filterLine] || []).find(x => x.key === S.filterSeries);
+    const groups = sub ? (sub.groups || []) : [S.filterSeries];
+    list = list.filter(f => groups.includes(f.group || ''));
+  }
   if (S.filterFaction) list = list.filter(f => f.faction === S.filterFaction);
   if (S.filterStatus === 'unowned') list = list.filter(f => !S.coll[f.id]?.status);
   else if (S.filterStatus) list = list.filter(f => S.coll[f.id]?.status === S.filterStatus);
@@ -2232,7 +2243,7 @@ function getLineStats() {
   });
 }
 
-function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine || S.filterLoadout || S.filterWave; }
+function hasFilters() { return S.search || S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine || S.filterLoadout || S.filterWave || S.filterSeries; }
 
 function progressRing(pct, size=48, color='var(--acc)') {
   const r = (size/2)-4, circ = 2*Math.PI*r;

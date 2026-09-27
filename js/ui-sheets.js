@@ -17,10 +17,9 @@ import {
   STATUS_LABEL, STATUS_COLOR, STATUS_HEX, ACCESSORIES, CONDITIONS,
   SUBLINES, SERIES_MAP, GROUP_MAP, CACHE_KEY,
   ln, normalize, esc, jsArg, _clone, getThemeTitles,
-  ptrEnabled,
 } from './state.js';
 import { bigGet } from './idb-store.js';
-import { renderIdentifySheet } from './identify.js';   // v7.76
+// v7.89: identify.js is no longer imported — Identify by Photo was removed.
 import {
   MAX_PHOTOS, photoStore, photoURLs,
 } from './photos.js';
@@ -42,7 +41,7 @@ import {
   renderQR, renderShareSheet,
   renderWantListViewSheet, buildShareURL,
 } from './share.js';
-import { renderStatsSheet } from './stats.js';
+import { renderStatsSheet, renderMissingDetailsSheet } from './stats.js';
 import { pushNav } from './handlers.js';
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
@@ -56,15 +55,20 @@ function buildSheetBody() {
   let body = '';
   if (S.sheet === 'filter') body = renderFilterSheet();
   else if (S.sheet === 'sort') body = renderSortSheet();
-  else if (S.sheet === 'import') body = renderImportSheet();
-  else if (S.sheet === 'export') body = renderExportSheet();
-  else if (S.sheet === 'identify') body = renderIdentifySheet();   // v7.76
+  // v7.89: Import and Export are ONE concept, now one "Backup & Restore"
+  // sheet. 'export' and 'import' stay routable and render the combined sheet
+  // — the backup nag (app.js) and any saved deep link still land correctly.
+  else if (S.sheet === 'backup' || S.sheet === 'export' || S.sheet === 'import') body = renderBackupSheet();
+  else if (S.sheet === 'missing') body = renderMissingDetailsSheet();   // v7.89
   else if (S.sheet === 'theme') body = renderThemeSheet();
   else if (S.sheet === 'menu') body = renderMenuSheet();
   else if (S.sheet === 'stats') body = renderStatsSheet();
   else if (S.sheet === 'edit') body = renderEditFigureSheet();
   else if (S.sheet === 'batch') body = renderBatchEditSheet();
-  else if (S.sheet === 'share') body = renderShareSheet();
+  // v7.89: "Want List" = sharing your list + the lists you've viewed, which
+  // used to be a separate Viewed Wishlists sheet that only appeared once
+  // non-empty. 'wishlistHistory' stays routable for existing entry points.
+  else if (S.sheet === 'share') body = renderShareSheet() + renderViewedListsSection();
   else if (S.sheet === 'wantListView') body = renderWantListViewSheet();
   else if (S.sheet === 'kidsCoreAdmin') body = renderKidsCoreAdminSheet();
   else if (S.sheet === 'accessoryPicker') body = renderAccessoryPickerSheet();
@@ -90,7 +94,7 @@ function refreshSheetBody() {
 window.refreshSheetBody = refreshSheetBody;
 
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Import', export:'Export / Backup', theme:'Theme', menu:'Settings', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Share Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', identify:'Identify by Photo', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
+  const titles = {filter:'Filter', sort:'Sort By', import:'Backup & Restore', export:'Backup & Restore', backup:'Backup & Restore', missing:'Missing Details', theme:'Theme', menu:'Menu', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
     packEdit: 'Edit Pack',
   };
   let body = buildSheetBody();
@@ -204,79 +208,87 @@ window.patchLocSheet = (loc) => {
   if (body && S.sheet === 'locations') body.innerHTML = renderLocationsSheet();
 };
 
+// v7.89: MENU REDESIGN (owner-approved). The old sheet was titled "Settings"
+// but only 2 of its ~12 entries were settings; everything else was a tool,
+// in one flat list with no grouping. It also RESHUFFLED as data changed —
+// Locations spliced in at position 3 once you had one, and Viewed Wishlists
+// appeared at the bottom once non-empty — so muscle memory broke every time.
+// Now: fixed order, fixed sections, nothing appears or vanishes.
+//   • Identify by Photo — REMOVED (owner: "never worked well").
+//   • Pull-to-refresh toggle + its whole "Sync" section — REMOVED; the header
+//     sync button is the refresh path.
+//   • Import + Export → one "Backup & Restore".
+//   • Share Want List + Viewed Wishlists → one "Want List".
+//   • Data completeness moved out of Stats → "Missing Details".
+//   • Pricing Backend demoted under Settings → Advanced (one-time setup).
+function _menuBtn({ action, sheet, glyph, label, hint, badge }) {
+  return `
+    <button data-action="${esc(action)}" ${sheet ? `data-sheet="${esc(sheet)}"` : ''} style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
+      <span style="color:var(--acc)" aria-hidden="true">${glyph}</span>
+      <span style="flex:1">${label}${hint ? `<span style="display:block;font-size:11px;color:var(--t3);font-weight:400;margin-top:2px;line-height:1.4">${hint}</span>` : ''}</span>
+      ${badge || ''}
+      <span style="margin-left:auto;color:var(--t3)" aria-hidden="true">${icon(ICO.chevR, 16)}</span>
+    </button>`;
+}
+function _menuSection(title, first) {
+  return `${first ? '' : '<div style="height:1px;background:var(--bd);margin:14px 4px"></div>'}
+    <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">${title}</div>`;
+}
+
 function renderMenuSheet() {
-  const menuItems = [
-    {label:'Collection Stats',    icon:ICO.heart,   action:'open-sheet', sheet:'stats'},
-    {label:'Share Want List',     icon:ICO.share,   action:'open-sheet', sheet:'share'},
-    {label:'Theme',               icon:ICO.palette, action:'open-sheet', sheet:'theme'},
-    {label:'Manage Collections',  icon:ICO.sort,    action:'menu-manage-collections'},
-    {label:'Import',              icon:ICO.import,  action:'open-sheet', sheet:'import'},
-    {label:'Export / Backup' + (backupDue() ? ` <span style="font-size:9px;font-weight:700;color:var(--bg);background:var(--gold);padding:2px 7px;border-radius:99px;vertical-align:1px">${getBackupMeta().changes} UNSAVED</span>` : ''), icon:ICO.export, action:'open-sheet', sheet:'export'},
-    {label:'Identify by Photo',   icon:ICO.camera,  action:'open-sheet', sheet:'identify'},   // v7.76
-    {label:'Pricing Backend',     icon:ICO.tag,     action:'open-sheet', sheet:'pricing'},
-  ];
-  // v6.68: Locations browser — only shown once at least one copy has a
-  // location set, mirroring the Viewed Wishlists pattern below.
-  const _locs = getAllLocations();
-  if (_locs.length) {
-    menuItems.splice(3, 0, {
-      label: `Locations (${_locs.length})`,
-      icon: ICO.box || ICO.tag,
-      action: 'menu-open-locations',
-    });
-  }
-  // v7.29: the conditional "Manage Sublines" menu item (v7.15-v7.17) is
-  // gone — replaced by a "Sublines" drill-in button directly on each row
-  // inside line-reorder mode (Manage Collections → tap a line's Sublines
-  // button). That's one menu entry instead of two, and doesn't require
-  // already knowing you have to navigate into a line first before the
-  // option even appears — the exact discoverability complaint that
-  // prompted this change.
-  // v6.31: insert "Viewed Wishlists" only when there's at least one entry,
-  // so new users don't see an empty option that won't do anything.
-  const wlHistory = (typeof window.getWishlistHistory === 'function') ? window.getWishlistHistory() : [];
-  if (wlHistory.length) {
-    menuItems.push({
-      label: `Viewed Wishlists (${wlHistory.length})`,
-      icon: ICO.box || ICO.heart,
-      action: 'open-sheet', sheet: 'wishlistHistory',
-    });
-  }
-  let html = menuItems.map(m => `
-    <button data-action="${esc(m.action)}" ${m.sheet ? `data-sheet="${esc(m.sheet)}"` : ''} style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
-      <span style="color:var(--acc)">${icon(m.icon, 20)}</span>
-      ${m.label}
-      <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
-    </button>`).join('');
-  const ptrOn = ptrEnabled();   // v7.74: normalized read (legacy 'false' string was truthy — see state.js)
-  html += `<div style="height:1px;background:var(--bd);margin:14px 4px"></div>
-    <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">Sync</div>
-    <button data-action="toggle-ptr" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
-      <span style="color:var(--acc)">${icon(ICO.refresh || ICO.sort, 20)}</span>
-      <span style="flex:1">Pull-to-refresh
-        <span style="display:block;font-size:11px;color:var(--t3);font-weight:400;margin-top:2px;line-height:1.4">Pull down at the top of the list to sync. Off by default to avoid accidental refreshes.</span>
-      </span>
-      <span style="padding:5px 11px;border-radius:999px;background:${ptrOn?'var(--gn)':'var(--bg2)'};color:${ptrOn?'var(--bg)':'var(--t3)'};font-size:11px;font-weight:700">${ptrOn?'ON':'OFF'}</span>
-    </button>`;
-  // v6.28: Help section — replay the tutorial. Previously the only entry
-  // point was the dismissable banner on the Lines screen, which became
-  // unreachable once dismissed. Tutorial state is read via the same
-  // window.tutorialState() helper used by renderLinesGrid.
+  const nLoc = getAllLocations().length;
+  const unsaved = backupDue()
+    ? `<span style="padding:3px 8px;border-radius:999px;background:var(--rd);color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px">${getBackupMeta().changes} UNSAVED</span>`
+    : '';
   const tState = (typeof window.tutorialState === 'function') ? window.tutorialState() : { seen: false };
-  const tourLabel = tState.seen ? 'Replay 1-minute tour' : 'Take the 1-minute tour';
-  html += `<div style="height:1px;background:var(--bd);margin:14px 4px"></div>
-    <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">Help</div>
-    <button data-action="menu-start-tutorial" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
-      <span style="color:var(--acc);font-size:18px">🎓</span>
-      <span style="flex:1">${tourLabel}</span>
-      <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
-    </button>
-    <button data-action="open-sheet" data-sheet="about" style="width:100%;display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:10px;text-align:left;font-size:15px;color:var(--t1)">
-      <span style="color:var(--acc);font-size:18px">ⓘ</span>
-      <span style="flex:1">About MOTU Collector</span>
-      <span style="margin-left:auto;color:var(--t3)">${icon(ICO.chevR, 16)}</span>
-    </button>`;
+
+  let html = '';
+  html += _menuSection('My Collection', true);
+  html += _menuBtn({ action: 'open-sheet', sheet: 'stats',   glyph: icon(ICO.heart, 20), label: 'Stats' });
+  html += _menuBtn({ action: 'open-sheet', sheet: 'share',   glyph: icon(ICO.share, 20), label: 'Want List',
+                     hint: 'Share yours, and revisit lists you\'ve viewed' });
+  html += _menuBtn({ action: 'menu-open-locations',          glyph: icon(ICO.box || ICO.tag, 20),
+                     label: nLoc ? `Locations (${nLoc})` : 'Locations' });
+  html += _menuBtn({ action: 'menu-manage-collections',      glyph: icon(ICO.sort, 20), label: 'Manage Collections' });
+  html += _menuBtn({ action: 'open-sheet', sheet: 'missing', glyph: icon(ICO.tag, 20), label: 'Missing Details',
+                     hint: 'Owned figures without condition, date, price or location' });
+
+  html += _menuSection('Backup');
+  html += _menuBtn({ action: 'open-sheet', sheet: 'backup',  glyph: icon(ICO.export, 20), label: 'Backup &amp; Restore', badge: unsaved });
+
+  html += _menuSection('Settings');
+  html += _menuBtn({ action: 'open-sheet', sheet: 'theme',   glyph: icon(ICO.palette, 20), label: 'Theme' });
+  html += _menuBtn({ action: 'open-sheet', sheet: 'pricing', glyph: icon(ICO.tag, 20), label: 'Pricing Backend',
+                     hint: 'Advanced — one-time setup for market values' });
+
+  html += _menuSection('Help');
+  html += _menuBtn({ action: 'menu-start-tutorial',          glyph: '<span style="font-size:18px">🎓</span>',
+                     label: tState.seen ? 'Replay 1-minute tour' : 'Take the 1-minute tour' });
+  html += _menuBtn({ action: 'open-sheet', sheet: 'about',   glyph: '<span style="font-size:18px">ⓘ</span>', label: 'About MOTU Collector' });
   return html;
+}
+
+// v7.89: Backup & Restore — the old separate Export and Import sheets,
+// composed in the order you use them (back up first; restore is rarer).
+// Both renderers are reused unchanged, and neither checks S.sheet
+// internally (verified), so rendering them under 'backup' is safe.
+function renderBackupSheet() {
+  const head = t => `<div class="text-xs text-upper text-dim" style="padding:2px 4px 10px;letter-spacing:1.2px">${t}</div>`;
+  return head('Back up') + renderExportSheet()
+    + '<div style="height:1px;background:var(--bd);margin:22px 4px 16px"></div>'
+    + head('Restore') + renderImportSheet();
+}
+
+// v7.89: viewed lists, shown inside Want List. Renders NOTHING when there are
+// none — the standalone empty-state card would just be clutter under the
+// share controls. Deleting an entry re-renders via delete-wishlist-entry,
+// whose sheet check was widened to include 'share' for exactly this.
+function renderViewedListsSection() {
+  const arr = (typeof window.getWishlistHistory === 'function') ? window.getWishlistHistory() : [];
+  if (!arr.length) return '';
+  return `<div style="height:1px;background:var(--bd);margin:22px 4px 16px"></div>
+    <div class="text-xs text-upper text-dim" style="padding:2px 4px 10px;letter-spacing:1.2px">Lists you've viewed</div>`
+    + renderWishlistHistorySheet();
 }
 
 function renderPricingSheet() {
@@ -484,7 +496,7 @@ function renderAboutSheet() {
   <div style="padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;font-size:12px;color:var(--t2);line-height:1.55">
     Your collection lives in your browser's local storage. Nothing is sent
     to any server unless you explicitly configure a pricing backend (see
-    Settings → Pricing Backend). Backups stay on your device.
+    Menu → Pricing Backend). Backups stay on your device.
   </div>
 
   <div style="text-align:center;padding:20px 0 8px;color:var(--t3);font-size:11px;letter-spacing:0.5px">
@@ -618,7 +630,7 @@ function renderFilterSheet() {
 // the same work that would happen on sheet-close anyway.
 window.patchFilter = (key, val) => {
   if (key === 'clear') {
-    S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search=''; S.filterLoadout=''; S.filterWave='';
+    S.filterFaction=''; S.filterStatus=''; S.filterVariants=false; S.filterLine=''; S.search=''; S.filterLoadout=''; S.filterWave=''; S.filterSeries='';
   } else if (key === 'line')     S.filterLine = val;
   else if (key === 'faction')    S.filterFaction = val;
   else if (key === 'status')     S.filterStatus = val;

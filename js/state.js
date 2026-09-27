@@ -371,11 +371,9 @@ const store = {
   onChange: (fn) => { _storageListeners.add(fn); return () => _storageListeners.delete(fn); },
 };
 
-// (see comment above `store`)
-const ptrEnabled = () => {
-  const v = store.get('motu-ptr-enabled');
-  return v === true || v === 'true';
-};
+// v7.89: ptrEnabled() removed along with pull-to-refresh itself (owner
+// request). The stored 'motu-ptr-enabled' key is left in place and simply
+// never read — harmless, and deleting user storage to tidy up isn't worth it.
 
 // § STATE ── Global S object, DEFAULT_TITLE ────────────────────────
 const S = {
@@ -486,5 +484,5 @@ window.getThemeTitles = getThemeTitles;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  ICO, icon, ROOT, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, AF411_PATHS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, AF411_PATHS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, PACKS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles, ptrEnabled
+  ICO, icon, ROOT, IMG, FIGS_URL, KIDS_CORE_URL, LOADOUTS_URL, AF411_PATHS_URL, CACHE_KEY, LOADOUTS_CACHE_KEY, AF411_PATHS_CACHE_KEY, KIDS_CORE_KEY, CUSTOM_FIGS_KEY, PACKS_KEY, CACHE_TTL, LINES, FACTIONS, CONDITIONS, ACCESSORIES, OPTIONAL_ACCESSORIES, STATUSES, STATUS_LABEL, STATUS_COLOR, STATUS_HEX, THEMES, SUBLINES, SERIES_MAP, COND_MAP, GROUP_MAP, ln, normalize, esc, jsArg, isSelecting, _clone, store, S, DEFAULT_TITLE, getThemeTitles
 };

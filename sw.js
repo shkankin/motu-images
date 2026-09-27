@@ -3,6 +3,45 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.89 changelog:
+//   • CACHE bumped to v7.89. SHELL: state.js + render.js + delegate-handlers.js
+//     + ui-sheets.js + stats.js + data.js + eggs.js + motu-vault.html (stamp);
+//     js/identify.js DROPPED from SHELL. Menu redesign (owner-approved) plus
+//     two removals.
+//   • MENU REDESIGN. "Settings" was mostly not settings (2 of ~12 entries), a
+//     flat ungrouped list that RESHUFFLED as data changed: Locations spliced in
+//     at position 3 once you had one, Viewed Wishlists appeared at the bottom
+//     once non-empty. Now "Menu", fixed sections, fixed order, nothing appears
+//     or vanishes: My Collection (Stats · Want List · Locations · Manage
+//     Collections · Missing Details), Backup (Backup & Restore), Settings
+//     (Theme · Pricing Backend as Advanced), Help (Tour · About).
+//     Import + Export merged into Backup & Restore; Share Want List + Viewed
+//     Wishlists merged into Want List. The old sheet ids ('export','import',
+//     'wishlistHistory') still route — the backup nag opens 'export' — so no
+//     entry point broke. delete-wishlist-entry only re-rendered when
+//     S.sheet === 'wishlistHistory'; widened to 'share', or deleting a viewed
+//     list inside Want List would have left it on screen.
+//   • WAVES IN PROGRESS FIXED. It grouped by line+wave with NO series. On the
+//     live catalog 52 of 99 buckets mixed 2+ unrelated series ("Original ·
+//     Wave 1" = She-Ra + Commemorative + Vehicles + Action Figures). Now keyed
+//     by line + SERIES + wave, the series resolved through SUBLINES — the
+//     series as the app presents it — so aliases the subline config already
+//     merges (Original's 'Vehicles and Playsets' / 'Vehicles & Playsets') stay
+//     one series. "View whole wave" had the same pooling bug; it now passes
+//     the series, and a new S.filterSeries narrows the list, mirroring
+//     filterWave at all six set/clear/memo sites so it can never stick on.
+//   • Data completeness moved out of Stats into Menu → Missing Details (same
+//     data, same gap-CSV export; it's a to-do list, not a statistic).
+//   • PULL-TO-REFRESH REMOVED (owner request). Not just the toggle: removing
+//     only the toggle would have trapped anyone who'd already switched it on,
+//     with no way to turn it off. bindPTR, ptrEnabled and the handler are
+//     gone; listeners were re-bound per render, so none survive a reload.
+//   • IDENTIFY BY PHOTO REMOVED (owner: "never worked well"). Sheet, menu
+//     entry, 7 handlers, the ui-sheets import and the SHELL entry. js/identify.js
+//     and workers/identify-worker.js remain in the repo, unreferenced and
+//     inert, so check_deployable stays green; delete them together with their
+//     PATH_MAP entries in one later step.
+
 // v7.88 changelog:
 //   • CACHE bumped to v7.88. SHELL: delegate.js + render.js + eggs.js +
 //     handlers.js + ui-sheets.js + vault.css + motu-vault.html (stamp).
@@ -1940,7 +1979,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.88';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.89';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -2089,7 +2128,7 @@ const SHELL = [
   'js/eggs.js',
   'js/tutorial.js',
   'js/pricing.js',
-  'js/identify.js',        // v7.76: Identify-by-Photo sheet + matcher
+  // v7.89: 'js/identify.js' removed — Identify by Photo is gone.
   'js/stats.js',
   'js/share.js',
   'js/delegate.js',

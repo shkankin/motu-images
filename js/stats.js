@@ -10,7 +10,7 @@
 // reached via window.* (already bridged in app.js) to avoid a circular
 // import with render.js.
 
-import { S, store, esc, ln, icon, ICO, jsArg } from './state.js';
+import { S, store, esc, ln, icon, ICO, jsArg, SUBLINES } from './state.js';
 import {
   getStats, getLineStats, getSoldLog, figIsHidden, isMigrated,
   isLineFullyHidden, getEvents, getCompletenessStats,
@@ -104,7 +104,7 @@ window.toggleWaveExpand = (wid) => {
 
 window.fetchAllOwnedPricing = async () => {
   if (_bulkFetchRunning) { toast('Already fetching…'); return; }
-  if (!isPricingConfigured()) { toast('Configure a pricing backend first (Settings → Pricing Backend)'); return; }
+  if (!isPricingConfigured()) { toast('Configure a pricing backend first (Menu → Pricing Backend)'); return; }
   const targets = S.figs.filter(f => {
     if (figIsHidden(f)) return false;
     const c = S.coll[f.id];
@@ -134,6 +134,53 @@ window.fetchAllOwnedPricing = async () => {
   const body = document.querySelector('.sheet-body');
   if (body && S.sheet === 'stats') body.innerHTML = renderStatsSheet();
 };
+
+// v7.89: Menu → Missing Details. Moved out of the Stats sheet verbatim (same
+// getCompletenessStats data, same gap-CSV export) — only the divider/heading
+// are dropped, since the sheet title now names it, and a real empty state is
+// added for a collection with nothing owned yet.
+export function renderMissingDetailsSheet() {
+  let html = '';
+  // v6.83: Data Completeness — surfaces owned figures missing priority fields
+  // (condition, acquired, paid, location) and offers a one-tap gap-CSV export
+  // that round-trips back through Import (matched by stable ID).
+  const comp = getCompletenessStats();
+  if (comp._rows === 0) {
+    return `<div style="text-align:center;padding:28px 12px;color:var(--t3);font-size:13px;line-height:1.6">
+      Nothing to check yet — once you mark figures as owned, this lists any
+      missing condition, date obtained, price or location.</div>`;
+  }
+  {
+    const FIELD_ORDER = [
+      ['condition', 'Condition'], ['acquired', 'Date obtained'],
+      ['paid', 'Purchase price'], ['location', 'Location'],
+    ];
+    const anyGap = FIELD_ORDER.some(([k]) => comp[k] > 0);
+    if (!anyGap) {
+      html += `<div style="font-size:13px;color:var(--gn);padding:4px 0 10px">✓ Every owned figure has condition, date, price, and location filled.</div>`;
+    } else {
+      html += `<div style="font-size:12px;color:var(--t3);margin-bottom:8px">${comp._figs} of ${comp._rows} owned ${comp._rows === 1 ? 'copy is' : 'copies are'} missing data</div>`;
+      for (const [k, label] of FIELD_ORDER) {
+        const n = comp[k];
+        if (!n) continue;
+        const pctMissing = Math.round((n / comp._rows) * 100);
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 0">
+          <div style="font-size:12px;color:var(--t2);font-weight:600;width:110px;flex-shrink:0">${label}</div>
+          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pctMissing}%;background:var(--acc);border-radius:3px"></div>
+          </div>
+          <div style="font-size:12px;color:var(--acc);font-weight:700;width:90px;text-align:right;flex-shrink:0">${n} missing</div>
+        </div>`;
+      }
+      html += `<button data-action="export-gaps" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer">
+        ${icon(ICO.export, 15)} Export gaps to CSV
+      </button>
+      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Fill the blanks in any spreadsheet, then re-import (Menu → Backup &amp; Restore). Rows match by ID, so nothing else is touched.</div>`;
+    }
+  }
+
+  return html;
+}
 
 function renderStatsSheet() {
   const stats = getStats();
@@ -294,11 +341,25 @@ function renderStatsSheet() {
   // figure name still deep-links to that figure; a "View whole wave"
   // affordance jumps to the filtered checklist (goToWave).
   {
-    const waveAgg = {}; // "line\x00wave" → {line, wave, total, owned, missing:[figs]}
+    // v7.89: grouped by SERIES, not just line. Waves are numbered per series,
+    // so "line + wave" pooled unrelated series together — measured on the live
+    // catalog, 52 of 99 buckets mixed 2+ series, e.g. "Original · Wave 1" was
+    // She-Ra + Commemorative + Vehicles + Action Figures counted as one wave.
+    // The series is resolved through SUBLINES, i.e. the series AS THE APP
+    // PRESENTS IT, so group-name aliases the subline config already merges
+    // (Original's 'Vehicles and Playsets' vs 'Vehicles & Playsets') stay one
+    // series here too. Lines with no subline config fall back to the group.
+    const seriesOf = f => {
+      const g = f.group || '';
+      const sub = (SUBLINES[f.line] || []).find(s => (s.groups || []).includes(g));
+      return sub ? { key: sub.key, label: sub.label, group: g } : { key: g, label: g, group: g };
+    };
+    const waveAgg = {}; // "line\x00series\x00wave" → {line, series, seriesLabel, group, wave, total, owned, missing:[figs]}
     for (const f of S.figs) {
       if (figIsHidden(f) || !f.wave) continue;
-      const k = f.line + '\x00' + f.wave;
-      const a = waveAgg[k] || (waveAgg[k] = { line: f.line, wave: String(f.wave), total: 0, owned: 0, missing: [] });
+      const ser = seriesOf(f);
+      const k = f.line + '\x00' + ser.key + '\x00' + f.wave;
+      const a = waveAgg[k] || (waveAgg[k] = { line: f.line, series: ser.key, seriesLabel: ser.label, group: ser.group, wave: String(f.wave), total: 0, owned: 0, missing: [] });
       a.total++;
       const st = S.coll[f.id]?.status;
       if (st === 'owned' || st === 'for-sale') a.owned++;
@@ -308,6 +369,7 @@ function renderStatsSheet() {
     const inProgress = Object.values(waveAgg)
       .filter(a => a.owned > 0 && a.owned < a.total)
       .sort((a, b) => lineIdx(a.line) - lineIdx(b.line) ||
+        a.seriesLabel.localeCompare(b.seriesLabel) ||
         ((parseFloat(a.wave) || 99) - (parseFloat(b.wave) || 99)) ||
         a.wave.localeCompare(b.wave));
     if (inProgress.length) {
@@ -317,7 +379,8 @@ function renderStatsSheet() {
       shown.forEach(a => {
         const pctW = Math.round(a.owned / a.total * 100);
         const missing = a.total - a.owned;
-        const wid = `wave_${esc(a.line)}_${esc(a.wave)}`.replace(/[^\w]/g, '');
+        // v7.89: series in the id too — two series can share a wave number.
+        const wid = `wave_${esc(a.line)}_${esc(a.series)}_${esc(a.wave)}`.replace(/[^\w]/g, '');
         // Missing-figure chips, name-sorted; each deep-links to the figure.
         const missList = a.missing
           .slice()
@@ -327,7 +390,7 @@ function renderStatsSheet() {
         html += `<div class="wave-row">
           <button class="wave-row-head" data-action="toggle-wave-expand" data-wave-id="${wid}">
             <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(ln(a.line))} · Wave ${esc(a.wave)}</div>
+              <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(ln(a.line))}${a.seriesLabel ? ' · ' + esc(a.seriesLabel) : ''} · Wave ${esc(a.wave)}</div>
               <div style="height:3px;background:var(--bd);border-radius:2px;overflow:hidden">
                 <div style="height:100%;width:${pctW}%;background:var(--acc);border-radius:2px"></div>
               </div>
@@ -342,7 +405,7 @@ function renderStatsSheet() {
           </button>
           <div class="wave-missing" id="${wid}" style="display:none">
             <div class="wave-missing-chips">${missList}</div>
-            <button class="wave-viewall" data-action="go-to-wave" data-line="${esc(a.line)}" data-wave="${esc(a.wave)}">View whole wave →</button>
+            <button class="wave-viewall" data-action="go-to-wave" data-line="${esc(a.line)}" data-wave="${esc(a.wave)}" data-series="${esc(a.series)}">View whole wave →</button>
           </div>
         </div>`;
       });
@@ -458,40 +521,10 @@ function renderStatsSheet() {
   // figure count above is untouched, and line/subline completion
   // celebrations still fire from eggs.js checkCompletion.
 
-  // v6.83: Data Completeness — surfaces owned figures missing priority fields
-  // (condition, acquired, paid, location) and offers a one-tap gap-CSV export
-  // that round-trips back through Import (matched by stable ID).
-  const comp = getCompletenessStats();
-  if (comp._rows > 0) {
-    const FIELD_ORDER = [
-      ['condition', 'Condition'], ['acquired', 'Date obtained'],
-      ['paid', 'Purchase price'], ['location', 'Location'],
-    ];
-    const anyGap = FIELD_ORDER.some(([k]) => comp[k] > 0);
-    html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
-      <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Data completeness</div>`;
-    if (!anyGap) {
-      html += `<div style="font-size:13px;color:var(--gn);padding:4px 0 10px">✓ Every owned figure has condition, date, price, and location filled.</div>`;
-    } else {
-      html += `<div style="font-size:12px;color:var(--t3);margin-bottom:8px">${comp._figs} of ${comp._rows} owned ${comp._rows === 1 ? 'copy is' : 'copies are'} missing data</div>`;
-      for (const [k, label] of FIELD_ORDER) {
-        const n = comp[k];
-        if (!n) continue;
-        const pctMissing = Math.round((n / comp._rows) * 100);
-        html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 0">
-          <div style="font-size:12px;color:var(--t2);font-weight:600;width:110px;flex-shrink:0">${label}</div>
-          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
-            <div style="height:100%;width:${pctMissing}%;background:var(--acc);border-radius:3px"></div>
-          </div>
-          <div style="font-size:12px;color:var(--acc);font-weight:700;width:90px;text-align:right;flex-shrink:0">${n} missing</div>
-        </div>`;
-      }
-      html += `<button data-action="export-gaps" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer">
-        ${icon(ICO.export, 15)} Export gaps to CSV
-      </button>
-      <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Fill the blanks in any spreadsheet, then re-import (Menu → Import). Rows match by ID, so nothing else is touched.</div>`;
-    }
-  }
+  // v7.89: Data Completeness moved OUT of Stats into its own Menu → Missing
+  // Details sheet (renderMissingDetailsSheet below). It is the owner's own
+  // to-do list — owned copies lacking condition, date, price or location —
+  // not a statistic, so it did not belong among the collection numbers.
 
   return html;
 }

@@ -184,7 +184,10 @@ registerAll({
     window.deleteWishlistHistoryEntry?.(idx);
     // Re-render just the sheet body
     const body = document.querySelector('.sheet-body');
-    if (body && window.S.sheet === 'wishlistHistory') {
+    // v7.89: viewed wishlists now also live inside the Want List ('share')
+    // sheet. Checking only 'wishlistHistory' would leave a deleted entry on
+    // screen there.
+    if (body && (window.S.sheet === 'wishlistHistory' || window.S.sheet === 'share')) {
       // Defer the import-cycle-free way: call the registered renderer via
       // openSheet, which already re-renders. Or just call render() — this
       // is a settings-level action, performance is not the concern.
@@ -481,17 +484,6 @@ registerAll({
     window.closeSheet?.();
     window.startTutorial?.();
   },
-  // v7.74: three fixes. (1) Writes a real boolean — the old string
-  // 'false' was truthy at every read site, making the toggle one-way
-  // (user: "can't turn it off"). (2) Rebinds the listeners in place via
-  // bindPTR() — the old full render() was the "screen just refreshes"
-  // the user saw on every toggle. (3) The sheet pill flips via
-  // refreshSheetBody (scroll-preserving, v7.60 idiom).
-  'toggle-ptr': () => {
-    window.store?.set('motu-ptr-enabled', !window.ptrEnabled?.());
-    window.bindPTR?.();
-    window.refreshSheetBody?.();
-  },
 
   // Pricing sheet
   'save-pricing-backend':       () => window.savePricingBackend?.(),
@@ -635,7 +627,6 @@ registerAll({
   // block. It initially shipped in a click block: the delegate registry
   // is per event type, so the change event found no handler and taking a
   // photo silently did nothing (user report).
-  'identify-photo':    (e, el) => window.identifyFromInput?.(el),
   'handle-copy-photo': (e, el, d) => window.handleCopyPhoto?.(el, d.figId, d.copyId),
   'handle-import-file': (e, el) => window.handleImportFile?.(el),
   // v7.79: community line pack import (Manage Collections).
@@ -744,24 +735,14 @@ registerAll({
     window.refreshSheetBody?.();
   },
   'photo-scan-cancel': () => { window.S._photoScan = undefined; window.refreshSheetBody?.(); },
-  // v7.76: Identify-by-Photo (sheet logic in js/identify.js)
-  'identify-pick':          () => document.getElementById('identifyCamera')?.click(),
-  'identify-save-backend':  () => {
-    const url = document.getElementById('identifyUrl')?.value;
-    const secret = document.getElementById('identifySecret')?.value;
-    if (window.saveIdentifyBackend?.(url, secret)) { window.toast?.('✓ Backend saved'); window.refreshSheetBody?.(); }
-    else window.toast?.('✗ Enter a valid https:// URL');
-  },
-  'identify-reset-backend': () => { window.clearIdentifyBackend?.(); window.S._identify = undefined; window.refreshSheetBody?.(); },
-  'identify-open':          (e, el, dd) => { window.S._identify = undefined; window.closeSheet?.(); window.openFig?.(dd.figId); },
-  'identify-retry':         () => { window.S._identify = undefined; window.refreshSheetBody?.(); },
+  // v7.89: Identify-by-Photo removed (owner request — never worked well).
 
   // Stats sheet
   'go-to-filtered':    (e, el, d) => window.goToFiltered?.(d.status),
   'fetch-all-pricing': () => window.fetchAllOwnedPricing?.(),
   'export-gaps':       () => window.exportGaps?.(),
   'toggle-wave-expand':(e, el, d) => window.toggleWaveExpand?.(d.waveId),
-  'go-to-wave':        (e, el, d) => window.goToWave?.(d.line, d.wave),
+  'go-to-wave':        (e, el, d) => window.goToWave?.(d.line, d.wave, d.series),
 
   // Share sheet
   'copy-share-url':  () => window.copyShareURL?.(),

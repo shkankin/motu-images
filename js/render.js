@@ -33,7 +33,6 @@ import {
   // by the new eslint no-undef gate.
   KIDS_CORE_KEY,
   ln, normalize, esc, jsArg, isSelecting, _clone, getThemeTitles,
-  ptrEnabled,
 } from './state.js';
 import {
   MAX_PHOTOS, photoStore, photoURLs, photoCopyOf,
@@ -604,7 +603,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.88</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.89</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -830,10 +829,6 @@ function renderMain() {
     ca.addEventListener('click', ca._bumpHandler, {passive: true, capture: true});
     ca.addEventListener('contextmenu', ca._bumpHandler, {passive: true, capture: true});
 
-    // Pull-to-refresh — extracted to bindPTR() in v7.74 so the settings
-    // toggle can rebind in place without a full render() (the full render
-    // was the "screen just refreshes" the user reported when toggling).
-    bindPTR();
 
     // Long-press context menu on figure rows and cards
     requestAnimationFrame(() => {
@@ -846,48 +841,12 @@ function renderMain() {
   }
 }
 
-// v7.74: pull-to-refresh (un)binding, extracted from renderMain. Two fixes
-// vs the v5.00 inline version: (1) the unbind now runs UNCONDITIONALLY —
-// it used to live inside the enabled-branch, so turning PTR off left the
-// old listeners attached to #contentArea until a reload; (2) the enabled
-// check reads ptrEnabled() (state.js), which understands both the new
-// boolean values and the legacy 'true'/'false' strings whose truthiness
-// made the toggle one-way. Callable from the toggle handler via
-// window.bindPTR.
-function bindPTR() {
-  const ca = document.getElementById('contentArea');
-  if (!ca) return;
-  ca._ptrTouchStart && ca.removeEventListener('touchstart', ca._ptrTouchStart);
-  ca._ptrTouchEnd && ca.removeEventListener('touchend', ca._ptrTouchEnd);
-  ca._ptrTouchStart = ca._ptrTouchEnd = null;
-  if (!ptrEnabled()) return;
-  let _ptrStart = 0, _ptrActive = false;
-  // v5.00: pull-to-refresh is opt-in. On some devices (sensitive
-  // touchscreens) it fires during normal upward scrolling, causing
-  // unwanted constant resyncs.
-  // v7.85 CORRECTION: this comment used to claim "fetchFigs already runs on
-  // page load and every visibilitychange, so PTR is redundant". Neither half
-  // is true. The boot fetch is TTL-gated (app.js: `if (needsFetch)`, 24h
-  // CACHE_TTL) and there is no visibilitychange→fetchFigs handler anywhere —
-  // the two visibilitychange listeners in data.js only flush pending writes.
-  // With PTR off, the header sync button is the ONLY manual refresh path.
-  ca._ptrTouchStart = e => { if (ca.scrollTop <= 0) _ptrStart = e.touches[0].clientY; else _ptrStart = 0; };
-  ca._ptrTouchEnd = e => {
-    // v5.00: threshold raised 80→120px to reduce false fires on sensitive
-    // touch hardware where small upward gestures crossed the old threshold.
-    if (_ptrStart && e.changedTouches[0].clientY - _ptrStart > 120 && ca.scrollTop <= 0 && !_ptrActive) {
-      _ptrActive = true;
-      haptic(20);
-      toast('↻ Syncing…');
-      fetchFigs(true).then(() => { _ptrActive = false; });
-    }
-    _ptrStart = 0;
-  };
-  ca.addEventListener('touchstart', ca._ptrTouchStart, {passive: true});
-  ca.addEventListener('touchend', ca._ptrTouchEnd, {passive: true});
-}
-window.bindPTR = bindPTR;
-window.ptrEnabled = ptrEnabled;
+// v7.89: pull-to-refresh REMOVED (owner request). It had been opt-in since
+// v5.00, and the header sync button is the refresh path. Removing only the
+// settings toggle would have been a trap: anyone who had ALREADY switched it
+// on would keep it forever with no way to turn it off. Listeners were
+// re-bound on every render and never survive a reload, so dropping the
+// binding removes it for everyone.
 
 function renderSelectActionbar() {
   const n = S.selected.size;
