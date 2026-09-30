@@ -452,8 +452,9 @@ function renderStatsSheet() {
         }
         if (!key) continue;   // no usable date — skip silently
         const paid = parseFloat(cp.paid) || 0;
-        if (!out[key]) out[key] = { count: 0, spend: 0 };
+        if (!out[key]) out[key] = { count: 0, spend: 0, items: [] };
         out[key].count += 1;
+        out[key].items.push({ id, paid, acquired: cp.acquired || '' });   // v7.90: for Spend by Year drill-down
         if (paid > 0) out[key].spend += paid;
       }
     }
@@ -492,11 +493,14 @@ function renderStatsSheet() {
   }
 
   // v6.39: spend by year — same buckets, summed by YYYY.
-  const yearSpend = {};
+  const yearSpend = {}, yearItems = {};
   for (const k in buckets) {
     const yr = k.slice(0, 4);
     yearSpend[yr] = (yearSpend[yr] || 0) + buckets[k].spend;
+    (yearItems[yr] = yearItems[yr] || []).push(...(buckets[k].items || []));
   }
+  const nameOf = id => (S.figs.find(f => f.id === id) || {}).name || id;
+  const thisYear = new Date().getFullYear();
   const years = Object.keys(yearSpend).filter(y => yearSpend[y] > 0).sort();
   if (years.length > 0) {
     const yearMax = Math.max(...years.map(y => yearSpend[y]));
@@ -505,12 +509,24 @@ function renderStatsSheet() {
     for (const y of years) {
       const v = yearSpend[y];
       const pct = (v / yearMax) * 100;
-      html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">
-        <div style="font-size:12px;color:var(--t2);font-weight:600;width:40px;flex-shrink:0">${y}</div>
-        <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:3px"></div>
+      // v7.90: each year expands to the copies behind it (tap a figure to open
+      // it), and a FUTURE year is flagged — almost always a typo like 2056.
+      const wid = 'spend_' + y;
+      const future = +y > thisYear;
+      const items = (yearItems[y] || []).slice().sort((a, b) => (b.paid || 0) - (a.paid || 0));
+      html += `<div class="wave-row">
+        <button class="wave-row-head" data-action="toggle-wave-expand" data-wave-id="${wid}" style="display:flex;align-items:center;gap:10px;padding:6px 0;width:100%;text-align:left;border:0;background:none;cursor:pointer" aria-label="${y}: $${v.toFixed(0)} spent. Show figures">
+          <div style="font-size:12px;color:var(--t2);font-weight:600;width:40px;flex-shrink:0${future ? ';color:var(--rd)' : ''}">${y}</div>
+          <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:3px"></div>
+          </div>
+          <div style="font-size:12px;color:var(--gold);font-weight:700;width:70px;text-align:right;flex-shrink:0">$${v.toFixed(0)}</div>
+          <span class="wave-caret" id="${wid}_caret">${icon(ICO.chevR, 14)}</span>
+        </button>
+        ${future ? `<div style="font-size:11px;color:var(--rd);margin:-2px 0 6px">Future date — probably a typo. Tap the year to find it.</div>` : ''}
+        <div id="${wid}" style="display:none;padding:4px 0 10px">
+          ${items.map(it => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(it.id)}">${esc(nameOf(it.id))}${it.acquired ? ' · ' + esc(it.acquired) : ''}${it.paid ? ' · $' + it.paid.toFixed(0) : ''}</button>`).join('')}
         </div>
-        <div style="font-size:12px;color:var(--gold);font-weight:700;width:70px;text-align:right;flex-shrink:0">$${v.toFixed(0)}</div>
       </div>`;
     }
   }

@@ -1554,6 +1554,19 @@ window.removeCopy = async (id, copyId) => {
   patchDetailStatus();
 };
 
+// v7.90: acquired dates are MM/YYYY and must not be in the future. A typo
+// (2056 for 2026) sailed straight into Stats → Spend by Year with no way to
+// trace it. Empty is valid — the field is optional.
+function acquiredIsValid(v) {
+  if (!v) return true;
+  const m = String(v).match(/^(\d{1,2})\/(\d{4})$/);
+  if (!m) return false;
+  const mo = +m[1], y = +m[2], now = new Date();
+  if (mo < 1 || mo > 12 || y < 1950) return false;
+  return y < now.getFullYear() || (y === now.getFullYear() && mo <= now.getMonth() + 1);
+}
+window.acquiredIsValid = acquiredIsValid;
+
 window.updateCopy = (id, copyId, key, val, opts) => {
   // v7.27: copyId arrives as a string from every real call site — it's
   // read from a DOM data-* attribute (dataset.* is always a DOMStringMap,
@@ -2260,7 +2273,10 @@ function progressRing(pct, size=48, color='var(--acc)') {
 // body remained as orphan code in v4.77 (never shipped) — header was lost
 // in a refactor. Matches the v4.73 production signature.
 function exportCSV(filter) {
-  const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Copy #','Condition','Paid','Variant','Accessories','Location','Notes'];
+  // v7.90: 'Acquired' added — the main export omitted the one date field
+  // collectors actually record. Import maps columns BY NAME (col('Acquired')
+  // already existed for the gaps CSV), so older exports without it still import.
+  const h = ['Name','Line','Group','Wave','Year','Retail','Faction','Status','Copy #','Condition','Paid','Acquired','Variant','Accessories','Location','Notes'];
   let list = S.figs;
   if (filter === 'owned') list = list.filter(f => S.coll[f.id]?.status === 'owned');
   else if (filter === 'wishlist') list = list.filter(f => S.coll[f.id]?.status === 'wishlist');
@@ -2277,16 +2293,16 @@ function exportCSV(filter) {
       // One row per copy. Copy # is 1-indexed.
       c.copies.forEach((cp, i) => {
         const acc = Array.isArray(cp.accessories) ? cp.accessories.join('; ') : '';
-        rows.push([...base, i + 1, cp.condition || '', cp.paid || '', cp.variant || '', acc, cp.location || '', cp.notes || '']);
+        rows.push([...base, i + 1, cp.condition || '', cp.paid || '', cp.acquired || '', cp.variant || '', acc, cp.location || '', cp.notes || '']);
         totalRowCount++;
       });
     } else if (!isMigrated(c) && (c.condition || c.paid || c.notes || c.variants)) {
       // Defensive: legacy entry that somehow escaped migration
-      rows.push([...base, 1, c.condition || '', c.paid || '', c.variants || '', '', '', c.notes || '']);
+      rows.push([...base, 1, c.condition || '', c.paid || '', '', c.variants || '', '', '', c.notes || '']);
       totalRowCount++;
     } else {
       // No copies (wishlist / ordered / unowned with status only)
-      rows.push([...base, '', '', '', '', '', '', '']);
+      rows.push([...base, '', '', '', '', '', '', '', '']);
       totalRowCount++;
     }
   }

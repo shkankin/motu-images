@@ -763,6 +763,11 @@ window.openBatchEditor = () => {
 
 window.applyBatchEdit = () => {
   const be = S.batchEdit; if (!be) return;
+  // v7.90: same future-date guard as the single-copy field.
+  if (be.acquired && !window.acquiredIsValid?.(be.acquired)) {
+    window.toast?.('Acquired date must be MM/YYYY and not in the future');
+    return;
+  }
   const extras = { variant: be.variant, paid: be.paid, notes: be.notes, status: be.status, acquired: be.acquired, location: be.location };
   if (be.mode === 'add') batchAddCopy(be.condition, extras);
   else batchUpdateExisting(be.condition, extras);   // 'update' (default)

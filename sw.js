@@ -3,6 +3,21 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.90 changelog:
+//   • CACHE bumped to v7.90. SHELL: data.js + stats.js + delegate-handlers.js
+//     + ui-sheets.js + render.js/motu-vault.html (stamps).
+//   • Main CSV export gains an 'Acquired' column (after Paid). It was missing
+//     entirely, so a typo'd acquired date (2056) could not be found from any
+//     export. Import maps columns BY NAME, so old exports still import and
+//     new ones now round-trip dates.
+//   • Acquired dates must be MM/YYYY and not in the future (shared
+//     acquiredIsValid in data.js), enforced on the copy field — which
+//     restores the previous value rather than showing an unsaved one — and on
+//     batch edit.
+//   • Stats → Spend by Year: each year expands to the copies behind it
+//     (figure · date · price, tap to open), and a future year is flagged as a
+//     likely typo. Reuses toggleWaveExpand; no new handler.
+
 // v7.89 changelog:
 //   • CACHE bumped to v7.89. SHELL: state.js + render.js + delegate-handlers.js
 //     + ui-sheets.js + stats.js + data.js + eggs.js + motu-vault.html (stamp);
@@ -1979,7 +1994,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.89';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.90';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

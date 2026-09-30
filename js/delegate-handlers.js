@@ -610,7 +610,16 @@ registerAll({
 registerAll({
 
   // Copy card field changes — commit to store
-  'update-copy-field': (e, el, d) => window.updateCopy?.(d.figId, d.copyId, d.field, el.value),
+  'update-copy-field': (e, el, d) => {
+    // v7.90: refuse a future/invalid acquired date and put the old value back,
+    // so the field never shows a value that was not saved.
+    if (d.field === 'acquired' && !window.acquiredIsValid?.(el.value)) {
+      window.toast?.('Acquired date must be MM/YYYY and not in the future');
+      el.value = el.defaultValue;
+      return;
+    }
+    window.updateCopy?.(d.figId, d.copyId, d.field, el.value);
+  },
 
   // Ordered figure fields
   'update-ordered-field': (e, el, d) => window.updateOrderedField?.(d.figId, d.field, el.value),
