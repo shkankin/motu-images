@@ -804,6 +804,20 @@ window.addEventListener('popstate', e => {
       return;
     }
 
+    // v7.91: Manage Collections. Back steps out of a line's sublines to the
+    // line list, then exits; Done (toggleReorder) jumps straight out.
+    if (S.editingOrder) {
+      if (S._exitManage || !S.activeLine) {
+        S.editingOrder = false; S._exitManage = false; S._manageDepth = 0;
+        S.activeLine = null; S.activeSubline = null;
+      } else {
+        S.activeLine = null; S.activeSubline = null;
+        S._manageDepth = Math.max(0, (S._manageDepth || 1) - 1);
+      }
+      render();
+      return;
+    }
+
     // Sheet is gone — now exit select mode if active
     if (isSelecting()) {
       S.selectMode = false;

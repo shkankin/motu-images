@@ -125,13 +125,25 @@ export function configurePricingBackend(url, apiKey) {
 // Synchronous read of cached pricing (no network). Returns the cached
 // data if present and not too stale, regardless of TTL — callers decide
 // whether to render stale data while a refresh is in flight.
-export function getCachedPricing(figId) {
+// v7.91: { anyAge } lets DISPLAY callers keep last-known prices. Without it,
+// anything fetched more than STALE_TTL (7d) ago returned null, so Stats'
+// Collection Value silently lost every price a week after fetching and said
+// "No cached prices yet" — reported as "the cached prices do not remain".
+// Fetch logic keeps the default (stale = missing), which is what makes a
+// fetch refresh old entries.
+export function getCachedPricing(figId, { anyAge = false } = {}) {
   const cache = _loadCache();
   const entry = cache[figId];
   if (!entry || !entry.data) return null;
   const age = Date.now() - (entry.fetchedAt || 0);
-  if (age > STALE_TTL) return null;
-  return { data: entry.data, age, fresh: age < CACHE_TTL };
+  if (age > STALE_TTL && !anyAge) return null;
+  return { data: entry.data, age, fresh: age < CACHE_TTL, stale: age > STALE_TTL };
+}
+
+// v7.91: age in ms of a figure's cached price (any age), or null.
+export function getPriceAge(figId) {
+  const e = _loadCache()[figId];
+  return e && e.data ? Date.now() - (e.fetchedAt || 0) : null;
 }
 
 // Async fetch + cache. Returns the same shape getCachedPricing returns.
@@ -287,7 +299,7 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
 // collection-value dashboard to aggregate without any network traffic.
 export function getCachedAskingPrice(fig) {
   if (!fig || !fig.id) return null;
-  const cached = getCachedPricing(fig.id);
+  const cached = getCachedPricing(fig.id, { anyAge: true });   // v7.91: dated, not dropped
   if (!cached || !cached.data) return null;
   const d = cached.data;
   const prefersSealed = !VINTAGE_LINES.has(fig.line);

@@ -603,7 +603,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.90</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.91</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1047,7 +1047,8 @@ function renderLinesGrid() {
     </div>`;
   }
   if (S.editingOrder) {
-    html += `<div class="reorder-toggle"><button class="active" data-action="toggle-reorder">✓ Done</button></div>`;
+    html += `<div class="reorder-toggle"><button class="active" data-action="toggle-reorder">✓ Done</button></div>
+      <div style="font-size:12px;color:var(--t3);line-height:1.5;padding:2px 4px 10px">Drag ⠿ to reorder your lines, <b>Hide</b> the ones you don't collect, and tap › to do the same for a line's sublines. Changes save as you go — press Back or Done when finished.</div>`;
   }
 
   if (S.editingOrder) {
@@ -1184,7 +1185,8 @@ function renderSublines() {
     .filter(x => x.slFigs.length);
 
   if (S.editingOrder) {
-    let html = `<div class="reorder-toggle"><button class="active" data-action="toggle-reorder">✓ Done</button></div>`;
+    let html = `<div class="reorder-toggle"><button class="active" data-action="toggle-reorder">✓ Done</button></div>
+      <div style="font-size:12px;color:var(--t3);line-height:1.5;padding:2px 4px 10px">Drag to reorder this line's sublines, or Hide the ones you don't collect. Back returns to your lines.</div>`;
     html += '<div class="reorder-list" data-reorder-scope="sublines" data-line-id="' + esc(S.activeLine) + '">';
     populated.forEach(({ sl, slFigs }) => {
       const hidden = isSublineHidden(S.activeLine, sl.key);

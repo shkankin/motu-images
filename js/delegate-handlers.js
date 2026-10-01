@@ -350,6 +350,9 @@ registerAll({
     if (!d.lineId) return;
     window.S.activeLine = d.lineId;
     window.S.activeSubline = null;
+    // v7.91: own history entry, so Back returns to the line list.
+    window.pushNav?.();
+    window.S._manageDepth = (window.S._manageDepth || 0) + 1;
     window.render?.();
   },
 
@@ -469,7 +472,11 @@ registerAll({
 
   // Menu sheet actions
   'menu-manage-collections': () => {
-    window.closeSheet?.();
+    // v7.91: close the menu IN PLACE rather than via history.back(), so the
+    // menu's history entry becomes Manage Collections' entry and the phone's
+    // Back button exits it (handled in handlers.js popstate).
+    window.S.sheet = null;
+    window.S._manageDepth = 1;
     window.S.editingOrder = true;
     window.S.tab = 'lines';
     window.S.activeLine = null;

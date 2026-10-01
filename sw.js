@@ -3,6 +3,24 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.91 changelog:
+//   • CACHE bumped to v7.91. SHELL: pricing.js + stats.js + delegate-handlers.js
+//     + eggs.js + handlers.js + render.js + motu-vault.html (stamp).
+//   • Stats prices no longer vanish after 7 days. getCachedPricing returned
+//     null past STALE_TTL, so Collection Value lost every price a week after
+//     fetching. Display now uses { anyAge }, shows "Prices as of <date>" and
+//     how many are over a week old, and the fetch button offers to refresh
+//     them. Fetch logic keeps stale = missing, which is what refreshes them.
+//   • Value chart: "N daily snapshots" (a count with nothing behind it)
+//     replaced by tracking-since date, high and low.
+//   • Waves in Progress: was the first 14 waves (in practice Origins only)
+//     plus an un-tappable "+N more". Now grouped by line, each collapsible.
+//   • Manage Collections explains itself, and the phone's Back button works:
+//     out of a line's sublines to the line list, then out entirely. The menu's
+//     history entry is reused (closed in place), drilling in pushes one, and
+//     Done unwinds them so no dead Back presses remain. Edits already save on
+//     every drop/hide, so Back loses nothing.
+
 // v7.90 changelog:
 //   • CACHE bumped to v7.90. SHELL: data.js + stats.js + delegate-handlers.js
 //     + ui-sheets.js + render.js/motu-vault.html (stamps).
@@ -1994,7 +2012,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.90';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.91';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

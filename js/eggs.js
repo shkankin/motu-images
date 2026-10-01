@@ -454,7 +454,17 @@ window.crumbToLine = () => {
 };
 window.clearSubline = () => { history.back(); };
 window.selectSubline = key => { S.activeSubline = key; S.tab = 'all'; S.savedScroll = 0; S.searchBarHidden = false; S.barsHidden = false; S._justNavigated = true; pushNav(); render(); };
-window.toggleReorder = () => { S.editingOrder = !S.editingOrder; render(); };
+// v7.91: leaving Manage Collections unwinds the history entries it created,
+// so Done and Back end in the same place with no dead Back presses after.
+// Changes already save as you go (store.set on every drop / hide).
+window.toggleReorder = () => {
+  if (S.editingOrder && S._manageDepth > 0) {
+    S._exitManage = true;
+    history.go(-S._manageDepth);
+    return;
+  }
+  S.editingOrder = !S.editingOrder; render();
+};
 window.setViewMode = mode => { S.viewMode = mode; store.set('motu-view', mode); render(); };
 window.goToFiltered = status => {
   S.sheet = null;

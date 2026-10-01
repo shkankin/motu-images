@@ -17,6 +17,7 @@ import {
 } from './data.js';
 import {
   getCachedAskingPrice, isPricingConfigured, fetchPricing,
+  getPriceAge,
 } from './pricing.js';
 import { toast } from './render.js';
 
@@ -244,6 +245,16 @@ function renderStatsSheet() {
       soldGross += s.price || 0;
       if (Number.isFinite(s.paid)) { soldProfit += (s.price || 0) - s.paid; soldWithPaid++; }
     }
+    // v7.91: how old are the prices behind this number?
+    let oldestAge = 0, staleN = 0;
+    for (const id in S.coll) {
+      const c = S.coll[id];
+      if (!c || (c.status !== 'owned' && c.status !== 'for-sale')) continue;
+      const ag = getPriceAge(id);
+      if (ag == null) continue;
+      if (ag > oldestAge) oldestAge = ag;
+      if (ag > 7 * 86400000) staleN++;
+    }
     if (priced > 0 || soldLog.length > 0 || isPricingConfigured()) {
       const unrealized = marketValue - spentOnPriced;
       const sign = n => (n >= 0 ? '+' : '−') + '$' + Math.abs(n).toFixed(2);
@@ -254,13 +265,14 @@ function renderStatsSheet() {
           <span style="font-family:'Cinzel',serif;font-size:22px;font-weight:700;color:var(--gold)">$${marketValue.toFixed(2)}</span>
           <span style="font-size:11px;color:var(--t3)">market · ${priced}/${haveTotal} priced</span>
         </div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">Prices as of ${new Date(Date.now() - oldestAge).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}${staleN ? ` · ${staleN} over a week old` : ''}</div>
         ${spentOnPriced > 0 ? `<div style="font-size:12px;color:${unrealized >= 0 ? 'var(--gn)' : 'var(--rd)'};margin-top:4px">${sign(unrealized)} unrealized vs $${spentOnPriced.toFixed(2)} paid (priced figures only)</div>` : ''}`;
       } else if (isPricingConfigured()) {
         html += `<div style="font-size:12px;color:var(--t3)">No cached prices yet — fetch below.</div>`;
       }
-      if (isPricingConfigured() && priced < haveTotal) {
+      if (isPricingConfigured() && (priced < haveTotal || staleN > 0)) {
         html += `<button id="fetchAllPricesBtn" data-action="fetch-all-pricing" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);background:var(--bg3);color:var(--gold);font-size:12px;font-weight:600">
-          ${icon(ICO.refresh || ICO.sort, 13)} Fetch prices for ${haveTotal - priced} unpriced
+          ${icon(ICO.refresh || ICO.sort, 13)} ${priced < haveTotal ? `Fetch prices for ${haveTotal - priced} unpriced` : ''}${priced < haveTotal && staleN ? ' · ' : ''}${staleN ? `Refresh ${staleN} older than a week` : ''}
         </button>`;
       }
       if (soldLog.length) {
@@ -307,7 +319,7 @@ function renderStatsSheet() {
           <span>${fmtD(t1)}</span>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--t3);margin-top:6px">${hist.length} daily snapshots · ${cur.o} figures · ${cur.c} copies tracked</div>`;
+      <div style="font-size:11px;color:var(--t3);margin-top:6px">${(() => { const vs = hist.map(h => h.v); return `Tracking since ${fmtD(hist[0].t)} · high $${Math.max(...vs).toFixed(0)} · low $${Math.min(...vs).toFixed(0)} · ${cur.o} figures`; })()}</div>`;
     } else if (hist.length === 1) {
       html += `<div style="font-size:11px;color:var(--t3);margin:2px 0 12px">📈 Daily worth tracking started ${new Date(hist[0].t).toLocaleDateString()} — the trend chart appears after the next snapshot.</div>`;
     }
@@ -373,10 +385,26 @@ function renderStatsSheet() {
         ((parseFloat(a.wave) || 99) - (parseFloat(b.wave) || 99)) ||
         a.wave.localeCompare(b.wave));
     if (inProgress.length) {
-      const shown = inProgress.slice(0, 14);
+      // v7.91: was the first 14 waves in line order plus an un-tappable
+      // "+N more" — in practice Origins and nothing else. Now grouped by
+      // line, each collapsible; the first line starts open.
+      const byLine = [];
+      for (const a of inProgress) {
+        let g = byLine[byLine.length - 1];
+        if (!g || g.line !== a.line) byLine.push(g = { line: a.line, waves: [] });
+        g.waves.push(a);
+      }
       html += `<div class="label text-upper text-dim text-xs" style="margin:14px 0 4px">Waves in Progress</div>
         <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Tap a wave to see what you're missing.</div>`;
-      shown.forEach(a => {
+      byLine.forEach((g, gi) => {
+        const gid = 'wl_' + String(g.line).replace(/[^\w]/g, '');
+        html += `<button class="wave-row-head" data-action="toggle-wave-expand" data-wave-id="${gid}" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 2px;border:0;background:none;text-align:left;cursor:pointer;color:var(--t1);font-size:13px;font-weight:700">
+          <span style="flex:1">${esc(ln(g.line))}</span>
+          <span style="font-size:11px;font-weight:400;color:var(--t3)">${g.waves.length} in progress</span>
+          <span class="wave-caret" id="${gid}_caret" style="${gi === 0 ? 'transform:rotate(90deg)' : ''}">${icon(ICO.chevR, 14)}</span>
+        </button>
+        <div id="${gid}" style="display:${gi === 0 ? 'block' : 'none'};padding-left:6px">`;
+      g.waves.forEach(a => {
         const pctW = Math.round(a.owned / a.total * 100);
         const missing = a.total - a.owned;
         // v7.89: series in the id too — two series can share a wave number.
@@ -409,9 +437,8 @@ function renderStatsSheet() {
           </div>
         </div>`;
       });
-      if (inProgress.length > shown.length) {
-        html += `<div style="font-size:11px;color:var(--t3);padding:8px 0">+${inProgress.length - shown.length} more in-progress waves</div>`;
-      }
+        html += `</div>`;
+      });
     }
   }
 
