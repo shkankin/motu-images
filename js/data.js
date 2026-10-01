@@ -2351,6 +2351,18 @@ function getCompletenessStats() {
   }
   return tally;
 }
+// v7.92: the figures behind one Missing Details count, so the count can be
+// opened and fixed on a phone instead of via a CSV round-trip.
+function getGapFigures(field) {
+  const out = [];
+  for (const f of S.figs) {
+    const c = S.coll[f.id];
+    if (!c || c.status !== 'owned') continue;
+    const copies = isMigrated(c) && c.copies.length ? c.copies : [getPrimaryCopy(c) || {}];
+    if (copies.some(cp => copyGaps(cp).includes(field))) out.push({ id: f.id, name: f.name });
+  }
+  return out;
+}
 function exportGaps() {
   const h = ['ID','Name','Line','Group','Wave','Status','Copy #','Condition','Acquired','Paid','Location','Variant','Accessories','Notes','Missing'];
   const rows = [];
@@ -3018,19 +3030,23 @@ function renderExportSheet() {
     {filter:'for-sale', label:'For Sale', count:sale},
     {filter:'unowned', label:'Unowned', count:unowned},
   ];
-  let html = '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">CSV Export</div>';
-  html += opts.map(o => `
-    <button data-action="export-csv" data-filter="${o.filter}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
-      <span>${o.label}</span>
-      <span style="color:var(--t3);font-size:12px">${o.count} figures</span>
-    </button>`).join('');
-  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+  let html = '';
   html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Full Backup (JSON)</div>';
   html += `<button data-action="export-json" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--gold);background:color-mix(in srgb, var(--gold) 8%, transparent);margin-bottom:8px;text-align:left;font-size:15px;color:var(--gold)">
     <span>Backup Collection + Photos</span>
     <span style="color:var(--t3);font-size:12px">${anyStatus} entries · ${photoCount} photos</span>
   </button>`;
   html += '<div class="text-sm text-dim" style="line-height:1.5">Includes all statuses, conditions, notes, variants, and custom photos. Use to restore your full collection.</div>';
+  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+  // v7.92: Full Backup moved to the top — it's the export that actually
+  // protects a collection. ONE CSV control with a status choice replaces seven
+  // full-width buttons ("Unowned" dropped). "Settings Only" export removed: rarely
+  // useful, and it wrote the pricing API key into a shareable file (audit SEC-08).
+  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
+  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:8px">Spreadsheet (CSV)</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">' + opts.filter(o => o.filter !== 'unowned' && (o.count > 0 || o.filter === '')).map(o =>
+    `<button data-action="export-csv" data-filter="${o.filter}" style="padding:9px 12px;border-radius:999px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px">${o.label} <span style="color:var(--t3)">${o.count}</span></button>`).join('') + '</div>';
+  html += '<div class="text-sm text-dim" style="margin-bottom:6px">Opens in any spreadsheet app. Includes date acquired and price paid.</div>';
   html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
   html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Insurance Report</div>';
   html += `<button data-action="export-insurance" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
@@ -3047,13 +3063,6 @@ function renderExportSheet() {
     </button>`;
     html += '<div class="text-sm text-dim" style="line-height:1.5">Downloads all custom photos as a ZIP archive, organized by figure folder. Useful for backing up to cloud storage (Drive, Dropbox, etc.) or transferring to another device.</div>';
   }
-  html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
-  html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Settings Only</div>';
-  html += `<button data-action="export-settings" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);margin-bottom:8px;text-align:left;font-size:15px;color:var(--t1)">
-    <span>Export App Settings</span>
-    <span style="color:var(--t3);font-size:12px">theme · sort · order</span>
-  </button>`;
-  html += '<div class="text-sm text-dim" style="line-height:1.5">Just the preferences — theme, sort order, view mode, line order, hidden items, recent changes. Does NOT include collection data or photos.</div>';
   html += '<div style="height:1px;background:var(--bd);margin:16px 0"></div>';
   html += '<div class="label text-upper text-dim text-xs" style="margin-bottom:10px">Maintenance</div>';
   const scan = S._orphanScan;
@@ -3356,5 +3365,5 @@ window.clearWishlistHistory = clearWishlistHistory;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
 };

@@ -13,7 +13,7 @@
 import { S, store, esc, ln, icon, ICO, jsArg, SUBLINES } from './state.js';
 import {
   getStats, getLineStats, getSoldLog, figIsHidden, isMigrated,
-  isLineFullyHidden, getEvents, getCompletenessStats,
+  isLineFullyHidden, getEvents, getCompletenessStats, getGapFigures,
 } from './data.js';
 import {
   getCachedAskingPrice, isPricingConfigured, fetchPricing,
@@ -165,13 +165,17 @@ export function renderMissingDetailsSheet() {
         const n = comp[k];
         if (!n) continue;
         const pctMissing = Math.round((n / comp._rows) * 100);
-        html += `<div style="display:flex;align-items:center;gap:10px;padding:5px 0">
+        // v7.92: tap a field to list the figures missing it; tap one to open
+        // and fill it in. CSV export below stays for desktop use.
+        html += `<div role="button" tabindex="0" data-action="toggle-wave-expand" data-wave-id="gap_${k}" aria-label="${label}: ${n} missing. Show figures" style="display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer">
           <div style="font-size:12px;color:var(--t2);font-weight:600;width:110px;flex-shrink:0">${label}</div>
           <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
             <div style="height:100%;width:${pctMissing}%;background:var(--acc);border-radius:3px"></div>
           </div>
           <div style="font-size:12px;color:var(--acc);font-weight:700;width:90px;text-align:right;flex-shrink:0">${n} missing</div>
-        </div>`;
+          <span class="wave-caret" id="gap_${k}_caret">${icon(ICO.chevR, 14)}</span>
+        </div>
+        <div id="gap_${k}" style="display:none;padding:2px 0 10px">${getGapFigures(k).map(g => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(g.id)}">${esc(g.name)}</button>`).join('')}</div>`;
       }
       html += `<button data-action="export-gaps" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer">
         ${icon(ICO.export, 15)} Export gaps to CSV
@@ -212,10 +216,9 @@ function renderStatsSheet() {
     </div>
     <div class="stats-legend">
       <button class="stat-item" data-action="go-to-filtered" data-status="owned"><div class="stat-dot owned"></div><span class="stat-val">${stats.owned}</span> owned</button>
-      <button class="stat-item" data-action="go-to-filtered" data-status="wishlist"><div class="stat-dot wishlist"></div><span class="stat-val">${stats.wish}</span> wish</button>
-      <button class="stat-item" data-action="go-to-filtered" data-status="ordered"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ord</button>
-      ${stats.sale ? `<button class="stat-item" data-action="go-to-filtered" data-status="for-sale"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> sale</button>` : ''}
-      <button class="stat-item" data-action="go-to-filtered" data-status="unowned"><div class="stat-dot unowned"></div><span class="stat-val">${unowned}</span> unowned</button>
+      <button class="stat-item" data-action="go-to-filtered" data-status="wishlist"><div class="stat-dot wishlist"></div><span class="stat-val">${stats.wish}</span> wishlist</button>
+      <button class="stat-item" data-action="go-to-filtered" data-status="ordered"><div class="stat-dot ordered"></div><span class="stat-val">${stats.ord}</span> ordered</button>
+      <button class="stat-item" data-action="go-to-filtered" data-status="for-sale"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> for sale</button>
     </div>
     ${totalSpent > 0 ? `<div style="margin-top:10px;font-size:13px;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent${avgStr ? ` · ${avgStr}` : ''}</div>` : ''}
   </div>`;
@@ -330,8 +333,12 @@ function renderStatsSheet() {
   const lineStats = getLineStats();
   const ordered = [...S.lineOrder].map(id => lineStats.find(l => l.id === id)).filter(Boolean)
     .concat(lineStats.filter(l => !S.lineOrder.includes(l.id)));
-  ordered.filter(l => !isLineFullyHidden(l.id) && l.total > 0).forEach(l => {
-    html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent)">
+  // v7.92: rows open their line; lines with nothing owned fold into one
+  // "Not started" group instead of a wall of 0% bars.
+  const visibleLines = ordered.filter(l => !isLineFullyHidden(l.id) && l.total > 0);
+  const notStarted = visibleLines.filter(l => !l.owned);
+  visibleLines.filter(l => l.owned).forEach(l => {
+    html += `<button data-action="go-to-line" data-line-id="${esc(l.id)}" aria-label="${esc(l.name)}: ${l.owned} of ${l.total} owned. Open line" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid color-mix(in srgb, var(--bd) 30%, transparent);width:100%;border:0;background:none;text-align:left;cursor:pointer;color:inherit;font:inherit">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">${esc(l.name)}</div>
         <div style="height:4px;background:var(--bd);border-radius:2px;overflow:hidden">
@@ -342,8 +349,11 @@ function renderStatsSheet() {
         <div style="font-size:13px;font-weight:700;color:${l.pct===100?'var(--gn)':'var(--gold)'}">${l.pct}%</div>
         <div style="font-size:10px;color:var(--t3)">${l.owned}/${l.total}</div>
       </div>
-    </div>`;
+    </button>`;
   });
+  if (notStarted.length) {
+    html += `<button class="wave-row-head" data-action="toggle-wave-expand" data-wave-id="bl_notstarted" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 2px;border:0;background:none;text-align:left;cursor:pointer;color:var(--t2);font-size:12px;font-weight:600"><span style="flex:1">Not started (${notStarted.length})</span><span class="wave-caret" id="bl_notstarted_caret">${icon(ICO.chevR, 14)}</span></button><div id="bl_notstarted" style="display:none">` + notStarted.map(l => `<button class="wave-missing-chip" data-action="go-to-line" data-line-id="${esc(l.id)}">${esc(l.name)} · ${l.total}</button>`).join('') + `</div>`;
+  }
 
   // ── v6.68: Waves in Progress ─────────────────────────────────────
   // Collectors complete by wave; this surfaces every line+wave the user
@@ -498,7 +508,7 @@ function renderStatsSheet() {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       const label = d.toLocaleString(undefined, { month: 'short' });
-      months.push({ key, label, count: buckets[key]?.count || 0, year: d.getFullYear() });
+      months.push({ key, label, count: buckets[key]?.count || 0, year: d.getFullYear(), items: buckets[key]?.items || [] });
     }
     const max = Math.max(1, ...months.map(m => m.count));
     const totalAdded = months.reduce((s, m) => s + m.count, 0);
@@ -511,12 +521,17 @@ function renderStatsSheet() {
       ${months.map(m => {
         const h = m.count ? Math.max(4, (m.count / max) * 60) : 2;
         const isCurrent = m.key === months[months.length - 1].key;
-        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="${m.label} ${m.year}: ${m.count} added">
+        return `<div ${m.count ? `role="button" tabindex="0" data-action="toggle-wave-expand" data-wave-id="act_${m.key}" aria-label="${m.label} ${m.year}: ${m.count} added. Show figures"` : ''} style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;${m.count ? 'cursor:pointer' : ''}" title="${m.label} ${m.year}: ${m.count} added">
           <div style="width:100%;height:${h}px;background:${m.count ? (isCurrent ? 'var(--acc)' : 'var(--gold)') : 'var(--bd)'};border-radius:2px;transition:height 0.3s"></div>
           <div style="font-size:9px;color:var(--t3);font-weight:600">${m.label[0]}</div>
         </div>`;
       }).join('')}
     </div>`;
+    // v7.92: per-month panels — "136 added" can now be opened.
+    const nm = id => (S.figs.find(f => f.id === id) || {}).name || id;
+    html += months.filter(m => m.count).map(m => `<div id="act_${m.key}" style="display:none;padding:8px 0 4px">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:4px">${m.label} ${m.year} — ${m.count} added</div>
+      ${m.items.map(it => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(it.id)}">${esc(nm(it.id))}</button>`).join('')}</div>`).join('');
   }
 
   // v6.39: spend by year — same buckets, summed by YYYY.

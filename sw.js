@@ -3,6 +3,26 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.92 changelog:
+//   • CACHE bumped to v7.92. SHELL: data.js + stats.js + share.js + ui-sheets.js
+//     + render.js/motu-vault.html (stamps). Owner-requested review of every
+//     menu screen for numbers and lists that couldn't be opened.
+//   • Missing Details: each count expands to its figures (tap to open and
+//     fill in). The only route used to be a CSV round-trip through a
+//     spreadsheet — unworkable on a phone. New data.js getGapFigures(field).
+//   • Want List: full list, every row opens the figure, the redundant
+//     "Wishlist" label is gone (status shown only when it's something else),
+//     no dead-end "+N more", and the raw share URL wall replaced by a line
+//     pointing at the QR code and Copy button.
+//   • Stats: By Line rows open their line; never-started lines fold into
+//     "Not started (N)". Header says "wishlist / ordered / for sale"; the
+//     "unowned" count (the rest of the catalog) is dropped. Activity months
+//     are tappable and list what was added.
+//   • Backup & Restore: Full Backup first; seven CSV buttons collapsed into one
+//     row of status chips (Unowned dropped); "Settings Only" export removed — it
+//     wrote the pricing API key into a shareable file (audit SEC-08).
+//   • Pricing Backend description rewritten in plain language and corrected.
+
 // v7.91 changelog:
 //   • CACHE bumped to v7.91. SHELL: pricing.js + stats.js + delegate-handlers.js
 //     + eggs.js + handlers.js + render.js + motu-vault.html (stamp).
@@ -2012,7 +2032,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.91';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.92';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

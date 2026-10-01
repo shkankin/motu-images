@@ -297,9 +297,9 @@ function renderPricingSheet() {
   const cfg = (typeof window.getPricingBackend === 'function') ? window.getPricingBackend() : null;
   const configured = !!cfg;
   return `<div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
-    Connect to a pricing backend to see recent-sold averages on each figure's detail screen.
-    The app caches results for 24 hours and refreshes in the background.
-    See the README in the <code>backend/</code> folder for deployment.
+    Shows what figures are currently selling for, on each figure's screen and in Stats.
+    Prices refresh daily in the background; older ones stay visible, marked with their date.
+    You only need this if you run your own pricing server — leave it blank otherwise.
   </div>
   <div class="field-label text-dim text-sm">Backend URL</div>
   <input id="pricingBackendUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off"

@@ -390,7 +390,7 @@ function renderShareSheet() {
       </button>`;
     })()}
     <div style="background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-      <div style="flex:1;font-size:11px;color:var(--t3);word-break:break-all;font-family:monospace;line-height:1.4">${esc(url)}</div>
+      <div style="flex:1;font-size:12px;color:var(--t3);line-height:1.4">Share link ready — scan the code above, or copy it.</div>
       <button data-action="copy-share-url" style="flex-shrink:0;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--acc);font-size:12px;font-weight:600">Copy</button>
     </div>
     ${canShare ? `<button data-action="native-share" style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;margin-bottom:10px">
@@ -417,16 +417,15 @@ function renderShareSheet() {
     })()}
     <div style="margin-top:14px">
       <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">On your list</div>
-      ${wishFigs.slice(0,8).map(f => {
+      ${wishFigs.map(f => {   /* v7.92: full list; each row opens the figure */
         const c = S.coll[f.id];
         const color = STATUS_HEX[c.status];
-        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid color-mix(in srgb,var(--bd) 40%,transparent)">
+        return `<button data-action="open-fig" data-fig-id="${esc(f.id)}" style="width:100%;border:0;background:none;text-align:left;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid color-mix(in srgb,var(--bd) 40%,transparent)">
           <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
           <div style="font-size:13px;color:var(--t1);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div>
-          <div style="font-size:11px;color:var(--t3)">${STATUS_LABEL[c.status]}</div>
-        </div>`;
+          ${c.status !== 'wishlist' ? `<div style="font-size:11px;color:var(--t3)">${STATUS_LABEL[c.status]}</div>` : ''}
+        </button>`;
       }).join('')}
-      ${wishFigs.length > 8 ? `<div style="font-size:12px;color:var(--t3);padding:8px 0">+${wishFigs.length-8} more</div>` : ''}
     </div>`;
 }
 
