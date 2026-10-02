@@ -364,7 +364,14 @@ if ('serviceWorker' in navigator) {
   // updateViaCache:'none' prevents the browser's HTTP cache from serving
   // a stale sw.js (otherwise a long Cache-Control on the SW script can
   // freeze users on an old service worker for up to 24h).
-  navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).catch(() => {});
+  navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(reg => {
+    // v7.94: actively look for a new version. Without this an installed app
+    // that is resumed from the background (no page load) never re-checks
+    // sw.js, so a fresh release could stay invisible across "restarts".
+    const check = () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); };
+    document.addEventListener('visibilitychange', check);
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
   // v7.18: request persistent storage. Without this, Cache Storage (incl.
   // sw.js's IMG_CACHE) is "best-effort" and the browser can silently evict
   // it under storage pressure — separate from, and more likely than, the
@@ -379,11 +386,10 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data?.type === 'UPDATE_AVAILABLE') {
       // Show a persistent update banner so the user can choose when to refresh.
-      // Also set up silent reload on next background (tab hidden) as a fallback.
-      showUpdateBanner();
-      let reloaded = false;
-      const reload = () => { if (!reloaded) { reloaded = true; window.location.reload(); } };
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') reload(); }, {once: true});
+      // v7.94: the old "silent reload when the page is hidden" fallback is
+      // gone — the camera and file picker hide the page, so it could restart
+      // the app mid-photo (audit BUG-05). The banner tap is the only reload.
+      showUpdateBanner(e.data.version);
     }
   });
 }

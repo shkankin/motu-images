@@ -3,6 +3,20 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.94 changelog:
+//   • CACHE bumped to v7.94. SHELL: app.js + render.js + motu-vault.html.
+//   • UPDATE PROMPT, modelled on musclemen.app (audit BUG-05). Three gaps:
+//     (1) activate never posted UPDATE_AVAILABLE, so the existing banner could
+//     never show — it now does, on upgrades only (not a first install);
+//     (2) nothing checked for a new version while the app stayed open — the
+//     browser only re-checks sw.js on a page LOAD, and an installed PWA
+//     brought back from the background just resumes. app.js now calls
+//     registration.update() on every return to the foreground and every 30
+//     min while visible; (3) the old fallback reloaded the app the next time
+//     it was hidden, and the OS camera / file picker hide the page, so it
+//     could have restarted mid-photo. Removed: the banner's tap is the only
+//     reload.
+
 // v7.93 changelog:
 //   • CACHE bumped to v7.93. SHELL: stats.js + render.js/motu-vault.html.
 //   • Fix: v7.92 made the Activity bars tappable (role="button"), which pulled
@@ -2039,7 +2053,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.93';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.94';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -2212,14 +2226,24 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      // v6.84: keep BOTH the current shell cache and the unversioned image
-      // cache. Only stale versioned shell caches are evicted now, so figure
-      // images persist across app updates instead of being wiped each bump.
-      Promise.all(keys.filter(k => k !== CACHE && k !== IMG_CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    // v7.94: an older versioned shell cache means this activation is an
+    // UPGRADE, not a first install — only then is "update ready" true.
+    const isUpgrade = keys.some(k => k !== CACHE && k !== IMG_CACHE && k.startsWith('motu-vault-v'));
+    // v6.84: keep BOTH the current shell cache and the unversioned image
+    // cache. Only stale versioned shell caches are evicted now, so figure
+    // images persist across app updates instead of being wiped each bump.
+    await Promise.all(keys.filter(k => k !== CACHE && k !== IMG_CACHE).map(k => caches.delete(k)));
+    await self.clients.claim();
+    // v7.94 (audit BUG-05): tell open windows a new version is live. The app
+    // has listened for this and had a banner since long before, but nothing
+    // ever SENT it, so the banner could never appear. Mirrors musclemen.app.
+    if (isUpgrade) {
+      const wins = await self.clients.matchAll({ type: 'window' });
+      for (const w of wins) w.postMessage({ type: 'UPDATE_AVAILABLE', version: CACHE.replace('motu-vault-', '') });
+    }
+  })());
 });
 
 self.addEventListener('fetch', e => {

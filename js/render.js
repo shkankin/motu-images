@@ -302,7 +302,7 @@ function toastAction(msg, btnLabel, handler) {
 
 // ─── Update Available Banner ─────────────────────────────────────
 // Shown when SW fires UPDATE_AVAILABLE. Persists until tapped or app restarts.
-function showUpdateBanner() {
+function showUpdateBanner(version) {
   if (document.getElementById('updateBanner')) return; // already showing
   const el = document.createElement('div');
   el.id = 'updateBanner';
@@ -319,7 +319,7 @@ function showUpdateBanner() {
     cursor:pointer;
   `;
   el.innerHTML = `
-    <span style="flex:1">✦ Update available — tap to refresh</span>
+    <span style="flex:1">✦ ${version ? `Version ${String(version).replace(/[^\w.]/g, '')} is ready` : 'Update ready'} — tap to restart</span>
     <button id="updateBannerDismiss" style="background:rgba(0,0,0,.18);border:none;border-radius:8px;color:inherit;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;flex-shrink:0">Later</button>
   `;
   el.addEventListener('click', e => {
@@ -603,7 +603,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.93</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.94</span></div>
         </div>
       </div>
       <div class="header-actions">
