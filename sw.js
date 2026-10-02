@@ -3,6 +3,13 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.93 changelog:
+//   • CACHE bumped to v7.93. SHELL: stats.js + render.js/motu-vault.html.
+//   • Fix: v7.92 made the Activity bars tappable (role="button"), which pulled
+//     in the global 44x44 touch-target rule — the chart overflowed, the Stats
+//     sheet scrolled sideways, and the month letters misaligned. Bars now
+//     override min-width/min-height inline.
+
 // v7.92 changelog:
 //   • CACHE bumped to v7.92. SHELL: data.js + stats.js + share.js + ui-sheets.js
 //     + render.js/motu-vault.html (stamps). Owner-requested review of every
@@ -2032,7 +2039,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.92';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.93';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

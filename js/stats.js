@@ -521,13 +521,19 @@ function renderStatsSheet() {
       ${months.map(m => {
         const h = m.count ? Math.max(4, (m.count / max) * 60) : 2;
         const isCurrent = m.key === months[months.length - 1].key;
-        return `<div ${m.count ? `role="button" tabindex="0" data-action="toggle-wave-expand" data-wave-id="act_${m.key}" aria-label="${m.label} ${m.year}: ${m.count} added. Show figures"` : ''} style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;${m.count ? 'cursor:pointer' : ''}" title="${m.label} ${m.year}: ${m.count} added">
+        return `<div ${m.count ? `role="button" tabindex="0" data-action="toggle-wave-expand" data-wave-id="act_${m.key}" aria-label="${m.label} ${m.year}: ${m.count} added. Show figures"` : ''} style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;gap:4px;${m.count ? 'cursor:pointer' : ''}" title="${m.label} ${m.year}: ${m.count} added">
           <div style="width:100%;height:${h}px;background:${m.count ? (isCurrent ? 'var(--acc)' : 'var(--gold)') : 'var(--bd)'};border-radius:2px;transition:height 0.3s"></div>
           <div style="font-size:9px;color:var(--t3);font-weight:600">${m.label[0]}</div>
         </div>`;
       }).join('')}
     </div>`;
     // v7.92: per-month panels — "136 added" can now be opened.
+    // v7.93: the bars above carry role="button", which picks up the global
+    // 44x44 touch-target rule (vault.css, WCAG 2.5.8 block). Twelve 44px bars
+    // overflowed the sheet and scrolled the whole Stats screen sideways, and
+    // the min-height misaligned the month letters. Each bar overrides it
+    // inline (min-width/min-height:0); at ~26px wide they still clear the
+    // 24px WCAG minimum.
     const nm = id => (S.figs.find(f => f.id === id) || {}).name || id;
     html += months.filter(m => m.count).map(m => `<div id="act_${m.key}" style="display:none;padding:8px 0 4px">
       <div style="font-size:11px;color:var(--t3);margin-bottom:4px">${m.label} ${m.year} — ${m.count} added</div>
