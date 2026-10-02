@@ -3,6 +3,17 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.96 changelog:
+//   • CACHE bumped to v7.96. SHELL: render.js + handlers.js + state.js + vault.css + motu-vault.html.
+//   • Long-press menu: Android's Copy/Select all toolbar no longer opens over it
+//     (user-select was only set on list rows, not the menu).
+//   • Filter button only shows its active dot for real filters, not for a typed search.
+//   • Long-press menu icons now match their labels (+ / link-out / chevron / pencil).
+//   • Lines tab: an "All lines are hidden" empty state with a Manage lines button.
+//   • Onboarding / empty-collection copy no longer says Wishlist figures appear in Collection.
+//   • aria-labels on Filter, Menu, Clear search, Dismiss, list/grid toggles, search field.
+//   • Search placeholder shortened so it is no longer cut off mid-word.
+
 // v7.95 changelog:
 //   • CACHE bumped to v7.95. SHELL: photos.js + render.js/motu-vault.html.
 //   • Photo viewer: a single tap on the image closes it (standard practice);
@@ -2059,7 +2070,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.95';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.96';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

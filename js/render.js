@@ -571,6 +571,9 @@ function renderMain() {
   const stats = getStats();
   const sortLabel = S.sortBy === 'added-desc' ? 'Added' : S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
   const hf = hasFilters();
+  // v7.96: the Filter button's active state means a FILTER is set — typing a
+  // search no longer lights it (hasFilters() also counts S.search).
+  const filtersOnly = !!(S.filterFaction || S.filterStatus || S.filterVariants || S.filterLine || S.filterLoadout || S.filterWave || S.filterSeries);
   const syncCls = S.isOffline ? 'offline' : (S.syncStatus === 'syncing' ? 'syncing' : S.syncStatus === 'ok' ? 'sync-ok' : S.syncStatus === 'err' ? 'sync-err' : '');
   const syncClick = S.isOffline ? 'sync-offline' : 'sync-now';
   const syncTitle = S.isOffline ? 'Offline' : 'Sync';
@@ -603,24 +606,24 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.95</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.96</span></div>
         </div>
       </div>
       <div class="header-actions">
         <button class="icon-btn ${syncCls}" title="${syncTitle}" data-action="${syncClick}">${icon(ICO.sync,16)}</button>
-        <button class="icon-btn" title="Menu" data-action="open-sheet" data-sheet="menu">${icon(ICO.menu,20)}</button>
+        <button class="icon-btn" title="Menu" aria-label="Menu" data-action="open-sheet" data-sheet="menu">${icon(ICO.menu,20)}</button>
       </div>
     </div>
     <div class="search-bar-wrap${S.searchBarHidden?' hidden':''}" id="searchBar">
     <div class="search-row">
       <div class="search-wrap">
         <span class="search-icon">${icon(ICO.search,16)}</span>
-        <input id="searchInput" value="${esc(S.search)}" placeholder="${S.activeLine ? 'Search '+ln(S.activeLine)+'…' : 'Search figures…'}" data-input-action="on-search" data-keydown-action="search-blur-on-enter" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-        ${S.search ? `<button class="search-clear" data-action="clear-search">${icon(ICO.x,14)}</button>` : ''}
+        <input id="searchInput" value="${esc(S.search)}" placeholder="Search…" aria-label="${S.activeLine ? 'Search '+esc(ln(S.activeLine)) : 'Search figures'}" data-input-action="on-search" data-keydown-action="search-blur-on-enter" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        ${S.search ? `<button class="search-clear" data-action="clear-search" aria-label="Clear search">${icon(ICO.x,14)}</button>` : ''}
         <button class="search-scan" data-action="open-barcode-scanner" title="Scan a barcode" aria-label="Scan barcode">${icon(ICO.qr,16)}</button>
       </div>
-      <button class="filter-btn ${hf?'active':''}" data-action="open-sheet" data-sheet="filter">
-        ${icon(ICO.filter,18)}${hf ? '<span class="filter-dot"></span>' : ''}
+      <button class="filter-btn ${filtersOnly?'active':''}" data-action="open-sheet" data-sheet="filter" aria-label="${filtersOnly ? 'Filters (active)' : 'Filters'}">
+        ${icon(ICO.filter,18)}${filtersOnly ? '<span class="filter-dot"></span>' : ''}
       </button>
       <button class="sort-btn" data-action="open-sheet" data-sheet="sort">
         ${icon(ICO.sort,18)}<span class="sort-label">${sortLabel}</span>
@@ -1041,9 +1044,9 @@ function renderLinesGrid() {
     const tState = (typeof window.tutorialState === 'function') ? window.tutorialState() : { seen: false };
     const tourLabel = tState.seen ? '🎓 Replay tour' : '🎓 Take a 1-minute tour';
     html += `<div class="onboard-banner">
-      <div style="flex:1;position:relative;z-index:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Wishlist, or For Sale — it'll appear in your Collection tab.<br><button data-action="start-tutorial" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
+      <div style="flex:1;position:relative;z-index:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Ordered, For Sale or Wishlist. Owned, Ordered and For Sale figures appear in your Collection tab; Wishlist figures are under Filter → Status → Wishlist.<br><button data-action="start-tutorial" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
       <img class="onboard-mascot" src="${IMG}/he-man-icon.png" alt="" aria-hidden="true" data-error-action="img-hide">
-      <button class="onboard-dismiss" data-action="dismiss-onboard" title="Dismiss">×</button>
+      <button class="onboard-dismiss" data-action="dismiss-onboard" title="Dismiss" aria-label="Dismiss">×</button>
     </div>`;
   }
   if (S.editingOrder) {
@@ -1113,6 +1116,15 @@ function renderLinesGrid() {
     const visibleOrdered = ordered.filter(l => !isLineFullyHidden(l.id));
     {
       html += '<div class="lines-list" style="margin-top:10px">';
+      // v7.96: every line hidden used to render a blank screen (dead end).
+      if (!visibleOrdered.length) {
+        html += `<div class="empty-state">
+          <div class="emoji">🙈</div>
+          <div class="title">All lines are hidden</div>
+          <div class="text-sm" style="margin-bottom:16px">Show at least one line to browse your figures.</div>
+          <button data-action="toggle-reorder" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Manage lines</button>
+        </div>`;
+      }
       visibleOrdered.forEach(l => {
         const completeCls = l.pct === 100 ? 'complete' : '';
         let newCount = 0;
@@ -1539,8 +1551,8 @@ function renderFigList() {
       ${S.selectMode ? 'Done' : 'Select'}
     </button>
     <div class="view-toggle">
-      <button class="${listActive}" data-action="set-view" data-view="list" title="List view">${icon(ICO.list,14)}</button>
-      <button class="${gridActive}" data-action="set-view" data-view="grid" title="Grid view">${icon(ICO.lines,14)}</button>
+      <button class="${listActive}" data-action="set-view" data-view="list" title="List view" aria-label="List view" aria-pressed="${!isGrid}">${icon(ICO.list,14)}</button>
+      <button class="${gridActive}" data-action="set-view" data-view="grid" title="Grid view" aria-label="Grid view" aria-pressed="${isGrid}">${icon(ICO.lines,14)}</button>
     </div>
   </div>`;
   // v7.46 added a status chip row here (All / Owned / Ordered / Want List /
@@ -1558,7 +1570,7 @@ function renderFigList() {
       html += `<div class="empty-state">
         <div class="emoji">📦</div>
         <div class="title">Your collection is empty</div>
-        <div class="text-sm" style="margin-bottom:16px">Start tracking figures by browsing <strong>Lines</strong> or <strong>All</strong> and tapping a status (Owned, Wishlist, Ordered, For Sale).</div>
+        <div class="text-sm" style="margin-bottom:16px">Start tracking figures by browsing <strong>Lines</strong> or <strong>All</strong> and tapping a status. Owned, Ordered and For Sale figures show up here; Wishlist figures are under Filter → Status → Wishlist.</div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
           <button data-action="nav-to" data-target="lines" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Browse Lines</button>
           <button data-action="nav-to" data-target="all" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">View All Figures</button>

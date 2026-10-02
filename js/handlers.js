@@ -600,20 +600,20 @@ function showContextMenu(figId, x, y) {
   // Skips opening the detail screen for power users adding multiples in bulk.
   if (c.status === 'owned' || c.status === 'for-sale') {
     items += `<button class="ctx-menu-item" data-action="ctx-add-copy" data-fig-id="${eFigId}">
-      ${icon(ICO.import, 16)} Add another copy
+      ${icon(ICO.plus, 16)} Add another copy
     </button>`;
   }
   if (fig.line !== 'kids-core' && fig.line !== 'custom') {
     items += `<button class="ctx-menu-item" data-action="ctx-af411" data-fig-id="${eFigId}">
-      ${icon(ICO.export, 16)} View on AF411
+      ${icon(ICO.external, 16)} View on AF411
     </button>`;
   }
   items += `<button class="ctx-menu-item" data-action="ctx-open" data-fig-id="${eFigId}">
-    ${icon(ICO.edit, 16)} ${copyN > 1 ? 'Manage copies' : 'Open details'}
+    ${icon(ICO.chevR, 16)} ${copyN > 1 ? 'Manage copies' : 'Open details'}
   </button>`;
   // Local edit (override) — for fixing missing/wrong AF411 metadata
   items += `<button class="ctx-menu-item" data-action="ctx-edit-info" data-fig-id="${eFigId}">
-    ${icon(ICO.menu, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
+    ${icon(ICO.edit, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
   </button>`;
   // v6.66: in-app variant creation from long-press
   items += `<button class="ctx-menu-item" data-action="ctx-add-variant" data-fig-id="${eFigId}">
