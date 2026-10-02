@@ -3,6 +3,12 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.95 changelog:
+//   • CACHE bumped to v7.95. SHELL: photos.js + render.js/motu-vault.html.
+//   • Photo viewer: a single tap on the image closes it (standard practice);
+//     double tap still zooms. Single taps wait 300ms to rule out a double tap,
+//     and any pinch/pan/swipe suppresses its trailing click.
+
 // v7.94 changelog:
 //   • CACHE bumped to v7.94. SHELL: app.js + render.js + motu-vault.html.
 //   • UPDATE PROMPT, modelled on musclemen.app (audit BUG-05). Three gaps:
@@ -2053,7 +2059,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.94';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.95';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

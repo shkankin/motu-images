@@ -686,15 +686,34 @@ function initPhotoViewerZoom() {
   };
 
   // Double-tap to zoom/reset
+  // v7.95: single tap closes the viewer (standard photo-viewer behaviour);
+  // double tap still toggles zoom. A single tap therefore waits 300ms to be
+  // sure it isn't the first half of a double tap. Any pinch, pan or swipe
+  // marks the gesture as "moved" so its trailing click can't close the viewer.
+  let tapTimer = null, moved = false, tapStart = null;
+  wrap.addEventListener('touchstart', e => {
+    moved = e.touches.length > 1;
+    tapStart = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { passive: true });
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length > 1) { moved = true; return; }
+    if (tapStart && e.touches.length === 1 &&
+        Math.hypot(e.touches[0].clientX - tapStart.x, e.touches[0].clientY - tapStart.y) > 10) moved = true;
+  }, { passive: true });
   img.addEventListener('click', e => {
     const now = Date.now();
     if (now - lastTap < 300) {
+      clearTimeout(tapTimer); tapTimer = null;
       scale = scale > 1 ? 1 : 2.5; tx = 0; ty = 0;
       img.style.transition = 'transform 0.25s ease';
       apply();
       setTimeout(() => img.style.transition = '', 260);
+      lastTap = 0;          // a third tap starts fresh, not another double
+      return;
     }
     lastTap = now;
+    if (moved) { moved = false; return; }
+    tapTimer = setTimeout(() => { tapTimer = null; window.closePhotoViewer?.(); }, 300);
   });
 
   // Pinch
