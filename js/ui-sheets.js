@@ -244,13 +244,13 @@ function renderMenuSheet() {
 
   let html = '';
   html += _menuSection('My Collection', true);
-  html += _menuBtn({ action: 'open-sheet', sheet: 'stats',   glyph: icon(ICO.heart, 20), label: 'Stats' });
+  html += _menuBtn({ action: 'open-sheet', sheet: 'stats',   glyph: icon(ICO.chart, 20), label: 'Stats' });
   html += _menuBtn({ action: 'open-sheet', sheet: 'share',   glyph: icon(ICO.share, 20), label: 'Want List',
                      hint: 'Share yours, and revisit lists you\'ve viewed' });
   html += _menuBtn({ action: 'menu-open-locations',          glyph: icon(ICO.box || ICO.tag, 20),
                      label: nLoc ? `Locations (${nLoc})` : 'Locations' });
   html += _menuBtn({ action: 'menu-manage-collections',      glyph: icon(ICO.sort, 20), label: 'Manage Collections' });
-  html += _menuBtn({ action: 'open-sheet', sheet: 'missing', glyph: icon(ICO.tag, 20), label: 'Missing Details',
+  html += _menuBtn({ action: 'open-sheet', sheet: 'missing', glyph: icon(ICO.question, 20), label: 'Missing Details',
                      hint: 'Owned figures without condition, date, price or location' });
 
   html += _menuSection('Backup');
@@ -258,7 +258,7 @@ function renderMenuSheet() {
 
   html += _menuSection('Settings');
   html += _menuBtn({ action: 'open-sheet', sheet: 'theme',   glyph: icon(ICO.palette, 20), label: 'Theme' });
-  html += _menuBtn({ action: 'open-sheet', sheet: 'pricing', glyph: icon(ICO.tag, 20), label: 'Pricing Backend',
+  html += _menuBtn({ action: 'open-sheet', sheet: 'pricing', glyph: icon(ICO.dollar, 20), label: 'Pricing Backend',
                      hint: 'Advanced — one-time setup for market values' });
 
   html += _menuSection('Help');
@@ -668,17 +668,17 @@ function renderImportSheet() {
   return `<p class="text-md text-muted" style="margin-bottom:16px;line-height:1.6">
     Import from ActionFigure411.com CSV, a MOTU Collector CSV export, a JSON collection backup, or an app settings file. The format is auto-detected.
   </p>
-  <div class="overwrite-toggle" data-action="toggle-overwrite">
-    <div class="checkbox"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
+  <div class="overwrite-toggle" data-action="toggle-overwrite" role="switch" tabindex="0" aria-checked="${S.importOverwrite ? 'true' : 'false'}">
+    <div class="checkbox${S.importOverwrite ? ' checked' : ''}"><span style="color:#fff">${icon(ICO.check,14)}</span></div>
     <div>
-      <div class="text-md" style="font-weight:500">Overwrite existing</div>
-      <div class="text-sm text-dim">Re-import figures already marked as owned</div>
+      <div class="text-md" style="font-weight:500">Replace existing entries</div>
+      <div class="text-sm text-dim">Off: figures you already track are left alone. On: the file overwrites them — a backup file also replaces your local figure edits and sold log.</div>
     </div>
   </div>
-  <div class="drop-zone" id="dropZone" data-action="trigger-file-import">
+  <div class="drop-zone" id="dropZone" data-action="trigger-file-import" role="button" tabindex="0" aria-label="Choose a backup or CSV file">
     <div style="font-size:48px;margin-bottom:12px">📂</div>
-    <div class="text-md" style="font-weight:500;margin-bottom:4px">Drop CSV or JSON backup here</div>
-    <div class="text-sm text-dim">or tap to browse files</div>
+    <div class="text-md" style="font-weight:500;margin-bottom:4px">Choose a file</div>
+    <div class="text-sm text-dim">Backup JSON, MOTU Collector CSV or ActionFigure411 CSV</div>
     <input type="file" id="csvInput" accept=".csv,.json,text/csv,application/json,application/vnd.ms-excel,text/comma-separated-values,text/plain" style="display:none" data-change-action="handle-import-file">
   </div>`;
 }
@@ -697,7 +697,7 @@ function renderBatchEditSheet() {
   const seg = (val, label) => `<button data-action="batch-set-mode" data-mode="${val}" style="flex:1;padding:9px 8px;border-radius:9px;border:1px solid ${be.mode===val?'var(--acc)':'var(--bd)'};background:${be.mode===val?'color-mix(in srgb,var(--acc) 16%,var(--bg3))':'var(--bg3)'};color:${be.mode===val?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:${be.mode===val?'700':'500'}">${label}</button>`;
 
   // Status: update mode can leave it alone; add mode always assigns one.
-  const statusOpts = (isUpdate ? `<option value="" ${!be.status?'selected':''}>— Keep current —</option>` : '') +
+  const statusOpts = `<option value="" ${!be.status?'selected':''}>${isUpdate ? '— Keep current —' : '— Keep current (new figures become Owned) —'}</option>` +
     STATUSES.map(s => `<option value="${s}" ${be.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('');
 
   const h = `
@@ -725,26 +725,25 @@ function renderBatchEditSheet() {
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Variant (optional)</div>
-      <input type="text" value="${esc(be.variant)}" placeholder="e.g. Dark Face" data-input-action="batch-set-variant">
+      <input autocomplete="off" type="text" value="${esc(be.variant)}" placeholder="e.g. Dark Face" data-input-action="batch-set-variant">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Price Paid (optional)</div>
-      <input type="number" step="0.01" value="${esc(be.paid)}" placeholder="$0.00" data-input-action="batch-set-paid">
+      <input autocomplete="off" type="number" step="0.01" value="${esc(be.paid)}" placeholder="$0.00" data-input-action="batch-set-paid">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Date Acquired (optional)</div>
-      <input type="text" inputmode="numeric" maxlength="7" value="${esc(be.acquired || '')}" placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}" data-input-action="batch-format-acquired">
+      <input autocomplete="off" type="text" inputmode="numeric" maxlength="7" value="${esc(be.acquired || '')}" placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}" data-input-action="batch-format-acquired">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Location (optional)</div>
-      <input type="text" value="${esc(be.location || '')}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-input-action="batch-set-location">
+      <input autocomplete="off" type="text" value="${esc(be.location || '')}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-input-action="batch-set-location">
     </div>
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Notes (optional)</div>
-      <textarea rows="3" placeholder="Notes…" data-input-action="batch-set-notes">${esc(be.notes)}</textarea>
+      <textarea autocomplete="off" rows="3" placeholder="Notes…" data-input-action="batch-set-notes">${esc(be.notes)}</textarea>
     </div>
-    <div style="height:1px;background:var(--bd);margin:8px 0 16px"></div>
-    <div style="display:flex;gap:10px">
+    <div style="position:sticky;bottom:0;margin:8px -20px 0;padding:12px 20px calc(12px + var(--safe-bottom,0px));background:var(--bg2);border-top:1px solid var(--bd);display:flex;gap:10px">
       <button data-action="close-sheet" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
       <button data-action="apply-batch-edit" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">${isUpdate ? 'Apply to' : 'Add to'} ${n}</button>
     </div>`;
@@ -843,28 +842,28 @@ function renderEditFigureSheet() {
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
       ${lineGroups.map(g => `<button type="button" data-action="edit-set-group" data-fig-id="${esc(figId)}" data-group="${esc(g)}" style="padding:5px 12px;border-radius:20px;border:1px solid ${curGroup===g?'var(--acc)':'var(--bd)'};background:${curGroup===g?'color-mix(in srgb,var(--acc) 18%,transparent)':'var(--bg2)'};color:${curGroup===g?'var(--acc)':'var(--t2)'};font-size:12px;font-weight:500">${esc(g)}</button>`).join('')}
     </div>
-    <input type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" data-change-action="edit-set-group-text" data-fig-id="${esc(figId)}">`;
+    <input autocomplete="off" type="text" value="${esc(curGroup)}" placeholder="Or type a custom group…" data-change-action="edit-set-group-text" data-fig-id="${esc(figId)}">`;
   h += row('group', 'Group', groupInput,
     f.group && !ov.group ? `Source: ${esc(f.group)}` : ''
   );
 
   h += row('wave', 'Wave',
-    `<input type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" data-change-action="edit-set-wave" data-fig-id="${esc(figId)}">`,
+    `<input autocomplete="off" type="text" value="${esc(ov.wave || f.wave || '')}" placeholder="e.g. 1, 2, …" data-change-action="edit-set-wave" data-fig-id="${esc(figId)}">`,
     f.wave && !ov.wave ? `Source: ${esc(f.wave)}` : ''
   );
 
   h += row('year', 'Year',
-    `<input type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" data-change-action="edit-set-year" data-fig-id="${esc(figId)}">`,
+    `<input autocomplete="off" type="number" value="${esc(ov.year || f.year || '')}" placeholder="e.g. 2024" data-change-action="edit-set-year" data-fig-id="${esc(figId)}">`,
     f.year && !ov.year ? `Source: ${esc(f.year)}` : ''
   );
 
   h += row('retail', 'Retail Price',
-    `<input type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" data-change-action="edit-set-retail" data-fig-id="${esc(figId)}">`,
+    `<input autocomplete="off" type="number" step="0.01" value="${esc(ov.retail || f.retail || '')}" placeholder="$0.00" data-change-action="edit-set-retail" data-fig-id="${esc(figId)}">`,
     f.retail && !ov.retail ? `Source: $${Number(f.retail).toFixed(2)}` : ''
   );
 
   h += row('name', 'Name',
-    `<input type="text" value="${esc(ov.name || f.name || '')}" data-change-action="edit-set-name" data-fig-id="${esc(figId)}">`,
+    `<input autocomplete="off" type="text" value="${esc(ov.name || f.name || '')}" data-change-action="edit-set-name" data-fig-id="${esc(figId)}">`,
     // v7.45: was a bare `sourceName` — a ReferenceError that crashed the
     // whole Edit sheet for every figure the moment it rendered ("sourceName
     // is not defined" on the error screen). Same source-hint pattern as
@@ -910,7 +909,7 @@ function renderPackEditSheet() {
   const field = (label, name, value, ph = '') => `
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">${label}</div>
-      <input type="text" value="${esc(value || '')}" placeholder="${esc(ph)}"
+      <input autocomplete="off" type="text" value="${esc(value || '')}" placeholder="${esc(ph)}"
         data-change-action="pack-edit-meta" data-pack-id="${esc(packId)}" data-field="${name}">
     </div>`;
 

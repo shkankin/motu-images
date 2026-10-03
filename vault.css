@@ -3834,3 +3834,11 @@ html {
   user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* v7.99: backup-due dot on the header menu button (the UNSAVED badge was only visible once the menu was open). */
+.icon-btn { position: relative; }
+.menu-dot {
+  position: absolute; top: 7px; right: 7px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--rd); border: 2px solid var(--bg);
+}

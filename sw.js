@@ -3,6 +3,21 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.99 changelog:
+//   • CACHE bumped to v7.99. SHELL: handlers.js + ui-sheets.js + data.js + photos.js + delegate-handlers.js + render.js + state.js + vault.css + motu-vault.html.
+//   • Batch Edit: ONE Undo toast now reverses the whole batch (update and add-copy).
+//     "Add new copy" no longer flips a For Sale figure to Owned — status only changes
+//     when you pick one (new "Keep current" option); the footer buttons are pinned so
+//     Apply stays reachable with the keyboard open.
+//   • Restore: "Replace" mode now asks for confirmation (it overwrote entries, local
+//     figure edits and the sold log with no prompt). The toggle is a real switch kept in
+//     state (it was a CSS class that reset on re-render) with wording that says what it does.
+//   • Drop zone reads "Choose a file" (was desktop "Drop … here" copy).
+//   • autocomplete="off" on form fields so Android's key/card/address strip stops
+//     eating the space above the keyboard.
+//   • Header menu button shows a red dot when a backup is due. Menu icons: Stats = chart,
+//     Missing Details = question mark, Pricing = dollar (were heart / tag / tag).
+
 // v7.98 changelog:
 //   • CACHE bumped to v7.98. SHELL: photos.js + render.js + vault.css + motu-vault.html.
 //   • FIX: tapping a full-screen photo closed the viewer AND the detail screen
@@ -2090,7 +2105,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.98';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.99';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

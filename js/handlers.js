@@ -1394,19 +1394,23 @@ window.batchSetStatus = status => {
 window.batchAddCopy = (presetCondition = '', extras = {}) => {
   const ids = Array.from(S.selected);
   if (!ids.length) return;
-  const targetStatus = extras.status || 'owned';
+  const explicit = extras.status || '';   // v7.99: '' = keep current (new figures become Owned)
+  // v7.99: one Undo for the whole batch.
+  const _snap = {};
+  ids.forEach(id => { _snap[id] = S.coll[id] ? JSON.parse(JSON.stringify(S.coll[id])) : null; });
   let added = 0, promoted = 0;
   ids.forEach(id => {
     let cur = S.coll[id];
     const wasStatus = cur?.status;
     if (!cur || (cur.status !== 'owned' && cur.status !== 'for-sale')) {
       cur = cur ? (isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur)) : { copies: [] };
-      cur.status = targetStatus;
+      cur.status = explicit || 'owned';
       promoted++;
     } else {
       cur = isMigrated(cur) ? {...cur, copies: [...cur.copies]} : migrateEntry(cur);
-      // Update status to match what was chosen in the sheet
-      cur.status = targetStatus;
+      // v7.99: only change status when one was explicitly chosen — "add a
+      // copy" used to flip a For Sale figure to Owned.
+      if (explicit) cur.status = explicit;
     }
     if (!cur.copies) cur.copies = [];
     const newId = cur.copies.reduce((m, cp) => Math.max(m, cp.id || 0), 0) + 1;
@@ -1421,7 +1425,7 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
     S.coll[id] = cur;
     // v4.87: same ordered→owned migration setStatus/cycleStatus/batchSetStatus do.
     // Must run after S.coll[id] = cur so migrateOrderedToOwned sees the updated entry.
-    if (wasStatus === 'ordered' && targetStatus === 'owned') migrateOrderedToOwned(id);
+    if (wasStatus === 'ordered' && cur.status === 'owned') migrateOrderedToOwned(id);
     added++;
     S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
   });
@@ -1429,9 +1433,20 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
   store.set('motu-recent', S._recentChanges);
   haptic && haptic(25);
   const condNote = presetCondition ? ` (${presetCondition})` : '';
-  toast(`✓ ${added} copies added${condNote} → ${STATUS_LABEL[targetStatus]}`);
+  const stNote = explicit ? ` → ${STATUS_LABEL[explicit]}` : '';
+  window.toastAction(`✓ ${added} cop${added === 1 ? 'y' : 'ies'} added${condNote}${stNote}`, 'Undo', () => _batchUndo(_snap));
   render();
 };
+
+// v7.99: restore the pre-batch snapshot (null = the figure had no entry).
+function _batchUndo(snap) {
+  for (const [id, prev] of Object.entries(snap)) {
+    if (prev) S.coll[id] = prev; else delete S.coll[id];
+  }
+  saveColl();
+  toast('↩ Undone');
+  render();
+}
 
 // v6.28: bulk-delete user photos for the selected figures. Stock images
 // are untouched. Useful when reorganizing — previously the only delete
@@ -1447,6 +1462,8 @@ window.batchUpdateExisting = (presetCondition = '', extras = {}) => {
   if (!ids.length) return;
   const _todayMMYYYY = () => { const d = new Date(); return String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); };
   const stamp = _todayMMYYYY();
+  const _snap = {};   // v7.99: one Undo for the whole batch
+  ids.forEach(id => { _snap[id] = S.coll[id] ? JSON.parse(JSON.stringify(S.coll[id])) : null; });
 
   const copyFields = {};
   if (presetCondition) copyFields.condition = presetCondition;
@@ -1532,7 +1549,7 @@ window.batchUpdateExisting = (presetCondition = '', extras = {}) => {
   let msg = `✓ Updated ${updated} figure${updated === 1 ? '' : 's'}`;
   if (promoted) msg += ` · ${promoted} marked owned`;
   if (skipped)  msg += ` · ${skipped} skipped`;
-  toast(msg);
+  window.toastAction(msg, 'Undo', () => _batchUndo(_snap));
   render();
 };
 

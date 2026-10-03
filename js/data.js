@@ -2726,7 +2726,15 @@ async function applyImportedBackup(backup) {
     const knownVersions = ['motu-vault-backup-v1', 'motu-vault-backup-v2', 'motu-vault-backup-v3', 'motu-vault-backup-v4', 'motu-vault-backup-v5', 'motu-vault-backup-v6'];
     if (!backup || !knownVersions.includes(backup.version)) throw new Error('Unknown format');
     if (!backup.collection || typeof backup.collection !== 'object') throw new Error('Invalid collection data');
-    const overwrite = document.querySelector('.checkbox.checked') !== null;
+    const overwrite = !!S.importOverwrite;
+    S.importOverwrite = false;   // never leave a destructive mode armed for the next import
+    if (overwrite) {
+      // v7.99: Replace mode overwrites matching entries AND replaces local figure
+      // edits and the sold log. It used to run with no confirmation at all.
+      const n = Object.keys(backup.collection).length;
+      const ok = await appConfirm(`Replace your data with this backup? The ${n} entries in the file overwrite matching entries, and your local figure edits and sold log are replaced by the backup's. This can't be undone — back up first if unsure.`, { danger: true, ok: 'Replace' });
+      if (!ok) { toast('Restore cancelled'); window.refreshSheetBody?.(); return; }
+    }
     let imported = 0, skipped = 0, photos = 0;
     // v1/v2 backups have flat-shape entries; v3 has copies[]. migrateEntry
     // is idempotent so it's safe to run on either.

@@ -501,7 +501,8 @@ registerAll({
   },
 
   // Import sheet
-  'toggle-overwrite': (e, el) => el.querySelector('.checkbox')?.classList.toggle('checked'),
+  // v7.99: the switch lives in state (it was a DOM class that reset on every re-render).
+  'toggle-overwrite': () => { window.S.importOverwrite = !window.S.importOverwrite; window.refreshSheetBody?.(); },
   'trigger-file-import': () => document.getElementById('csvInput')?.click(),
 
   // Batch edit sheet

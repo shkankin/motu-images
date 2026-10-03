@@ -188,7 +188,7 @@ function appPromptText(message, {placeholder = '', ok = 'OK', cancel = 'Cancel',
     overlay.innerHTML = `
       <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:20px 20px 16px 16px;padding:22px 20px 12px;box-shadow:0 -4px 32px rgba(0,0,0,.4)">
         <div data-dlg-msg style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:14px;text-align:center">${esc(message)}</div>
-        <input id="appPromptInput" type="text" placeholder="${esc(placeholder)}" value="${esc(value)}" maxlength="40"
+        <input autocomplete="off" id="appPromptInput" type="text" placeholder="${esc(placeholder)}" value="${esc(value)}" maxlength="40"
                style="width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:15px">
         <div style="display:flex;gap:10px">
           <button id="appPromptCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
@@ -609,12 +609,12 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.98</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.99</span></div>
         </div>
       </div>
       <div class="header-actions">
         <button class="icon-btn ${syncCls}" title="${syncTitle}" data-action="${syncClick}">${icon(ICO.sync,16)}</button>
-        <button class="icon-btn" title="Menu" aria-label="Menu" data-action="open-sheet" data-sheet="menu">${icon(ICO.menu,20)}</button>
+        <button class="icon-btn" title="Menu" aria-label="${backupDue() ? 'Menu (backup due)' : 'Menu'}" data-action="open-sheet" data-sheet="menu">${icon(ICO.menu,20)}${backupDue() ? '<span class="menu-dot" aria-hidden="true"></span>' : ''}</button>
       </div>
     </div>
     <div class="search-bar-wrap${S.searchBarHidden?' hidden':''}" id="searchBar">
@@ -952,7 +952,7 @@ function renderKidsCoreAdminSheet() {
   const field = (label, key, type='text', placeholder='', extra='') =>
     `<div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">${label}</div>
-      <input type="${type}" value="${esc(v[key]||existing?.[key]||'')}" placeholder="${placeholder}"
+      <input autocomplete="off" type="${type}" value="${esc(v[key]||existing?.[key]||'')}" placeholder="${placeholder}"
         data-input-action="kc-set-field" data-field="${esc(key)}" ${extra}>
     </div>`;
 
@@ -1745,7 +1745,7 @@ function renderDetailStatusBlock(f, c) {
         <div class="ghost-grid" style="margin-bottom:0">
           <div class="input-group">
             <label>Target Price</label>
-            <input type="number" step="0.01" class="ghost-input" value="${esc(c.targetPrice || '')}" placeholder="Alert at or below…" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="targetPrice">
+            <input autocomplete="off" type="number" step="0.01" class="ghost-input" value="${esc(c.targetPrice || '')}" placeholder="Alert at or below…" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="targetPrice">
           </div>
           ${Number.isFinite(target) ? `<div class="input-group" style="justify-content:flex-end">
             <div class="price-watch-note" style="color:${isDeal ? 'var(--gn)' : 'var(--t3)'}">
@@ -1768,15 +1768,15 @@ function renderDetailStatusBlock(f, c) {
         <div class="ghost-grid" style="margin-bottom:0">
           <div class="input-group">
             <label>Ordered From</label>
-            <input type="text" class="ghost-input" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, BBTS…" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedFrom">
+            <input autocomplete="off" type="text" class="ghost-input" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, BBTS…" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedFrom">
           </div>
           <div class="input-group">
             <label>Expected Date</label>
-            <input type="month" class="ghost-input" value="${esc(c.orderedDate||'')}" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedDate">
+            <input autocomplete="off" type="month" class="ghost-input" value="${esc(c.orderedDate||'')}" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedDate">
           </div>
           <div class="input-group">
             <label>Price Paid</label>
-            <input type="number" step="0.01" class="ghost-input" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedPaid">
+            <input autocomplete="off" type="number" step="0.01" class="ghost-input" value="${esc(c.orderedPaid||'')}" placeholder="$0.00" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedPaid">
           </div>
         </div>
       </div>`;
@@ -1854,29 +1854,29 @@ function renderCopyCard(f, cp, i, isMulti, total) {
     </div>
     <div class="input-group">
       <label>Price Paid</label>
-      <input type="number" step="0.01" class="ghost-input" value="${esc(paid || '')}" placeholder="${f.retail != null ? esc(f.retail.toFixed(2)) : '0.00'}" data-focus-action="select-all" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="paid">
+      <input autocomplete="off" type="number" step="0.01" class="ghost-input" value="${esc(paid || '')}" placeholder="${f.retail != null ? esc(f.retail.toFixed(2)) : '0.00'}" data-focus-action="select-all" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="paid">
     </div>
     ${isForSale ? `<div class="input-group">
       <label>Asking Price</label>
-      <input type="number" step="0.01" class="ghost-input" value="${esc(cp.asking || '')}" placeholder="$0.00" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="asking">
+      <input autocomplete="off" type="number" step="0.01" class="ghost-input" value="${esc(cp.asking || '')}" placeholder="$0.00" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="asking">
     </div>
     <div class="input-group">
       <label>Location</label>
-      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="location">
+      <input autocomplete="off" type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="location">
     </div>` : `<div class="input-group">
       <label>Acquired</label>
-      <input type="text" inputmode="numeric" maxlength="7" class="ghost-input" value="${esc(cp.acquired || '')}"
+      <input autocomplete="off" type="text" inputmode="numeric" maxlength="7" class="ghost-input" value="${esc(cp.acquired || '')}"
         placeholder="MM/YYYY" pattern="\\d{1,2}/\\d{4}"
         data-input-action="format-acquired"
         data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="acquired">
     </div>
     <div class="input-group">
       <label>Location</label>
-      <input type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="location">
+      <input autocomplete="off" type="text" class="ghost-input" value="${esc(location)}" placeholder="e.g. Display shelf, On loan…" list="locationSuggestions" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="location">
     </div>`}
     ${variant ? `<div class="input-group" style="grid-column:span 2">
       <label>Variant (legacy)</label>
-      <input type="text" class="ghost-input" value="${esc(variant)}" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="variant">
+      <input autocomplete="off" type="text" class="ghost-input" value="${esc(variant)}" data-change-action="update-copy-field" data-fig-id="${eId}" data-copy-id="${cid}" data-field="variant">
     </div>` : ''}
   </div>`;
 
@@ -1928,7 +1928,7 @@ function renderCopyCard(f, cp, i, isMulti, total) {
   }
   h += `<div class="input-group" style="grid-column:span 2">
       <label>Notes</label>
-      <textarea class="ghost-input" rows="3" placeholder="Notes…" data-input-action="update-copy-notes-debounced" data-blur-action="update-copy-notes" data-fig-id="${eId}" data-copy-id="${cid}">${esc(notes)}</textarea>
+      <textarea autocomplete="off" class="ghost-input" rows="3" placeholder="Notes…" data-input-action="update-copy-notes-debounced" data-blur-action="update-copy-notes" data-fig-id="${eId}" data-copy-id="${cid}">${esc(notes)}</textarea>
     </div>
     </div>
   </details>`;
@@ -2069,7 +2069,7 @@ function renderDetail() {
       ${userPhotos.map(p => `
         <div class="photo-label-row">
           <span class="photo-label-num">#${userPhotos.indexOf(p)+1}</span>
-          <input type="text" class="ghost-input" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
+          <input autocomplete="off" type="text" class="ghost-input" placeholder="Label (optional) — e.g. UPC, Back, Loose" value="${esc(p.label)}"
                  data-blur-action="save-photo-label" data-fig-id="${eId}" data-photo-n="${p.n}" maxlength="20">
         </div>
       `).join('')}

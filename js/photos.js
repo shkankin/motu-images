@@ -779,7 +779,7 @@ window.handleCSV = input => {
   const file = input.files?.[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    const overwrite = document.querySelector('.checkbox.checked') !== null;
+    const overwrite = !!S.importOverwrite;   // v7.99: state, not DOM class
     const result = doImport(ev.target.result, overwrite);
     const body = document.querySelector('.sheet-body');
     if (body) {
@@ -820,7 +820,7 @@ document.addEventListener('drop', e => {
   } else {
     const r = new FileReader();
     r.onload = ev => {
-      const overwrite = document.querySelector('.checkbox.checked') !== null;
+      const overwrite = !!S.importOverwrite;   // v7.99: state, not DOM class
       const result = doImport(ev.target.result, overwrite);
       const body = document.querySelector('.sheet-body');
       if (body) {
