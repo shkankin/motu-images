@@ -3842,3 +3842,39 @@ html {
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--rd); border: 2px solid var(--bg);
 }
+
+/* ── v7.100: visual / contrast pass ─────────────────────────────── */
+/* Line art is dark in every theme, so its text must not follow --t1 (dark in the light theme). */
+.line-row.has-art .line-row-name,
+.line-row.has-art .line-row-meta {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.65);
+}
+.line-row.has-art .line-row-arrow {
+  color: #fff; opacity: .95;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.85));
+}
+/* Select-bar status buttons: status-coloured text was ~2:1 on the light theme. */
+.select-actionbar .sa-status-btn {
+  color: color-mix(in srgb, var(--st-c) 55%, var(--t1));
+  font-size: 12px;
+}
+/* Unchecked select boxes: visible outline in both themes (was ~1.5:1 dark, grey fill light). */
+.select-checkbox:not(.checked) {
+  border-color: var(--t3);
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+/* Manage Lines: Move up / Move down (non-drag reorder). */
+.reorder-move { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.reorder-move button {
+  width: 40px; height: 28px; border-radius: 8px;
+  border: 1px solid var(--bd); background: var(--bg3); color: var(--t2);
+  font-size: 11px; line-height: 1; padding: 0;
+}
+.reorder-move button:active { background: color-mix(in srgb, var(--acc) 18%, var(--bg3)); }
+.reorder-list > .reorder-item:first-child .reorder-up,
+.reorder-list > .reorder-item:last-child .reorder-down { opacity: .25; pointer-events: none; }
+
+/* v8.00: tap-target growth without changing the look. */
+.copy-photo-unlink::after { content: ''; position: absolute; inset: -9px; }   /* element is position:absolute */
+.acc-missing-pill { min-height: 28px; display: inline-flex; align-items: center; }

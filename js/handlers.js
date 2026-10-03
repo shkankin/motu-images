@@ -350,6 +350,29 @@ document.addEventListener('pointermove', e => {
   if (d.edgeDir && !d.scrollRAF) d.scrollRAF = requestAnimationFrame(_dragAutoScroll);
 }, { passive: true });
 
+// v7.100: Move up / Move down — same commit as a drag drop, no dragging needed.
+window.reorderMove = el => {
+  const item = el.closest('[data-reorder-item]');
+  const container = el.closest('.reorder-list');
+  if (!item || !container) return;
+  const keys = [...container.querySelectorAll('[data-reorder-item]')].map(i => i.dataset.key);
+  const i = keys.indexOf(item.dataset.key);
+  const j = i + (el.dataset.dir === 'up' ? -1 : 1);
+  if (i < 0 || j < 0 || j >= keys.length) return;
+  [keys[i], keys[j]] = [keys[j], keys[i]];
+  haptic(10);
+  const scope = container.dataset.reorderScope;
+  if (scope === 'lines') {
+    S.lineOrder = keys;
+    store.set('motu-line-order', keys);
+  } else if (scope === 'sublines') {
+    const lineId = container.dataset.lineId;
+    S._localSublineOrder = { ...S._localSublineOrder, [lineId]: keys };
+    store.set('motu-subline-order', S._localSublineOrder);
+  }
+  render();
+};
+
 function _dragEnd() {
   if (!_dragState) return;
   const { container, all, item, originalKeys, origIndex, lastSlot, scrollRAF } = _dragState;

@@ -337,7 +337,7 @@ function decodeShareURL(hash) {
 
 function renderQR(str, px=4) {
   const result = window.qrEncode(str);   // v7.51: explicit window. (see data.js handleCSV note)
-  if (!result) return '<div class="text-sm text-dim">URL too long for QR</div>';
+  if (!result) return '<div class="text-sm text-dim">This list is too long for a QR code — use Copy or Share instead.</div>';
   const {mat, size} = result;
   const quiet = 2; // quiet zone modules
   const total = (size + quiet*2) * px;
@@ -351,13 +351,14 @@ function renderQR(str, px=4) {
 function renderShareSheet() {
   const wishFigs = S.figs.filter(f => {
     const c = S.coll[f.id];
-    return c && (c.status === 'wishlist' || c.status === 'ordered');
+    return c && c.status === 'wishlist';   // v7.100: the link carries Wishlist only — so does the count
   });
+  const orderedN = S.figs.filter(f => S.coll[f.id]?.status === 'ordered').length;
   if (!wishFigs.length) {
     return `<div style="text-align:center;padding:32px 16px">
       <div style="font-size:32px;margin-bottom:12px">📋</div>
       <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">No want list yet</div>
-      <div style="font-size:13px;color:var(--t3)">Mark figures as Wishlist or Ordered to share them.</div>
+      <div style="font-size:13px;color:var(--t3)">${orderedN ? `Mark figures as Wishlist to share them. Your ${orderedN} ordered figure${orderedN === 1 ? '' : 's'} aren't included in the link.` : 'Mark figures as Wishlist to share them.'}</div>
     </div>`;
   }
 
@@ -367,9 +368,9 @@ function renderShareSheet() {
 
   return `
     <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:13px;color:var(--t2);margin-bottom:12px">${wishFigs.length} figure${wishFigs.length===1?'':'s'} on your want list</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:12px">${wishFigs.length} figure${wishFigs.length===1?'':'s'} on your want list${orderedN ? ` <span style="color:var(--t3)">· ${orderedN} ordered not included</span>` : ''}</div>
       <div style="display:inline-block;padding:10px;background:#fff;border-radius:12px;margin-bottom:14px">${qrSvg}</div>
-      <div style="font-size:11px;color:var(--t3);margin-bottom:14px">Scan to view want list</div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:14px">${qrSvg.startsWith('<svg') ? 'Scan to view want list' : ''}</div>
     </div>
     ${(() => {
       // v7.58: notes & target prices are OPT-IN — notes are private
@@ -383,7 +384,7 @@ function renderShareSheet() {
         if (String(c2?.copies?.[0]?.notes || '').trim() || (parseFloat(c2?.targetPrice) > 0)) carrying++;
       }
       if (!carrying) return '';
-      return `<button data-action="toggle-share-extras" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;border:1px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:var(--bg3);margin-bottom:12px;text-align:left">
+      return `<button data-action="toggle-share-extras" role="switch" aria-checked="${on ? 'true' : 'false'}" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;border:1px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:var(--bg3);margin-bottom:12px;text-align:left">
         <div style="width:18px;height:18px;border-radius:5px;border:2px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:${on ? 'var(--acc)' : 'transparent'};color:var(--btn-t);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${on ? '✓' : ''}</div>
         <div style="flex:1"><div style="font-size:13px;color:var(--t1)">Include notes & target prices</div>
         <div style="font-size:11px;color:var(--t3)">${carrying} figure${carrying === 1 ? ' has' : 's have'} them · makes the link longer</div></div>
@@ -494,7 +495,11 @@ function checkShortcutAction() {
 
 function checkShareLink() {
   const tokens = decodeShareURL(location.hash);
-  if (!tokens || !tokens.length) return;
+  if (!tokens || !tokens.length) {
+    // v7.100: a want-list link that can't be read used to do nothing at all.
+    if (/[#&]wl=/.test(location.hash)) toast('✗ That want list link couldn\'t be read');
+    return;
+  }
   // Wait for figs to be loaded (may be called before/after figures.json)
   let _retries = 0;
   function show() {
@@ -534,7 +539,11 @@ function checkShareLink() {
         return fig ? { fig, note: it.note, price: it.price } : null;
       })
       .filter(Boolean);
-    if (!items.length) return;
+    if (!items.length) {
+      toast('✗ None of those figures are in your catalog yet — try Sync, then open the link again');
+      return;
+    }
+    if (items.length < tokens.length) setTimeout(() => toast(`Showing ${items.length} of ${tokens.length} — the rest aren't in your catalog yet`), 600);
     try { window.recordWishlistView?.(tokens.map(it => it.t), items.map(it => it.fig)); } catch {}
     S.sheet = 'wantListView';
     S._sharedWantList = items;

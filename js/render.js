@@ -387,8 +387,8 @@ function patchFigRow(id) {
       actions.innerHTML =
         (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
         (c.status
-          ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${id}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
-          : `<button class="quick-own" data-action="set-status-owned" data-fig-id="${id}" title="Mark owned">${icon(ICO.check,16)}</button>`);
+          ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${id}" title="Cycle status" aria-label="Status: ${STATUS_LABEL[c.status]}. Tap to change" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
+          : `<button class="quick-own" data-action="set-status-owned" data-fig-id="${id}" title="Mark owned" aria-label="Mark owned">${icon(ICO.plus,16)}</button>`);
     }
     // v7.22: keep the swipe panel's active-button highlight in sync too —
     // otherwise reopening it after a quick tier-1/2 swipe commit (which
@@ -572,7 +572,11 @@ function renderMain() {
     : 0;
 
   const stats = getStats();
-  const sortLabel = S.sortBy === 'added-desc' ? 'Added' : S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
+  // v7.100: Filter/Sort do nothing on the Lines grid — hide them there (search widens to fill the row).
+  const onLinesHome = S.tab === 'lines' && !S.activeLine;
+  const sortBase = S.sortBy === 'added-desc' ? 'Added' : S.sortBy.includes('year') ? 'Year' : S.sortBy === 'wave' ? 'Wave' : S.sortBy.includes('name') ? 'Name' : 'Price';
+  const sortDesc = /-desc$/.test(S.sortBy);
+  const sortLabel = sortBase + (sortDesc ? ' ↓' : ' ↑');   // v7.100: show the direction
   const hf = hasFilters();
   // v7.96: the Filter button's active state means a FILTER is set — typing a
   // search no longer lights it (hasFilters() also counts S.search).
@@ -609,7 +613,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.99</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.00</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -625,12 +629,12 @@ function renderMain() {
         ${S.search ? `<button class="search-clear" data-action="clear-search" aria-label="Clear search">${icon(ICO.x,14)}</button>` : ''}
         <button class="search-scan" data-action="open-barcode-scanner" title="Scan a barcode" aria-label="Scan barcode">${icon(ICO.qr,16)}</button>
       </div>
-      <button class="filter-btn ${filtersOnly?'active':''}" data-action="open-sheet" data-sheet="filter" aria-label="${filtersOnly ? 'Filters (active)' : 'Filters'}">
+      ${onLinesHome ? '' : `<button class="filter-btn ${filtersOnly?'active':''}" data-action="open-sheet" data-sheet="filter" aria-label="${filtersOnly ? 'Filters (active)' : 'Filters'}">
         ${icon(ICO.filter,18)}${filtersOnly ? '<span class="filter-dot"></span>' : ''}
       </button>
-      <button class="sort-btn" data-action="open-sheet" data-sheet="sort">
+      <button class="sort-btn" data-action="open-sheet" data-sheet="sort" aria-label="Sort: ${sortBase}, ${sortDesc ? 'descending' : 'ascending'}">
         ${icon(ICO.sort,18)}<span class="sort-label">${sortLabel}</span>
-      </button>
+      </button>`}
     </div>
     </div>
     ${S.activeLine ? renderBreadcrumb() : ''}
@@ -1064,6 +1068,7 @@ function renderLinesGrid() {
       const hasSublines = getOrderedSublines(l.id).length > 1;
       html += `<div class="reorder-item${hidden?' is-hidden':''}" data-reorder-item data-key="${esc(l.id)}">
         <button class="reorder-handle" aria-label="Drag to reorder ${esc(l.name)}" title="Drag to reorder">${icon(ICO.grip,18,3)}</button>
+        <span class="reorder-move"><button class="reorder-up" data-action="reorder-move" data-dir="up" aria-label="Move ${esc(l.name)} up" title="Move up">▲</button><button class="reorder-down" data-action="reorder-move" data-dir="down" aria-label="Move ${esc(l.name)} down" title="Move down">▼</button></span>
         <div style="flex:1;min-width:0">
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(l.name)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">${l.yr} · ${l.total} figures · ${l.owned} owned · ${l.pct}%</div>
@@ -1207,6 +1212,7 @@ function renderSublines() {
       const hidden = isSublineHidden(S.activeLine, sl.key);
       html += `<div class="reorder-item${hidden?' is-hidden':''}" data-reorder-item data-key="${esc(sl.key)}">
         <button class="reorder-handle" aria-label="Drag to reorder ${esc(sl.label)}" title="Drag to reorder">${icon(ICO.grip,18,3)}</button>
+        <span class="reorder-move"><button class="reorder-up" data-action="reorder-move" data-dir="up" aria-label="Move ${esc(sl.label)} up" title="Move up">▲</button><button class="reorder-down" data-action="reorder-move" data-dir="down" aria-label="Move ${esc(sl.label)} down" title="Move down">▼</button></span>
         <div style="flex:1;min-width:0">
           <div class="font-display" style="font-size:14px;color:var(--t1)">${esc(sl.label)}</div>
           <div class="text-sm text-dim" style="margin-top:2px">${slFigs.length} figures</div>
@@ -1362,8 +1368,8 @@ function renderFigRow(f, standalone = false) {
     ${S.selectMode ? '' : `<div class="fig-actions">
       ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
-      ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
-        `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned">${icon(ICO.check,16)}</button>`}
+      ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" aria-label="Status: ${STATUS_LABEL[c.status]}. Tap to change" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
+        `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned" aria-label="Mark owned">${icon(ICO.plus,16)}</button>`}
     </div>`}
   </div>`;
 
@@ -2029,7 +2035,7 @@ function renderDetail() {
         ${slides.map((s, si) => {
           const isDef = s.n === defaultN;
           return `
-          <div class="photo-slide" data-action="open-slide-viewer" data-fig-id="${eId}" data-slide-idx="${si}">
+          <div class="photo-slide" data-action="open-slide-viewer" data-fig-id="${eId}" data-slide-idx="${si}" role="button" tabindex="0" aria-label="Open photo ${si + 1}">
             <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `data-error-action="img-error" data-fig-id="${eId}"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
             ${!s.stock ? `<button class="photo-slide-remove" data-action="remove-photo" data-fig-id="${eId}" data-photo-n="${s.n}" aria-label="Remove photo" title="Remove photo">${icon(ICO.x,14)}</button>` : ''}
@@ -2052,7 +2058,7 @@ function renderDetail() {
       <div class="photo-controls">
         ${canAddMore ? `<button class="icon-fab" data-action="trigger-camera" title="Camera" aria-label="Take photo">${icon(ICO.camera,20)}</button>
         <button class="icon-fab" data-action="trigger-gallery" title="Gallery${userPhotos.length > 0 ? ` — ${userPhotos.length}/${MAX_PHOTOS}` : ''}" aria-label="Choose from gallery">${icon(ICO.img,20)}</button>`
-        : `<div class="icon-fab" style="opacity:0.5;cursor:default" title="Max ${MAX_PHOTOS} photos">${icon(ICO.img,20)}</div>`}
+        : `<button class="icon-fab" data-action="photo-limit" data-max="${MAX_PHOTOS}" style="opacity:0.5" title="Photo limit reached" aria-label="Photo limit reached (${MAX_PHOTOS})">${icon(ICO.img,20)}</button>`}
       </div>
       <input type="file" id="photoCamera" accept="image/*" capture="environment" style="display:none" data-change-action="handle-photo" data-fig-id="${eId}">
       <input type="file" id="photoGallery" accept="image/*" style="display:none" data-change-action="handle-photo" data-fig-id="${eId}">
@@ -2097,13 +2103,13 @@ function renderDetail() {
         const mImg = (S.customPhotos[m.id] && photoStore.get(m.id)) || (!S.imgErrors[m.image] && m.image) || '';  // v7.81: URL-keyed
         const label = m.id === root.id ? 'Original' : (m.variantName || m.name);
         const owned = S.coll[m.id]?.status === 'owned';
-        return `<div class="variant-chip${cur ? ' current' : ''}" ${cur ? '' : `data-action="open-fig" data-fig-id="${esc(m.id)}"`}>
+        return `<div class="variant-chip${cur ? ' current' : ''}" ${cur ? 'aria-current="true"' : `data-action="open-fig" data-fig-id="${esc(m.id)}" role="button" tabindex="0" aria-label="Open ${esc(label)}"`}>
           <div class="variant-chip-thumb">${mImg ? `<img src="${esc(mImg)}" alt="" loading="lazy">` : `<span>${esc(m.name[0])}</span>`}${owned ? '<div class="variant-chip-dot"></div>' : ''}</div>
           <div class="variant-chip-label">${esc(label)}</div>
         </div>`;
       };
       return `<div class="variant-section">
-        <div class="variant-strip">${fam.map(chip).join('')}<div class="variant-chip variant-chip-add" data-action="add-variant" data-fig-id="${esc(root.id)}" title="Add a variant">
+        <div class="variant-strip">${fam.map(chip).join('')}<div class="variant-chip variant-chip-add" data-action="add-variant" data-fig-id="${esc(root.id)}" title="Add a variant" role="button" tabindex="0" aria-label="Add a variant">
           <div class="variant-chip-thumb"><span style="font-size:28px;color:var(--gold)">+</span></div>
           <div class="variant-chip-label">Add</div>
         </div></div>
@@ -2241,3 +2247,28 @@ window.renderContent = renderContent;
 export {
   toast, haptic, appConfirm, appPromptText, triggerPulse, toastUndo, toastAction, showUpdateBanner, patchFigRow, updateNavBadge, render, renderLoading, renderMain, renderSelectActionbar, renderNavBtn, renderBreadcrumb, renderKidsCoreAdminSheet, renderContent, renderLinesGrid, renderSublines, renderFigList, patchDetailStatus, renderDetail, renderPhotoViewer
 };
+
+
+// ── v8.00: link visible field labels to their controls ───────────────────
+// The sheets/detail forms render <div class="field-label">Price Paid</div><input>
+// with no for/id, so TalkBack announced every field as just "edit box". Rather than
+// touch ~60 templates, name each unlabeled control from its adjacent label after any
+// DOM change (attribute writes don't re-trigger the observer).
+function _autoLabelFields() {
+  document.querySelectorAll('.field-label, .input-group > label').forEach(l => {
+    const box = l.parentElement;
+    if (!box) return;
+    const ctl = box.querySelector('input:not([type=hidden]):not([type=file]), select, textarea');
+    if (!ctl || ctl.hasAttribute('aria-label') || ctl.hasAttribute('aria-labelledby')) return;
+    const txt = (l.textContent || '').replace(/\s+/g, ' ').trim().replace(/\s*EDITED$/i, '');
+    if (txt) ctl.setAttribute('aria-label', txt);
+  });
+}
+let _autoLabelRaf = 0;
+if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+  const startAutoLabel = () => new MutationObserver(() => {
+    if (_autoLabelRaf) return;
+    _autoLabelRaf = requestAnimationFrame(() => { _autoLabelRaf = 0; _autoLabelFields(); });
+  }).observe(document.body, { childList: true, subtree: true });
+  if (document.body) startAutoLabel(); else document.addEventListener('DOMContentLoaded', startAutoLabel);
+}

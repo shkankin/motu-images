@@ -304,6 +304,8 @@ registerAll({
   'start-tutorial':   () => window.startTutorial?.(),
   'dismiss-onboard':  () => { window.S.onboarded = true; window.store?.set('motu-onboarded', 1); window.render?.(); },
   'toggle-reorder':   () => window.toggleReorder?.(),
+  'photo-limit':      (e, el) => window.toast?.(`Photo limit reached — ${el.dataset.max} per figure. Remove one to add another.`),   // v8.00
+  'reorder-move':     (e, el) => window.reorderMove?.(el),   // v7.100: non-drag alternative (WCAG 2.5.7)
   'open-barcode-scanner': () => window.openBarcodeScanner?.(),
   // v7.57: shared want-list "Scan to verify" — arms the scanner's verify
   // mode (see photos.js) against the currently viewed shared list, then

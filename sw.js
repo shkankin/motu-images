@@ -3,6 +3,26 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.00 changelog:
+//   • CACHE bumped to v8.00. Cumulative with v7.96–99 (heuristic-review release).
+//   • Accessibility: every visible field label now names its input for TalkBack (auto-linked);
+//     tappable variant chips / photo slides expose button semantics; switches expose on/off.
+//   • Photo limit: the greyed camera control now says why ("Photo limit reached").
+//   • Disconnecting the pricing backend asks first (it also wipes the price cache).
+//   • Missing Details / wave lists: same-named figures show their year (and line) so you can tell them apart.
+//   • Larger hit area on the copy-photo unlink control; roomier "+ missing accessory" pills.
+//   • Lines tab: Filter and Sort are hidden (they did nothing there); search widens to fill the row.
+//   • Manage Lines / sublines: Move up / Move down buttons beside the drag handle.
+//   • Sort button shows direction (Year ↑ / Name ↓).
+//   • Want List: count, list and link now all mean "Wishlist" (the link never carried Ordered
+//     figures, but the sheet counted them; an Ordered-only list showed a dead QR). Over-long
+//     lists say so. A want-list link that can't be read, or whose figures aren't in your
+//     catalog, now tells you instead of silently doing nothing.
+//   • Collection Value "Fetch prices": checks you're online and stops with "Connection lost".
+//   • Contrast: Lines art text is white-on-dark in every theme (was dark-on-dark in the light
+//     theme), chevrons visible, light-theme select-bar status text, visible select checkboxes.
+//   • Rows: unowned quick-own button shows + (a check read as "owned"); status dot announces its status.
+
 // v7.99 changelog:
 //   • CACHE bumped to v7.99. SHELL: handlers.js + ui-sheets.js + data.js + photos.js + delegate-handlers.js + render.js + state.js + vault.css + motu-vault.html.
 //   • Batch Edit: ONE Undo toast now reverses the whole batch (update and add-copy).
@@ -2105,7 +2125,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.99';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.00';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

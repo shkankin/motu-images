@@ -106,6 +106,7 @@ window.toggleWaveExpand = (wid) => {
 window.fetchAllOwnedPricing = async () => {
   if (_bulkFetchRunning) { toast('Already fetching…'); return; }
   if (!isPricingConfigured()) { toast('Configure a pricing backend first (Menu → Pricing Backend)'); return; }
+  if (!navigator.onLine) { toast('✗ You\'re offline — connect and try again'); return; }   // v7.100
   const targets = S.figs.filter(f => {
     if (figIsHidden(f)) return false;
     const c = S.coll[f.id];
@@ -118,9 +119,10 @@ window.fetchAllOwnedPricing = async () => {
   _bulkFetchRunning = true;
   const btn = document.getElementById('fetchAllPricesBtn');
   if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.textContent = `Fetching 0/${targets.length}…`; }
-  let done = 0, got = 0;
+  let done = 0, got = 0, lostConnection = false;
   try {
     for (const f of targets) {
+      if (!navigator.onLine) { lostConnection = true; break; }   // v7.100: stop instead of reporting "no listings"
       const r = await fetchPricing(f.id, { line: f.line, wave: f.wave, year: f.year });
       done++;
       if (r && getCachedAskingPrice(f) != null) got++;
@@ -130,7 +132,9 @@ window.fetchAllOwnedPricing = async () => {
   } finally {
     _bulkFetchRunning = false;
   }
-  toast(`✓ Priced ${got} of ${targets.length} figures${got < targets.length ? ' (no listings found for the rest)' : ''}`);
+  toast(lostConnection
+    ? `✗ Connection lost — priced ${got} of ${done} so far`
+    : `✓ Priced ${got} of ${targets.length} figures${got < targets.length ? ' (no listings found for the rest)' : ''}`);
   // Refresh the stats sheet in place if it's still open.
   const body = document.querySelector('.sheet-body');
   if (body && S.sheet === 'stats') body.innerHTML = renderStatsSheet();
@@ -140,6 +144,25 @@ window.fetchAllOwnedPricing = async () => {
 // getCompletenessStats data, same gap-CSV export) — only the divider/heading
 // are dropped, since the sheet title now names it, and a real empty state is
 // added for a collection with nothing owned yet.
+// v8.00: the catalog has five Grizzlors and several Anti-Eternia He-Mans — in a name-only chip
+// list you can't tell which to open. Duplicated names get " · year" (then " · year line" if
+// that still collides).
+function _withDisambig(list) {
+  const key = x => String(x.name).toLowerCase();
+  const cnt = {};
+  list.forEach(x => { cnt[key(x)] = (cnt[key(x)] || 0) + 1; });
+  if (!Object.values(cnt).some(n => n > 1)) return list;
+  const lab = (x, withLine) => {
+    const f = S.figs.find(g => g.id === x.id);
+    const bits = f ? [f.year, withLine ? ln(f.line) : ''].filter(Boolean) : [];
+    return bits.length ? `${x.name} · ${bits.join(' ')}` : x.name;
+  };
+  const pass1 = list.map(x => (cnt[key(x)] > 1 ? lab(x, false) : x.name));
+  const c2 = {};
+  pass1.forEach(n => { c2[n.toLowerCase()] = (c2[n.toLowerCase()] || 0) + 1; });
+  return list.map((x, i) => ({ ...x, name: cnt[key(x)] > 1 ? (c2[pass1[i].toLowerCase()] > 1 ? lab(x, true) : pass1[i]) : x.name }));
+}
+
 export function renderMissingDetailsSheet() {
   let html = '';
   // v6.83: Data Completeness — surfaces owned figures missing priority fields
@@ -175,7 +198,7 @@ export function renderMissingDetailsSheet() {
           <div style="font-size:12px;color:var(--acc);font-weight:700;width:90px;text-align:right;flex-shrink:0">${n} missing</div>
           <span class="wave-caret" id="gap_${k}_caret">${icon(ICO.chevR, 14)}</span>
         </div>
-        <div id="gap_${k}" style="display:none;padding:2px 0 10px">${getGapFigures(k).map(g => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(g.id)}">${esc(g.name)}</button>`).join('')}</div>`;
+        <div id="gap_${k}" style="display:none;padding:2px 0 10px">${_withDisambig(getGapFigures(k)).map(g => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(g.id)}">${esc(g.name)}</button>`).join('')}</div>`;
       }
       html += `<button data-action="export-gaps" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600;cursor:pointer">
         ${icon(ICO.export, 15)} Export gaps to CSV
@@ -420,9 +443,9 @@ function renderStatsSheet() {
         // v7.89: series in the id too — two series can share a wave number.
         const wid = `wave_${esc(a.line)}_${esc(a.series)}_${esc(a.wave)}`.replace(/[^\w]/g, '');
         // Missing-figure chips, name-sorted; each deep-links to the figure.
-        const missList = a.missing
+        const missList = _withDisambig(a.missing
           .slice()
-          .sort((x, y) => x.name.localeCompare(y.name))
+          .sort((x, y) => x.name.localeCompare(y.name)))
           .map(m => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(m.id)}" title="${esc(m.name)}">${esc(m.name)}</button>`)
           .join('');
         html += `<div class="wave-row">
