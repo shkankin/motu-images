@@ -3,6 +3,12 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.01 changelog:
+//   • CACHE bumped to v8.01. SHELL: handlers.js + delegate-handlers.js + vault.css + render.js + motu-vault.html.
+//   • Search: clearing it (X, or backspacing to empty) returns you to the tab you started on
+//     (it dropped you on All) and keeps the cursor in the field, ready for the next entry.
+//   • Search bar: a few px more room above it — its focus ring was clipped by the header.
+
 // v8.00 changelog:
 //   • CACHE bumped to v8.00. Cumulative with v7.96–99 (heuristic-review release).
 //   • Accessibility: every visible field label now names its input for TalkBack (auto-linked);
@@ -2125,7 +2131,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.00';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.01';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

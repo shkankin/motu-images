@@ -919,12 +919,29 @@ history.replaceState(navState(), '');
 
 // ─── Event Handlers ───────────────────────────────────────────────
 let _searchTimer = null;
-window.onSearch = val => {
+window.onSearch = (val, keepFocus) => {
+  const prevSearch = S.search;
   S.search = val;
   // Keep line scope when searching within a line; go global when at top level.
-  if (val && !S.activeLine) S.tab = 'all';
+  if (val && !S.activeLine) {
+    // v8.01: remember where this search started (first character only) so clearing it
+    // returns there — clearing used to strand you on the All tab.
+    if (!prevSearch) S._searchFromTab = S.tab !== 'all' ? S.tab : null;
+    S.tab = 'all';
+  }
   // Clearing search — do full render to restore UI (clear button, breadcrumbs, tab state)
-  if (!val) { pushNav(); render(); return; }
+  if (!val) {
+    if (S._searchFromTab && S.tab === 'all' && !S.activeLine) S.tab = S._searchFromTab;
+    S._searchFromTab = null;
+    pushNav(); render();
+    if (keepFocus) {
+      // v8.01: the X (or backspacing to empty) re-renders the bar — put the cursor back
+      // in the field so the next entry can start immediately.
+      const inp = document.getElementById('searchInput');
+      if (inp) { inp.focus(); try { inp.setSelectionRange(0, 0); } catch { /* not a text input */ } }
+    }
+    return;
+  }
   // Debounced content update — 120ms debounce preserves input focus
   if (_searchTimer) clearTimeout(_searchTimer);
   _searchTimer = setTimeout(() => {
@@ -946,7 +963,7 @@ window.onSearch = val => {
       const btn = document.createElement('button');
       btn.className = 'search-clear';
       btn.innerHTML = icon(ICO.x, 14);
-      btn.onclick = () => onSearch('');
+      btn.onclick = () => onSearch('', true);
       wrap.appendChild(btn);
     }
     _searchTimer = null;
@@ -955,6 +972,7 @@ window.onSearch = val => {
 window.navTo = (key, opts = {}) => {
   const labels = { lines: 'Lines', all: 'All Figures', collection: 'My Collection' };
   if (labels[key]) _announceRoute(labels[key]);
+  S._searchFromTab = null;   // v8.01: a deliberate tab change ends "return to where the search began"
   S.tab = key;
   S.searchBarHidden = false;
   S.barsHidden = false;

@@ -341,7 +341,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   pointer-events: none;
 }
 .search-row {
-  padding: 0 16px 12px;
+  padding: 5px 16px 12px;   /* v8.01: top padding so the focus ring isn't clipped by .search-bar-wrap (overflow:hidden) */
   display: flex;
   gap: 8px;
   align-items: center;

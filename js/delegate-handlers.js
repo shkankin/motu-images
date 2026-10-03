@@ -132,7 +132,7 @@ registerAll({
   },
 
   // Search clear / filter clear (used by empty-state CTAs and search bar)
-  'clear-search': () => window.onSearch?.(''),
+  'clear-search': () => window.onSearch?.('', true),   // v8.01: keep the cursor in the field
   'clear-filters': () => window.patchFilter?.('clear'),
   'clear-search-and-filters': () => {
     window.onSearch?.('');
@@ -589,7 +589,7 @@ registerAll({
 
 registerAll({
 
-  'on-search':    (e, el) => window.onSearch?.(el.value),
+  'on-search':    (e, el) => window.onSearch?.(el.value, true),
   'format-acquired': (e, el) => window.formatAcquired?.(el),
 
   // Copy card inputs — update on each keystroke via the debounced path,
