@@ -3,6 +3,14 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.97 changelog:
+//   • CACHE bumped to v7.97. SHELL: render.js + data.js + motu-vault.html.
+//   • Detail screen: clearing a status (tapping the active pill) now shows an Undo
+//     toast. For Wishlist/Ordered figures that tap deleted the whole entry
+//     (target price, order details) with no way back. Undo also restores entries
+//     that kept copies but had no status, and refreshes the detail view.
+//   • Detail bottom bar: AF411 uses the link-out icon; back/camera aria-labels.
+
 // v7.96 changelog:
 //   • CACHE bumped to v7.96. SHELL: render.js + handlers.js + state.js + vault.css + motu-vault.html.
 //   • Long-press menu: Android's Copy/Select all toolbar no longer opens over it
@@ -2070,7 +2078,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.96';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.97';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

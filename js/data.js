@@ -1475,6 +1475,13 @@ function setStatus(id, status) {
     else toastUndo(`✗ ${name} cleared`, id, prevColl);
     triggerPulse(id, newStatus);
     if (!patchFigRow(id)) render();
+  } else if (!newStatus) {
+    // v7.97: tapping the ACTIVE status pill on the detail screen clears it —
+    // for Wishlist/Ordered (no copies) that deletes the whole entry (target
+    // price, order details). The list rows always offered Undo; the detail
+    // path had none. Offer it only when the status was cleared, so ordinary
+    // status changes on the detail screen stay toast-free.
+    toastUndo(`✗ ${name} cleared`, id, prevColl);
   }
   // Check completion celebrations (kept on detail too — confetti is the reward)
   if (newStatus === 'owned' && fig) checkCompletion(fig);

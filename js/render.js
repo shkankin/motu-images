@@ -266,13 +266,16 @@ window.undoStatus = id => {
   const toastEl = allToasts[allToasts.length - 1];
   if (!toastEl || !toastEl._undoPrev) return;
   const prev = toastEl._undoPrev;
-  if (prev.status) S.coll[id] = prev;
+  // v7.97: restore whenever the snapshot had ANY content (an entry that kept
+  // copies/order details but no status used to be deleted by Undo).
+  if (Object.keys(prev).length) S.coll[id] = prev;
   else { delete S.coll[id]; }
   saveColl();
   // Remove all toasts for this figure so stale undos can't fire
   allToasts.forEach(el => el.remove());
   toast('↩ Undone');
-  if (!patchFigRow(id)) render();
+  if (S.screen === 'figure' && S.activeFig && S.activeFig.id === id) patchDetailStatus();
+  else if (!patchFigRow(id)) render();
 };
 
 // v6.03: General-purpose action toast — like toastUndo but the button label
@@ -606,7 +609,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.96</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.97</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2043,12 +2046,12 @@ function renderDetail() {
   let html = `
   <div class="detail-scroll">
     <div class="hero-image">
-      <button class="back-fab" data-action="close-detail" title="Back">${icon(ICO.back,24,2.5)}</button>
+      <button class="back-fab" data-action="close-detail" title="Back" aria-label="Back">${icon(ICO.back,24,2.5)}</button>
       ${hasChosenDefault ? `<div class="default-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="${ICO.star}"/></svg> Default</div>` : ''}
       ${heroInner}
       <div class="photo-controls">
-        ${canAddMore ? `<button class="icon-fab" data-action="trigger-camera" title="Camera">${icon(ICO.camera,20)}</button>
-        <button class="icon-fab" data-action="trigger-gallery" title="Gallery${userPhotos.length > 0 ? ` — ${userPhotos.length}/${MAX_PHOTOS}` : ''}">${icon(ICO.img,20)}</button>`
+        ${canAddMore ? `<button class="icon-fab" data-action="trigger-camera" title="Camera" aria-label="Take photo">${icon(ICO.camera,20)}</button>
+        <button class="icon-fab" data-action="trigger-gallery" title="Gallery${userPhotos.length > 0 ? ` — ${userPhotos.length}/${MAX_PHOTOS}` : ''}" aria-label="Choose from gallery">${icon(ICO.img,20)}</button>`
         : `<div class="icon-fab" style="opacity:0.5;cursor:default" title="Max ${MAX_PHOTOS} photos">${icon(ICO.img,20)}</div>`}
       </div>
       <input type="file" id="photoCamera" accept="image/*" capture="environment" style="display:none" data-change-action="handle-photo" data-fig-id="${eId}">
@@ -2131,7 +2134,7 @@ function renderDetail() {
     const btns = [];
     const supportsVariants = f.line !== 'kids-core' && f.line !== 'custom';
     if (supportsVariants)
-      btns.push(btn('open-af411', 'AF411', ICO.export, '', `data-fig-id="${eId}"`));
+      btns.push(btn('open-af411', 'AF411', ICO.external, '', `data-fig-id="${eId}"`));
     btns.push(btn('open-figure-editor', 'Edit', ICO.edit, '', `data-fig-id="${eId}"`));
     if (f.source === 'custom-local' && !f.variantOf)
       btns.push(btn('delete-custom-fig', 'Delete', ICO.trash, 'red-btn', `data-fig-id="${eId}"`));
