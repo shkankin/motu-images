@@ -3,6 +3,18 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v7.98 changelog:
+//   • CACHE bumped to v7.98. SHELL: photos.js + render.js + vault.css + motu-vault.html.
+//   • FIX: tapping a full-screen photo closed the viewer AND the detail screen
+//     (zoom handlers were wired twice per open; since v7.95 each fired history.back()).
+//     The same double wiring made a swipe skip a photo. Handlers now wire once.
+//   • Photo viewer: a tap while zoomed no longer exits; closing it keeps the hero
+//     carousel on the photo you were viewing (it used to jump back to #1).
+//   • Viewer: dialog role + labelled Close/Previous/Next; alt text falls back to the
+//     figure name. Catalog image is called "Catalog photo" in both the hero and the
+//     viewer (it was "Default" / the figure name); star says "Set as default".
+//   • Toast sits 12px higher so it clears the detail bottom bar.
+
 // v7.97 changelog:
 //   • CACHE bumped to v7.97. SHELL: render.js + data.js + motu-vault.html.
 //   • Detail screen: clearing a status (tapping the active pill) now shows an Undo
@@ -2078,7 +2090,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v7.97';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v7.98';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

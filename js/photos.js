@@ -627,6 +627,7 @@ window.openPhotoViewer = (id, startN) => {
   if (!photos.length) return;
   const startIdx = Math.max(0, photos.findIndex(p => p.n === startN));
   S.photoViewer = { figId: id, photos, idx: startIdx };
+  S._heroScroll = document.getElementById('photoCarousel')?.scrollLeft ?? null;   // v7.98
   pushNav();
   haptic && haptic();
   render();
@@ -640,10 +641,11 @@ window.openSlideViewer = (figId, slideIdx) => {
   const userPhotos = photoStore.getAll(figId);
   const stockImg = (fig.image && !S.imgErrors[fig.image]) ? fig.image : null;  // v7.81: URL-keyed
   const slides = [...userPhotos.map(p => ({...p, stock: false}))];
-  if (stockImg) slides.push({n: -1, url: stockImg, label: fig.name, stock: true});
+  if (stockImg) slides.push({n: -1, url: stockImg, label: 'Catalog photo', stock: true});
   if (!slides.length) return;
   const idx = Math.max(0, Math.min(slideIdx, slides.length - 1));
   S.photoViewer = { figId, photos: slides, idx };
+  S._heroScroll = document.getElementById('photoCarousel')?.scrollLeft ?? null;   // v7.98
   pushNav();
   haptic && haptic();
   render();
@@ -664,6 +666,12 @@ function initPhotoViewerZoom() {
   const wrap = document.querySelector('.photo-viewer-img-wrap');
   const img  = wrap?.querySelector('img');
   if (!wrap || !img) return;
+  // v7.98: render() already calls this, and the open/nav helpers call it again
+  // via rAF — two sets of listeners on the SAME wrap. Since v7.95 a single tap
+  // therefore fired history.back() twice (viewer AND detail screen closed) and
+  // a swipe fired photoViewerNav twice (skipping a photo). Wire each wrap once.
+  if (wrap._zoomInit) return;
+  wrap._zoomInit = true;
 
   let scale = 1, tx = 0, ty = 0;
   let startDist = 0, startScale = 1;
@@ -713,6 +721,7 @@ function initPhotoViewerZoom() {
     }
     lastTap = now;
     if (moved) { moved = false; return; }
+    if (scale > 1) return;   // v7.98: a stray tap while zoomed no longer exits and loses the zoom
     tapTimer = setTimeout(() => { tapTimer = null; window.closePhotoViewer?.(); }, 300);
   });
 

@@ -609,7 +609,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.97</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v7.98</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2015,7 +2015,7 @@ function renderDetail() {
   // Build slides: user photos + stock image at end (if exists)
   const slides = [];
   userPhotos.forEach(p => slides.push({...p, stock: false}));
-  if (stockImg) slides.push({n: -1, url: stockImg, label: 'Default', stock: true});
+  if (stockImg) slides.push({n: -1, url: stockImg, label: 'Catalog photo', stock: true});
 
   // v6.91: detail redesign — the photo area is now a full-bleed 400px "hero"
   // (matches the finalized showcase mock). Multi-photo figures keep the
@@ -2032,8 +2032,8 @@ function renderDetail() {
           <div class="photo-slide" data-action="open-slide-viewer" data-fig-id="${eId}" data-slide-idx="${si}">
             <img src="${esc(s.url)}" alt="${esc(s.label || f.name)}" ${s.stock ? `data-error-action="img-error" data-fig-id="${eId}"` : ''}>
             ${s.label ? `<div class="photo-slide-label">${esc(s.label)}</div>` : ''}
-            ${!s.stock ? `<button class="photo-slide-remove" data-action="remove-photo" data-fig-id="${eId}" data-photo-n="${s.n}">${icon(ICO.x,14)}</button>` : ''}
-            <button class="photo-slide-default${isDef ? ' active' : ''}" data-action="set-default-photo" data-fig-id="${eId}" data-photo-n="${s.n}" title="${isDef ? 'Primary photo' : 'Set as primary'}">${icon(ICO.star,16)}</button>
+            ${!s.stock ? `<button class="photo-slide-remove" data-action="remove-photo" data-fig-id="${eId}" data-photo-n="${s.n}" aria-label="Remove photo" title="Remove photo">${icon(ICO.x,14)}</button>` : ''}
+            <button class="photo-slide-default${isDef ? ' active' : ''}" data-action="set-default-photo" data-fig-id="${eId}" data-photo-n="${s.n}" title="${isDef ? 'Default photo' : 'Set as default'}" aria-label="${isDef ? 'Default photo' : 'Set as default'}">${icon(ICO.star,16)}</button>
           </div>`;
         }).join('')}
       </div>
@@ -2167,6 +2167,12 @@ function renderDetail() {
 
   // Wire up carousel dot indicator
   const carousel = document.getElementById('photoCarousel');
+  // v7.98: opening/navigating/closing the photo viewer re-renders the detail
+  // screen, which rebuilt the hero carousel at slide 1. Restore where it was.
+  if (carousel && S._heroScroll != null) {
+    carousel.scrollLeft = S._heroScroll;
+    if (!S.photoViewer) S._heroScroll = null;
+  }
   if (carousel) {
     const dots = document.querySelectorAll('.photo-dot');
     if (dots.length) {
@@ -2203,17 +2209,17 @@ function renderPhotoViewer() {
     : (userNs.length ? userNs[0] : -1);
   const isAlreadyDefault = !isStock && effectiveDefault === p.n;
   const showSetDefault = !isStock && figId && !isAlreadyDefault;
-  return `<div class="photo-viewer" data-action="close-photo-viewer-bg">
-    <button class="photo-viewer-close" data-action="close-photo-viewer">${icon(ICO.x,28)}</button>
-    ${multi ? `<button class="photo-viewer-nav prev" data-action="photo-viewer-nav" data-dir="-1">${icon(ICO.back,28)}</button>` : ''}
+  return `<div class="photo-viewer" data-action="close-photo-viewer-bg" role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <button class="photo-viewer-close" data-action="close-photo-viewer" aria-label="Close photo">${icon(ICO.x,28)}</button>
+    ${multi ? `<button class="photo-viewer-nav prev" data-action="photo-viewer-nav" data-dir="-1" aria-label="Previous photo">${icon(ICO.back,28)}</button>` : ''}
     <div class="photo-viewer-img-wrap" data-action="photo-viewer-noop">
-      <img src="${esc(p.url)}" alt="${esc(p.label || '')}">
+      <img src="${esc(p.url)}" alt="${esc(p.label || figById(v.figId)?.name || 'Photo')}">
       ${p.label ? `<div class="photo-viewer-label">${esc(p.label)}</div>` : ''}
       ${multi ? `<div class="photo-viewer-counter">${v.idx + 1} / ${v.photos.length}</div>` : ''}
       ${showSetDefault ? `<button class="photo-viewer-default" data-action="set-default-photo" data-fig-id="${esc(figId)}" data-photo-n="${p.n}" title="Use this as the list/grid thumbnail">★ Set as default</button>` : ''}
       ${isAlreadyDefault ? `<div class="photo-viewer-default-badge">★ Default</div>` : ''}
     </div>
-    ${multi ? `<button class="photo-viewer-nav next" data-action="photo-viewer-nav" data-dir="1">${icon(ICO.chevR,28)}</button>` : ''}
+    ${multi ? `<button class="photo-viewer-nav next" data-action="photo-viewer-nav" data-dir="1" aria-label="Next photo">${icon(ICO.chevR,28)}</button>` : ''}
   </div>`;
 }
 
