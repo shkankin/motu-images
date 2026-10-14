@@ -33,7 +33,7 @@ const render = (...a) => window.render?.(...a);
 // already unique across all 107 manually-added figures on its own — the
 // descriptive name prefix was never actually needed for uniqueness.
 // Manual figures now encode only that trailing segment.
-function buildShareURL() {
+function buildShareURL(onlyIds = null) {   // v8.02: optional explicit figure list (single-figure share)
   // v7.41: trailing digits are no longer assumed unique for catalog
   // figures — a real collision now exists (two kids-core sets both end in
   // 13924), the exact silent-substitution failure v7.35 fixed for manual
@@ -49,9 +49,11 @@ function buildShareURL() {
     const m = f.id.match(/(\d+)$/);
     if (m) numCount.set(m[1], (numCount.get(m[1]) || 0) + 1);
   }
-  const entries = Object.entries(S.coll)
-    .filter(([, c]) => c.status === 'wishlist')
-    .map(([id]) => {
+  const ids = Array.isArray(onlyIds)
+    ? onlyIds
+    : Object.entries(S.coll).filter(([, c]) => c.status === 'wishlist').map(([id]) => id);
+  const entries = ids
+    .map(id => {
       if (id.startsWith('manual-')) {
         const suffix = id.slice('manual-'.length);
         const code = suffix.includes('-') ? suffix.slice(suffix.lastIndexOf('-') + 1) : suffix;
@@ -73,7 +75,8 @@ function buildShareURL() {
   // into a link by surprise. Both deployed decoders ship in the same
   // release, and links are always minted fresh, so no compatibility
   // window exists; old links simply contain no 0x02/0x03 tokens.
-  const extras = !!store.get('motu-share-extras');
+  // Single-figure shares never carry notes/target prices — those stay private.
+  const extras = !onlyIds && !!store.get('motu-share-extras');
   const coll = S.coll;
   const bytes = [0xFE];
   const enc = new TextEncoder();
@@ -429,6 +432,38 @@ function renderShareSheet() {
       }).join('')}
     </div>`;
 }
+
+// v8.02: share one figure. Reuses the want-list link (desktop.html#wl=…) with a
+// single figure, so recipients get the existing viewer — no new link format.
+// The figure's name goes in the message text: link previews can't show it
+// (the #fragment never reaches the server, and the site is static).
+window.shareFigure = figId => {
+  const fig = S.figs.find(f => f.id === figId);
+  if (!fig) return;
+  const url = buildShareURL([figId]);
+  if (!url) { toast('✗ This figure can\'t be shared as a link'); return; }
+  const st = S.coll[figId]?.status;
+  const lead = st === 'forsale' ? 'For sale' : (!st || st === 'wishlist') ? 'Looking for' : 'Check out';
+  const meta = [ln(fig.line), fig.year].filter(Boolean).join(', ');
+  const text = `${lead}: ${fig.name}${meta ? ` (${meta})` : ''}`;
+  if (navigator.share) {
+    navigator.share({ title: fig.name, text, url }).catch(err => {
+      if (err && err.name !== 'AbortError') toast('✗ Couldn\'t open the share menu');
+    });
+    return;
+  }
+  const full = `${text}\n${url}`;
+  const done = () => toast('✓ Link copied');
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = full; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch { toast('✗ Copy failed'); }
+    ta.remove();
+  };
+  if (!navigator.clipboard?.writeText) { fallback(); return; }
+  navigator.clipboard.writeText(full).then(done, fallback);
+};
 
 window.copyShareURL = () => {
   const url = buildShareURL();

@@ -3,6 +3,13 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.02 changelog:
+//   • CACHE bumped to v8.02. SHELL: share.js + render.js + handlers.js + delegate-handlers.js + vault.css + motu-vault.html.
+//   • Share a single figure: Share button top-right on the detail photo, and "Share…" in the
+//     long-press menu. Opens Android's share sheet with "Looking for: Name (Line, Year)" and
+//     a want-list link carrying just that figure (the existing desktop.html viewer). Notes and
+//     target prices are never included. Falls back to copying the text + link.
+
 // v8.01 changelog:
 //   • CACHE bumped to v8.01. SHELL: handlers.js + delegate-handlers.js + vault.css + render.js + motu-vault.html.
 //   • Search: clearing it (X, or backspacing to empty) returns you to the tab you started on
@@ -2131,7 +2138,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.01';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.02';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

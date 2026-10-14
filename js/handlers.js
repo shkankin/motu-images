@@ -642,6 +642,9 @@ function showContextMenu(figId, x, y) {
   items += `<button class="ctx-menu-item" data-action="ctx-add-variant" data-fig-id="${eFigId}">
     ${icon(ICO.plus, 16)} Add variant…
   </button>`;
+  items += `<button class="ctx-menu-item" data-action="ctx-share" data-fig-id="${eFigId}">
+    ${icon(ICO.share, 16)} Share…
+  </button>`;
   items += `<button class="ctx-menu-item" data-action="ctx-select" data-fig-id="${eFigId}">
     ${icon(ICO.check, 16)} Select
   </button>`;

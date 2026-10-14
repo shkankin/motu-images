@@ -613,7 +613,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.01</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.02</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2053,6 +2053,7 @@ function renderDetail() {
   <div class="detail-scroll">
     <div class="hero-image">
       <button class="back-fab" data-action="close-detail" title="Back" aria-label="Back">${icon(ICO.back,24,2.5)}</button>
+      <button class="back-fab share-fab" data-action="share-figure" data-fig-id="${eId}" title="Share" aria-label="Share ${esc(f.name)}">${icon(ICO.share,20,2.2)}</button>
       ${hasChosenDefault ? `<div class="default-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="${ICO.star}"/></svg> Default</div>` : ''}
       ${heroInner}
       <div class="photo-controls">

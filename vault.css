@@ -3878,3 +3878,8 @@ html {
 /* v8.00: tap-target growth without changing the look. */
 .copy-photo-unlink::after { content: ''; position: absolute; inset: -9px; }   /* element is position:absolute */
 .acc-missing-pill { min-height: 28px; display: inline-flex; align-items: center; }
+
+/* v8.02: Share button on the detail hero — mirrors Back, top-right. The
+   "Default" badge (shown only when a default photo is chosen) moves left of it. */
+.share-fab { left: auto; right: 16px; }
+.default-badge { right: 68px; }

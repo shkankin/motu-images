@@ -214,6 +214,8 @@ registerAll({
   'ctx-open':        (e, el, d) => { window.dismissContextMenu?.(); window.openFig?.(d.figId); },
   'ctx-edit-info':   (e, el, d) => { window.dismissContextMenu?.(); window.openFigureEditor?.(d.figId); },
   'ctx-add-variant': (e, el, d) => { window.dismissContextMenu?.(); window.addVariant?.(d.figId); },
+  'ctx-share':       (e, el, d) => { window.dismissContextMenu?.(); window.shareFigure?.(d.figId); },   // v8.02
+  'share-figure':    (e, el, d) => window.shareFigure?.(d.figId),   // v8.02: detail screen share button
   'ctx-select':      (e, el, d) => { window.dismissContextMenu?.(); window.enterSelectModeWith?.(d.figId); },
 });
 
