@@ -2031,6 +2031,20 @@
     "upc": "887961960211"
   },
   {
+    "id": "manual-laser-light-skeletor-mv7ituj3",
+    "name": "Laser Light Skeletor",
+    "sourceName": "Laser Light Skeletor",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Evil Warriors",
+    "year": 2026,
+    "retail": 33,
+    "slug": "manual-laser-light-skeletor-mv7ituj3",
+    "source": "manual"
+  },
+  {
     "id": "laser-power-he-man-13263",
     "name": "Laser Power He-Man (MC Exclusive)",
     "line": "origins",
