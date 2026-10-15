@@ -1,5 +1,21 @@
 [
   {
+    "id": "laser-light-skeletor-14409",
+    "name": "Laser Light Skeletor",
+    "sourceName": "Laser Light Skeletor",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Origins Deluxe",
+    "sourceGroup": "Origins Deluxe",
+    "wave": "",
+    "year": 2027,
+    "retail": 33.0,
+    "slug": "laser-light-skeletor-14409",
+    "faction": "Evil Warriors",
+    "source": "af411",
+    "_addedToPending": 1792061381
+  },
+  {
     "id": "manual-anti-eternia-he-man-english-card-r9ybgw0y",
     "name": "Anti-Eternia He-Man (English Card)",
     "sourceName": "Anti-Eternia He-Man (English Card)",
