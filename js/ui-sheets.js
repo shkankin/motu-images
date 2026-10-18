@@ -302,12 +302,12 @@ function renderOfflineSheet() {
       <div style="height:8px;border-radius:4px;background:var(--bg3);overflow:hidden"><div id="offlineBar" style="height:100%;width:${pct}%;background:var(--acc);transition:width .2s"></div></div>
       <div id="offlineProgress" style="font-size:12px;color:var(--t2);margin-top:6px">Saving ${run.done} of ${run.total}…</div>
     </div>
-    <button data-action="offline-stop" style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:15px;font-weight:600">Stop</button>`;
+    <button data-action="offline-stop" class="btn btn-block">Stop</button>`;
   } else {
     const miss = cnt ? cnt[scope].total - cnt[scope].have : 0;
     const online = navigator.onLine !== false;
     const label = !cnt ? 'Checking…' : !miss ? 'All saved' : !online ? 'Connect to the internet to save' : `Save ${miss} picture${miss === 1 ? '' : 's'}`;
-    html += `<button data-action="offline-start" ${(!cnt || !miss || !online) ? 'disabled' : ''} style="width:100%;margin-top:6px;padding:14px;border-radius:12px;border:0;background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;${(!cnt || !miss || !online) ? 'opacity:.5' : ''}">${label}</button>`;
+    html += `<button data-action="offline-start" class="btn btn-block btn-primary" style="margin-top:6px" ${(!cnt || !miss || !online) ? 'disabled' : ''}>${label}</button>`;
     if (metered && miss) html += `<div style="font-size:12px;color:var(--or);margin-top:8px">You look to be on mobile data — Wi-Fi is better for this.</div>`;
   }
   if (cnt?.used) html += `<div style="font-size:12px;color:var(--t3);margin-top:14px">MOTU Collector is using ${cnt.used < 1e6 ? 'less than 1' : 'about ' + Math.round(cnt.used / 1e6)} MB on this phone.</div>`;
@@ -673,7 +673,7 @@ function renderWishlistHistorySheet() {
       <button data-action="reopen-wishlist" data-idx="${idx}" style="flex:1;background:none;border:none;text-align:left;padding:0;color:var(--t1);cursor:pointer">
         <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:3px">${entry.figCount} figure${entry.figCount===1?'':'s'}</div>
         <div style="font-size:11px;color:var(--t3);line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(namesPreview)}${more}</div>
-        <div style="font-size:10px;color:var(--t3);margin-top:4px">${fmtAge(entry.viewedAt)}</div>
+        <div style="font-size:var(--fs-xs);color:var(--t3);margin-top:4px">${fmtAge(entry.viewedAt)}</div>
       </button>
       <button data-action="delete-wishlist-entry" data-idx="${idx}" title="Remove from history" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--t3);font-size:18px;line-height:1;cursor:pointer">×</button>
     </div>`;
@@ -929,7 +929,7 @@ function renderEditFigureSheet() {
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm" style="display:flex;align-items:center;gap:6px">
         <span>${label}</span>
-        ${ov[key] != null ? '<span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 6px;border-radius:6px;letter-spacing:.3px">EDITED</span>' : ''}
+        ${ov[key] != null ? '<span style="font-size:var(--fs-badge);color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 6px;border-radius:6px;letter-spacing:.3px">EDITED</span>' : ''}
       </div>
       ${inputHtml}
       ${hint ? `<div class="field-hint text-dim text-sm" style="margin-top:4px">${hint}</div>` : ''}

@@ -187,8 +187,8 @@ function appConfirm(message, {danger = false, ok = 'Confirm', cancel = 'Cancel'}
       <div style="width:100%;max-width:480px;background:var(--bg2);border-radius:16px;margin:0 16px;padding:22px 20px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5)">
         <div data-dlg-msg style="font-size:15px;color:var(--t1);line-height:1.5;margin-bottom:18px;text-align:center">${esc(message)}</div>
         <div style="display:flex;gap:10px">
-          <button id="appConfirmCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
-          <button id="appConfirmOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:${danger?'var(--rd)':'var(--acc)'};color:${danger?'#fff':'var(--btn-t,#fff)'};font-size:15px;font-weight:700">${esc(ok)}</button>
+          <button id="appConfirmCancel" class="btn btn-block btn-quiet" style="flex:1">${esc(cancel)}</button>
+          <button id="appConfirmOk" class="btn btn-block ${danger ? 'btn-destructive' : 'btn-primary'}" style="flex:1">${esc(ok)}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -225,8 +225,8 @@ function appPromptText(message, {placeholder = '', ok = 'OK', cancel = 'Cancel',
         <input autocomplete="off" id="appPromptInput" type="text" placeholder="${esc(placeholder)}" value="${esc(value)}" maxlength="40"
                style="width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:16px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:15px">
         <div style="display:flex;gap:10px">
-          <button id="appPromptCancel" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t2);font-size:15px;font-weight:600">${esc(cancel)}</button>
-          <button id="appPromptOk" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--acc);color:var(--btn-t,#fff);font-size:15px;font-weight:700">${esc(ok)}</button>
+          <button id="appPromptCancel" class="btn btn-block btn-quiet" style="flex:1">${esc(cancel)}</button>
+          <button id="appPromptOk" class="btn btn-block btn-primary" style="flex:1">${esc(ok)}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -419,7 +419,7 @@ function patchFigRow(id) {
       // v6.70: VAR badge retired — variant info now lives in the nested
       // row/strip presentation, not a per-copy free-text flag.
       actions.innerHTML =
-        (isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
+        (isNew ? '<div style="font-size:var(--fs-badge);font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : '') +
         (c.status
           ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${id}" title="Cycle status" aria-label="Status: ${STATUS_LABEL[c.status]}. Tap to change" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>`
           : `<button class="quick-own" data-action="set-status-owned" data-fig-id="${id}" title="Mark owned" aria-label="Mark owned">${icon(ICO.plus,16)}</button>`);
@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.04</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.05</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1164,7 +1164,7 @@ function renderLinesGrid() {
           <div class="emoji">🙈</div>
           <div class="title">All lines are hidden</div>
           <div class="text-sm" style="margin-bottom:16px">Show at least one line to browse your figures.</div>
-          <button data-action="toggle-reorder" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Manage lines</button>
+          <button data-action="toggle-reorder" class="btn btn-soft">Manage lines</button>
         </div>`;
       }
       visibleOrdered.forEach(l => {
@@ -1405,7 +1405,7 @@ function renderFigRow(f, standalone = false) {
       })()}
     </div>
     ${S.selectMode ? '' : `<div class="fig-actions">
-      ${isNew ? '<div style="font-size:9px;font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
+      ${isNew ? '<div style="font-size:var(--fs-badge);font-weight:700;color:var(--acc);letter-spacing:0.5px">NEW</div>' : ''}
       ${isWishDeal(f) ? '<div class="fig-deal-badge" title="At or below your target price">DEAL</div>' : ''}
       ${c.status ? `<button class="quick-own" data-action="cycle-status" data-fig-id="${eId}" title="Cycle status" aria-label="Status: ${STATUS_LABEL[c.status]}. Tap to change" style="border-color:${STATUS_COLOR[c.status]}"><div class="fig-status-dot ${statusCls}"></div></button>` :
         `<button class="quick-own" data-action="set-status-owned" data-fig-id="${eId}" title="Mark owned" aria-label="Mark owned">${icon(ICO.plus,16)}</button>`}
@@ -1622,8 +1622,8 @@ function renderFigList() {
         <div class="title">Your collection is empty</div>
         <div class="text-sm" style="margin-bottom:16px">Start tracking figures by browsing <strong>Lines</strong> or <strong>All</strong> and tapping a status. Owned, Ordered and For Sale figures show up here; Wishlist figures are in Menu → Want List.</div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-          <button data-action="nav-to" data-target="lines" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Browse Lines</button>
-          <button data-action="nav-to" data-target="all" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">View All Figures</button>
+          <button data-action="nav-to" data-target="lines" class="btn btn-soft">Browse Lines</button>
+          <button data-action="nav-to" data-target="all" class="btn">View All Figures</button>
         </div>
       </div>`;
     } else {
@@ -1638,9 +1638,9 @@ function renderFigList() {
         <div class="title">No figures match</div>
         <div class="text-sm" style="margin-bottom:16px">Try adjusting your search or filters.</div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-          ${showClearAll ? `<button data-action="clear-search-and-filters" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear all</button>` : ''}
-          ${showClearFilters ? `<button data-action="clear-filters" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Clear filters</button>` : ''}
-          ${showClearSearch ? `<button data-action="clear-search" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">Clear search</button>` : ''}
+          ${showClearAll ? `<button data-action="clear-search-and-filters" class="btn btn-soft">Clear all</button>` : ''}
+          ${showClearFilters ? `<button data-action="clear-filters" class="btn btn-soft">Clear filters</button>` : ''}
+          ${showClearSearch ? `<button data-action="clear-search" class="btn">Clear search</button>` : ''}
         </div>
       </div>`;
     }

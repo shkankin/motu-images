@@ -3163,8 +3163,8 @@ function renderExportSheet() {
       </div>`;
     });
     html += `<div style="display:flex;gap:8px;margin-top:10px">
-      <button data-action="orphan-clean" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--rd);background:color-mix(in srgb, var(--rd) 10%, transparent);color:var(--rd);font-size:13px;font-weight:600">Delete ${scan.length} ${scan.length === 1 ? 'Entry' : 'Entries'}</button>
-      <button data-action="orphan-cancel" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px">Cancel</button>
+      <button data-action="orphan-clean" class="btn btn-danger btn-soft" style="flex:1">Delete ${scan.length} ${scan.length === 1 ? 'Entry' : 'Entries'}</button>
+      <button data-action="orphan-cancel" class="btn" style="flex:1">Cancel</button>
     </div>`;
   }
   // v7.73: photo-index reconcile UI (see photoStore.reconcileIndex in
@@ -3192,8 +3192,8 @@ function renderExportSheet() {
       </div>`;
     });
     html += `<div style="display:flex;gap:8px;margin-top:10px">
-      <button data-action="photo-prune" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--rd);background:color-mix(in srgb, var(--rd) 10%, transparent);color:var(--rd);font-size:13px;font-weight:600">Remove ${pscan.length} ${pscan.length === 1 ? 'Entry' : 'Entries'}</button>
-      <button data-action="photo-scan-cancel" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px">Cancel</button>
+      <button data-action="photo-prune" class="btn btn-danger btn-soft" style="flex:1">Remove ${pscan.length} ${pscan.length === 1 ? 'Entry' : 'Entries'}</button>
+      <button data-action="photo-scan-cancel" class="btn" style="flex:1">Cancel</button>
     </div>`;
   }
   return html;

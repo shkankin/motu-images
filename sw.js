@@ -3,6 +3,17 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.05 changelog:
+//   • CACHE bumped to v8.05. Cumulative with v8.04 (not yet deployed when this was built).
+//     SHELL: render.js + data.js + stats.js + ui-sheets.js + share.js + handlers.js + vault.css + motu-vault.html.
+//   • Visual consistency, first pass: one text-size / spacing / radius scale (--fs-*, --sp-*, --r-*
+//     in vault.css) and shared button classes (.btn, -block, -sm, -primary, -soft, -danger,
+//     -destructive, -quiet, .btn-row). Confirm/prompt dialogs, empty-state buttons, maintenance
+//     buttons, Want List share, Sold, Offline Images and the Stats summary lines use them.
+//   • Small text: running text is now at least 11px (field hints, line-card year/stats, grid-card
+//     meta, swipe-action labels, Complete badge, wave counts, "viewed" ages); uppercase badges and
+//     chart ticks at least 10px (were 9px: nav badge, header subtitle, NEW, edited, chart labels).
+
 // v8.04 changelog:
 //   • CACHE bumped to v8.04. SHELL: app.js + data.js + render.js + stats.js + ui-sheets.js +
 //     delegate-handlers.js + vault.css + motu-vault.html.
@@ -2167,7 +2178,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.04';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.05';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

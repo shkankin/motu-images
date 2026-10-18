@@ -126,6 +126,42 @@ button {
 }
 button:active { opacity: 0.7; transform: scale(0.97); }
 
+/* ── v8.05: shared scale + button system ────────────────────────────
+   One set of text sizes, spacing steps and button looks, so new UI stops
+   re-inventing them inline (the templates carried 65 different paddings and
+   14 font sizes). Floor: running text 11px; uppercase badges / chart ticks
+   10px. Migrate inline styles to these as screens are touched. */
+:root {
+  --fs-badge: 10px;  /* uppercase badges, chart ticks only */
+  --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px; --fs-xl: 18px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
+  --r-sm: 8px; --r-md: 10px; --r-lg: 12px;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 16px; border-radius: var(--r-md);
+  border: 1px solid var(--bd); background: var(--bg3); color: var(--t1);
+  font-size: var(--fs-md); font-weight: 600; line-height: 1.2; text-align: center;
+}
+.btn-block { display: flex; width: 100%; padding: 14px; border-radius: var(--r-lg); font-size: var(--fs-lg); }
+.btn-sm { padding: 8px 12px; border-radius: var(--r-sm); font-size: var(--fs-sm); }
+.btn-primary { background: var(--acc); border-color: var(--acc); color: var(--btn-t); font-weight: 700; }
+.btn-soft { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, transparent); color: var(--acc); }
+.btn-danger { border-color: color-mix(in srgb, var(--rd) 45%, var(--bd)); color: var(--rd); }
+.btn-danger.btn-soft { border-color: var(--rd); background: color-mix(in srgb, var(--rd) 10%, transparent); }
+.btn-quiet { color: var(--t2); }
+.btn-destructive { background: var(--rd); border-color: var(--rd); color: #fff; font-weight: 700; }
+.btn:disabled { opacity: .5; }
+/* A full-width tappable summary line that opens more detail (Stats → Sold,
+   On order). Text left, chevron right. */
+.btn-row {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  padding: 10px 12px; border-radius: var(--r-md);
+  border: 1px solid var(--bd); background: var(--bg3);
+  font-size: var(--fs-sm); color: var(--t2); text-align: left;
+}
+.btn-row > :first-child { flex: 1; }
+
 /* ── Typography ──────────────────────────────────────────────────── */
 .font-display { font-family: 'Cinzel', serif; font-weight: 700; }
 .text-gold { color: var(--gold); }
@@ -140,7 +176,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
    scoped as `.detail-fields .field-label`; the detail redesign dropped that
    wrapper, so this keeps the edit/add/backend sheets looking unchanged. */
 .field-label { font-size: 12px; color: var(--t3); margin-bottom: 4px; }
-.field-hint { font-size: 10px; color: var(--t3); margin-top: 4px; }
+.field-hint { font-size: var(--fs-xs); color: var(--t3); margin-top: 4px; }
 
 /* ── Layout Shell ────────────────────────────────────────────────── */
 #app {
@@ -233,7 +269,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .bottom-nav button.active { color: var(--acc); font-weight: 600; }
 .bottom-nav button.active svg { stroke-width: 2.5; }
 .bottom-nav .badge {
-  font-size: 9px;
+  font-size: var(--fs-badge);
   background: var(--bd);
   color: var(--t3);
   border-radius: 8px;
@@ -265,7 +301,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   letter-spacing: 0.5px;
 }
 .logo-subtitle {
-  font-size: 9px;
+  font-size: var(--fs-badge);
   letter-spacing: 2px;
 }
 
@@ -655,7 +691,7 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   color: #fff; margin-bottom: 2px;
   text-shadow: 0 1px 4px rgba(0,0,0,.8);
 }
-.line-card .card-year { font-size: 10px; color: rgba(255,255,255,.6); margin-bottom: 6px; }
+.line-card .card-year { font-size: var(--fs-xs); color: rgba(255,255,255,.6); margin-bottom: 6px; }
 .line-card .progress-bar {
   height: 2px; background: rgba(255,255,255,.2);
   border-radius: 2px; overflow: hidden; margin-bottom: 4px;
@@ -666,7 +702,7 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   transition: width 0.4s;
 }
 .line-card .progress-fill.complete { background: var(--gn); }
-.line-card .card-stats { font-size: 10px; color: rgba(255,255,255,.7); font-weight: 600; }
+.line-card .card-stats { font-size: var(--fs-xs); color: rgba(255,255,255,.7); font-weight: 600; }
 .line-card .card-stats.complete { color: var(--gn); }
 
 /* v4.91: NEW count badge for line cards (and subline rows). On line cards
@@ -681,7 +717,7 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   z-index: 2;
   background: var(--acc);
   color: var(--bg);
-  font-size: 9px;
+  font-size: var(--fs-badge);
   font-weight: 800;
   letter-spacing: .6px;
   padding: 3px 7px;
@@ -712,7 +748,7 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   background: var(--acc);
   color: var(--btn-t);
   border-radius: 6px;
-  font-size: 9px;
+  font-size: var(--fs-badge);
   font-weight: 800;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -1004,7 +1040,7 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   background: var(--bg2);
   border: none;
@@ -1302,14 +1338,14 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   -webkit-box-orient: vertical; overflow: hidden;
 }
 .fig-card .card-fig-meta {
-  font-size: 10px; color: var(--t3);
+  font-size: var(--fs-xs); color: var(--t3);
 }
 .fig-card .card-initial {
   font-family: 'Cinzel', serif; font-size: 36px;
   color: var(--t3); font-weight: 900;
 }
 .new-badge {
-  font-size: 9px; font-weight: 700; color: var(--acc);
+  font-size: var(--fs-badge); font-weight: 700; color: var(--acc);
   letter-spacing: 0.5px; background: rgba(0,0,0,.65);
   padding: 2px 6px; border-radius: 4px;
   backdrop-filter: blur(4px);
@@ -1727,7 +1763,7 @@ textarea.ghost-input { resize: vertical; min-height: 40px; }
   background: color-mix(in srgb, var(--gn) 15%, transparent);
   color: var(--gn);
   padding: 2px 8px; border-radius: 10px;
-  font-size: 10px; font-weight: 700;
+  font-size: var(--fs-xs); font-weight: 700;
 }
 .acc-chips {
   display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center;
@@ -2524,7 +2560,7 @@ details.more-details[open] { padding-bottom: 12px; }
 }
 .ctx-copy-count {
   font-family: 'Outfit', sans-serif;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   background: color-mix(in srgb, var(--gold) 22%, transparent);
   color: var(--gold);

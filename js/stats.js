@@ -263,8 +263,8 @@ function renderStatsSheet() {
       if (paid > 0) bits.push(`$${paid.toFixed(2)} paid`);
       if (next) bits.push(`next due ${next.label}`);
       if (overdue) bits.push(`<span style="color:var(--rd);font-weight:600">${overdue} overdue</span>`);
-      return `<button data-action="go-to-filtered" data-status="ordered" style="margin-top:10px;display:flex;align-items:center;gap:6px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);font-size:12px;color:var(--t2);text-align:left">
-        <span style="flex:1">${bits.join(' · ')}</span>${icon(ICO.chevR, 16)}</button>`;
+      return `<button data-action="go-to-filtered" data-status="ordered" class="btn-row" style="margin-top:10px">
+        <span>${bits.join(' · ')}</span>${icon(ICO.chevR, 16)}</button>`;
     })()}
   </div>`;
 
@@ -325,8 +325,8 @@ function renderStatsSheet() {
       }
       if (soldLog.length) {
         // v8.03: was a dead-end summary; now opens the Sold list.
-        html += `<button data-action="open-sold" style="margin-top:12px;display:flex;align-items:center;gap:6px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);font-size:12px;color:var(--t2);text-align:left">
-          <span style="flex:1"><span style="font-weight:700;color:var(--t1)">${soldLog.length}</span> sold · $${soldGross.toFixed(2)} gross${soldWithPaid ? ` · <span style="color:${soldProfit >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(soldProfit)} realized</span>` : ''}</span>
+        html += `<button data-action="open-sold" class="btn-row" style="margin-top:12px">
+          <span><span style="font-weight:700;color:var(--t1)">${soldLog.length}</span> sold · $${soldGross.toFixed(2)} gross${soldWithPaid ? ` · <span style="color:${soldProfit >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(soldProfit)} realized</span>` : ''}</span>
           ${icon(ICO.chevR, 16)}
         </button>`;
       }
@@ -363,7 +363,7 @@ function renderStatsSheet() {
           <polyline points="${pts('p')}" fill="none" stroke="var(--t3)" stroke-width="1.5" stroke-linejoin="round" opacity="0.7"/>
           <polyline points="${pts('v')}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round"/>
         </svg>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);padding:4px 2px 2px">
+        <div style="display:flex;justify-content:space-between;font-size:var(--fs-badge);color:var(--t3);padding:4px 2px 2px">
           <span>${fmtD(t0)}</span>
           <span><span style="color:var(--gold)">━ value</span> · <span>━ paid</span></span>
           <span>${fmtD(t1)}</span>
@@ -394,7 +394,7 @@ function renderStatsSheet() {
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:13px;font-weight:700;color:${l.pct===100?'var(--gn)':'var(--gold)'}">${l.pct}%</div>
-        <div style="font-size:10px;color:var(--t3)">${l.owned}/${l.total}</div>
+        <div style="font-size:var(--fs-xs);color:var(--t3)">${l.owned}/${l.total}</div>
       </div>
     </button>`;
   });
@@ -483,7 +483,7 @@ function renderStatsSheet() {
             <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:8px">
               <div>
                 <div style="font-size:12px;font-weight:700;color:var(--gold)">${a.owned}/${a.total}</div>
-                <div style="font-size:10px;color:var(--t3)">${missing} to go</div>
+                <div style="font-size:var(--fs-xs);color:var(--t3)">${missing} to go</div>
               </div>
               <span class="wave-caret" id="${wid}_caret" style="color:var(--t3);transition:transform 0.2s">${icon(ICO.chevR, 14)}</span>
             </div>
@@ -570,7 +570,7 @@ function renderStatsSheet() {
         const isCurrent = m.key === months[months.length - 1].key;
         return `<div ${m.count ? `role="button" tabindex="0" data-action="toggle-wave-expand" data-wave-id="act_${m.key}" aria-label="${m.label} ${m.year}: ${m.count} added. Show figures"` : ''} style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;gap:4px;${m.count ? 'cursor:pointer' : ''}" title="${m.label} ${m.year}: ${m.count} added">
           <div style="width:100%;height:${h}px;background:${m.count ? (isCurrent ? 'var(--acc)' : 'var(--gold)') : 'var(--bd)'};border-radius:2px;transition:height 0.3s"></div>
-          <div style="font-size:9px;color:var(--t3);font-weight:600">${m.label[0]}</div>
+          <div style="font-size:var(--fs-badge);color:var(--t3);font-weight:600">${m.label[0]}</div>
         </div>`;
       }).join('')}
     </div>`;
@@ -689,8 +689,8 @@ export function renderSoldSheet() {
         <input type="date" value="${esc(_localYMD(sale.date))}" max="${today}" data-change-action="sold-date" data-idx="${idx}" aria-label="Date sold for ${esc(name)}" style="flex:1;min-width:0;padding:7px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-size:13px">
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-        ${f ? `<button data-action="sold-restore" data-idx="${idx}" style="padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:12px;font-weight:600">Return to collection</button>` : ''}
-        <button data-action="sold-delete" data-idx="${idx}" aria-label="Delete the sale of ${esc(name)}" style="padding:8px 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--rd) 45%,var(--bd));background:var(--bg3);color:var(--rd);font-size:12px;font-weight:600">Delete</button>
+        ${f ? `<button data-action="sold-restore" data-idx="${idx}" class="btn btn-sm">Return to collection</button>` : ''}
+        <button data-action="sold-delete" data-idx="${idx}" aria-label="Delete the sale of ${esc(name)}" class="btn btn-sm btn-danger">Delete</button>
       </div>
     </div>`;
   }

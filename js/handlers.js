@@ -695,7 +695,7 @@ function showContextMenu(figId, x, y) {
   </button>`;
   // Local edit (override) — for fixing missing/wrong AF411 metadata
   items += `<button class="ctx-menu-item" data-action="ctx-edit-info" data-fig-id="${eFigId}">
-    ${icon(ICO.edit, 16)} Edit info…${fig._overridden ? ' <span style="font-size:9px;color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
+    ${icon(ICO.edit, 16)} Edit info…${fig._overridden ? ' <span style="font-size:var(--fs-badge);color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,transparent);padding:1px 5px;border-radius:5px;margin-left:auto">EDITED</span>' : ''}
   </button>`;
   // v6.66: in-app variant creation from long-press
   items += `<button class="ctx-menu-item" data-action="ctx-add-variant" data-fig-id="${eFigId}">
