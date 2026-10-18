@@ -181,7 +181,15 @@ registerAll({
   'delete-wishlist-entry': (e, el, d) => {
     const idx = parseInt(d.idx, 10);
     if (!Number.isFinite(idx)) return;
+    // v8.03: one tap deleted with no confirm and no way back — offer Undo.
+    const gone = (window.getWishlistHistory?.() || [])[idx];
     window.deleteWishlistHistoryEntry?.(idx);
+    if (gone) window.toastAction?.('✓ Removed from viewed lists', 'Undo', () => {
+      const arr = window.getWishlistHistory?.() || [];
+      arr.splice(Math.min(idx, arr.length), 0, gone);
+      window.saveWishlistHistory?.(arr);
+      window.render?.();
+    });
     // Re-render just the sheet body
     const body = document.querySelector('.sheet-body');
     // v7.89: viewed wishlists now also live inside the Want List ('share')
@@ -306,7 +314,7 @@ registerAll({
   'start-tutorial':   () => window.startTutorial?.(),
   'dismiss-onboard':  () => { window.S.onboarded = true; window.store?.set('motu-onboarded', 1); window.render?.(); },
   'toggle-reorder':   () => window.toggleReorder?.(),
-  'photo-limit':      (e, el) => window.toast?.(`Photo limit reached — ${el.dataset.max} per figure. Remove one to add another.`),   // v8.00
+  'photo-limit':      (e, el) => window.toast?.(`✗ Photo limit reached (${el.dataset.max}) — remove one to add another`),   // v8.00
   'reorder-move':     (e, el) => window.reorderMove?.(el),   // v7.100: non-drag alternative (WCAG 2.5.7)
   'open-barcode-scanner': () => window.openBarcodeScanner?.(),
   // v7.57: shared want-list "Scan to verify" — arms the scanner's verify
@@ -788,3 +796,52 @@ registerAll({
   },
 }, 'keydown');
 
+// ── v8.03: Sold sheet ────────────────────────────────────────────────
+registerAll({
+  'open-sold': () => window.openSheet?.('sold'),
+  'sold-restore': (e, el, d) => {
+    const idx = parseInt(d.idx, 10);
+    if (Number.isFinite(idx)) window.restoreSoldCopy?.(idx);
+  },
+  'sold-delete': (e, el, d) => {
+    const idx = parseInt(d.idx, 10);
+    if (!Number.isFinite(idx)) return;
+    const gone = window.deleteSale?.(idx);
+    window.refreshSheetBody?.();
+    if (gone) window.toastAction?.(`✓ Sale of ${gone.name || 'figure'} deleted`, 'Undo', () => {
+      window.insertSale?.(idx, gone);
+      window.toast?.('↩ Undone');
+      window.refreshSheetBody?.();
+    });
+  },
+});
+registerAll({
+  'sold-price': (e, el, d) => {
+    const idx = parseInt(d.idx, 10);
+    const price = parseFloat(String(el.value).replace(/[$,\s]/g, ''));
+    if (!Number.isFinite(idx)) return;
+    if (!Number.isFinite(price) || price < 0) {
+      window.toast?.('✗ Enter a valid price');
+      window.refreshSheetBody?.();   // put the saved value back
+      return;
+    }
+    window.updateSale?.(idx, { price: Math.round(price * 100) / 100 });
+    window.toast?.('✓ Price updated');
+    window.refreshSheetBody?.();
+  },
+  'sold-date': (e, el, d) => {
+    const idx = parseInt(d.idx, 10);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(el.value || '');
+    if (!Number.isFinite(idx)) return;
+    // Noon local time, so the stored ISO date never slips a day across zones.
+    const t = m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : null;
+    if (!t || isNaN(t) || t.getTime() > Date.now() + 86400000) {
+      window.toast?.('✗ Pick a date that isn’t in the future');
+      window.refreshSheetBody?.();
+      return;
+    }
+    window.updateSale?.(idx, { date: t.toISOString() });
+    window.toast?.('✓ Date updated');
+    window.refreshSheetBody?.();
+  },
+}, 'change');

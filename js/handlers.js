@@ -27,7 +27,7 @@ import {
   rebuildFigIndex, applyOverrides, fetchFigs,
   clearOverrides, _derived, getSortedFigs,
   isMigrated, migrateEntry, migrateOrderedToOwned,
-  recordSale, getSoldLog,
+  recordSale, getSoldLog, nextCopyId,
 } from './data.js';
 import { render, toast, haptic, appConfirm, appPromptText, patchFigRow, toastUndo, triggerPulse, renderContent, renderSelectActionbar } from './render.js';
 import { checkCompletion } from './eggs.js';
@@ -104,13 +104,19 @@ window.markCopySold = async (figId, copyId) => {
   const price = parseFloat(String(raw).replace(/[$,\s]/g, ''));
   if (!Number.isFinite(price) || price < 0) { toast('✗ Enter a valid price'); return; }
   const paid = parseFloat(cp.paid);
-  recordSale({
+  // v8.03: snapshot the whole entry first so the sale can be undone, and keep
+  // the sold copy itself on the log record so "Return to collection" (Sold
+  // sheet) gives back condition, notes, accessories and location too.
+  const prevEntry = _clone(c);
+  const sale = {
     figId, name: f.name, line: f.line,
     paid: Number.isFinite(paid) ? paid : null,
     price,
     date: new Date().toISOString(),
     variant: cp.variant || f.variantName || '',
-  });
+    copy: _clone(cp),
+  };
+  recordSale(sale);
   const newCopies = c.copies.filter(x => x.id !== copyId);
   if (newCopies.length === 0) {
     delete S.coll[figId];
@@ -124,7 +130,20 @@ window.markCopySold = async (figId, copyId) => {
   const profit = Number.isFinite(paid) ? price - paid : null;
   const profitStr = profit == null ? '' :
     ` · ${profit >= 0 ? '+' : '−'}$${Math.abs(profit).toFixed(2)} ${profit >= 0 ? 'profit' : 'loss'}`;
-  toast(`✓ Sold for $${price.toFixed(2)}${profitStr}${newCopies.length === 0 ? ' · removed from collection' : ''}`);
+  window.toastAction(`✓ Sold for $${price.toFixed(2)}${profitStr}${newCopies.length === 0 ? ' · removed from collection' : ''}`, 'Undo', () => {
+    // v8.03: Mark Sold was permanent — a mis-tap or a wrong price could not
+    // be taken back. Undo restores the entry and removes THIS log record
+    // (matched by identity of its timestamp + figure, not by position).
+    S.coll[figId] = prevEntry;
+    const log = getSoldLog();
+    for (let i = log.length - 1; i >= 0; i--) {
+      if (log[i].figId === figId && log[i].date === sale.date) { window.deleteSale?.(i); break; }
+    }
+    saveColl();
+    _derived.invalidate();
+    toast('↩ Sale undone');
+    if (S.screen === 'figure') render(); else if (!patchFigRow(figId)) render();
+  });
   if (newCopies.length === 0 && S.screen === 'figure') render();
   else window.patchDetailStatus?.();
 };
@@ -132,6 +151,46 @@ window.markCopySold = async (figId, copyId) => {
 // Delete a user-created variant / custom figure (source 'custom-local' only —
 // catalog figures are managed by the repo editor). Removes the record, its
 // collection entry, and any custom photos.
+// v8.03: Sold sheet → "Return to collection". Puts the sold copy back (the
+// full copy when the log record carries it — sales from v8.03 on — else its
+// paid price and variant) and removes the log record. Undoable.
+window.restoreSoldCopy = idx => {
+  const log = getSoldLog();
+  const sale = log[idx];
+  if (!sale) return;
+  const f = figById(sale.figId);
+  if (!f) { toast('✗ That figure is no longer in your catalog'); return; }
+  const id = sale.figId;
+  const prevEntry = S.coll[id] ? _clone(S.coll[id]) : null;
+  let c = S.coll[id];
+  c = c ? (isMigrated(c) ? { ...c, copies: c.copies.map(cp => ({ ...cp })) } : migrateEntry(c)) : { copies: [] };
+  if (!Array.isArray(c.copies)) c.copies = [];
+  // A lone id-only placeholder copy would sit empty beside the returned one.
+  if (c.copies.length === 1 && Object.keys(c.copies[0]).every(k => k === 'id')) c.copies = [];
+  const back = sale.copy && typeof sale.copy === 'object'
+    ? _clone(sale.copy)
+    : { ...(sale.paid != null ? { paid: String(sale.paid) } : {}), ...(sale.variant ? { variant: sale.variant } : {}) };
+  back.id = nextCopyId(c);
+  c.copies.push(back);
+  const prevStatus = c.status || null;
+  if (!prevStatus || prevStatus === 'wishlist') c.status = 'owned';
+  S.coll[id] = c;
+  window.deleteSale?.(idx);
+  if (c.status !== prevStatus) window.logStatusEvent?.(id, prevStatus, c.status);
+  saveColl();
+  _derived.invalidate();
+  haptic && haptic();
+  window.toastAction(`✓ ${f.name} is back in your collection`, 'Undo', () => {
+    if (prevEntry) S.coll[id] = prevEntry; else delete S.coll[id];
+    window.insertSale?.(idx, sale);
+    saveColl();
+    _derived.invalidate();
+    toast('↩ Undone');
+    window.refreshSheetBody?.();
+  });
+  window.refreshSheetBody?.();
+};
+
 window.deleteCustomFig = async (figId) => {
   const f = figById(figId);
   if (!f || f.source !== 'custom-local') { toast('Only user-added figures can be deleted here'); return; }

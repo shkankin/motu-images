@@ -269,6 +269,7 @@ async function init() {
   bootDelegation();
   // Render the UI behind the splash so it's ready by the time splash fades.
   render();
+  window.__motuBooted = true;   // v8.03: first screen is up — see the boot safety net in js/route.js
   // Defer the figures.json network request until the splash is well past its
   // entry phase (~1s in). Cached data already populated the view above, so
   // the user isn't waiting on this. Purely a politeness delay to keep the
@@ -276,7 +277,9 @@ async function init() {
   const hasCache = !!(cached?.rows?.length);
   const needsFetch = !cached?.ts || Date.now() - cached.ts > CACHE_TTL;
   if (needsFetch) {
-    setTimeout(() => fetchFigs(false, !hasCache), 1000);
+    // v8.03: no politeness delay on a first launch — with nothing cached the
+    // user is staring at the skeleton, so fetch immediately.
+    setTimeout(() => fetchFigs(false, !hasCache), hasCache ? 1000 : 0);
   }
   // v7.20: if a sync attempt failed (weak/no signal — e.g. inside a store),
   // retry automatically the moment connectivity returns, instead of leaving
@@ -426,9 +429,19 @@ window.addEventListener('online', () => {
 });
 window.addEventListener('offline', () => {
   S.isOffline = true;
-  toast('✗ Connection lost');
+  toast('⚠ Offline — your collection still works');   // v8.03: a state, not an error
   haptic && haptic();
   render();
 });
 
-init();
+// v8.03: a throw before the first render used to leave a blank page (the
+// rejection only surfaced as a generic toast). Before boot, hand it to the
+// safety-net screen; after boot, it is an ordinary uncaught error.
+init().catch(err => {
+  if (!window.__motuBooted && typeof window.__motuBootFail === 'function') {
+    console.error('[boot]', err);
+    window.__motuBootFail(err);
+  } else {
+    _surfaceUncaught('init', err);
+  }
+});

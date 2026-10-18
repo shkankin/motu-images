@@ -3,6 +3,23 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.03 changelog:
+//   • CACHE bumped to v8.03. SHELL: app.js + data.js + handlers.js + delegate-handlers.js + render.js +
+//     ui-sheets.js + stats.js + share.js + photos.js + state.js + route.js + vault.css + motu-vault.html.
+//   • Search: matches word by word and ignores spaces/punctuation — "he man" finds He-Man (was 0),
+//     "man at arms" 37 (was 1), "skeletor origins" / "battle cat 200x" / "hollywood hulk" all work.
+//   • Sold: Mark sold has Undo. Stats → the "N sold" line opens a Sold list — edit price/date in
+//     place, open the figure, Return to collection (with the copy's details for new sales), Delete;
+//     every action undoable. Sales now keep the sold copy on the log record.
+//   • Want List: its count opens your wishlist; help text points to Menu → Want List.
+//   • Undo instead of "Are you sure?": removing a copy, removing a photo (restored to its slot,
+//     label, copy and default), deleting a viewed wishlist.
+//   • Toasts: one style — ✓ / ✗ / ⚠ drawn from the message kind and coloured; errors and warnings
+//     stay up long enough to read. Offline is a warning, not an error. Photo-limit wording unified.
+//   • Startup safety net: if the app can't start (or is still blank after 15 s) you get Try again
+//     and Save my data (a backup file Restore can import) instead of a black screen.
+//   • First launch fetches the catalog straight away (was a 1 s wait). State screens use icons.
+
 // v8.02 changelog:
 //   • CACHE bumped to v8.02. SHELL: share.js + render.js + handlers.js + delegate-handlers.js + vault.css + motu-vault.html.
 //   • Share a single figure: Share button top-right on the detail photo, and "Share…" in the
@@ -2138,7 +2155,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.02';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.03';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

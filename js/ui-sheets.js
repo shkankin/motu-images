@@ -41,7 +41,7 @@ import {
   renderQR, renderShareSheet,
   renderWantListViewSheet, buildShareURL,
 } from './share.js';
-import { renderStatsSheet, renderMissingDetailsSheet } from './stats.js';
+import { renderStatsSheet, renderMissingDetailsSheet, renderSoldSheet } from './stats.js';
 import { pushNav } from './handlers.js';
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
@@ -63,6 +63,7 @@ function buildSheetBody() {
   else if (S.sheet === 'theme') body = renderThemeSheet();
   else if (S.sheet === 'menu') body = renderMenuSheet();
   else if (S.sheet === 'stats') body = renderStatsSheet();
+  else if (S.sheet === 'sold') body = renderSoldSheet();   // v8.03
   else if (S.sheet === 'edit') body = renderEditFigureSheet();
   else if (S.sheet === 'batch') body = renderBatchEditSheet();
   // v7.89: "Want List" = sharing your list + the lists you've viewed, which
@@ -94,7 +95,7 @@ function refreshSheetBody() {
 window.refreshSheetBody = refreshSheetBody;
 
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Backup & Restore', export:'Backup & Restore', backup:'Backup & Restore', missing:'Missing Details', theme:'Theme', menu:'Menu', stats:'Collection Stats', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
+  const titles = {filter:'Filter', sort:'Sort By', import:'Backup & Restore', export:'Backup & Restore', backup:'Backup & Restore', missing:'Missing Details', theme:'Theme', menu:'Menu', stats:'Collection Stats', sold:'Sold', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
     packEdit: 'Edit Pack',
   };
   let body = buildSheetBody();
@@ -104,7 +105,7 @@ function renderSheet() {
   // the user sees a blank sheet with no way to understand what's wrong.
   if (!body && S.sheet) {
     body = `<div style="text-align:center;padding:32px 16px">
-      <div style="font-size:32px;margin-bottom:12px">🤔</div>
+      <div class="state-ico">${icon(ICO.question,32,1.75)}</div>
       <div style="font-size:14px;color:var(--t2);margin-bottom:8px">Nothing to show here</div>
       <div style="font-size:12px;color:var(--t3)">Tap outside to close.</div>
     </div>`;
@@ -526,7 +527,7 @@ function renderWishlistHistorySheet() {
   const arr = (typeof window.getWishlistHistory === 'function') ? window.getWishlistHistory() : [];
   if (!arr.length) {
     return `<div style="text-align:center;padding:32px 16px">
-      <div style="font-size:32px;margin-bottom:12px">📋</div>
+      <div class="state-ico">${icon(ICO.list,32,1.75)}</div>
       <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">No viewed wishlists</div>
       <div style="font-size:13px;color:var(--t3);line-height:1.5">When you scan a friend's QR code or open a shared want-list link, it'll be saved here so you can revisit it.</div>
     </div>`;

@@ -1318,6 +1318,8 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   color: var(--t3);
 }
 .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+/* v8.03: state screens use the app's SVG icons instead of emoji. */
+.state-ico { display: flex; justify-content: center; margin-bottom: 12px; color: var(--t3); }
 .empty-state .title {
   font-family: 'Cinzel', serif;
   font-size: 16px; color: var(--t2); margin-bottom: 4px;
@@ -2453,6 +2455,13 @@ details.more-details[open] { padding-bottom: 12px; }
   padding: 8px 10px 8px 18px;
 }
 .toast-msg { flex: 1; min-width: 0; }
+/* v8.03: toast kinds — the glyph is drawn from the kind, coloured by role. */
+.toast-glyph { display: inline-block; margin-right: 7px; font-weight: 800; }
+.tk-ok   .toast-glyph { color: var(--gn); }
+.tk-err  .toast-glyph { color: var(--rd); }
+.tk-warn .toast-glyph { color: var(--or); }
+.tk-undo .toast-glyph { color: var(--t2); }
+.toast.tk-err { border-color: color-mix(in srgb, var(--rd) 45%, var(--bd)); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
 

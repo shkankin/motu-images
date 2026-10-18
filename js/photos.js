@@ -199,23 +199,7 @@ const photoStore = {
       while (used.has(n) && n < MAX_PHOTOS) n++;
       if (n >= MAX_PHOTOS) return -1;
 
-      if (_opfsReady) {
-        const fh = await _opfsDir.getFileHandle(`photo-${id}-${n}.jpg`, {create: true});
-        const writable = await fh.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        const key = id + '-' + n;
-        if (photoURLs[key]) URL.revokeObjectURL(photoURLs[key]);
-        photoURLs[key] = URL.createObjectURL(blob);
-      } else {
-        // Fallback: localStorage base64
-        const dataUrl = await new Promise((res, rej) => {
-          const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob);
-        });
-        try { localStorage.setItem(`motu-photo-${id}-${n}`, dataUrl); }
-        catch { return -1; }
-        photoURLs[id + '-' + n] = dataUrl;
-      }
+      if (!(await photoStore._writeAt(id, n, blob))) return -1;
 
       // Update state
       const arr = [...(S.customPhotos[id] || []), {n, label}];
@@ -226,6 +210,54 @@ const photoStore = {
         savePhotoLabels();
       }
       if (copyId != null) setPhotoCopy(id, n, copyId);
+      return n;
+    } catch { return -1; }
+  },
+
+  // v8.03: the storage write, shared by add() and restore(). Returns true
+  // once the bytes are stored and an object/data URL is cached for slot n.
+  _writeAt: async (id, n, blob) => {
+    if (_opfsReady) {
+      const fh = await _opfsDir.getFileHandle(`photo-${id}-${n}.jpg`, {create: true});
+      const writable = await fh.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      const key = id + '-' + n;
+      if (photoURLs[key]) URL.revokeObjectURL(photoURLs[key]);
+      photoURLs[key] = URL.createObjectURL(blob);
+      return true;
+    }
+    // Fallback: localStorage base64
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob);
+    });
+    try { localStorage.setItem(`motu-photo-${id}-${n}`, dataUrl); }
+    catch { return false; }
+    photoURLs[id + '-' + n] = dataUrl;
+    return true;
+  },
+
+  // v8.03: Undo for a removed photo. snap = {n, idx, label, copyId, blob}
+  // captured before remove(). Goes back into its old slot and position when
+  // that slot is still free; otherwise the first free slot. Returns n or -1.
+  restore: async (id, snap) => {
+    try {
+      const existing = S.customPhotos[id] || [];
+      if (existing.length >= MAX_PHOTOS || !snap?.blob) return -1;
+      const used = new Set(existing.map(p => p.n));
+      let n = snap.n;
+      if (used.has(n)) { n = 0; while (used.has(n) && n < MAX_PHOTOS) n++; }
+      if (n >= MAX_PHOTOS) return -1;
+      if (!(await photoStore._writeAt(id, n, snap.blob))) return -1;
+      const arr = [...(S.customPhotos[id] || [])];
+      arr.splice(Math.max(0, Math.min(snap.idx ?? arr.length, arr.length)), 0, { n, label: snap.label || '' });
+      S.customPhotos[id] = arr;
+      if (snap.label) {
+        if (!_photoLabels[id]) _photoLabels[id] = {};
+        _photoLabels[id][n] = snap.label;
+        savePhotoLabels();
+      }
+      if (snap.copyId != null) setPhotoCopy(id, n, snap.copyId);
       return n;
     } catch { return -1; }
   },
@@ -530,11 +562,11 @@ window.handlePhoto = (input, figId) => {
   const file = input.files?.[0]; if (!file) return;
   if (file.size > 20000000) { toast('✗ Image too large (max 20MB)'); return; }
   const existing = S.customPhotos[figId] || [];
-  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos — remove one first`); input.value = ''; return; }
+  if (existing.length >= MAX_PHOTOS) { toast(`✗ Photo limit reached (${MAX_PHOTOS}) — remove one to add another`); input.value = ''; return; }
   compressPhoto(file).then(async blob => {
     if (!blob) { toast('✗ Could not process image'); return; }
     const n = await photoStore.add(figId, blob, '');
-    if (n < 0) { toast('✗ Storage full or photo limit reached'); return; }
+    if (n < 0) { toast('✗ Couldn’t save the photo — storage may be full'); return; }
     S.imgErrors[figId] = false;
     input.value = '';
     haptic && haptic();
@@ -543,10 +575,39 @@ window.handlePhoto = (input, figId) => {
 };
 
 window.removePhoto = async (id, n) => {
-  if (!await appConfirm('Remove this photo?', {danger: true, ok: 'Remove'})) return;
+  // v8.03: no confirm — the bytes are read first and an Undo toast can put
+  // the photo back (same slot, position, label, copy and default setting).
+  // A photo whose bytes can't be read is already lost, so it just goes.
+  n = Number(n);
+  const arr = S.customPhotos[id] || [];
+  const idx = arr.findIndex(p => p.n === n);
+  let blob = null;
+  try {
+    const live = await readPhotoBlob(id, n);
+    // Copy the bytes into memory: an OPFS File is only a handle onto the file
+    // on disk, and becomes unreadable once remove() deletes it.
+    if (live && live.size > 0) blob = new Blob([await live.arrayBuffer()], { type: live.type || 'image/jpeg' });
+  } catch {}
+  const snap = (blob && blob.size > 0) ? {
+    n, idx, blob,
+    label: arr[idx]?.label || '',
+    copyId: photoCopyOf(id, n) ?? null,
+    wasDefault: S.defaultPhoto?.[id] === n,
+  } : null;
   await photoStore.remove(id, n);
   haptic && haptic();
   renderDetail();
+  if (!snap) { toast('✓ Photo removed'); return; }
+  window.toastAction?.('✓ Photo removed', 'Undo', async () => {
+    const back = await photoStore.restore(id, snap);
+    if (back < 0) { toast('✗ Couldn’t restore the photo'); return; }
+    if (snap.wasDefault) {
+      S.defaultPhoto[id] = back;
+      store.set('motu-default-photo', S.defaultPhoto);
+    }
+    toast('↩ Photo restored');
+    renderDetail();
+  });
 };
 
 window.handleCopyPhoto = (input, figId, copyId) => {
@@ -560,11 +621,11 @@ window.handleCopyPhoto = (input, figId, copyId) => {
   const file = input.files?.[0]; if (!file) return;
   if (file.size > 20000000) { toast('✗ Image too large (max 20MB)'); return; }
   const existing = S.customPhotos[figId] || [];
-  if (existing.length >= MAX_PHOTOS) { toast(`✗ Max ${MAX_PHOTOS} photos — remove one first`); input.value = ''; return; }
+  if (existing.length >= MAX_PHOTOS) { toast(`✗ Photo limit reached (${MAX_PHOTOS}) — remove one to add another`); input.value = ''; return; }
   compressPhoto(file).then(async blob => {
     if (!blob) { toast('✗ Could not process image'); return; }
     const n = await photoStore.add(figId, blob, '', copyId);
-    if (n < 0) { toast('✗ Storage full or photo limit reached'); return; }
+    if (n < 0) { toast('✗ Couldn’t save the photo — storage may be full'); return; }
     S.imgErrors[figId] = false;
     input.value = '';
     haptic && haptic();

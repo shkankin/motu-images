@@ -359,7 +359,7 @@ function renderShareSheet() {
   const orderedN = S.figs.filter(f => S.coll[f.id]?.status === 'ordered').length;
   if (!wishFigs.length) {
     return `<div style="text-align:center;padding:32px 16px">
-      <div style="font-size:32px;margin-bottom:12px">📋</div>
+      <div class="state-ico">${icon(ICO.heart,32,1.75)}</div>
       <div style="font-size:15px;font-weight:600;color:var(--t1);margin-bottom:6px">No want list yet</div>
       <div style="font-size:13px;color:var(--t3)">${orderedN ? `Mark figures as Wishlist to share them. Your ${orderedN} ordered figure${orderedN === 1 ? '' : 's'} aren't included in the link.` : 'Mark figures as Wishlist to share them.'}</div>
     </div>`;
@@ -371,7 +371,7 @@ function renderShareSheet() {
 
   return `
     <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:13px;color:var(--t2);margin-bottom:12px">${wishFigs.length} figure${wishFigs.length===1?'':'s'} on your want list${orderedN ? ` <span style="color:var(--t3)">· ${orderedN} ordered not included</span>` : ''}</div>
+      <button data-action="go-to-filtered" data-status="wishlist" style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;margin-bottom:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);font-size:13px;color:var(--t1)">${wishFigs.length} figure${wishFigs.length===1?'':'s'} on your want list${icon(ICO.chevR,14)}</button>${orderedN ? `<div style="font-size:12px;color:var(--t3);margin:-6px 0 12px">${orderedN} ordered not included</div>` : ''}
       <div style="display:inline-block;padding:10px;background:#fff;border-radius:12px;margin-bottom:14px">${qrSvg}</div>
       <div style="font-size:11px;color:var(--t3);margin-bottom:14px">${qrSvg.startsWith('<svg') ? 'Scan to view want list' : ''}</div>
     </div>

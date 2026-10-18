@@ -12,7 +12,7 @@
 
 import { S, store, esc, ln, icon, ICO, jsArg, SUBLINES } from './state.js';
 import {
-  getStats, getLineStats, getSoldLog, figIsHidden, isMigrated,
+  getStats, getLineStats, getSoldLog, figIsHidden, isMigrated, figById,
   isLineFullyHidden, getEvents, getCompletenessStats, getGapFigures,
 } from './data.js';
 import {
@@ -302,9 +302,11 @@ function renderStatsSheet() {
         </button>`;
       }
       if (soldLog.length) {
-        html += `<div style="margin-top:12px;font-size:12px;color:var(--t2)">
-          <span style="font-weight:700;color:var(--t1)">${soldLog.length}</span> sold · $${soldGross.toFixed(2)} gross${soldWithPaid ? ` · <span style="color:${soldProfit >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(soldProfit)} realized</span>` : ''}
-        </div>`;
+        // v8.03: was a dead-end summary; now opens the Sold list.
+        html += `<button data-action="open-sold" style="margin-top:12px;display:flex;align-items:center;gap:6px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);font-size:12px;color:var(--t2);text-align:left">
+          <span style="flex:1"><span style="font-weight:700;color:var(--t1)">${soldLog.length}</span> sold · $${soldGross.toFixed(2)} gross${soldWithPaid ? ` · <span style="color:${soldProfit >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(soldProfit)} realized</span>` : ''}</span>
+          ${icon(ICO.chevR, 16)}
+        </button>`;
       }
       html += `</div>`;
     }
@@ -613,6 +615,63 @@ function renderStatsSheet() {
   // to-do list — owned copies lacking condition, date, price or location —
   // not a statistic, so it did not belong among the collection numbers.
 
+  return html;
+}
+
+// ── v8.03: Sold ────────────────────────────────────────────────────
+// The sold log as a list you can open and correct: newest first, price and
+// date editable in place (saved on change, so Back keeps the edit), the
+// figure name opens its screen, and each sale can be returned to the
+// collection or deleted — both with Undo.
+const _localYMD = d => {
+  const t = new Date(d);
+  if (isNaN(t)) return '';
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
+export function renderSoldSheet() {
+  const log = getSoldLog();
+  if (!log.length) {
+    return `<div class="empty-state">
+      <div class="title">No sales yet</div>
+      <div class="text-sm">When you sell a copy, open the figure and tap <strong>Mark sold</strong> on that copy. It moves here with its price, so Stats can show what you've made.</div>
+    </div>`;
+  }
+  const sign = n => (n >= 0 ? '+' : '−') + '$' + Math.abs(n).toFixed(2);
+  let gross = 0, profit = 0, withPaid = 0;
+  for (const x of log) {
+    gross += Number(x.price) || 0;
+    if (Number.isFinite(x.paid)) { profit += (Number(x.price) || 0) - x.paid; withPaid++; }
+  }
+  const today = _localYMD(Date.now());
+  const rows = log.map((sale, idx) => ({ sale, idx }))
+    .sort((a, b) => String(b.sale.date || '').localeCompare(String(a.sale.date || '')));
+  let html = `<div style="font-size:13px;color:var(--t2);margin-bottom:14px">
+    <span style="font-weight:700;color:var(--t1)">${log.length}</span> sold · $${gross.toFixed(2)} gross${withPaid ? ` · <span style="color:${profit >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(profit)} realized</span>` : ''}
+    <div style="font-size:12px;color:var(--t3);margin-top:4px">Edit a price or date in place — changes save as you go.</div>
+  </div>`;
+  for (const { sale, idx } of rows) {
+    const f = figById(sale.figId);
+    const name = sale.name || f?.name || 'Unknown figure';
+    const price = Number(sale.price) || 0;
+    const paid = Number.isFinite(sale.paid) ? sale.paid : null;
+    const gain = paid == null ? null : price - paid;
+    const meta = [ln(sale.line || f?.line || ''), sale.variant || ''].filter(Boolean).map(esc).join(' · ');
+    html += `<div style="padding:12px 0;border-top:1px solid var(--bd)">
+      ${f ? `<button data-action="open-fig" data-fig-id="${esc(sale.figId)}" style="display:flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--t1);font-size:14px;font-weight:600;text-align:left">${esc(name)}${icon(ICO.chevR, 14)}</button>`
+           : `<div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(name)}</div>`}
+      <div style="font-size:12px;color:var(--t3);margin-top:2px">${meta}${meta && paid != null ? ' · ' : ''}${paid != null ? `paid $${paid.toFixed(2)} · <span style="color:${gain >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(gain)}</span>` : ''}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--t2);flex-shrink:0">$
+          <input type="text" inputmode="decimal" autocomplete="off" value="${price.toFixed(2)}" data-change-action="sold-price" data-idx="${idx}" aria-label="Sold price for ${esc(name)}" style="width:84px;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-size:13px">
+        </label>
+        <input type="date" value="${esc(_localYMD(sale.date))}" max="${today}" data-change-action="sold-date" data-idx="${idx}" aria-label="Date sold for ${esc(name)}" style="flex:1;min-width:0;padding:7px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-size:13px">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        ${f ? `<button data-action="sold-restore" data-idx="${idx}" style="padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:12px;font-weight:600">Return to collection</button>` : ''}
+        <button data-action="sold-delete" data-idx="${idx}" aria-label="Delete the sale of ${esc(name)}" style="padding:8px 12px;border-radius:8px;border:1px solid color-mix(in srgb,var(--rd) 45%,var(--bd));background:var(--bg3);color:var(--rd);font-size:12px;font-weight:600">Delete</button>
+      </div>
+    </div>`;
+  }
   return html;
 }
 

@@ -83,11 +83,45 @@ function getToastContainer() {
 // v6.04: opts.large bumps font/padding for high-priority messages like
 // "Press back again to exit". opts.persist disables the auto-fade animation
 // so action toasts (Undo) don't visually disappear before the timeout ends.
+// v8.03: one feedback vocabulary. Callers had hand-typed ✓/✗/⚠ prefixes
+// (43 ✓, 30 ✗) — and some had none ("✓ Marked Loose Complete" next to
+// "Marked Loose Incomplete"). The glyph now comes from a KIND: pass
+// opts.kind ('ok' | 'err' | 'warn' | 'info'), or keep a leading ✓/✗/⚠/↩ in
+// the message and it is read as the kind and re-drawn as a styled glyph.
+// Errors and warnings stay up (no 2 s fade) so they can actually be read.
+const TOAST_GLYPH = { ok: '✓', err: '✗', warn: '⚠', undo: '↩' };
+function _toastKind(msg, kind) {
+  let text = String(msg ?? '');
+  let k = kind || '';
+  const m = text.match(/^\s*(✓|✗|⚠\uFE0F?|↩)\s*/);
+  if (m) {
+    if (!k) k = m[1] === '✓' ? 'ok' : m[1] === '✗' ? 'err' : m[1] === '↩' ? 'undo' : 'warn';
+    text = text.slice(m[0].length);
+  }
+  return { kind: k || 'info', text };
+}
+function _fillToast(el, msg, kind, target = el) {
+  const { kind: k, text } = _toastKind(msg, kind);
+  el.classList.add('tk-' + k);   // 'tk-' not 'toast-': .toast-undo is the Undo BUTTON's class
+  if (TOAST_GLYPH[k]) {
+    const g = document.createElement('span');
+    g.className = 'toast-glyph';
+    g.setAttribute('aria-hidden', 'true');
+    g.textContent = TOAST_GLYPH[k];
+    target.appendChild(g);
+  }
+  target.appendChild(document.createTextNode(text));
+  return k;
+}
 function toast(msg, opts = {}) {
   const container = getToastContainer();
   const el = document.createElement('div');
   el.className = 'toast' + (opts.large ? ' large' : '') + (opts.persist ? ' persist' : '');
-  el.textContent = msg;
+  const kind = _fillToast(el, msg, opts.kind);
+  if ((kind === 'err' || kind === 'warn') && !opts.duration) {
+    el.classList.add('persist');
+    opts = { ...opts, duration: 5000 };
+  }
   // v6.27: tap to dismiss. Plain toasts had no early-out — three rapid status
   // changes left toasts on screen for 4s each even after the user moved on.
   el.addEventListener('click', () => { if (el.parentNode) el.remove(); });
@@ -244,7 +278,7 @@ function toastUndo(msg, figId, prevColl) {
   el.className = 'toast has-undo persist';
   const msgSpan = document.createElement('span');
   msgSpan.className = 'toast-msg';
-  msgSpan.textContent = msg;
+  _fillToast(el, msg, '', msgSpan);   // v8.03: kind glyph
   const btn = document.createElement('button');
   btn.className = 'toast-undo';
   btn.textContent = 'Undo';
@@ -289,7 +323,7 @@ function toastAction(msg, btnLabel, handler) {
   el.className = 'toast has-undo persist';
   const msgSpan = document.createElement('span');
   msgSpan.className = 'toast-msg';
-  msgSpan.textContent = msg;
+  _fillToast(el, msg, '', msgSpan);   // v8.03: kind glyph
   const btn = document.createElement('button');
   btn.className = 'toast-undo';
   btn.textContent = btnLabel;
@@ -494,7 +528,7 @@ function render() {
   } catch(e) {
     console.error('Render error:', e);
     app().innerHTML = `<div style="padding:40px 20px;text-align:center">
-      <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+      <div class="state-ico" style="color:var(--rd)">${icon(ICO.alert,40,1.75)}</div>
       <div style="color:var(--rd);font-size:16px;font-weight:600;margin-bottom:8px">Something went wrong</div>
       <div class="text-dim text-sm" style="margin-bottom:16px;line-height:1.6">${esc(e.message)}</div>
       <button class="retry-btn" data-action="recover-to-main">Recover</button>
@@ -519,7 +553,7 @@ function renderLoading() {
       <div class="skeleton-bar" style="width:40%;margin-bottom:12px;height:8px"></div>
       ${S.fetchError ? `
         <div style="text-align:center;padding:40px 20px">
-          <div style="font-size:48px;margin-bottom:12px">⚡</div>
+          <div class="state-ico" style="color:var(--rd)">${icon(ICO.sync,40,1.75)}</div>
           <div style="color:var(--rd);font-size:14px;font-weight:600;margin-bottom:8px">Could not load figures</div>
           <div class="text-dim text-sm" style="margin-bottom:24px;line-height:1.6">Check your connection and try again.</div>
           <button class="retry-btn" data-action="retry-fetch">Retry</button>
@@ -613,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.02</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.03</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1051,7 +1085,7 @@ function renderLinesGrid() {
     const tState = (typeof window.tutorialState === 'function') ? window.tutorialState() : { seen: false };
     const tourLabel = tState.seen ? '🎓 Replay tour' : '🎓 Take a 1-minute tour';
     html += `<div class="onboard-banner">
-      <div style="flex:1;position:relative;z-index:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Ordered, For Sale or Wishlist. Owned, Ordered and For Sale figures appear in your Collection tab; Wishlist figures are under Filter → Status → Wishlist.<br><button data-action="start-tutorial" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
+      <div style="flex:1;position:relative;z-index:1">👋 <strong style="color:var(--t1)">Getting started:</strong> Tap a line below to browse its figures. Tap any figure to mark it Owned, Ordered, For Sale or Wishlist. Owned, Ordered and For Sale figures appear in your Collection tab; Wishlist figures are in Menu → Want List.<br><button data-action="start-tutorial" style="margin-top:10px;background:var(--acc);color:var(--bg);border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">${tourLabel}</button></div>
       <img class="onboard-mascot" src="${IMG}/he-man-icon.png" alt="" aria-hidden="true" data-error-action="img-hide">
       <button class="onboard-dismiss" data-action="dismiss-onboard" title="Dismiss" aria-label="Dismiss">×</button>
     </div>`;
@@ -1570,16 +1604,18 @@ function renderFigList() {
   // was redundant UI in prime list space. The v7.46 membership change it
   // shipped alongside (wishlist excluded from the default Collection view,
   // see _computeSortedFigs) is unaffected: wishlist remains reachable via
-  // the filter sheet's Status → Wishlist chip.
+  // the filter sheet's Status → Wishlist chip. v8.03: and from Menu → Want
+  // List, whose count is now a button that opens the list (no chip row —
+  // v7.49's "prime list space" decision stands).
   if (!figs.length) {
     // v5.01: clearer empty state on Collection tab when nothing has been
     // collected yet. Distinguish "you have nothing yet" from "your filters
     // returned nothing".
     if (S.tab === 'collection' && !S.search && !hf) {
       html += `<div class="empty-state">
-        <div class="emoji">📦</div>
+        <div class="state-ico">${icon(ICO.box,40,1.75)}</div>
         <div class="title">Your collection is empty</div>
-        <div class="text-sm" style="margin-bottom:16px">Start tracking figures by browsing <strong>Lines</strong> or <strong>All</strong> and tapping a status. Owned, Ordered and For Sale figures show up here; Wishlist figures are under Filter → Status → Wishlist.</div>
+        <div class="text-sm" style="margin-bottom:16px">Start tracking figures by browsing <strong>Lines</strong> or <strong>All</strong> and tapping a status. Owned, Ordered and For Sale figures show up here; Wishlist figures are in Menu → Want List.</div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
           <button data-action="nav-to" data-target="lines" style="padding:10px 18px;border-radius:10px;border:1px solid var(--acc);background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);font-size:13px;font-weight:600">Browse Lines</button>
           <button data-action="nav-to" data-target="all" style="padding:10px 18px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:13px;font-weight:600">View All Figures</button>
@@ -1593,7 +1629,7 @@ function renderFigList() {
       const showClearSearch = !!S.search;
       const showClearAll = hf && S.search;
       html += `<div class="empty-state">
-        <div class="emoji">🔍</div>
+        <div class="state-ico">${icon(ICO.search,40,1.75)}</div>
         <div class="title">No figures match</div>
         <div class="text-sm" style="margin-bottom:16px">Try adjusting your search or filters.</div>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">

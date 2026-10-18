@@ -291,7 +291,7 @@ async function removePack(packId) {
   bigSet(PACKS_KEY, packs);
   applyPacks();
   render();
-  toast(`Pack removed — "${pack.name}"`);
+  toast(`✓ Pack removed — "${pack.name}"`);
 }
 
 // ── v7.82: pack bundles (json + photos in one zip) + in-app pack editing ──
@@ -1054,8 +1054,24 @@ function recordSale(sale) {
 }
 function deleteSale(idx) {
   const log = getSoldLog();
-  if (idx < 0 || idx >= log.length) return;
-  log.splice(idx, 1);
+  if (idx < 0 || idx >= log.length) return null;
+  const [gone] = log.splice(idx, 1);
+  store.set(SOLD_LOG_KEY, log);
+  return gone;   // v8.03: returned so the caller can offer Undo
+}
+// v8.03: the sold log becomes a list you can open and correct (Stats → the
+// "N sold" line → Sold). Indexes are positions in the stored array; the sheet
+// re-renders after every change, so they never go stale on screen.
+function updateSale(idx, patch) {
+  const log = getSoldLog();
+  if (idx < 0 || idx >= log.length) return false;
+  log[idx] = { ...log[idx], ...patch };
+  store.set(SOLD_LOG_KEY, log);
+  return true;
+}
+function insertSale(idx, sale) {
+  const log = getSoldLog();
+  log.splice(Math.max(0, Math.min(idx, log.length)), 0, sale);
   store.set(SOLD_LOG_KEY, log);
 }
 function flushSaveColl() {
@@ -1545,9 +1561,10 @@ window.removeCopy = async (id, copyId) => {
   if (!c || !isMigrated(c)) return;
   const cp = c.copies.find(x => x.id === copyId);
   if (!cp) return;
-  // Confirm only if copy has data — empty copies delete silently.
+  // v8.03: no confirm dialog — the removal happens and an Undo toast can put
+  // the copy back with all its data (empty copies still go silently).
   const hasData = cp.condition || cp.paid || cp.notes || cp.variant || cp.location || (Array.isArray(cp.accessories) && cp.accessories.length);
-  if (hasData && !await appConfirm('Remove this copy and its data?', {danger: true, ok: 'Remove'})) return;
+  const prevEntry = _clone(c);
   const newCopies = c.copies.filter(x => x.id !== copyId);
   // If this was the last copy and the figure is owned, leave a single
   // empty copy so the form is still editable. The user can change status
@@ -1559,6 +1576,7 @@ window.removeCopy = async (id, copyId) => {
   saveColl();
   haptic();
   patchDetailStatus();
+  if (hasData) toastUndo('✓ Copy removed', id, prevEntry);
 };
 
 // v7.90: acquired dates are MM/YYYY and must not be in the future. A typo
@@ -1755,7 +1773,7 @@ function maybeSuggestConditionForCopy(figId, copyId, nextCp, prevComplete) {
     toast('✓ Marked Loose Complete');
   } else if (!after.complete && prevComplete && cond === 'Loose Complete') {
     window.updateCopy(figId, copyId, 'condition', 'Loose Incomplete', { skipAutofill: true });
-    toast('Marked Loose Incomplete');
+    toast('✓ Marked Loose Incomplete');
   }
 }
 
@@ -2180,30 +2198,42 @@ function _computeSortedFigs() {
     });
   }
   if (S.search) {
-    // v6.27: normalize for diacritic + punctuation insensitivity. Collectors
-    // type "Sheera" and expect to match "She-Ra"; international users type
-    // "skeletor" for "Skèletor". NFD splits combining marks off, then we
-    // strip them; remaining ASCII-folding handles hyphens / curly quotes.
-    const fold = str => (str || '')
+    // v8.03: word-based, punctuation-blind matching. The v6.27 fold stripped
+    // only hyphens/apostrophes and needed the WHOLE query as one substring of
+    // ONE field, so "he man" found 0 of 133 He-Man figures, "man at arms" 1 of
+    // 36, "hollywood hulk" 0 (curly double quotes), "skeletor origins" 0 (two
+    // fields). Now: (1) the query with all spaces/punctuation removed is
+    // matched against the name the same way ("he man" = "He-Man"); else (2)
+    // every word of the query must appear somewhere in name / line / group /
+    // year (scope 'name' = the name only). Words of 1–2 letters must start a
+    // word ("he" hits He-Man, not "the"); longer ones match anywhere.
+    const fold = str => String(str ?? '')
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')   // strip combining marks
-      .toLowerCase()
-      .replace(/[-'’‘`]/g, '');
-    const s = fold(S.search);
+      .replace(/[̀-ͯ]/g, '')   // strip combining marks
+      .toLowerCase();
+    const compact = str => fold(str).replace(/[^a-z0-9]/g, '');
+    const words = str => fold(str).split(/[^a-z0-9]+/).filter(Boolean);
+    const qCompact = compact(S.search);
+    const qWords = words(S.search);
     const scope = S.searchScope || 'all';
     // v6.83: barcode search. When the query is all digits (e.g. typed or
     // scanned from a UPC), match it against the figure's upc as a substring.
     // This works regardless of scope — a scanned barcode is an unambiguous
     // lookup, so we don't want the name-only scope to suppress it.
     const digitQuery = /^\d{3,}$/.test(S.search.trim()) ? S.search.trim() : null;
+    const tokenHit = (tok, hayWords, hayCompact) => tok.length < 3
+      ? hayWords.some(w => w.startsWith(tok))
+      : hayCompact.includes(tok);
     list = list.filter(f => {
       if (digitQuery && f.upc && String(f.upc).includes(digitQuery)) return true;
-      const name = fold(f.name);
-      if (name.includes(s)) return true;
-      if (scope === 'name') return false;
-      const lineName = fold(ln(f.line));
-      const group = fold(f.group||'');
-      return lineName.includes(s) || group.includes(s);
+      if (!qCompact) return true;   // query was only punctuation
+      if (compact(f.name).includes(qCompact)) return true;
+      const hay = scope === 'name'
+        ? f.name
+        : `${f.name} ${ln(f.line)} ${f.group || ''} ${f.year || ''}`;
+      const hayWords = words(hay);
+      const hayCompact = hayWords.join('');
+      return qWords.every(t => tokenHit(t, hayWords, hayCompact));
     });
   }
   const sb = S.sortBy;
@@ -3377,8 +3407,13 @@ window.recordWishlistView = recordWishlistView;
 window.getWishlistHistory = getWishlistHistory;
 window.deleteWishlistHistoryEntry = deleteWishlistHistoryEntry;
 window.clearWishlistHistory = clearWishlistHistory;
+window.saveWishlistHistory = saveWishlistHistory;   // v8.03: Undo for a deleted entry
+window.getSoldLog = getSoldLog;                     // v8.03: Sold sheet
+window.deleteSale = deleteSale;
+window.updateSale = updateSale;
+window.insertSale = insertSale;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, updateSale, insertSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
 };
