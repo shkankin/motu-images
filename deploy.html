@@ -13,6 +13,22 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Collector — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
+     deploy.html  v1.25
+       • v1.25: file deletion. A zip (or a direct pick) may carry
+         delete.txt — one repo path per line, # comments allowed. Those
+         paths are removed IN THE SAME COMMIT as the zip's uploads, via
+         the trees API (an entry with sha:null deletes the file). Guards:
+         every path is checked against HEAD's tree first (GitHub errors on
+         deleting a missing file, so missing paths are skipped and logged),
+         core files are refused (PROTECTED_DELETE), directories, wildcards
+         and ".." are refused, a path the same zip also uploads is refused,
+         a confirm() lists every deletion before anything is written, and
+         if any upload fails the deletions are skipped. delete.txt itself
+         never lands in the repo. Older deploy.html builds treat it as an
+         unmapped file and skip it, so a delete list can't fire early.
+         Also: the h1 badge and this header still said v1.20, though
+         PATH_MAP comments cite v1.21-v1.24. Both now read v1.25.
+
      deploy.html  v1.20
        • v1.20: PATH_MAP + identify.js (app v7.76) and identify-worker.js
          (Cloudflare worker source, repo-versioned only).
@@ -326,6 +342,8 @@
   .file-row.ok     { border-color: #2a4a2a; }
   .file-row.err    { border-color: #4a2a2a; }
   .file-row.unknown { opacity: 0.5; }
+  .file-row.del    { border-color: var(--red); }
+  .file-row.del .file-dest { color: var(--red); }
 
   /* Buttons */
   button {
@@ -419,7 +437,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.20</span></h1>
+  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.25</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -438,10 +456,10 @@
 <div class="card">
   <h2>Files to Deploy</h2>
   <div id="dropZone">
-    <input type="file" multiple accept=".js,.html,.css,.py,.json,.yml,.yaml,.jpg,.jpeg,.png,.zip" onchange="onFilePick(this.files)">
+    <input type="file" multiple accept=".js,.html,.css,.py,.json,.yml,.yaml,.jpg,.jpeg,.png,.zip,.txt" onchange="onFilePick(this.files)">
     <div class="drop-icon">📂</div>
     <div class="drop-label">Drop files here or tap to browse</div>
-    <div class="drop-sub">Accepts .js .html .css .py .json .yml .jpg .png — paths are auto-resolved</div>
+    <div class="drop-sub">Accepts .js .html .css .py .json .yml .jpg .png — paths are auto-resolved. A delete.txt lists repo paths to remove.</div>
   </div>
   <div id="fileList"></div>
   <div style="display:flex;gap:8px;margin-top:12px" id="listActions" style="display:none">
@@ -547,6 +565,14 @@ const PATH_MAP = {
 
 // ── State ──────────────────────────────────────────────────────────
 let files = new Map(); // filename → { file, repoPath, status }
+// v1.25: repo paths queued for deletion (from delete.txt) → { path, status }
+let deletions = [];
+// v1.25: never deletable through this tool — removing any of these breaks the
+// app, the update chain, or this tool itself. Do those by hand if ever needed.
+const PROTECTED_DELETE = new Set([
+  'motu-vault.html', 'sw.js', 'figures.json', 'deploy.html', 'figures-editor.html',
+  'manifest.json', 'index.html', 'CNAME', '.nojekyll', 'vault.css',
+]);
 
 // ── Token ──────────────────────────────────────────────────────────
 function loadToken() {
@@ -650,6 +676,7 @@ async function onFilePick(fileList) {
     // matches Claude's "deliver changes as one flat zip" convention, so
     // that zip can just be dropped here instead of multi-selecting files.
     if (/\.zip$/i.test(f.name)) { await expandZipIntoFiles(f); continue; }
+    if (/^delete\.txt$/i.test(f.name)) { takeDeleteList(await readFileAsText(f)); continue; }
     files.set(f.name, { file: f, repoPath: resolveRepoPath(f.name), status: 'pending' });
   }
   renderFileList();
@@ -673,6 +700,7 @@ async function expandZipIntoFiles(zipFile) {
     // both match on filename only, same as a direct drop would.
     const name = entry.name.split('/').pop();
     if (!name) continue;
+    if (/^delete\.txt$/i.test(name)) { takeDeleteList(await entry.async('string')); continue; }
     const blob = await entry.async('blob');
     const repoPath = resolveRepoPath(name);
     files.set(name, { file: new File([blob], name, { type: blob.type }), repoPath, status: 'pending' });
@@ -680,8 +708,33 @@ async function expandZipIntoFiles(zipFile) {
   }
 }
 
+// v1.25: parse a delete list. One repo path per line; blank lines and lines
+// starting with # are ignored. Refusals are logged and never queued.
+function takeDeleteList(text) {
+  let added = 0;
+  for (let raw of String(text).split(/\r?\n/)) {
+    let p = raw.trim();
+    if (!p || p.startsWith('#')) continue;
+    p = p.replace(/^\.?\/+/, '');
+    if (!p || p.endsWith('/') || /[*?\\]/.test(p) || p.split('/').includes('..')) {
+      log('err', `  ✗ delete.txt: "${raw.trim()}" is not a plain file path — skipped`); continue;
+    }
+    if (PROTECTED_DELETE.has(p)) {
+      log('err', `  ✗ delete.txt: ${p} is a core file and can't be deleted here — skipped`); continue;
+    }
+    if (deletions.some(d => d.path === p)) continue;
+    deletions.push({ path: p, status: 'pending' });
+    added++;
+    log('dim', `  🗑 ${p} — queued for deletion`);
+  }
+  if (!added) log('dim', '  delete.txt: nothing to delete');
+  renderFileList();
+  updateDeployBtn();
+}
+
 function clearFiles() {
   files.clear();
+  deletions = [];
   renderFileList();
   updateDeployBtn();
   clearLog();
@@ -691,9 +744,10 @@ function renderFileList() {
   const el = document.getElementById('fileList');
   const actions = document.getElementById('listActions');
   const count = document.getElementById('fileCount');
-  if (files.size === 0) { el.innerHTML = ''; actions.style.display = 'none'; return; }
+  if (files.size === 0 && !deletions.length) { el.innerHTML = ''; actions.style.display = 'none'; return; }
   actions.style.display = 'flex';
-  count.textContent = `${files.size} file${files.size !== 1 ? 's' : ''}`;
+  count.textContent = `${files.size} file${files.size !== 1 ? 's' : ''}`
+    + (deletions.length ? ` · ${deletions.length} to delete` : '');
   el.innerHTML = [...files.values()].map(({file, repoPath, status}) => {
     const icon = status === 'ok' ? '✓' : status === 'err' ? '✗' : status === 'uploading' ? '⏳' : '·';
     const cls  = status === 'ok' ? 'ok' : status === 'err' ? 'err' : repoPath ? '' : 'unknown';
@@ -702,6 +756,15 @@ function renderFileList() {
       <span class="file-status">${icon}</span>
       <span class="file-name">${esc(file.name)}</span>
       <span class="file-dest">${esc(dest)}</span>
+    </div>`;
+  }).join('') + deletions.map(({path, status}) => {
+    const icon = status === 'ok' ? '✓' : status === 'err' ? '✗' : '🗑';
+    const cls  = status === 'ok' ? 'ok' : status === 'err' ? 'err' : 'del';
+    const note = status === 'ok' ? 'deleted' : status === 'err' ? 'not deleted' : 'will be deleted';
+    return `<div class="file-row ${cls}">
+      <span class="file-status">${icon}</span>
+      <span class="file-name">${esc(path)}</span>
+      <span class="file-dest">${note}</span>
     </div>`;
   }).join('');
 }
@@ -713,7 +776,7 @@ function esc(s) {
 function updateDeployBtn() {
   const btn = document.getElementById('deployBtn');
   const hasToken = !!getToken();
-  const hasFiles = [...files.values()].some(f => f.repoPath);
+  const hasFiles = [...files.values()].some(f => f.repoPath) || deletions.length > 0;
   btn.disabled = !hasToken || !hasFiles;
 }
 
@@ -723,7 +786,20 @@ async function deploy() {
   if (!token) { alert('No GitHub token.'); return; }
 
   const eligible = [...files.values()].filter(f => f.repoPath);
-  if (!eligible.length) { alert('No recognised files to deploy.'); return; }
+  // v1.25: a path this same batch uploads is never also deleted.
+  const uploadPaths = new Set(eligible.map(f => f.repoPath));
+  const toDelete = deletions.filter(d => {
+    if (d.status === 'ok') return false;            // already deleted this session
+    if (!uploadPaths.has(d.path)) return true;
+    d.status = 'err';
+    log('err', `✗ ${d.path} is also being uploaded — not deleted`);
+    return false;
+  });
+  if (!eligible.length && !toDelete.length) { alert('No recognised files to deploy.'); return; }
+  if (toDelete.length && !confirm(`Delete ${toDelete.length} file(s) from the repo?\n\n${toDelete.map(d => d.path).join('\n')}`)) {
+    log('dim', 'Cancelled — nothing was committed.');
+    return;
+  }
 
   const message = document.getElementById('commitMsg').value.trim() || 'Deploy: update app files';
   const btn = document.getElementById('deployBtn');
@@ -762,6 +838,24 @@ async function deploy() {
     if (!commitRes.ok) throw new Error(`Commit read failed: ${commitRes.status}`);
     const baseTreeSha = (await commitRes.json()).tree.sha;
 
+    // 2b. v1.25: confirm every queued deletion exists as a file at HEAD.
+    // GitHub rejects the whole tree if asked to delete a missing path.
+    let delItems = [];
+    if (toDelete.length) {
+      const fullRes = await fetch(`${api}/git/trees/${baseTreeSha}?recursive=1`, { headers });
+      if (!fullRes.ok) throw new Error(`Tree read failed: ${fullRes.status}`);
+      const full = await fullRes.json();
+      if (full.truncated) throw new Error('Repo tree too large to check deletions — nothing was committed.');
+      const byPath = new Map(full.tree.map(t => [t.path, t]));
+      for (const d of toDelete) {
+        const t = byPath.get(d.path);
+        if (!t) { d.status = 'err'; log('err', `  ✗ ${d.path} is not in the repo — skipped`); continue; }
+        if (t.type !== 'blob') { d.status = 'err'; log('err', `  ✗ ${d.path} is a folder — skipped`); continue; }
+        delItems.push({ d, item: { path: d.path, mode: t.mode, type: 'blob', sha: null } });
+      }
+      renderFileList();
+    }
+
     // 3. Create blobs
     const treeItems = [];
     let done = 0;
@@ -789,7 +883,17 @@ async function deploy() {
       renderFileList();
     }
 
-    if (!treeItems.length) throw new Error('All files failed to upload.');
+    if (eligible.length && !treeItems.length) throw new Error('All files failed to upload.');
+    // v1.25: deletions ride along only if every upload succeeded.
+    if (delItems.length && treeItems.length < eligible.length) {
+      delItems.forEach(({ d }) => { d.status = 'err'; });
+      log('err', '✗ An upload failed, so no files were deleted.');
+      delItems = [];
+      renderFileList();
+    }
+    const uploaded = treeItems.length;
+    delItems.forEach(({ item }) => treeItems.push(item));
+    if (!treeItems.length) throw new Error('Nothing left to commit.');
 
     // 4. Create tree
     log('dim', 'Building commit tree…');
@@ -818,12 +922,16 @@ async function deploy() {
     if (!updateRes.ok) throw new Error(`Ref update failed: ${updateRes.status}`);
     setProgress(100);
 
-    log('ok', `✓ Committed ${treeItems.length} file(s): ${newCommitSha.slice(0,7)}`);
-    btn.textContent = `✓ Deployed ${treeItems.length} file(s)`;
+    delItems.forEach(({ d }) => { d.status = 'ok'; });
+    renderFileList();
+    const delNote = delItems.length ? `, deleted ${delItems.length}` : '';
+    log('ok', `✓ Committed ${uploaded} file(s)${delNote}: ${newCommitSha.slice(0,7)}`);
+    btn.textContent = `✓ Deployed ${uploaded} file(s)${delNote}`;
     setTimeout(() => { btn.textContent = '⬆ Commit to GitHub'; btn.disabled = false; updateDeployBtn(); }, 4000);
 
     // Start polling Pages for this specific commit going live
-    _lastCommitHadWebFiles = eligible.some(f => isPagesServed(f.repoPath));
+    _lastCommitHadWebFiles = eligible.some(f => isPagesServed(f.repoPath))
+      || delItems.some(({ d }) => isPagesServed(d.path));
     pollPagesUntilLive(newCommitSha);
 
   } catch (err) {
