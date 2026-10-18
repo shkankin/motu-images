@@ -302,7 +302,11 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 }
 .logo-subtitle {
   font-size: var(--fs-badge);
-  letter-spacing: 2px;
+  /* v8.07: v8.05 raised this line from 9px to 10px, which pushed the version
+     onto a second line. Tighter spacing keeps the 10px text at the old width,
+     and nowrap keeps it to one line. */
+  letter-spacing: 1.3px;
+  white-space: nowrap;
 }
 
 .header-actions {

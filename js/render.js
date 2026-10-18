@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.06</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.07</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -842,7 +842,9 @@ function renderMain() {
       }
       _scheduleIdleShow();
     };
-    // Idle show: bars reappear 2.5s after scrolling stops or any screen activity.
+    // Idle show: bars reappear 10s after scrolling stops or any screen activity.
+    // v8.07: was 2.5s (owner: too quick — the list barely got the full screen).
+    // Scrolling up, or reaching the top or bottom, still brings them back at once.
     let _idleTimer = null;
     function _scheduleIdleShow() {
       if (_idleTimer) clearTimeout(_idleTimer);
@@ -857,7 +859,7 @@ function renderMain() {
         if (sb2) { sb2.classList.remove('hidden'); S.searchBarHidden = false; }
         S.barsHidden = false;
         _lastToggleTs = Date.now();
-      }, 2500);
+      }, 10000);
     }
     ca._bumpIdleTimer = _scheduleIdleShow;
     ca.addEventListener('scroll', ca._scrollHandler, {passive: true});

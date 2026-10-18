@@ -3,6 +3,14 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.07 changelog:
+//   • CACHE bumped to v8.07. SHELL: render.js + vault.css + motu-vault.html.
+//   • List screens: after scrolling hides the header and bottom menu, they now come back after
+//     10 s of no activity (was 2.5 s). Scrolling up or reaching the top/bottom still shows them
+//     right away.
+//   • Header: "N Figures · N Owned · version" is back on one line (it wrapped after v8.05 raised
+//     its size to 10px; the letter spacing is now tighter instead).
+
 // v8.06 changelog:
 //   • CACHE bumped to v8.06. SHELL: ui-sheets.js + delegate-handlers.js + data.js + handlers.js +
 //     render.js + state.js + motu-vault.html.
@@ -2187,7 +2195,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.06';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.07';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
