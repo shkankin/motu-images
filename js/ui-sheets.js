@@ -25,7 +25,7 @@ import {
 } from './photos.js';
 import {
   figById, figIsHidden, getStats, getSortedFigs, getLineStats,
-  hasFilters, getOverrideField, getOverridesFor, getAccAvail, totalCopyCount,
+  hasFilters, getOverrideField, getOverridesFor, getAccAvail,
   entryCopyCount, getPrimaryCopy, copyVariant, copyCondition,
   copyPaid, copyNotes, getAllLocations,
   renderExportSheet, renderSheetBody,
@@ -516,6 +516,35 @@ function _startAboutMusic() {
   // Failure is silent — the mute button on screen lets the user try again.
   a.play().catch(() => {});
 }
+// v8.06: About → Check for updates. The app already checks on resume and
+// every 30 min, but after a deploy there was no way to ask "now?" — and no
+// way to tell "no update yet" from "update failed". reg.update() refetches
+// sw.js; a new one installs, skipWaiting()s and activates, and activation
+// posts UPDATE_AVAILABLE, which shows the existing restart banner. So this
+// only has to start the check and report the two non-banner outcomes.
+let _updateChecking = false;
+window.checkForAppUpdate = async (btn) => {
+  if (_updateChecking) return;
+  const reg = await navigator.serviceWorker?.getRegistration?.().catch(() => null);
+  if (!reg) { window.toast?.('Updates aren’t available in this browser', { kind: 'warn' }); return; }
+  _updateChecking = true;
+  const label = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  try {
+    await reg.update();
+    if (reg.installing || reg.waiting) {
+      window.toast?.('New version found — downloading. A restart bar will appear when it’s ready.');
+    } else {
+      window.toast?.('You’re on the latest version. A new release can take about 10 minutes to show up here.', { kind: 'ok' });
+    }
+  } catch {
+    window.toast?.('Couldn’t check for updates — are you online?', { kind: 'err' });
+  } finally {
+    _updateChecking = false;
+    if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = label; }
+  }
+};
+
 // Toggle mute. Returns the new muted state for the UI to reflect.
 window.toggleAboutMute = () => {
   if (!_aboutAudioEl) return true;
@@ -554,6 +583,7 @@ function renderAboutSheet() {
       style="max-width:240px;width:75%;height:auto;margin:0 auto 16px;display:block;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5))">
     <div class="font-display text-gold" style="font-size:24px;letter-spacing:1.5px;margin-bottom:4px">MOTU COLLECTOR</div>
     <div style="font-size:12px;color:var(--t3);letter-spacing:0.5px">Version ${esc(version)}</div>
+    <button class="btn btn-sm btn-quiet" data-action="check-for-update" style="margin-top:10px">Check for updates</button>
   </div>
 
   <div style="margin:20px 0 14px;padding:14px 16px;background:var(--bg3);border:1px solid var(--bd);border-radius:12px;line-height:1.55;font-size:13px;color:var(--t2)">

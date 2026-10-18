@@ -1311,16 +1311,6 @@ function copyVariant(c)   {
   return c && c.variants;
 }
 
-// Total physical copies across the collection (for stats).
-function totalCopyCount() {
-  let n = 0;
-  for (const id in S.coll) {
-    const c = S.coll[id];
-    if (isMigrated(c)) n += c.copies.length;
-    else if (c?.status === 'owned' || c?.status === 'for-sale') n += 1;
-  }
-  return n;
-}
 
 // Number of copies for a single entry (0 for wishlist, 1+ for owned/for-sale).
 function entryCopyCount(c) {
@@ -3007,7 +2997,7 @@ window.exportJSON = exportJSON;
 const SETTINGS_KEYS = [
   'motu-theme', 'motu-sort', 'motu-view', 'motu-lines-view', 'motu-line-order',
   'motu-hidden', 'motu-recent', 'motu-default-photo', 'motu-onboarded',
-  'motu-celebrated', 'motu-ptr-enabled', 'motu-acc-avail', 'motu-custom-figs',
+  'motu-celebrated', 'motu-acc-avail', 'motu-custom-figs',
   'motu-tutorial-seen',
   // v6.88: the pricing backend URL (+ optional key) was NOT in the settings
   // backup, so clearing browser storage wiped it permanently with no way to
@@ -3448,5 +3438,5 @@ window.insertSale = insertSale;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, orderDue, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, updateSale, insertSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, orderDue, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, updateSale, insertSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
 };

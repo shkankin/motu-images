@@ -380,6 +380,7 @@ const store = {
 // v7.89: ptrEnabled() removed along with pull-to-refresh itself (owner
 // request). The stored 'motu-ptr-enabled' key is left in place and simply
 // never read — harmless, and deleting user storage to tidy up isn't worth it.
+// v8.06: also dropped from SETTINGS_KEYS, so settings backups stop carrying it.
 
 // § STATE ── Global S object, DEFAULT_TITLE ────────────────────────
 const S = {

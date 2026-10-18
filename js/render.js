@@ -40,7 +40,7 @@ import {
 } from './photos.js';
 import {
   figById, figVariants, figIsHidden, getPrimaryCopy, copyVariant, copyCondition,
-  copyPaid, copyNotes, entryCopyCount, totalCopyCount,
+  copyPaid, copyNotes, entryCopyCount,
   getStats, getSortedFigs, getLineStats, hasFilters, progressRing,
   isLineFullyHidden, isSublineHidden, getOrderedSublines, getAllLocations,
   getOverrideField, getAccAvail,
@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.05</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.06</span></div>
         </div>
       </div>
       <div class="header-actions">

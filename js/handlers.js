@@ -23,7 +23,7 @@ import {
 } from './photos.js';
 import {
   figById, figIsHidden, setStatus, saveColl, flushAllPending,
-  totalCopyCount, entryCopyCount, getPrimaryCopy, copyVariant,
+  entryCopyCount, getPrimaryCopy, copyVariant,
   rebuildFigIndex, applyOverrides, fetchFigs,
   clearOverrides, _derived, getSortedFigs,
   isMigrated, migrateEntry, migrateOrderedToOwned,

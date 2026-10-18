@@ -160,6 +160,8 @@ registerAll({
   // v6.33: about-screen mute toggle (was wired by data-action but never
   // registered, so the button silently did nothing on Android).
   'toggle-about-mute': () => window.toggleAboutMute?.(),
+  // v8.06: About → Check for updates.
+  'check-for-update': (e, el) => window.checkForAppUpdate?.(el),
 
   // v6.31: wishlist history actions
   'reopen-wishlist': (e, el, d) => {

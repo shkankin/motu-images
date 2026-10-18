@@ -3,6 +3,15 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.06 changelog:
+//   • CACHE bumped to v8.06. SHELL: ui-sheets.js + delegate-handlers.js + data.js + handlers.js +
+//     render.js + state.js + motu-vault.html.
+//   • About → "Check for updates": checks right away instead of waiting for the next resume or
+//     30-minute check. A new version shows the usual restart bar; otherwise a toast says you're
+//     current (and that a fresh release can take ~10 minutes to appear) or that the check failed.
+//   • Cleanup: removed the unused totalCopyCount() (it would also have counted wishlist copies)
+//     and dropped the dead pull-to-refresh key from settings backups. The stored key is left alone.
+
 // v8.05 changelog:
 //   • CACHE bumped to v8.05. Cumulative with v8.04 (not yet deployed when this was built).
 //     SHELL: render.js + data.js + stats.js + ui-sheets.js + share.js + handlers.js + vault.css + motu-vault.html.
@@ -2178,7 +2187,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.05';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.06';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
