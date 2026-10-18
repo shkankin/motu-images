@@ -845,3 +845,10 @@ registerAll({
     window.refreshSheetBody?.();
   },
 }, 'change');
+
+// ── v8.04: Offline Images sheet ──────────────────────────────────────
+registerAll({
+  'offline-scope': (e, el, d) => window.setOfflineScope?.(d.scope),
+  'offline-start': () => window.startOfflineSave?.(),
+  'offline-stop':  () => window.stopOfflineSave?.(),
+});

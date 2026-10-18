@@ -3,6 +3,18 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.04 changelog:
+//   • CACHE bumped to v8.04. SHELL: app.js + data.js + render.js + stats.js + ui-sheets.js +
+//     delegate-handlers.js + vault.css + motu-vault.html.
+//   • Orders: the Expected Date from Order Details now shows on the figure's row ("Due Nov 2026",
+//     red "Overdue · Sep 2026" once the month has passed). Stats has an "N on order · $ paid ·
+//     next due · N overdue" line that opens the Ordered list. New sort: Expected date — orders
+//     first (offered once something is on order).
+//   • Offline Images (Menu → Settings): save catalog pictures ahead of time — My figures
+//     (collection + want list) or Everything — with progress, Stop, a mobile-data hint, and how
+//     much space the app uses. Saved into the same image cache the app already keeps.
+//   • FIX: choosing Wave sort no longer resets to Year every time the app opens.
+
 // v8.03 changelog:
 //   • CACHE bumped to v8.03. SHELL: app.js + data.js + handlers.js + delegate-handlers.js + render.js +
 //     ui-sheets.js + stats.js + share.js + photos.js + state.js + route.js + vault.css + motu-vault.html.
@@ -2155,7 +2167,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.03';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.04';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

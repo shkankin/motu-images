@@ -1243,6 +1243,11 @@ function migrateEntry(c) {
     if (c.variants) copy.variant = c.variants;  // singular in new schema
     out.copies.push(copy);
   }
+  // v8.04: entry-level fields survive the upgrade too — an old backup that
+  // carried Order Details or a wishlist target price lost them here.
+  for (const k of ['orderedFrom', 'orderedDate', 'orderedPaid', 'targetPrice']) {
+    if (c[k] != null && c[k] !== '') out[k] = c[k];
+  }
   return out;
 }
 
@@ -1404,6 +1409,22 @@ function figIsHidden(f) {
 // cycleStatus() — previously only setStatus had this logic, so quick-cycling
 // the status dot in list/grid view silently dropped orderedFrom/orderedPaid.
 // Caller is responsible for having already flipped S.coll[id].status to 'owned'.
+// v8.04: Order Details has had an Expected Date (YYYY-MM, entry.orderedDate)
+// since v6.x, but nothing ever read it back. orderDue() turns it into what a
+// collector checks: "Due Nov 2026", or overdue once that month has passed.
+// Returns null when the entry isn't Ordered or has no usable date.
+const _MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function orderDue(c) {
+  if (!c || c.status !== 'ordered') return null;
+  const m = /^(\d{4})-(\d{2})$/.exec(String(c.orderedDate || ''));
+  if (!m) return null;
+  const y = +m[1], mo = +m[2];
+  if (mo < 1 || mo > 12) return null;
+  const now = new Date();
+  const overdue = y < now.getFullYear() || (y === now.getFullYear() && mo < now.getMonth() + 1);
+  return { ym: m[1] + '-' + m[2], label: `${_MON[mo - 1]} ${y}`, overdue };
+}
+
 function migrateOrderedToOwned(id) {
   const entry = S.coll[id];
   if (!entry) return;
@@ -2249,6 +2270,18 @@ function _computeSortedFigs() {
   // share ts 0 and fall to the bottom in stable order, so only genuinely
   // newly-captured figures rise to the top. Ties broken by year-desc so the
   // tail stays sensibly ordered.
+  // v8.04: "Expected date" — Ordered figures with an expected month first
+  // (soonest / most overdue at the top), then undated orders, then the rest
+  // by year.
+  else if (sb === 'expected') {
+    const rank = f => { const c = S.coll[f.id]; const d = orderDue(c); return d ? 0 : c?.status === 'ordered' ? 1 : 2; };
+    list.sort((a,b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      if (ra === 0) { const k = orderDue(S.coll[a.id]).ym.localeCompare(orderDue(S.coll[b.id]).ym); if (k) return k; }
+      return (a.year||9999)-(b.year||9999);
+    });
+  }
   else if (sb === 'added-desc') list.sort((a,b) => {
     const d = figAddedTs(b.id) - figAddedTs(a.id);
     return d !== 0 ? d : (b.year||0)-(a.year||0);
@@ -3415,5 +3448,5 @@ window.insertSale = insertSale;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
-  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, updateSale, insertSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
+  parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, totalCopyCount, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, orderDue, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, updateSale, insertSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
 };

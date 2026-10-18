@@ -64,6 +64,7 @@ function buildSheetBody() {
   else if (S.sheet === 'menu') body = renderMenuSheet();
   else if (S.sheet === 'stats') body = renderStatsSheet();
   else if (S.sheet === 'sold') body = renderSoldSheet();   // v8.03
+  else if (S.sheet === 'offline') body = renderOfflineSheet();   // v8.04
   else if (S.sheet === 'edit') body = renderEditFigureSheet();
   else if (S.sheet === 'batch') body = renderBatchEditSheet();
   // v7.89: "Want List" = sharing your list + the lists you've viewed, which
@@ -95,7 +96,7 @@ function refreshSheetBody() {
 window.refreshSheetBody = refreshSheetBody;
 
 function renderSheet() {
-  const titles = {filter:'Filter', sort:'Sort By', import:'Backup & Restore', export:'Backup & Restore', backup:'Backup & Restore', missing:'Missing Details', theme:'Theme', menu:'Menu', stats:'Collection Stats', sold:'Sold', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
+  const titles = {filter:'Filter', sort:'Sort By', import:'Backup & Restore', export:'Backup & Restore', backup:'Backup & Restore', missing:'Missing Details', theme:'Theme', menu:'Menu', stats:'Collection Stats', sold:'Sold', offline:'Offline Images', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
     packEdit: 'Edit Pack',
   };
   let body = buildSheetBody();
@@ -236,6 +237,124 @@ function _menuSection(title, first) {
     <div class="text-xs text-upper text-dim" style="padding:0 4px 8px;letter-spacing:1.2px">${title}</div>`;
 }
 
+// § OFFLINE IMAGES (v8.04) ─────────────────────────────────────────────
+// Catalog pictures are cached only once a figure has been viewed, so at a
+// show with no signal the catalog and barcode scan work but unviewed
+// figures — often the want-list ones you're hunting — show a letter.
+// This sheet saves them ahead of time into the same unversioned image
+// cache the service worker uses ('motu-vault-images'), so they survive
+// app updates. When the SW controls the page, each fetch goes through it
+// (it caches and timestamps the image); otherwise the page stores it.
+const OFFLINE_CACHE = 'motu-vault-images';
+const OFFLINE_AVG_MB = 0.061;   // measured average catalog image (Oct 2026)
+function _offlineUrls(scope) {
+  const urls = new Set();
+  for (const f of S.figs) {
+    if (!f.image || figIsHidden(f)) continue;
+    if (scope === 'mine' && !S.coll[f.id]?.status) continue;
+    urls.add(f.image);
+  }
+  return [...urls];
+}
+async function _offlineCount() {
+  let have = new Set();
+  try {
+    const c = await caches.open(OFFLINE_CACHE);
+    have = new Set((await c.keys()).map(r => r.url));
+  } catch {}
+  const out = {};
+  for (const scope of ['mine', 'all']) {
+    const urls = _offlineUrls(scope);
+    out[scope] = { total: urls.length, have: urls.filter(u => have.has(u)).length };
+  }
+  let used = null;
+  try { const e = await navigator.storage?.estimate?.(); if (e?.usage) used = e.usage; } catch {}
+  S._offlineCount = { ...out, used, haveSet: have };
+  if (S.sheet === 'offline') refreshSheetBody();
+}
+function renderOfflineSheet() {
+  const run = S._offline;
+  const cnt = S._offlineCount;
+  if (!cnt) { _offlineCount(); }
+  const scope = S._offlineScope || 'mine';
+  const conn = navigator.connection;
+  const metered = !!(conn && (conn.saveData || conn.type === 'cellular' || /2g/.test(conn.effectiveType || '')));
+  const opt = (key, title, sub) => {
+    const on = scope === key;
+    return `<button data-action="offline-scope" data-scope="${key}" role="radio" aria-checked="${on}" ${run ? 'disabled' : ''}
+      style="width:100%;display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:var(--bg3);margin-bottom:8px;text-align:left">
+      <span style="width:18px;height:18px;border-radius:50%;border:2px solid ${on ? 'var(--acc)' : 'var(--bd)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${on ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--acc)"></span>' : ''}</span>
+      <span style="flex:1"><span style="display:block;font-size:14px;color:var(--t1);font-weight:600">${title}</span>
+      <span style="display:block;font-size:12px;color:var(--t3);margin-top:2px">${sub}</span></span>
+    </button>`;
+  };
+  const line = k => {
+    if (!cnt) return 'Checking…';
+    const c = cnt[k], miss = c.total - c.have;
+    return `${c.have} of ${c.total} saved${miss ? ` · about ${Math.max(1, Math.round(miss * OFFLINE_AVG_MB))} MB to download` : ' ✓'}`;
+  };
+  let html = `<p class="text-md text-muted" style="margin:0 0 14px;line-height:1.5">Pictures save on this phone as you browse. Save the rest ahead of time so figures still show at a show or store with no signal.</p>`;
+  html += opt('mine', 'My figures', 'Collection and want list — ' + line('mine'));
+  html += opt('all', 'Everything', 'The whole catalog, minus hidden lines — ' + line('all'));
+  if (run) {
+    const pct = run.total ? Math.round((run.done / run.total) * 100) : 0;
+    html += `<div style="margin:14px 0 8px">
+      <div style="height:8px;border-radius:4px;background:var(--bg3);overflow:hidden"><div id="offlineBar" style="height:100%;width:${pct}%;background:var(--acc);transition:width .2s"></div></div>
+      <div id="offlineProgress" style="font-size:12px;color:var(--t2);margin-top:6px">Saving ${run.done} of ${run.total}…</div>
+    </div>
+    <button data-action="offline-stop" style="width:100%;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:15px;font-weight:600">Stop</button>`;
+  } else {
+    const miss = cnt ? cnt[scope].total - cnt[scope].have : 0;
+    const online = navigator.onLine !== false;
+    const label = !cnt ? 'Checking…' : !miss ? 'All saved' : !online ? 'Connect to the internet to save' : `Save ${miss} picture${miss === 1 ? '' : 's'}`;
+    html += `<button data-action="offline-start" ${(!cnt || !miss || !online) ? 'disabled' : ''} style="width:100%;margin-top:6px;padding:14px;border-radius:12px;border:0;background:var(--acc);color:var(--btn-t);font-size:15px;font-weight:700;${(!cnt || !miss || !online) ? 'opacity:.5' : ''}">${label}</button>`;
+    if (metered && miss) html += `<div style="font-size:12px;color:var(--or);margin-top:8px">You look to be on mobile data — Wi-Fi is better for this.</div>`;
+  }
+  if (cnt?.used) html += `<div style="font-size:12px;color:var(--t3);margin-top:14px">MOTU Collector is using ${cnt.used < 1e6 ? 'less than 1' : 'about ' + Math.round(cnt.used / 1e6)} MB on this phone.</div>`;
+  html += `<div style="font-size:12px;color:var(--t3);margin-top:6px;line-height:1.5">Figures added to the catalog later save when you view them, or come back here.</div>`;
+  return html;
+}
+async function startOfflineSave() {
+  if (S._offline) return;
+  const scope = S._offlineScope || 'mine';
+  const have = S._offlineCount?.haveSet || new Set();
+  const todo = _offlineUrls(scope).filter(u => !have.has(u));
+  if (!todo.length) return;
+  const run = S._offline = { total: todo.length, done: 0, failed: 0, stop: false };
+  refreshSheetBody();
+  let cache = null;
+  try { cache = await caches.open(OFFLINE_CACHE); } catch {}
+  const viaSW = !!navigator.serviceWorker?.controller;
+  let i = 0;
+  const worker = async () => {
+    while (!run.stop && i < todo.length) {
+      const url = todo[i++];
+      try {
+        const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+        if (!res.ok) throw new Error(String(res.status));
+        if (!viaSW && cache) await cache.put(url, res); else await res.arrayBuffer();
+      } catch { run.failed++; }
+      run.done++;
+      const bar = document.getElementById('offlineBar');
+      const txt = document.getElementById('offlineProgress');
+      if (bar) bar.style.width = Math.round((run.done / run.total) * 100) + '%';
+      if (txt) txt.textContent = `Saving ${run.done} of ${run.total}…`;
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  const saved = run.done - run.failed;
+  const stopped = run.stop;
+  S._offline = null;
+  S._offlineCount = null;
+  if (stopped) window.toast?.(`Stopped — ${saved} picture${saved === 1 ? '' : 's'} saved`);
+  else if (run.failed) window.toast?.(`⚠ Saved ${saved} · ${run.failed} couldn’t be saved — try again later`);
+  else window.toast?.(`✓ Saved ${saved} picture${saved === 1 ? '' : 's'} for offline use`);
+  if (S.sheet === 'offline') refreshSheetBody(); else _offlineCount();
+}
+window.startOfflineSave = startOfflineSave;
+window.stopOfflineSave = () => { if (S._offline) S._offline.stop = true; };
+window.setOfflineScope = sc => { if (S._offline) return; S._offlineScope = sc === 'all' ? 'all' : 'mine'; refreshSheetBody(); };
+
 function renderMenuSheet() {
   const nLoc = getAllLocations().length;
   const unsaved = backupDue()
@@ -259,6 +378,8 @@ function renderMenuSheet() {
 
   html += _menuSection('Settings');
   html += _menuBtn({ action: 'open-sheet', sheet: 'theme',   glyph: icon(ICO.palette, 20), label: 'Theme' });
+  html += _menuBtn({ action: 'open-sheet', sheet: 'offline', glyph: icon(ICO.img, 20), label: 'Offline Images',
+                     hint: 'Save figure pictures for shows and stores with no signal' });
   html += _menuBtn({ action: 'open-sheet', sheet: 'pricing', glyph: icon(ICO.dollar, 20), label: 'Pricing Backend',
                      hint: 'Advanced — one-time setup for market values' });
 
@@ -665,6 +786,10 @@ function renderSortSheet() {
     {v:'wave',l:'Wave'},{v:'name',l:'Name A → Z'},{v:'name-desc',l:'Name Z → A'},
     {v:'retail',l:'Price (low → high)'},{v:'retail-desc',l:'Price (high → low)'},
   ];
+  // v8.04: only offered once something is on order (or it's the current sort).
+  if (S.sortBy === 'expected' || Object.values(S.coll).some(c => c?.status === 'ordered')) {
+    opts.push({v:'expected',l:'Expected date — orders first'});
+  }
   return opts.map(o => `<button class="sort-option ${S.sortBy===o.v?'active':''}" data-action="set-sort" data-sort="${esc(o.v)}">
     ${o.l}${S.sortBy===o.v ? icon(ICO.check,18) : ''}
   </button>`).join('');

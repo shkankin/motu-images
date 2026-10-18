@@ -47,7 +47,7 @@ import {
   getLoadout, getCopyCompleteness,
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
   isMigrated, saveColl, fetchFigs,
-  getSoldLog, backupDue,
+  getSoldLog, backupDue, orderDue,
   getPacks,
 } from './data.js';
 import {
@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.03</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.04</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1382,6 +1382,11 @@ function renderFigRow(f, standalone = false) {
         ${f.group ? `<span>${S.search?'· ':''}${esc(f.group)}</span>` : ''}
         ${f.wave ? `<span>· W${esc(f.wave)}</span>` : ''}
         ${f.year ? `<span>· ${f.year}</span>` : ''}
+        ${(() => {
+          // v8.04: an Ordered figure's expected month, right in the row.
+          const due = orderDue(c);
+          return due ? `<span class="due-chip${due.overdue ? ' overdue' : ''}">${due.overdue ? 'Overdue · ' : 'Due '}${due.label}</span>` : '';
+        })()}
       </div>
       ${(() => {
         // v6.77: variant chips list ONLY the variants — the "Standard" pill

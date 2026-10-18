@@ -262,8 +262,9 @@ async function init() {
   // Preload easter egg images so they fire without load delay
   preloadImage(IMG + '/adam-icon.png');
   preloadImage(IMG + '/eternia2-icon.png');
-  // One-time migration: wave default → year default (v3.9)
-  if (S.sortBy === 'wave') { S.sortBy = 'year'; store.set('motu-sort', 'year'); }
+  // v8.04: the v3.9 one-time 'wave → year' migration ran on EVERY boot, so a
+  // chosen Wave sort reset to Year at each launch. Wave is a real option now
+  // (Sort sheet), so the reset is gone.
   // v6.29: install the document-level event dispatcher before first render
   // so newly-rendered data-action elements are immediately responsive.
   bootDelegation();

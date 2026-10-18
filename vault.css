@@ -1116,6 +1116,10 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   display: flex; gap: 6px; flex-wrap: wrap;
 }
 .fig-meta .line-name { color: var(--acc); font-weight: 600; }
+/* v8.04: expected-date chip on Ordered rows. */
+.fig-meta .due-chip { padding: 0 6px; border-radius: 6px; font-weight: 600;
+  color: var(--or); background: color-mix(in srgb, var(--or) 14%, transparent); white-space: nowrap; }
+.fig-meta .due-chip.overdue { color: var(--rd); background: color-mix(in srgb, var(--rd) 14%, transparent); }
 
 .fig-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .fig-status-dot { width: 10px; height: 10px; border-radius: 50%; }

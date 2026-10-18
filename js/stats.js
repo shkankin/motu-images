@@ -12,7 +12,7 @@
 
 import { S, store, esc, ln, icon, ICO, jsArg, SUBLINES } from './state.js';
 import {
-  getStats, getLineStats, getSoldLog, figIsHidden, isMigrated, figById,
+  getStats, getLineStats, getSoldLog, figIsHidden, isMigrated, figById, orderDue,
   isLineFullyHidden, getEvents, getCompletenessStats, getGapFigures,
 } from './data.js';
 import {
@@ -244,6 +244,28 @@ function renderStatsSheet() {
       <button class="stat-item" data-action="go-to-filtered" data-status="for-sale"><div class="stat-dot for-sale"></div><span class="stat-val">${stats.sale}</span> for sale</button>
     </div>
     ${totalSpent > 0 ? `<div style="margin-top:10px;font-size:13px;color:var(--gold);font-weight:600">$${totalSpent.toFixed(2)} spent${avgStr ? ` · ${avgStr}` : ''}</div>` : ''}
+    ${(() => {
+      // v8.04: what's on order — paid so far, the next expected month, and
+      // how many are past theirs. Opens the Ordered list.
+      let n = 0, paid = 0, overdue = 0, next = null;
+      for (const f of S.figs) {
+        const c = S.coll[f.id];
+        if (c?.status !== 'ordered' || figIsHidden(f)) continue;
+        n++;
+        const p = parseFloat(c.orderedPaid);
+        if (Number.isFinite(p)) paid += p;
+        const d = orderDue(c);
+        if (d?.overdue) overdue++;
+        else if (d && (!next || d.ym < next.ym)) next = d;
+      }
+      if (!n) return '';
+      const bits = [`<span style="font-weight:700;color:var(--t1)">${n}</span> on order`];
+      if (paid > 0) bits.push(`$${paid.toFixed(2)} paid`);
+      if (next) bits.push(`next due ${next.label}`);
+      if (overdue) bits.push(`<span style="color:var(--rd);font-weight:600">${overdue} overdue</span>`);
+      return `<button data-action="go-to-filtered" data-status="ordered" style="margin-top:10px;display:flex;align-items:center;gap:6px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg3);font-size:12px;color:var(--t2);text-align:left">
+        <span style="flex:1">${bits.join(' · ')}</span>${icon(ICO.chevR, 16)}</button>`;
+    })()}
   </div>`;
 
   // ── v6.67: Collection Value ──────────────────────────────────────
