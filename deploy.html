@@ -13,6 +13,14 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.github.com; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
 <title>MOTU Collector — Deploy</title>
 <!-- ════════════════════════════════════════════════════════════════
+     deploy.html  v1.26
+       • v1.26: Identify-by-Photo cleanup (handoff9 open item 1). PATH_MAP
+         drops 'identify.js' and 'identify-worker.js'. Ships with a
+         delete.txt removing js/identify.js and workers/identify-worker.js
+         in the same commit — check_deployable fails if a PATH_MAP entry
+         outlives its file, or a file outlives its entry, so both halves
+         have to land together.
+
      deploy.html  v1.25
        • v1.25: file deletion. A zip (or a direct pick) may carry
          delete.txt — one repo path per line, # comments allowed. Those
@@ -437,7 +445,7 @@
 <body>
 
 <header>
-  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.25</span></h1>
+  <h1>⚔ MOTU Collector — Deploy <span style="font-size:12px;font-weight:400;color:var(--t3);vertical-align:middle;margin-left:6px">v1.26</span></h1>
   <p>Drop updated files to commit them directly to <code>shkankin/motu-images</code>. Backend files (<code>pricing-worker.js</code>, <code>wrangler.toml</code>) deploy to <code>backend/</code>. Scripts (<code>.py</code>) to <code>scripts/</code>. Workflows (<code>.yml</code>) to <code>.github/workflows/</code>. Images (<code>.jpg</code>/<code>.png</code>) to <code>images/</code>.</p>
 </header>
 
@@ -556,8 +564,6 @@ const PATH_MAP = {
   'CNAME':                    'CNAME',               // v1.14: GitHub Pages custom-domain file (motucollector.app)
   'index.html':               'index.html',          // v1.15: root forwarder → motu-vault.html
   'route.js':                 'js/route.js',         // v1.16: desktop router (external for CSP)
-  'identify.js':              'js/identify.js',      // v1.20: Identify-by-Photo module (app v7.76)
-  'identify-worker.js':       'workers/identify-worker.js', // v1.20: identify CF worker source (versioned in repo; deployed on Cloudflare, not Pages)
   'art-preview.html':         'art-preview.html',    // v1.21: live page (referenced by sw.js, render.js, ui-sheets.js) that had NO deploy route until scripts/check_deployable.mjs found it
   'check_deployable.mjs':     'scripts/check_deployable.mjs', // v1.21: deployability gate (v7.85 post-mortem)
   'check_version_stamps.mjs': 'scripts/check_version_stamps.mjs', // v1.22: version-stamp gate (REL-01 post-mortem)
