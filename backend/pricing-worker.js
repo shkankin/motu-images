@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.104
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.105
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -17,7 +17,17 @@
 //                    Requires partner approval; throws until enabled.
 //   "ebay-active"  — eBay Browse API. ASKING prices, not sold. Flagged so
 //                    the UI can warn the user.
+//   "apify-sold"   — v6.105: real eBay SOLD prices (last 90 days) through an
+//                    Apify scraper (default caffein.dev~ebay-sold-listings).
+//                    Unofficial and paid per result, so it is cost-guarded:
+//                    runs are started in the background and picked up on a
+//                    later lookup, results are kept SOLD_CACHE_DAYS (14), bulk
+//                    lookups never start runs, and APIFY_DAILY_RUNS caps spend.
 //   "stub"         — deterministic mock data for dev.
+//
+// Sold prices via Apify: PROVIDER_CHAIN = "community,apify-sold,ebay-active"
+// plus the APIFY_TOKEN secret. Until a sold run finishes, that figure falls
+// back to ebay-active with a note saying sold prices are on the way.
 //
 // Default chain: "community,ebay-active". Community fills authoritative
 // data when present; eBay active is the honest fallback. Once Marketplace
@@ -29,7 +39,9 @@
 // Bindings (see wrangler.toml):
 //   KV: PRICING_CACHE, COMMUNITY_PRICES, (optional) QUERY_MAP
 //   vars: PROVIDER_CHAIN (or legacy PROVIDER), ALLOWED_ORIGINS, MIN_SAMPLES
-//   secrets: EBAY_APP_ID, EBAY_CERT_ID, ADMIN_TOKEN
+//   secrets: EBAY_APP_ID, EBAY_CERT_ID, ADMIN_TOKEN, (optional) APIFY_TOKEN
+//   apify vars (optional): APIFY_SOLD_ACTOR, APIFY_SOLD_COUNT (25),
+//     APIFY_SOLD_DAYS (90), APIFY_DAILY_RUNS (15), SOLD_CACHE_DAYS (14)
 // ════════════════════════════════════════════════════════════════════
 
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
@@ -78,7 +90,9 @@ export default {
         if (limited) return json({ error: 'rate_limited', retryAfter: FRESH_RATE_WINDOW }, 429, cors);
       }
       const results = await Promise.all(
-        ids.map(id => getPricing(id, env, ctx, meta, { fresh }).catch(e => ({
+        // v6.105: bulk never starts paid sold runs (noStart) — it only reads
+        // sold results that single-figure lookups already paid for.
+        ids.map(id => getPricing(id, env, ctx, meta, { fresh, noStart: true }).catch(e => ({
           figId: id, sealed: null, loose: null, source: 'error',
           error: String(e.message || e), asof: new Date().toISOString(),
         })))
@@ -141,6 +155,7 @@ const PROVIDERS = {
   'community':   communityProvider,
   'ebay-sold':   ebaySoldProvider,
   'ebay-active': ebayActiveProvider,
+  'apify-sold':  apifySoldProvider,
   'stub':        stubProvider,
 };
 
@@ -160,13 +175,21 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
   // 2. Try each provider in chain until one returns positive data
   const chain = getChain(env);
   let lastErr = null;
+  let pendingNote = null;   // v6.105: a sold lookup is running in the background
   for (const name of chain) {
     const fn = PROVIDERS[name];
     if (!fn) continue;
     try {
-      const raw = await fn(figId, env, meta);
+      const raw = await fn(figId, env, meta, opts, ctx);
+      if (raw?.pending) { pendingNote = raw.note; continue; }
       const out = shapeResult(figId, raw, name, env);
       if (out.sealed || out.loose) {
+        // v6.105: a fallback shown while sold prices are still coming is NOT
+        // cached, or it would hide the sold result for the next 24h.
+        if (pendingNote) {
+          out.note = (out.note ? out.note + ' · ' : '') + pendingNote;
+          return out;
+        }
         // v6.60-fix2: don't cache debug responses, and strip the _debug field
         // before write so a non-debug call later doesn't get a debug-shaped
         // hit (defensive — debug responses aren't supposed to be cached at all).
@@ -189,7 +212,7 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
     asof: new Date().toISOString(),
     source: 'unavailable',
     currency: 'USD',
-    note: lastErr ? `Pricing temporarily unavailable: ${lastErr.message}` : 'No market data found',
+    note: pendingNote || (lastErr ? `Pricing temporarily unavailable: ${lastErr.message}` : 'No market data found'),
   };
 }
 
@@ -252,6 +275,103 @@ async function ebaySoldProvider(figId, env, meta) {
   throw new Error('MARKETPLACE_INSIGHTS_REQUIRED — apply at developer.ebay.com');
 }
 
+// ── Apify eBay Sold — real sold prices, cost-guarded (v6.105) ──
+// A run takes ~15-30 s and the app gives up after 8 s, so lookups never wait
+// on Apify. The first lookup STARTS a run and falls through to ebay-active;
+// a later lookup finds the finished run, parses it once and keeps the result
+// for SOLD_CACHE_DAYS. KV keys (PRICING_CACHE): sold:<id>, soldrun:<id>,
+// soldfail:<id>, apifyruns:<YYYY-MM-DD>.
+const APIFY_API = 'https://api.apify.com/v2';
+const SOLD_PENDING_NOTE = 'Sold prices are being looked up — check again in a minute';
+
+async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
+  if (!env.APIFY_TOKEN) throw new Error('APIFY_TOKEN not set');
+  const kv = env.PRICING_CACHE;
+  const auth = { 'Authorization': 'Bearer ' + env.APIFY_TOKEN };
+  const queryName = (await getQueryMapping(figId, env)) || figIdToQuery(figId, meta);
+
+  // 1. A finished result we already paid for. Even ?fresh=1 reuses it for a
+  //    day, so tapping Refresh can't buy the same data twice.
+  const kept = await kv.get('sold:' + figId, { type: 'json' });
+  const keptAgeMs = kept ? Date.now() - Date.parse(kept.asof || 0) : Infinity;
+  if (kept && (!opts.fresh || keptAgeMs < 24 * 3600 * 1000)) return kept;
+
+  // 2. A run started earlier: collect it if it's done.
+  const run = await kv.get('soldrun:' + figId, { type: 'json' });
+  if (run) {
+    const st = await fetch(`${APIFY_API}/actor-runs/${encodeURIComponent(run.id)}`, { headers: auth });
+    if (!st.ok) throw new Error('Apify run status HTTP ' + st.status);
+    const info = (await st.json())?.data || {};
+    if (info.status === 'READY' || info.status === 'RUNNING') return { pending: true, note: SOLD_PENDING_NOTE };
+    await kv.delete('soldrun:' + figId);
+    if (info.status !== 'SUCCEEDED') {
+      await kv.put('soldfail:' + figId, info.status || 'failed', { expirationTtl: 6 * 3600 });
+      throw new Error('Apify run ' + (info.status || 'failed'));
+    }
+    const ds = await fetch(`${APIFY_API}/datasets/${encodeURIComponent(info.defaultDatasetId || run.ds)}/items?clean=true&format=json`, { headers: auth });
+    if (!ds.ok) throw new Error('Apify dataset HTTP ' + ds.status);
+    const out = shapeSoldItems(await ds.json(), figId, meta, queryName);
+    const days = parseInt(env.SOLD_CACHE_DAYS || '14', 10);
+    // Kept even when empty, so a figure with no sales doesn't re-buy a run on every view.
+    await kv.put('sold:' + figId, JSON.stringify(out), { expirationTtl: days * 86400 });
+    return out;
+  }
+
+  // 3. Start a run — single-figure lookups only, within the daily cap.
+  if (opts.noStart || meta._debug) return { sealed: null, loose: null };
+  if (await kv.get('soldfail:' + figId)) return { sealed: null, loose: null };
+  const dayKey = 'apifyruns:' + new Date().toISOString().slice(0, 10);
+  const used = parseInt((await kv.get(dayKey)) || '0', 10);
+  if (used >= parseInt(env.APIFY_DAILY_RUNS || '15', 10)) return { sealed: null, loose: null };
+  const count = parseInt(env.APIFY_SOLD_COUNT || '25', 10);
+  const actor = env.APIFY_SOLD_ACTOR || 'caffein.dev~ebay-sold-listings';
+  // maxItems / maxTotalChargeUsd are Apify's own per-run spend caps.
+  const startUrl = `${APIFY_API}/acts/${encodeURIComponent(actor)}/runs?` + new URLSearchParams({
+    maxItems: String(count), maxTotalChargeUsd: '0.25',
+  });
+  const res = await fetch(startUrl, {
+    method: 'POST',
+    headers: { ...auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      keywords: [queryName],
+      count,
+      daysToScrape: parseInt(env.APIFY_SOLD_DAYS || '90', 10),
+      ebaySite: 'ebay.com',
+      sortOrder: 'endedRecently',
+    }),
+  });
+  if (!res.ok) throw new Error('Apify start HTTP ' + res.status + ' — ' + (await res.text()).slice(0, 200));
+  const started = (await res.json())?.data || {};
+  if (!started.id) throw new Error('Apify start: no run id');
+  await kv.put('soldrun:' + figId, JSON.stringify({ id: started.id, ds: started.defaultDatasetId }), { expirationTtl: 3600 });
+  await kv.put(dayKey, String(used + 1), { expirationTtl: 2 * 86400 });
+  return { pending: true, note: SOLD_PENDING_NOTE };
+}
+
+// Apify sold rows → the same {sealed, loose} buckets ebay-active produces.
+function shapeSoldItems(items, figId, meta, queryName) {
+  const all = Array.isArray(items) ? items : [];
+  // "Best Offer accepted" rows show the ASKING price — eBay hides the real
+  // amount — so they would overstate value. Dropped.
+  const offers = all.filter(it => it?.isBestOfferAccepted).length;
+  const rows = all
+    .filter(it => !it?.isBestOfferAccepted)
+    .map(it => ({ title: it?.title || '', price: parseFloat(it?.soldPrice), condition: it?.condition || '' }));
+  const { sealed, loose, rejJunk, rejLine, rejAmbig } = classifyListings(rows, figId, meta, { requireName: true });
+  const filterParts = [];
+  if (rejJunk)  filterParts.push(`${rejJunk} junk`);
+  if (rejLine)  filterParts.push(`${rejLine} other figures`);
+  if (rejAmbig) filterParts.push(`${rejAmbig} unlabeled`);
+  if (offers)   filterParts.push(`${offers} best-offer`);
+  return {
+    sealed: bucketStats(sealed),
+    loose:  bucketStats(loose),
+    asof:   new Date().toISOString(),
+    source: 'ebay-sold',
+    note:   `eBay sold prices, last 90 days, for "${queryName}"${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
+  };
+}
+
 // ── eBay Active (Browse API) — ASKING prices, flagged honestly ──
 async function ebayActiveProvider(figId, env, meta = {}) {
   const token = await getEbayToken(env);
@@ -275,6 +395,29 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   const data = JSON.parse(rawBody);
   const items = data.itemSummaries || [];
 
+  const rows = items.map(it => ({ title: it?.title || '', price: parseFloat(it?.price?.value) }));
+  const debug = !!meta._debug;
+  const { sealed, loose, rejJunk, rejLine, rejAmbig, dbg, keptSealed, keptLoose } = classifyListings(rows, figId, meta);
+  const filterParts = [];
+  if (rejJunk)  filterParts.push(`${rejJunk} junk`);
+  if (rejLine)  filterParts.push(`${rejLine} off-line`);
+  if (rejAmbig) filterParts.push(`${rejAmbig} unlabeled`);
+  const out = {
+    sealed: bucketStats(sealed),
+    loose:  bucketStats(loose),
+    source: 'ebay-active',
+    note:   `Active listings (asking prices) for "${queryName}" — not sold prices${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
+  };
+  if (debug) out._debug = { query: queryName, total: items.length, kept: sealed.length + loose.length, rejected: dbg, keptSealed, keptLoose };
+  return out;
+}
+
+// ── Listing classifier (v6.105: shared by ebay-active and apify-sold) ──
+// rows: [{ title, price, condition? }]. Returns sealed/loose price arrays plus
+// rejection counts. Extracted verbatim from ebayActiveProvider; the only
+// additions are opt-in (requireName, condition) so ebay-active is unchanged.
+function classifyListings(rows, figId, meta = {}, opts = {}) {
+  const nameTokens = opts.requireName ? figNameTokens(figId) : [];
   // v6.58: sealed markers — strict, no bare \bnew\b.
   // v6.60-fix4: expanded with real-world phrasings seen in eBay listings.
   // v6.60-fix5: split into STRICT (always sealed) and HINT (sealed only for
@@ -340,19 +483,27 @@ async function ebayActiveProvider(figId, env, meta = {}) {
   let rejJunk = 0, rejLine = 0, rejAmbig = 0;
   const keptSealed = [], keptLoose = [];
   const isModernLine = ['origins', 'masterverse', 'classics', 'super7', 'mondo', 'kids-core', 'eternia-minis', 'chronicles', 'cross-brand', 'mighty-masters', 'motu-giants'].includes(meta.line);
-  for (const it of items) {
-    const price = parseFloat(it?.price?.value);
+  for (const it of rows) {
+    const price = Number(it?.price);
     const rawTitle = it?.title || '';
     if (!Number.isFinite(price) || price < 5) {
       rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(`$${price} ${rawTitle.slice(0, 80)}`);
       continue;
     }
     const title = rawTitle.toLowerCase();
+    const normTitle = ' ' + title.replace(/[^a-z0-9]+/g, ' ') + ' ';
     if (JUNK_RE.test(title)) { rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(rawTitle.slice(0, 80)); continue; }
     // v6.60-fix5: multi-figure bundle rejection. If the title names another
     // MOTU character, it's almost certainly priced as a multi-figure bundle.
     if (countOtherCharacters(title) >= 1) {
       rejJunk++; if (debug && dbg.junk.length < 8) dbg.junk.push(`[bundle] ${rawTitle.slice(0, 80)}`);
+      continue;
+    }
+    // v6.105: sold search is far looser than the Browse API ("masterverse
+    // skeletor" returned Man-At-Arms, Stratos, Whiplash…), so the sold provider
+    // also requires every significant word of the figure's own name.
+    if (nameTokens.length && !nameTokens.every(t => new RegExp('\\b' + t + '\\b').test(normTitle))) {
+      rejLine++; if (debug && dbg.line.length < 8) dbg.line.push(`[name] ${rawTitle.slice(0, 80)}`);
       continue;
     }
     const hasRequired = !lineRequired || lineRequired.test(title);
@@ -369,6 +520,11 @@ async function ebayActiveProvider(figId, env, meta = {}) {
       else if (hasLoose && !hasSealed) bucket = 'loose';
       else if (hasSealed && hasLoose) bucket = 'loose';  // mixed: loose wins
       else if (hasHint && isModernLine) bucket = 'sealed';
+      // v6.105: sold rows carry eBay's condition field. "Brand New" on eBay
+      // means unopened; "Pre-Owned"/"Used" means opened. Only consulted when
+      // the title itself says neither.
+      else if (/^(brand )?new$/i.test(it?.condition || '')) bucket = 'sealed';
+      else if (/^(pre-?owned|used)$/i.test(it?.condition || '')) bucket = 'loose';
       // else: no marker at all — too ambiguous, reject
       if (bucket === 'sealed') { sealed.push(price); if (debug && keptSealed.length < 8) keptSealed.push(`$${price} ${rawTitle.slice(0, 70)}`); }
       else if (bucket === 'loose') { loose.push(price); if (debug && keptLoose.length < 8) keptLoose.push(`$${price} ${rawTitle.slice(0, 70)}`); }
@@ -378,18 +534,15 @@ async function ebayActiveProvider(figId, env, meta = {}) {
     if (lineNegative && lineNegative.test(title)) { rejLine++; if (debug && dbg.line.length < 8) dbg.line.push(rawTitle.slice(0, 80)); continue; }
     rejAmbig++; if (debug && dbg.ambig.length < 8) dbg.ambig.push(rawTitle.slice(0, 80));
   }
-  const filterParts = [];
-  if (rejJunk)  filterParts.push(`${rejJunk} junk`);
-  if (rejLine)  filterParts.push(`${rejLine} off-line`);
-  if (rejAmbig) filterParts.push(`${rejAmbig} unlabeled`);
-  const out = {
-    sealed: bucketStats(sealed),
-    loose:  bucketStats(loose),
-    source: 'ebay-active',
-    note:   `Active listings (asking prices) for "${queryName}" — not sold prices${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
-  };
-  if (debug) out._debug = { query: queryName, total: items.length, kept: sealed.length + loose.length, rejected: dbg, keptSealed, keptLoose };
-  return out;
+  return { sealed, loose, rejJunk, rejLine, rejAmbig, dbg, keptSealed, keptLoose };
+}
+
+// v6.105: significant words of a figure's name, from its id
+// ("terror-claws-skeletor-10556" → terror, claws, skeletor).
+const NAME_STOPWORDS = new Set(['the', 'and', 'with', 'of', 'vs', 'version', 'figure', 'action']);
+function figNameTokens(figId) {
+  return (figId || '').replace(/-\d{2,6}$/, '').toLowerCase().split(/[^a-z0-9]+/)
+    .filter(t => t.length >= 3 && !NAME_STOPWORDS.has(t));
 }
 
 // ── eBay OAuth token (client-credentials, KV-cached 2h) ─────────────

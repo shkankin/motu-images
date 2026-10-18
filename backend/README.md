@@ -30,10 +30,22 @@ order until one answers:
   eBay partner approval; errors until your account has it.
 - `ebay-active` — eBay Browse API (*asking* prices). No special approval
   needed; the app labels these as asking prices, honestly.
+- `apify-sold` — real eBay *sold* prices from the last 90 days, through an
+  Apify scraper (`caffein.dev~ebay-sold-listings` unless `APIFY_SOLD_ACTOR`
+  says otherwise). Unofficial and paid per result, so it is cost-guarded:
+  a lookup starts the run in the background and shows asking prices with a
+  "being looked up" note until a later lookup collects it; results are kept
+  14 days; bulk lookups never start runs; at most `APIFY_DAILY_RUNS` (15)
+  runs a day, each capped at 25 results and $0.25.
 - `stub` — deterministic fake data for development.
 
 Default chain: `community,ebay-active`. Once/if eBay approves Marketplace
 Insights for your account, switch to `community,ebay-sold,ebay-active`.
+
+**Turning on sold prices (Apify):** in the worker's Settings → Variables,
+add the secret `APIFY_TOKEN` (your Apify API token) and set
+`PROVIDER_CHAIN` to `community,apify-sold,ebay-active`. Optional variables:
+`APIFY_SOLD_COUNT`, `APIFY_SOLD_DAYS`, `APIFY_DAILY_RUNS`, `SOLD_CACHE_DAYS`.
 
 ## Deploy (about 15 minutes)
 
