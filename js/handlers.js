@@ -226,6 +226,25 @@ let _lpMoved = false;
 let _lpFired = false;
 let _lpStartX = 0;
 let _lpStartY = 0;
+// v8.08: a long press now belongs to ONE touch, and only while that touch is
+// still down on the same, unmoved row. Owner report: after closing the menu
+// and scrolling the All tab, a menu popped up for a row the finger had left,
+// then jumped to another row. Two holes, both closed here:
+//  1. A press timer could outlive its own touch (drag, fling and lift all
+//     happened, yet the timer still fired 500 ms after touchdown). Each timer
+//     now carries its gesture number and checks at fire time that it is the
+//     current gesture, the finger is still down, the list hasn't scrolled
+//     since, and the row is still under the finger.
+//  2. Touching the list to stop a fling armed a long press — the finger rests
+//     while the list brakes. Native Android lists never treat that touch as a
+//     long press; now neither does this one (no arming within 150 ms of a scroll).
+// Touch long presses also come only from the timer now. Chrome's own
+// touch "contextmenu" event could fire on a different row and re-open the menu
+// there (the "jump"); it is still blocked, and still opens the menu for a
+// mouse right-click.
+let _lpGesture = 0;
+let _lpDown = false;
+let _lpLastScroll = 0;
 
 // v6.73 BUG FIX: the long-press timer is module-global but its cancel
 // listeners (touchend/touchcancel) live on the row element. When a tap
@@ -238,15 +257,29 @@ let _lpStartY = 0;
 // plus document-level capture listeners as a final net.
 window.cancelLongPress = () => {
   if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+  _lpGesture++;   // v8.08: any timer that escaped clearTimeout is now stale too
 };
-document.addEventListener('touchend', () => window.cancelLongPress(), { capture: true, passive: true });
-document.addEventListener('touchcancel', () => window.cancelLongPress(), { capture: true, passive: true });
+const _lpTouchEnd = () => { _lpDown = false; window.cancelLongPress(); };
+document.addEventListener('touchend', _lpTouchEnd, { capture: true, passive: true });
+document.addEventListener('touchcancel', _lpTouchEnd, { capture: true, passive: true });
+// v8.08: scroll events don't bubble, but a capture listener on document sees
+// every scrolling element. Any scroll while a press is pending ends it.
+document.addEventListener('scroll', () => {
+  _lpLastScroll = Date.now();
+  if (_lpTimer) window.cancelLongPress();
+}, { capture: true, passive: true });
 
 function initLongPress(el, figId) {
   // Passive touchstart — do NOT preventDefault here or it kills scrolling.
   // We suppress the Android copy/paste callout via contextmenu instead.
   el.addEventListener('touchstart', e => {
+    // v8.08: a new touch always replaces any pending press — never orphan it.
+    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
+    const g = ++_lpGesture;
+    _lpDown = true;
     if (isSelecting()) return;
+    // v8.08: this touch is stopping a fling, not pressing a row.
+    if (Date.now() - _lpLastScroll < 150) return;
     // v6.74: never arm the long-press timer when the press starts on an
     // interactive control (status dot, buttons, inputs). Pressing the
     // quick-own dot a beat too long was legitimately crossing the 500ms
@@ -272,8 +305,12 @@ function initLongPress(el, figId) {
     // means this was a tap race, never a deliberate hold.
     const touchedNode = e.target;
     _lpTimer = setTimeout(() => {
-      if (_lpMoved) return;
+      _lpTimer = null;
+      if (g !== _lpGesture || !_lpDown || _lpMoved) return;   // v8.08
       if (touchedNode && !touchedNode.isConnected) return;
+      // v8.08: the row must still be under the finger.
+      const hit = document.elementFromPoint?.(lx, ly);
+      if (hit && !el.contains(hit)) return;
       _lpFired = true;
       haptic(25);
       showContextMenu(figId, lx, ly);
@@ -291,12 +328,10 @@ function initLongPress(el, figId) {
     _lpMoved = true;
     if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
   }, {passive: true});
-  el.addEventListener('touchend', () => {
-    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
-  }, {passive: true});
-  el.addEventListener('touchcancel', () => {
-    if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; }
-  }, {passive: true});
+  // Row-level twins of the document listeners: if this row was detached
+  // mid-touch, its touchend never reaches document but still reaches here.
+  el.addEventListener('touchend', _lpTouchEnd, {passive: true});
+  el.addEventListener('touchcancel', _lpTouchEnd, {passive: true});
   // Block the system context menu (Android copy/paste/select callout) and
   // — v6.26 — also use the contextmenu event to surface the in-app menu on
   // desktop. Previously desktop users had no equivalent of mobile long-press
@@ -306,6 +341,7 @@ function initLongPress(el, figId) {
   el.addEventListener('contextmenu', e => {
     e.preventDefault();  // always block the native callout (incl. on controls)
     if (isSelecting()) return;
+    if (_lpDown) return;   // v8.08: a touch is down — the press timer owns touch long presses
     if (e.target.closest && e.target.closest('button, input, a, .quick-own')) return;  // v6.74
     haptic(15);
     showContextMenu(figId, e.clientX, e.clientY);

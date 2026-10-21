@@ -3,6 +3,14 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.08 changelog:
+//   • CACHE bumped to v8.08. SHELL: handlers.js + render.js + motu-vault.html.
+//   • Long-press menu: no longer pops up while scrolling (owner report: after closing it and
+//     scrolling the All tab, a menu opened for a row the finger had left, then jumped to another
+//     row). A press now only opens the menu while that same finger is still down on the same row
+//     and the list hasn't moved; a touch that stops a fling never counts as a long press; and
+//     Chrome's own touch long-press event no longer opens a second menu (right-click still works).
+
 // v8.07 changelog:
 //   • CACHE bumped to v8.07. SHELL: render.js + vault.css + motu-vault.html.
 //   • List screens: after scrolling hides the header and bottom menu, they now come back after
@@ -2195,7 +2203,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.07';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.08';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
