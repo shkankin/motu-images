@@ -35,7 +35,7 @@ order until one answers:
   says otherwise). Unofficial and paid per result, so it is cost-guarded:
   a lookup starts the run in the background and shows asking prices with a
   "being looked up" note until a later lookup collects it; results are kept
-  14 days; bulk lookups never start runs; at most `APIFY_DAILY_RUNS` (15)
+  30 days; bulk lookups never start runs; at most `APIFY_DAILY_RUNS` (15)
   runs a day, each capped at 25 results and $0.25.
 - `stub` — deterministic fake data for development.
 

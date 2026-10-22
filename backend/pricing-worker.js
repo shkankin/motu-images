@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.106
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.107
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -21,7 +21,7 @@
 //                    Apify scraper (default caffein.dev~ebay-sold-listings).
 //                    Unofficial and paid per result, so it is cost-guarded:
 //                    runs are started in the background and picked up on a
-//                    later lookup, results are kept SOLD_CACHE_DAYS (14), bulk
+//                    later lookup, results are kept SOLD_CACHE_DAYS (30), bulk
 //                    lookups never start runs, and APIFY_DAILY_RUNS caps spend.
 //   "stub"         — deterministic mock data for dev.
 //
@@ -41,7 +41,7 @@
 //   vars: PROVIDER_CHAIN (or legacy PROVIDER), ALLOWED_ORIGINS, MIN_SAMPLES
 //   secrets: EBAY_APP_ID, EBAY_CERT_ID, ADMIN_TOKEN, (optional) APIFY_TOKEN
 //   apify vars (optional): APIFY_SOLD_ACTOR, APIFY_SOLD_COUNT (25),
-//     APIFY_SOLD_DAYS (90), APIFY_DAILY_RUNS (15), SOLD_CACHE_DAYS (14)
+//     APIFY_SOLD_DAYS (90), APIFY_DAILY_RUNS (15), SOLD_CACHE_DAYS (30)
 // ════════════════════════════════════════════════════════════════════
 
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
@@ -294,9 +294,13 @@ async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
 
   // 1. A finished result we already paid for. Even ?fresh=1 reuses it for a
   //    day, so tapping Refresh can't buy the same data twice.
+  // v6.107: the raw sales are kept, not the computed price, so filter fixes
+  // apply to sales already paid for. (v6.105/6 entries have no rows: ignored.)
   const kept = await kv.get('sold:' + figId, { type: 'json' });
-  const keptAgeMs = kept ? Date.now() - Date.parse(kept.asof || 0) : Infinity;
-  if (kept && (!opts.fresh || keptAgeMs < 24 * 3600 * 1000)) return kept;
+  const keptAgeMs = kept?.items ? Date.now() - Date.parse(kept.asof || 0) : Infinity;
+  if (kept?.items && (!opts.fresh || keptAgeMs < 24 * 3600 * 1000)) {
+    return { ...shapeSoldItems(kept.items, figId, meta, queryName), asof: kept.asof };
+  }
 
   // 2. A run started earlier: collect it if it's done.
   const run = await kv.get('soldrun:' + figId, { type: 'json' });
@@ -312,11 +316,17 @@ async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
     }
     const ds = await fetch(`${APIFY_API}/datasets/${encodeURIComponent(info.defaultDatasetId || run.ds)}/items?clean=true&format=json`, { headers: auth });
     if (!ds.ok) throw new Error('Apify dataset HTTP ' + ds.status);
-    const out = shapeSoldItems(await ds.json(), figId, meta, queryName);
-    const days = parseInt(env.SOLD_CACHE_DAYS || '14', 10);
+    const raw = await ds.json();
+    const items = (Array.isArray(raw) ? raw : []).slice(0, 200).map(it => ({
+      title: String(it?.title || '').slice(0, 160), soldPrice: it?.soldPrice ?? null,
+      totalPrice: it?.totalPrice ?? null, condition: it?.condition || '',
+      isBestOfferAccepted: !!it?.isBestOfferAccepted, endedAt: it?.endedAt || null,
+    }));
+    const asof = new Date().toISOString();
+    const days = parseInt(env.SOLD_CACHE_DAYS || '30', 10);
     // Kept even when empty, so a figure with no sales doesn't re-buy a run on every view.
-    await kv.put('sold:' + figId, JSON.stringify(out), { expirationTtl: days * 86400 });
-    return out;
+    await kv.put('sold:' + figId, JSON.stringify({ asof, items }), { expirationTtl: days * 86400 });
+    return { ...shapeSoldItems(items, figId, meta, queryName), asof };
   }
 
   // 3. Start a run — single-figure lookups only, within the daily cap.
@@ -358,11 +368,14 @@ function shapeSoldItems(items, figId, meta, queryName) {
   const offers = all.filter(it => it?.isBestOfferAccepted).length;
   const rows = all
     .filter(it => !it?.isBestOfferAccepted)
-    .map(it => ({ title: it?.title || '', price: parseFloat(it?.soldPrice), condition: it?.condition || '' }));
+    // v6.107: price + shipping. A $5 auction with $19.80 shipping and a $24.99
+    // free-shipping sale cost the buyer the same; item price alone made
+    // shipping-loaded sales look like bargains.
+    .map(it => ({ title: it?.title || '', price: parseFloat(it?.totalPrice ?? it?.soldPrice), condition: it?.condition || '' }));
   const { sealed, loose, rejJunk, rejLine, rejAmbig } = classifyListings(rows, figId, meta, { requireName: true });
   const filterParts = [];
   if (rejJunk)  filterParts.push(`${rejJunk} junk`);
-  if (rejLine)  filterParts.push(`${rejLine} other figures`);
+  if (rejLine)  filterParts.push(`${rejLine} other figures or lines`);
   if (rejAmbig) filterParts.push(`${rejAmbig} unlabeled`);
   if (offers)   filterParts.push(`${offers} best-offer`);
   return {
@@ -370,7 +383,7 @@ function shapeSoldItems(items, figId, meta, queryName) {
     loose:  bucketStats(loose),
     asof:   new Date().toISOString(),
     source: 'ebay-sold',
-    note:   `eBay sold prices, last 90 days, for "${queryName}"${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
+    note:   `eBay sold prices incl. shipping, last 90 days, for "${queryName}"${filterParts.length ? ` · filtered ${filterParts.join(', ')}` : ''}`,
   };
 }
 
@@ -437,7 +450,7 @@ function classifyListings(rows, figId, meta = {}, opts = {}) {
   //  - "custom Tung Lashor" / "repro card" → not the official product
   //  - "broken / parts only / missing head" → not market value
   //  - "art print / poster / sticker / magnet" → merch, not figure
-  const JUNK_RE = /\b(lot of|bundle|joblot|job lot|x ?\d+ figures?|custom (?:painted|head|made)|reproduction|repro card|repro bubble|bootleg|knockoff|ko[ -]?figure|broken|damaged|incomplete|missing|parts only|for parts|read description|art print|poster|sticker|magnet|t-?shirt|button pin|keychain|fan art|3d print(?:ed)?)\b/i;
+  const JUNK_RE = /\b(lot of|bundle|joblot|job lot|x ?\d+ figures?|custom (?:painted|head|made)|reproduction|repro card|repro bubble|bootleg|knockoff|ko[ -]?figure|broken|damaged|incomplete|missing|parts only|for parts|parts|fodder|read description|art print|poster|sticker|magnet|t-?shirt|button pin|keychain|fan art|3d print(?:ed)?)\b/i;
 
   // v6.60-fix5: multi-figure bundle detector. Titles like "Tung Lashor | Slamurai"
   // or "Tung Lashor + He-Man" or "Tung Lashor and Mer-Man Wave 12 & 13" are
@@ -516,17 +529,19 @@ function classifyListings(rows, figId, meta = {}, opts = {}) {
       // from defaulting into either bucket and polluting the stats.
       const hasSealed = SEALED_RE.test(title);
       const hasLoose  = LOOSE_RE.test(title);
-      const hasHint   = !hasSealed && !hasLoose && SEALED_HINT_RE.test(title);
+      // v6.107: "New Eternia" / "New Adventures" are line names, not "new".
+      const hasHint   = !hasSealed && !hasLoose && SEALED_HINT_RE.test(title.replace(/\bnew (?:eternia|adventures)\b/g, ' '));
+      const condBucket = /^(brand )?new$/i.test(it?.condition || '') ? 'sealed'
+        : /^(pre-?owned|used)$/i.test(it?.condition || '') ? 'loose' : null;
       let bucket = null;
       if (hasSealed && !hasLoose) bucket = 'sealed';
       else if (hasLoose && !hasSealed) bucket = 'loose';
       else if (hasSealed && hasLoose) bucket = 'loose';  // mixed: loose wins
+      // v6.105/v6.107: sold rows carry eBay's condition field ("Brand New" =
+      // unopened, "Pre-Owned"/"Used" = opened). It settles any title without a
+      // clear sealed/loose word, and outranks the weaker bare-"new" hint.
+      else if (condBucket) bucket = condBucket;
       else if (hasHint && isModernLine) bucket = 'sealed';
-      // v6.105: sold rows carry eBay's condition field. "Brand New" on eBay
-      // means unopened; "Pre-Owned"/"Used" means opened. Only consulted when
-      // the title itself says neither.
-      else if (/^(brand )?new$/i.test(it?.condition || '')) bucket = 'sealed';
-      else if (/^(pre-?owned|used)$/i.test(it?.condition || '')) bucket = 'loose';
       // else: no marker at all — too ambiguous, reject
       if (bucket === 'sealed') { sealed.push(price); if (debug && keptSealed.length < 8) keptSealed.push(`$${price} ${rawTitle.slice(0, 70)}`); }
       else if (bucket === 'loose') { loose.push(price); if (debug && keptLoose.length < 8) keptLoose.push(`$${price} ${rawTitle.slice(0, 70)}`); }
