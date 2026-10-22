@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.107
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.108
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -18,6 +18,10 @@
 //   "ebay-active"  — eBay Browse API. ASKING prices, not sold. Flagged so
 //                    the UI can warn the user.
 //   "apify-sold"   — v6.105: real eBay SOLD prices (last 90 days) through an
+//                    Apify scraper. v6.108: a paid lookup starts ONLY when a
+//                    request asks for it with ?sold=1 (the app's "Check sold"
+//                    button); every other lookup just reads saved sold results.
+//                    Was: any single-figure lookup could start one.
 //                    Apify scraper (default caffein.dev~ebay-sold-listings).
 //                    Unofficial and paid per result, so it is cost-guarded:
 //                    runs are started in the background and picked up on a
@@ -112,7 +116,10 @@ export default {
       };
       // v6.59: ?fresh=1 bypasses the worker KV cache so the in-app refresh
       // button can re-query eBay through the new filters without manual KV deletes.
-      const fresh = url.searchParams.get('fresh') === '1';
+      // v6.108: ?sold=1 = the user asked for sold prices. It also skips the 24h
+      // cache (that holds the asking answer) and counts toward the rate limit.
+      const wantSold = url.searchParams.get('sold') === '1';
+      const fresh = url.searchParams.get('fresh') === '1' || wantSold;
       // v6.103 (M-3): rate-limit fresh single-figure calls.
       if (fresh) {
         const limited = await checkFreshRateLimit(request, env, ctx);
@@ -122,7 +129,7 @@ export default {
       // we can see exactly what the filters caught.
       if (url.searchParams.get('debug') === '1') meta._debug = true;
       try {
-        const data = await getPricing(figId, env, ctx, meta, { fresh });
+        const data = await getPricing(figId, env, ctx, meta, { fresh, wantSold, noStart: !wantSold });
         return json(data, 200, cors);
       } catch (e) {
         return json({ error: 'upstream', message: String(e.message || e) }, 502, cors);
@@ -176,12 +183,14 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
   const chain = getChain(env);
   let lastErr = null;
   let pendingNote = null;   // v6.105: a sold lookup is running in the background
+  let soldUnavailable = null;   // v6.108: why ?sold=1 couldn't give sold prices
   for (const name of chain) {
     const fn = PROVIDERS[name];
     if (!fn) continue;
     try {
       const raw = await fn(figId, env, meta, opts, ctx);
       if (raw?.pending) { pendingNote = raw.note; continue; }
+      if (raw?.soldUnavailable) soldUnavailable = raw.soldUnavailable;
       const out = shapeResult(figId, raw, name, env);
       if (out.sealed || out.loose) {
         // v6.105: a fallback shown while sold prices are still coming is NOT
@@ -189,6 +198,10 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
         if (pendingNote) {
           out.note = (out.note ? out.note + ' · ' : '') + pendingNote;
           out.pending = true;   // v6.106: tells the app to re-ask shortly instead of caching for 24h
+          return out;
+        }
+        if (soldUnavailable && opts.wantSold) {
+          out.soldUnavailable = soldUnavailable;   // v6.108: not cached — it answers one tap
           return out;
         }
         // v6.60-fix2: don't cache debug responses, and strip the _debug field
@@ -215,6 +228,7 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
     currency: 'USD',
     note: pendingNote || (lastErr ? `Pricing temporarily unavailable: ${lastErr.message}` : 'No market data found'),
     ...(pendingNote ? { pending: true } : {}),
+    ...(soldUnavailable && opts.wantSold ? { soldUnavailable } : {}),
   };
 }
 
@@ -298,8 +312,11 @@ async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
   // apply to sales already paid for. (v6.105/6 entries have no rows: ignored.)
   const kept = await kv.get('sold:' + figId, { type: 'json' });
   const keptAgeMs = kept?.items ? Date.now() - Date.parse(kept.asof || 0) : Infinity;
-  if (kept?.items && (!opts.fresh || keptAgeMs < 24 * 3600 * 1000)) {
-    return { ...shapeSoldItems(kept.items, figId, meta, queryName), asof: kept.asof };
+  // v6.108: only an explicit ?sold=1 older than a day buys a new lookup.
+  if (kept?.items && (!opts.wantSold || keptAgeMs < 24 * 3600 * 1000)) {
+    const out = { ...shapeSoldItems(kept.items, figId, meta, queryName), asof: kept.asof };
+    if (!out.sealed && !out.loose) return { sealed: null, loose: null, soldUnavailable: 'no-sales' };
+    return out;
   }
 
   // 2. A run started earlier: collect it if it's done.
@@ -326,15 +343,17 @@ async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
     const days = parseInt(env.SOLD_CACHE_DAYS || '30', 10);
     // Kept even when empty, so a figure with no sales doesn't re-buy a run on every view.
     await kv.put('sold:' + figId, JSON.stringify({ asof, items }), { expirationTtl: days * 86400 });
-    return { ...shapeSoldItems(items, figId, meta, queryName), asof };
+    const out = { ...shapeSoldItems(items, figId, meta, queryName), asof };
+    if (!out.sealed && !out.loose) return { sealed: null, loose: null, soldUnavailable: 'no-sales' };
+    return out;
   }
 
   // 3. Start a run — single-figure lookups only, within the daily cap.
   if (opts.noStart || meta._debug) return { sealed: null, loose: null };
-  if (await kv.get('soldfail:' + figId)) return { sealed: null, loose: null };
+  if (await kv.get('soldfail:' + figId)) return { sealed: null, loose: null, soldUnavailable: 'failed' };
   const dayKey = 'apifyruns:' + new Date().toISOString().slice(0, 10);
   const used = parseInt((await kv.get(dayKey)) || '0', 10);
-  if (used >= parseInt(env.APIFY_DAILY_RUNS || '15', 10)) return { sealed: null, loose: null };
+  if (used >= parseInt(env.APIFY_DAILY_RUNS || '15', 10)) return { sealed: null, loose: null, soldUnavailable: 'daily-limit' };
   const count = parseInt(env.APIFY_SOLD_COUNT || '25', 10);
   const actor = env.APIFY_SOLD_ACTOR || 'caffein.dev~ebay-sold-listings';
   // maxItems / maxTotalChargeUsd are Apify's own per-run spend caps.
@@ -356,6 +375,9 @@ async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
   const started = (await res.json())?.data || {};
   if (!started.id) throw new Error('Apify start: no run id');
   await kv.put('soldrun:' + figId, JSON.stringify({ id: started.id, ds: started.defaultDatasetId }), { expirationTtl: 3600 });
+  // v6.108: drop the 24h-cached asking answer, so ordinary lookups reach this
+  // provider again and pick up the sold result once the run finishes.
+  await kv.delete(figId);
   await kv.put(dayKey, String(used + 1), { expirationTtl: 2 * 86400 });
   return { pending: true, note: SOLD_PENDING_NOTE };
 }

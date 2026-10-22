@@ -30,7 +30,9 @@ id = "46a2c6e99cd64215863dc3000391f471"
 # decide to crowdsource curated prices.
 PROVIDER_CHAIN = "apify-sold,ebay-active"   # v6.106: apify-sold needs the APIFY_TOKEN secret; without it, falls through to ebay-active
 ALLOWED_ORIGINS = "https://motucollector.app,https://shkankin.github.io"
-MIN_SAMPLES = "1"                   # v6.56: keep low-sample data, flag confidence client-side
+MIN_SAMPLES = "1"
+APIFY_DAILY_RUNS = "2"              # v6.108: paid sold lookups per day (owner: as-needed use)
+SOLD_CACHE_DAYS = "90"              # v6.108: keep each paid sold result 90 days                   # v6.56: keep low-sample data, flag confidence client-side
 
 # ─── Secrets ────────────────────────────────────────────────────────
 # Set with `wrangler secret put EBAY_APP_ID` etc.; do NOT commit them here.

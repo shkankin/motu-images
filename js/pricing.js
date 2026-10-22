@@ -41,8 +41,9 @@ const STALE_TTL   = 7  * 24 * 60 * 60 * 1000;   // 7d — beyond this, treat as 
 // a request may wait. The backend answers with asking prices plus pending:true
 // while the lookup runs; such an answer is only "fresh" for 40 s and the app
 // asks again by itself after 45 s (up to 4 times) so the sold price replaces it.
-const PENDING_TTL   = 40 * 1000;
-const PENDING_RETRY = 45 * 1000;
+const PENDING_TTL   = 15 * 1000;
+// v8.11: re-ask sooner — at a show you're waiting on this number.
+const PENDING_RETRY = [20, 15, 15, 20, 30].map(s => s * 1000);
 const _pendingTries = new Map();   // figId → retries scheduled this session
 const MIN_SAMPLES = 1;                           // v6.56: keep low-sample, flag confidence
 const REQUEST_TIMEOUT = 8000;                    // 8s — backend SLO
@@ -164,7 +165,7 @@ export async function fetchPricing(figId, opts = {}) {
   if (!backend) return null;
 
   const cached = getCachedPricing(figId);
-  if (cached && cached.fresh && !force) return cached;
+  if (cached && cached.fresh && !force && !opts.sold) return cached;
 
   // Dedupe concurrent calls for the same figId
   if (_inflight.has(figId)) return _inflight.get(figId);
@@ -185,6 +186,9 @@ export async function fetchPricing(figId, opts = {}) {
       // client cache. Without this the refresh button just re-reads the same
       // cached eBay result the worker stored 24h ago.
       if (force) urlObj.searchParams.set('fresh', '1');
+      // v8.11: the "Check sold" button. Only this starts a paid sold lookup
+      // (backend v6.108+); every other fetch just reads saved sold results.
+      if (opts.sold) urlObj.searchParams.set('sold', '1');
       const url = urlObj.toString();
       const res = await fetch(url, { headers, signal: ctl.signal });
       clearTimeout(timer);
@@ -195,6 +199,12 @@ export async function fetchPricing(figId, opts = {}) {
       // need defensive checks.
       const clean = _sanitize(data);
       const cache = _loadCache();
+      // v8.11: a "Check sold" that couldn't get sold prices (daily limit, no
+      // sales) must not replace a sold price saved earlier with asking prices.
+      const prev = cache[figId];
+      if (opts.sold && clean.source !== 'ebay-sold' && !clean.pending && prev?.data?.source === 'ebay-sold') {
+        return { data: prev.data, age: Date.now() - (prev.fetchedAt || 0), fresh: true, soldUnavailable: clean.soldUnavailable };
+      }
       cache[figId] = clean.pending
         ? { data: clean, fetchedAt: Date.now(), pending: true }
         : { data: clean, fetchedAt: Date.now() };
@@ -205,7 +215,7 @@ export async function fetchPricing(figId, opts = {}) {
         _pendingTries.delete(figId);
         _recordHistory(figId, clean, opts.line);  // v6.69: sparkline history (sold/asking only, not placeholders)
       }
-      return { data: clean, age: 0, fresh: true };
+      return { data: clean, age: 0, fresh: true, soldUnavailable: clean.soldUnavailable };
     } catch (e) {
       // Network/timeout/parse failure — return stale data if we have any,
       // otherwise null. Don't poison the cache.
@@ -221,13 +231,17 @@ export async function fetchPricing(figId, opts = {}) {
 // v8.09: one quiet re-ask while a sold lookup is running; redraws the price line.
 function _schedulePendingRetry(figId, opts) {
   const n = _pendingTries.get(figId) || 0;
-  if (n >= 4) return;
+  if (n >= PENDING_RETRY.length) return;
   _pendingTries.set(figId, n + 1);
   setTimeout(() => {
-    fetchPricing(figId, { line: opts.line, wave: opts.wave, year: opts.year }).then(() => {
+    fetchPricing(figId, { line: opts.line, wave: opts.wave, year: opts.year, sold: !!opts.sold }).then(r => {
       if (typeof window.rerenderMVBlock === 'function') window.rerenderMVBlock(figId);
+      if (typeof window.rerenderMarketLine === 'function') window.rerenderMarketLine(figId);
+      if (r?.data?.source === 'ebay-sold' && S.activeFig?.id === figId && typeof window.toast === 'function') {
+        window.toast('✓ eBay sold prices are in');
+      }
     });
-  }, PENDING_RETRY);
+  }, PENDING_RETRY[n]);
 }
 
 // v8.09: is this figure's cached price a placeholder while sold prices load?
@@ -242,6 +256,69 @@ export function getCachedPriceKind(fig) {
   if (!cached || !cached.data) return null;
   return cached.data.source === 'ebay-sold' ? 'sold' : 'asking';
 }
+
+// v8.11: the figure screen's eBay line, for every figure (not only For Sale) —
+// sealed and loose side by side, for buying and trading at shows. It fills in
+// by itself from free data (asking prices, or a sold price already looked up);
+// a paid sold lookup only ever starts from its "Check sold" button.
+const _soldInflight = new Set();
+function _ageText(iso) {
+  const t = Date.parse(iso || '');
+  if (!Number.isFinite(t)) return '';
+  const d = Math.floor((Date.now() - t) / 86400000);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
+}
+export function renderMarketLine(f) {
+  if (!f || !f.id || !isPricingConfigured()) return '';
+  if (f.source === 'custom-local' || String(f.source || '').startsWith('pack:')) return '';
+  const cached = getCachedPricing(f.id, { anyAge: true });
+  const meta = { line: f.line, wave: f.wave, year: f.year };
+  if ((!cached || !cached.fresh) && !_fetched.has(f.id) && !_inflight.has(f.id)) {
+    _fetched.add(f.id);
+    fetchPricing(f.id, meta).then(() => {
+      if (typeof window.rerenderMarketLine === 'function') window.rerenderMarketLine(f.id);
+    });
+  }
+  const d = cached?.data;
+  const sold = d?.source === 'ebay-sold';
+  const pending = _soldInflight.has(f.id) || (isPricePending(f.id) && (cached?.age ?? Infinity) < 3 * 60 * 1000);
+  const fmt = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
+  const cell = (label, b) => {
+    if (!b) return '';
+    const p = Number.isFinite(b.median) ? b.median : b.avg;
+    return `<span class="mk-cell${b.confidence === 'low' ? ' mk-dim' : ''}"><span class="mk-k">${label}</span> <span class="price">${fmt(p)}</span> <span class="mk-n">${b.n} ${sold ? 'sold' : 'listed'}</span></span>`;
+  };
+  const cells = d ? cell('Sealed', d.sealed) + cell('Loose', d.loose) : '';
+  const head = sold ? 'eBay Sold' : d ? 'eBay Asking' : 'eBay';
+  const sub = sold ? `last 90 days · ${_ageText(d.asof)}` : d ? 'current listings' : 'loading…';
+  const btn = pending
+    ? `<button class="btn btn-sm btn-soft" disabled>Checking…</button>`
+    : `<button class="btn btn-sm btn-soft" data-action="check-sold-price" data-fig-id="${esc(f.id)}">${sold ? 'Update' : 'Check sold'}</button>`;
+  return `<div class="market-line">
+    <div class="mk-top"><span class="mk-head">${head}</span><span class="mk-sub">${sub}</span>${btn}</div>
+    ${cells ? `<div class="mk-cells">${cells}</div>` : (d ? `<div class="mk-sub">No eBay listings found</div>` : '')}
+  </div>`;
+}
+
+window.checkSoldPrice = async (figId) => {
+  const f = (S.activeFig && S.activeFig.id === figId) ? S.activeFig : (S.figs || []).find(x => x.id === figId);
+  if (!f || _soldInflight.has(figId)) return;
+  if (!navigator.onLine) { window.toast?.('✗ You’re offline — sold prices need a connection'); return; }
+  _soldInflight.add(figId);
+  window.rerenderMarketLine?.(figId);
+  const r = await fetchPricing(figId, { sold: true, force: true, line: f.line, wave: f.wave, year: f.year });
+  _soldInflight.delete(figId);
+  window.rerenderMarketLine?.(figId);
+  const d = r?.data;
+  const why = r?.soldUnavailable;
+  if (!d) window.toast?.('✗ Couldn’t reach the pricing backend');
+  else if (d.pending) window.toast?.('Checking eBay sold listings — about 30 seconds');
+  else if (d.source === 'ebay-sold' && !why) window.toast?.('✓ Sold prices are up to date');
+  else if (why === 'daily-limit') window.toast?.('⚠ Today’s sold-price lookups are used up — try again tomorrow');
+  else if (why === 'no-sales') window.toast?.('⚠ No eBay sales found for this figure in the last 90 days');
+  else if (why === 'failed') window.toast?.('✗ The sold lookup failed — try again later');
+  else window.toast?.('⚠ Sold prices aren’t set up on this pricing backend');
+};
 
 // Drop everything cached. Useful for a Settings "clear pricing cache" button.
 export function clearPricingCache() {
@@ -276,6 +353,7 @@ function _sanitize(d) {
     currency: typeof d.currency === 'string' ? d.currency.slice(0, 8) : 'USD',
     note:     typeof d.note === 'string' ? d.note.slice(0, 200) : null,
     pending:  d.pending === true,   // v8.09
+    soldUnavailable: typeof d.soldUnavailable === 'string' ? d.soldUnavailable.slice(0, 20) : null,   // v8.11
   };
 }
 

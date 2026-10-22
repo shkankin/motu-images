@@ -55,7 +55,7 @@ import {
 } from './eggs.js';
 import { initLongPress, pushNav } from './handlers.js';
 import { renderSheet } from './ui-sheets.js';
-import { renderMarketValueBlock, getCachedAskingPrice, getCachedPriceKind, isPricingConfigured, fetchPricing, renderSparkline } from './pricing.js';
+import { renderMarketValueBlock, renderMarketLine, getCachedAskingPrice, getCachedPriceKind, isPricingConfigured, fetchPricing, renderSparkline } from './pricing.js';
 
 // § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
 // v6.04: container caps live toasts at 3. Any new toast trims the oldest
@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.10</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.11</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1879,14 +1879,8 @@ function renderCopyCard(f, cp, i, isMulti, total) {
   // next to Original Retail here, as selling context.
   if (i === 0) {
     const retailPart = f.retail ? `Original Retail <span class="price">$${f.retail.toFixed(2)}</span>` : '';
-    let ebayPart = '';
-    if (isForSale) {
-      const cps = (S.coll[f.id] && Array.isArray(S.coll[f.id].copies)) ? S.coll[f.id].copies : [];
-      const paidArr = cps.map(x => x.paid).filter(Boolean);
-      renderMarketValueBlock._meta = { line: f.line, wave: f.wave, year: f.year };
-      const ebay = renderMarketValueBlock(f.id, paidArr, cp.condition || undefined);
-      if (ebay) ebayPart = `<span id="mvBlock_${eId}" data-mv-figid="${eId}" data-paid="${esc(JSON.stringify(paidArr))}" data-condition="${esc(cp.condition || '')}">${ebay}</span>`;
-    }
+    // v8.11: the eBay price moved up to the figure-wide market line (renderMarketLine).
+    const ebayPart = '';
     const sep = (retailPart && ebayPart) ? ` <span class="text-dim" style="margin:0 6px">·</span> ` : '';
     if (retailPart || ebayPart) {
       h += `<div class="databox-retail">${retailPart}${sep}${ebayPart}</div>`;
@@ -2047,6 +2041,13 @@ function rerenderMVBlock(figId) {
   el.innerHTML = asking;
 }
 window.rerenderMVBlock = rerenderMVBlock;
+// v8.11: redraw the figure screen's eBay line in place (after a fetch or Check sold).
+window.rerenderMarketLine = (figId) => {
+  const el = document.getElementById('mktLine_' + figId);
+  if (!el) return;
+  const f = figById(figId);
+  if (f) el.innerHTML = renderMarketLine(f);
+};
 
 function renderDetail() {
   const _ds = document.querySelector('.detail-scroll');
@@ -2161,12 +2162,12 @@ function renderDetail() {
       </div>`;
     })()}
     ${(() => {
-      // v6.92: the eBay Asking line is no longer rendered here in the header.
-      // It now sits next to Original Retail INSIDE the For Sale copy databox
-      // (see renderDetailStatusBlock → databox-retail), which is where the
-      // user expects the selling context. Kept this slot empty so the rest of
-      // the detail layout is unchanged.
-      return '';
+      // v8.11: the eBay line is back here, for EVERY figure — owner buys and
+      // trades at shows and needs the number whatever the figure's status.
+      // (v6.92 had moved it into the For Sale copy box only; that copy was
+      // removed so the price doesn't show twice.)
+      const line = renderMarketLine(f);
+      return line ? `<div id="mktLine_${eId}">${line}</div>` : '';
     })()}
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <datalist id="locationSuggestions">

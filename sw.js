@@ -3,6 +3,17 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.11 changelog:
+//   • CACHE bumped to v8.11. SHELL: pricing.js + render.js + delegate-handlers.js + vault.css +
+//     motu-vault.html. Ships backend/pricing-worker.js v6.108 + wrangler.toml (paste the worker
+//     into Cloudflare BEFORE deploying this, so opening figures can never start paid lookups).
+//   • Figure screen: an eBay line on EVERY figure (was For Sale only), sealed and loose side by
+//     side — for buying and trading at shows. It fills in from free data (asking prices, or a sold
+//     price already looked up). "Check sold" starts the paid eBay sold lookup on purpose; the
+//     result shows in ~20–30 s (re-asks at 20 s, then every 15–30 s) and is kept by the backend.
+//     A Check sold that hits the daily limit keeps any sold price already saved.
+//   • The For Sale copy box no longer repeats the eBay price (it lives in the line above).
+
 // v8.10 changelog:
 //   • CACHE bumped to v8.10. SHELL: stats.js + render.js + motu-vault.html.
 //   • Collection Stats → "Refresh N older than a week" now actually refreshes them. Since v7.91
@@ -2219,7 +2230,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.10';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.11';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

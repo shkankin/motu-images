@@ -3936,3 +3936,18 @@ html {
    "Default" badge (shown only when a default photo is chosen) moves left of it. */
 .share-fab { left: auto; right: 16px; }
 .default-badge { right: 68px; }
+
+/* v8.11: figure screen eBay line — every figure, sealed and loose side by side. */
+.market-line {
+  margin: 0 0 var(--sp-3); padding: var(--sp-2) var(--sp-3);
+  background: var(--bg3); border: 1px solid var(--bd); border-radius: var(--r-lg);
+}
+.market-line .mk-top { display: flex; align-items: center; gap: var(--sp-2); }
+.market-line .mk-head { font-size: var(--fs-md); font-weight: 700; color: var(--t1); }
+.market-line .mk-sub { font-size: var(--fs-xs); color: var(--t3); flex: 1; min-width: 0; }
+.market-line .mk-top .btn { flex-shrink: 0; }
+.market-line .mk-cells { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin-top: var(--sp-1); }
+.market-line .mk-cell { font-size: var(--fs-sm); color: var(--t2); white-space: nowrap; }
+.market-line .mk-cell .price { font-size: var(--fs-lg); font-weight: 700; color: var(--gold); }
+.market-line .mk-n { font-size: var(--fs-xs); color: var(--t3); }
+.market-line .mk-dim { opacity: .65; }

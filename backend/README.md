@@ -32,11 +32,12 @@ order until one answers:
   needed; the app labels these as asking prices, honestly.
 - `apify-sold` — real eBay *sold* prices from the last 90 days, through an
   Apify scraper (`caffein.dev~ebay-sold-listings` unless `APIFY_SOLD_ACTOR`
-  says otherwise). Unofficial and paid per result, so it is cost-guarded:
-  a lookup starts the run in the background and shows asking prices with a
-  "being looked up" note until a later lookup collects it; results are kept
-  30 days; bulk lookups never start runs; at most `APIFY_DAILY_RUNS` (15)
-  runs a day, each capped at 25 results and $0.25.
+  says otherwise). Unofficial and paid per result, so it is cost-guarded: a
+  paid lookup starts only when the app asks with `?sold=1` (the figure
+  screen's "Check sold" button), runs in the background and is collected by
+  the app's next request; results are kept `SOLD_CACHE_DAYS` (default 30);
+  at most `APIFY_DAILY_RUNS` (default 15) runs a day, each capped at 25
+  results and $0.25. Every other lookup only reads saved sold results.
 - `stub` — deterministic fake data for development.
 
 Default chain: `community,ebay-active`. Once/if eBay approves Marketplace
