@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.105
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.106
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -25,7 +25,7 @@
 //                    lookups never start runs, and APIFY_DAILY_RUNS caps spend.
 //   "stub"         — deterministic mock data for dev.
 //
-// Sold prices via Apify: PROVIDER_CHAIN = "community,apify-sold,ebay-active"
+// Sold prices via Apify: PROVIDER_CHAIN = "apify-sold,ebay-active"
 // plus the APIFY_TOKEN secret. Until a sold run finishes, that figure falls
 // back to ebay-active with a note saying sold prices are on the way.
 //
@@ -188,6 +188,7 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
         // cached, or it would hide the sold result for the next 24h.
         if (pendingNote) {
           out.note = (out.note ? out.note + ' · ' : '') + pendingNote;
+          out.pending = true;   // v6.106: tells the app to re-ask shortly instead of caching for 24h
           return out;
         }
         // v6.60-fix2: don't cache debug responses, and strip the _debug field
@@ -213,6 +214,7 @@ async function getPricing(figId, env, ctx, meta = {}, opts = {}) {
     source: 'unavailable',
     currency: 'USD',
     note: pendingNote || (lastErr ? `Pricing temporarily unavailable: ${lastErr.message}` : 'No market data found'),
+    ...(pendingNote ? { pending: true } : {}),
   };
 }
 

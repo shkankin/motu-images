@@ -55,7 +55,7 @@ import {
 } from './eggs.js';
 import { initLongPress, pushNav } from './handlers.js';
 import { renderSheet } from './ui-sheets.js';
-import { renderMarketValueBlock, getCachedAskingPrice, isPricingConfigured, fetchPricing, renderSparkline } from './pricing.js';
+import { renderMarketValueBlock, getCachedAskingPrice, getCachedPriceKind, isPricingConfigured, fetchPricing, renderSparkline } from './pricing.js';
 
 // § TOAST-HAPTIC ── toast, toastUndo, undoStatus, haptic, showUpdateBanner, triggerPulse ──
 // v6.04: container caps live toasts at 3. Any new toast trims the oldest
@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.08</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.09</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1785,6 +1785,7 @@ function renderDetailStatusBlock(f, c) {
       const target = parseFloat(c.targetPrice);
       const askingNow = getCachedAskingPrice(f);
       const isDeal = Number.isFinite(target) && askingNow != null && askingNow <= target;
+      const priceWord = getCachedPriceKind(f) === 'sold' ? 'Selling for' : 'Asking';   // v8.09
       h += `<div class="databox">
         <div class="databox-header">
           <div class="databox-title-wrap">
@@ -1799,8 +1800,8 @@ function renderDetailStatusBlock(f, c) {
           ${Number.isFinite(target) ? `<div class="input-group" style="justify-content:flex-end">
             <div class="price-watch-note" style="color:${isDeal ? 'var(--gn)' : 'var(--t3)'}">
             ${askingNow != null
-              ? (isDeal ? `✓ Deal! Asking $${askingNow.toFixed(2)} ≤ your $${target.toFixed(2)} target` : `Asking $${askingNow.toFixed(2)} — above your $${target.toFixed(2)} target`)
-              : 'No asking price cached yet'}
+              ? (isDeal ? `✓ Deal! ${priceWord} $${askingNow.toFixed(2)} ≤ your $${target.toFixed(2)} target` : `${priceWord} $${askingNow.toFixed(2)} — above your $${target.toFixed(2)} target`)
+              : 'No eBay price cached yet'}
             </div>
           </div>` : ''}
         </div>

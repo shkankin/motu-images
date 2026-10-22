@@ -44,7 +44,7 @@ Insights for your account, switch to `community,ebay-sold,ebay-active`.
 
 **Turning on sold prices (Apify):** in the worker's Settings → Variables,
 add the secret `APIFY_TOKEN` (your Apify API token) and set
-`PROVIDER_CHAIN` to `community,apify-sold,ebay-active`. Optional variables:
+`PROVIDER_CHAIN` to `apify-sold,ebay-active`. Optional variables:
 `APIFY_SOLD_COUNT`, `APIFY_SOLD_DAYS`, `APIFY_DAILY_RUNS`, `SOLD_CACHE_DAYS`.
 
 ## Deploy (about 15 minutes)

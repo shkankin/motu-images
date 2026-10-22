@@ -3,6 +3,16 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.09 changelog:
+//   • CACHE bumped to v8.09. SHELL: pricing.js + render.js + stats.js + motu-vault.html.
+//     Also ships backend/pricing-worker.js v6.106 (repo copy; paste into Cloudflare).
+//   • eBay sold prices (with pricing backend v6.106 + Apify): the price line says "eBay Sold"
+//     for sold prices (last 90 days) and "eBay Asking" for active listings; Price Watch says
+//     "Selling for" vs "Asking" to match.
+//   • While a sold lookup runs (~20 s), the backend answers with asking prices marked pending.
+//     The app no longer keeps that placeholder for 24 h: it re-asks by itself after 45 s and
+//     redraws the price when the sold result arrives. Stats → fetch prices also re-asks them.
+
 // v8.08 changelog:
 //   • CACHE bumped to v8.08. SHELL: handlers.js + render.js + motu-vault.html.
 //   • Long-press menu: no longer pops up while scrolling (owner report: after closing it and
@@ -2203,7 +2213,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.08';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.09';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

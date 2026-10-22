@@ -37,6 +37,13 @@ const BACKEND_KEY = 'motu-pricing-backend';
 const CACHE_KEY   = 'motu-pricing-cache';
 const CACHE_TTL   = 24 * 60 * 60 * 1000;        // 24h
 const STALE_TTL   = 7  * 24 * 60 * 60 * 1000;   // 7d — beyond this, treat as expired
+// v8.09: eBay SOLD prices (backend v6.106+) take ~20 s to look up, longer than
+// a request may wait. The backend answers with asking prices plus pending:true
+// while the lookup runs; such an answer is only "fresh" for 40 s and the app
+// asks again by itself after 45 s (up to 4 times) so the sold price replaces it.
+const PENDING_TTL   = 40 * 1000;
+const PENDING_RETRY = 45 * 1000;
+const _pendingTries = new Map();   // figId → retries scheduled this session
 const MIN_SAMPLES = 1;                           // v6.56: keep low-sample, flag confidence
 const REQUEST_TIMEOUT = 8000;                    // 8s — backend SLO
 
@@ -137,7 +144,8 @@ export function getCachedPricing(figId, { anyAge = false } = {}) {
   if (!entry || !entry.data) return null;
   const age = Date.now() - (entry.fetchedAt || 0);
   if (age > STALE_TTL && !anyAge) return null;
-  return { data: entry.data, age, fresh: age < CACHE_TTL, stale: age > STALE_TTL };
+  const freshFor = entry.pending ? PENDING_TTL : CACHE_TTL;   // v8.09
+  return { data: entry.data, age, fresh: age < freshFor, stale: age > STALE_TTL };
 }
 
 // v7.91: age in ms of a figure's cached price (any age), or null.
@@ -187,10 +195,16 @@ export async function fetchPricing(figId, opts = {}) {
       // need defensive checks.
       const clean = _sanitize(data);
       const cache = _loadCache();
-      cache[figId] = { data: clean, fetchedAt: Date.now() };
+      cache[figId] = clean.pending
+        ? { data: clean, fetchedAt: Date.now(), pending: true }
+        : { data: clean, fetchedAt: Date.now() };
       _cache = cache;
       _saveCache();
-      _recordHistory(figId, clean, opts.line);  // v6.69: sparkline history
+      if (clean.pending) _schedulePendingRetry(figId, opts);
+      else {
+        _pendingTries.delete(figId);
+        _recordHistory(figId, clean, opts.line);  // v6.69: sparkline history (sold/asking only, not placeholders)
+      }
       return { data: clean, age: 0, fresh: true };
     } catch (e) {
       // Network/timeout/parse failure — return stale data if we have any,
@@ -202,6 +216,31 @@ export async function fetchPricing(figId, opts = {}) {
   })();
   _inflight.set(figId, p);
   return p;
+}
+
+// v8.09: one quiet re-ask while a sold lookup is running; redraws the price line.
+function _schedulePendingRetry(figId, opts) {
+  const n = _pendingTries.get(figId) || 0;
+  if (n >= 4) return;
+  _pendingTries.set(figId, n + 1);
+  setTimeout(() => {
+    fetchPricing(figId, { line: opts.line, wave: opts.wave, year: opts.year }).then(() => {
+      if (typeof window.rerenderMVBlock === 'function') window.rerenderMVBlock(figId);
+    });
+  }, PENDING_RETRY);
+}
+
+// v8.09: is this figure's cached price a placeholder while sold prices load?
+export function isPricePending(figId) {
+  return !!_loadCache()[figId]?.pending;
+}
+
+// v8.09: 'sold' when the cached price is from eBay sold listings, 'asking'
+// for active listings (or anything else), null when nothing is cached.
+export function getCachedPriceKind(fig) {
+  const cached = fig && fig.id ? getCachedPricing(fig.id, { anyAge: true }) : null;
+  if (!cached || !cached.data) return null;
+  return cached.data.source === 'ebay-sold' ? 'sold' : 'asking';
 }
 
 // Drop everything cached. Useful for a Settings "clear pricing cache" button.
@@ -236,6 +275,7 @@ function _sanitize(d) {
     source:   typeof d.source === 'string' ? d.source.slice(0, 40) : 'unknown',
     currency: typeof d.currency === 'string' ? d.currency.slice(0, 8) : 'USD',
     note:     typeof d.note === 'string' ? d.note.slice(0, 200) : null,
+    pending:  d.pending === true,   // v8.09
   };
 }
 
@@ -273,7 +313,7 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
         if (typeof window.rerenderMVBlock === 'function') window.rerenderMVBlock(figId);
       });
     }
-    return `<span class="mv-inline mv-loading text-dim">eBay Asking: …</span>`;
+    return `<span class="mv-inline mv-loading text-dim">eBay: …</span>`;
   }
   const d = cached.data;
   if (!d.sealed && !d.loose) return '';
@@ -290,7 +330,11 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
   const fmtMoney = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
   // Show low-sample as dim so users can tell it's an estimate without a badge.
   const dimClass = (bucket.confidence === 'low') ? ' mv-inline-dim' : '';
-  return `<span class="mv-inline${dimClass}" title="Median of ${bucket.n} eBay BIN listings">eBay Asking: <span class="price">${fmtMoney(price)}</span></span>`;
+  // v8.09: say which kind of price this is — sold (last 90 days) or asking.
+  const sold = d.source === 'ebay-sold';
+  const label = sold ? 'eBay Sold' : 'eBay Asking';
+  const title = sold ? `Median of ${bucket.n} eBay sales in the last 90 days` : `Median of ${bucket.n} eBay Buy It Now listings`;
+  return `<span class="mv-inline${dimClass}" title="${title}">${label}: <span class="price">${fmtMoney(price)}</span></span>`;
 }
 
 // v6.67: synchronous cached asking price for a figure record. Mirrors the

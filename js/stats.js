@@ -16,7 +16,7 @@ import {
   isLineFullyHidden, getEvents, getCompletenessStats, getGapFigures,
 } from './data.js';
 import {
-  getCachedAskingPrice, isPricingConfigured, fetchPricing,
+  getCachedAskingPrice, isPricePending, isPricingConfigured, fetchPricing,
   getPriceAge,
 } from './pricing.js';
 import { toast } from './render.js';
@@ -113,7 +113,8 @@ window.fetchAllOwnedPricing = async () => {
     const st = c?.status;
     const watched = (st === 'wishlist' || st === 'ordered') && Number.isFinite(parseFloat(c.targetPrice));
     if (st !== 'owned' && st !== 'for-sale' && !watched) return false;
-    return getCachedAskingPrice(f) == null;
+    // v8.09: also re-ask figures still showing a placeholder while sold prices load.
+    return getCachedAskingPrice(f) == null || isPricePending(f.id);
   }).slice(0, 150);
   if (!targets.length) { toast('✓ All owned figures already priced'); return; }
   _bulkFetchRunning = true;
