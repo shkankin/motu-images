@@ -3,6 +3,12 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.10 changelog:
+//   • CACHE bumped to v8.10. SHELL: stats.js + render.js + motu-vault.html.
+//   • Collection Stats → "Refresh N older than a week" now actually refreshes them. Since v7.91
+//     the fetch skipped any figure that already had a price, however old, so week-old prices
+//     stayed forever (and asking prices would never have been replaced by sold ones).
+
 // v8.09 changelog:
 //   • CACHE bumped to v8.09. SHELL: pricing.js + render.js + stats.js + motu-vault.html.
 //     Also ships backend/pricing-worker.js v6.106 (repo copy; paste into Cloudflare).
@@ -2213,7 +2219,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.09';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.10';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

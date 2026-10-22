@@ -114,7 +114,11 @@ window.fetchAllOwnedPricing = async () => {
     const watched = (st === 'wishlist' || st === 'ordered') && Number.isFinite(parseFloat(c.targetPrice));
     if (st !== 'owned' && st !== 'for-sale' && !watched) return false;
     // v8.09: also re-ask figures still showing a placeholder while sold prices load.
-    return getCachedAskingPrice(f) == null || isPricePending(f.id);
+    // v8.10: and prices over a week old. The button has offered "Refresh N older
+    // than a week" since v7.91, but this filter skipped any figure with a cached
+    // price of any age, so those never refreshed.
+    const age = getPriceAge(f.id);
+    return getCachedAskingPrice(f) == null || isPricePending(f.id) || (age != null && age > 7 * 86400000);
   }).slice(0, 150);
   if (!targets.length) { toast('✓ All owned figures already priced'); return; }
   _bulkFetchRunning = true;
