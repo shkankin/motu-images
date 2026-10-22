@@ -3,6 +3,13 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.12 changelog:
+//   • CACHE bumped to v8.12. SHELL: pricing.js + render.js + vault.css + motu-vault.html.
+//   • Figure screen eBay prices restyled (owner pick from three mockups): a quiet line right
+//     under the figure's name — "Sealed $x · Loose $y" with a small caption — instead of a card
+//     below the variants. "Check sold" is a small pill; once sold prices exist it becomes a round
+//     update button, which spins while a lookup runs.
+
 // v8.11 changelog:
 //   • CACHE bumped to v8.11. SHELL: pricing.js + render.js + delegate-handlers.js + vault.css +
 //     motu-vault.html. Ships backend/pricing-worker.js v6.108 + wrangler.toml (paste the worker
@@ -2230,7 +2237,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.11';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.12';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

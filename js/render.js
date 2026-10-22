@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.11</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.12</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -2115,6 +2115,12 @@ function renderDetail() {
       <div class="detail-title">${esc(f.name)}</div>
       ${pills.length ? `<div class="detail-subtitle">${pills.map(p => esc(p)).join(' · ')}</div>` : ''}
     </div>
+    ${(() => {
+      // v8.11: eBay prices for EVERY figure (owner buys and trades at shows).
+      // v8.12: moved up under the name, as a quiet line rather than a card.
+      const line = renderMarketLine(f);
+      return line ? `<div id="mktLine_${eId}">${line}</div>` : '';
+    })()}
     ${userPhotos.length > 0 ? `<details class="more-details photo-labels-details">
       <summary>Photo labels (${userPhotos.length})</summary>
       <div class="photo-labels">
@@ -2160,14 +2166,6 @@ function renderDetail() {
           <div class="variant-chip-label">Add</div>
         </div></div>
       </div>`;
-    })()}
-    ${(() => {
-      // v8.11: the eBay line is back here, for EVERY figure — owner buys and
-      // trades at shows and needs the number whatever the figure's status.
-      // (v6.92 had moved it into the For Sale copy box only; that copy was
-      // removed so the price doesn't show twice.)
-      const line = renderMarketLine(f);
-      return line ? `<div id="mktLine_${eId}">${line}</div>` : '';
     })()}
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <datalist id="locationSuggestions">

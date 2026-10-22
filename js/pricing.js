@@ -268,6 +268,9 @@ function _ageText(iso) {
   const d = Math.floor((Date.now() - t) / 86400000);
   return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
 }
+// v8.12: owner picked the quiet layout — prices sit under the figure's name,
+// no card. The figure stays the focus; the value is there when it matters.
+const _ICO_REFRESH = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>';
 export function renderMarketLine(f) {
   if (!f || !f.id || !isPricingConfigured()) return '';
   if (f.source === 'custom-local' || String(f.source || '').startsWith('pack:')) return '';
@@ -283,20 +286,25 @@ export function renderMarketLine(f) {
   const sold = d?.source === 'ebay-sold';
   const pending = _soldInflight.has(f.id) || (isPricePending(f.id) && (cached?.age ?? Infinity) < 3 * 60 * 1000);
   const fmt = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
-  const cell = (label, b) => {
+  const val = (label, b) => {
     if (!b) return '';
     const p = Number.isFinite(b.median) ? b.median : b.avg;
-    return `<span class="mk-cell${b.confidence === 'low' ? ' mk-dim' : ''}"><span class="mk-k">${label}</span> <span class="price">${fmt(p)}</span> <span class="mk-n">${b.n} ${sold ? 'sold' : 'listed'}</span></span>`;
+    return `<span class="mk-val${b.confidence === 'low' ? ' mk-dim' : ''}">${label} <b>${fmt(p)}</b></span>`;
   };
-  const cells = d ? cell('Sealed', d.sealed) + cell('Loose', d.loose) : '';
-  const head = sold ? 'eBay Sold' : d ? 'eBay Asking' : 'eBay';
-  const sub = sold ? `last 90 days · ${_ageText(d.asof)}` : d ? 'current listings' : 'loading…';
+  const vals = d ? [val('Sealed', d.sealed), val('Loose', d.loose)].filter(Boolean).join('<span class="mk-dot">·</span>') : '';
+  const n = (d?.sealed?.n || 0) + (d?.loose?.n || 0);
+  const cap = !d ? 'Loading eBay prices…'
+    : sold ? `eBay sold · ${n} sale${n === 1 ? '' : 's'}, last 90 days · ${_ageText(d.asof)}`
+    : vals ? `eBay asking · ${n} listing${n === 1 ? '' : 's'} now`
+    : 'No eBay listings found';
   const btn = pending
-    ? `<button class="btn btn-sm btn-soft" disabled>Checking…</button>`
-    : `<button class="btn btn-sm btn-soft" data-action="check-sold-price" data-fig-id="${esc(f.id)}">${sold ? 'Update' : 'Check sold'}</button>`;
+    ? `<button class="mk-btn mk-round mk-spin" disabled aria-label="Checking sold prices">${_ICO_REFRESH}</button>`
+    : sold
+      ? `<button class="mk-btn mk-round" data-action="check-sold-price" data-fig-id="${esc(f.id)}" aria-label="Update sold prices" title="Update sold prices">${_ICO_REFRESH}</button>`
+      : d ? `<button class="mk-btn mk-pill" data-action="check-sold-price" data-fig-id="${esc(f.id)}">Check sold</button>` : '';
   return `<div class="market-line">
-    <div class="mk-top"><span class="mk-head">${head}</span><span class="mk-sub">${sub}</span>${btn}</div>
-    ${cells ? `<div class="mk-cells">${cells}</div>` : (d ? `<div class="mk-sub">No eBay listings found</div>` : '')}
+    <div class="mk-text">${vals ? `<div class="mk-vals">${vals}</div>` : ''}<div class="mk-cap">${pending ? 'Checking eBay sold listings…' : cap}</div></div>
+    ${btn}
   </div>`;
 }
 

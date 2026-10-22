@@ -3937,17 +3937,16 @@ html {
 .share-fab { left: auto; right: 16px; }
 .default-badge { right: 68px; }
 
-/* v8.11: figure screen eBay line — every figure, sealed and loose side by side. */
-.market-line {
-  margin: 0 0 var(--sp-3); padding: var(--sp-2) var(--sp-3);
-  background: var(--bg3); border: 1px solid var(--bd); border-radius: var(--r-lg);
-}
-.market-line .mk-top { display: flex; align-items: center; gap: var(--sp-2); }
-.market-line .mk-head { font-size: var(--fs-md); font-weight: 700; color: var(--t1); }
-.market-line .mk-sub { font-size: var(--fs-xs); color: var(--t3); flex: 1; min-width: 0; }
-.market-line .mk-top .btn { flex-shrink: 0; }
-.market-line .mk-cells { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin-top: var(--sp-1); }
-.market-line .mk-cell { font-size: var(--fs-sm); color: var(--t2); white-space: nowrap; }
-.market-line .mk-cell .price { font-size: var(--fs-lg); font-weight: 700; color: var(--gold); }
-.market-line .mk-n { font-size: var(--fs-xs); color: var(--t3); }
-.market-line .mk-dim { opacity: .65; }
+/* v8.11/v8.12: figure screen eBay prices — a quiet line under the name, no card. */
+.market-line { display: flex; align-items: center; gap: var(--sp-3); margin: -12px 0 var(--sp-4); }
+.market-line .mk-text { flex: 1; min-width: 0; }
+.market-line .mk-vals { font-size: var(--fs-base); color: var(--t2); }
+.market-line .mk-val b { font-size: var(--fs-xl); font-weight: 700; color: var(--gold); margin-left: 2px; }
+.market-line .mk-dot { color: var(--t3); margin: 0 var(--sp-2); }
+.market-line .mk-dim { opacity: .6; }
+.market-line .mk-cap { font-size: var(--fs-xs); color: var(--t3); margin-top: 2px; }
+.market-line .mk-btn { flex-shrink: 0; min-height: 0; border: 1px solid var(--bd); background: var(--bg3); color: var(--t2); }
+.market-line .mk-round { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; }
+.market-line .mk-pill { padding: 7px 12px; border-radius: 999px; font-size: var(--fs-sm); font-weight: 600; color: var(--acc); border-color: color-mix(in srgb, var(--acc) 45%, var(--bd)); }
+.market-line .mk-spin svg { animation: spin 1s linear infinite; }
+.market-line .mk-btn:disabled { opacity: .7; }
