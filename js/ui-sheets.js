@@ -43,6 +43,7 @@ import {
 } from './share.js';
 import { renderStatsSheet, renderMissingDetailsSheet, renderSoldSheet } from './stats.js';
 import { pushNav } from './handlers.js';
+import { isPricingConfigured, fetchPricing, getPriceAge } from './pricing.js';   // v8.13: offline prices
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
 // v7.60: the sheet-body builder, extracted from renderSheet so a sheet can
@@ -256,6 +257,18 @@ function _offlineUrls(scope) {
   }
   return [...urls];
 }
+// v8.13: My figures (collection + want list) whose free eBay price is missing
+// or over a week old. Offline Images saves these too, so prices show at a show
+// with no signal. Never a paid sold lookup — those only start from Check sold.
+function _offlinePriceFigs() {
+  if (!isPricingConfigured()) return [];
+  return S.figs.filter(f => {
+    if (figIsHidden(f) || !S.coll[f.id]?.status) return false;
+    if (f.source === 'custom-local' || String(f.source || '').startsWith('pack:')) return false;
+    const age = getPriceAge(f.id);
+    return age == null || age > 7 * 86400000;
+  });
+}
 async function _offlineCount() {
   let have = new Set();
   try {
@@ -269,7 +282,7 @@ async function _offlineCount() {
   }
   let used = null;
   try { const e = await navigator.storage?.estimate?.(); if (e?.usage) used = e.usage; } catch {}
-  S._offlineCount = { ...out, used, haveSet: have };
+  S._offlineCount = { ...out, used, haveSet: have, prices: _offlinePriceFigs().length };
   if (S.sheet === 'offline') refreshSheetBody();
 }
 function renderOfflineSheet() {
@@ -281,11 +294,10 @@ function renderOfflineSheet() {
   const metered = !!(conn && (conn.saveData || conn.type === 'cellular' || /2g/.test(conn.effectiveType || '')));
   const opt = (key, title, sub) => {
     const on = scope === key;
-    return `<button data-action="offline-scope" data-scope="${key}" role="radio" aria-checked="${on}" ${run ? 'disabled' : ''}
-      style="width:100%;display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;border:1px solid ${on ? 'var(--acc)' : 'var(--bd)'};background:var(--bg3);margin-bottom:8px;text-align:left">
-      <span style="width:18px;height:18px;border-radius:50%;border:2px solid ${on ? 'var(--acc)' : 'var(--bd)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${on ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--acc)"></span>' : ''}</span>
-      <span style="flex:1"><span style="display:block;font-size:14px;color:var(--t1);font-weight:600">${title}</span>
-      <span style="display:block;font-size:12px;color:var(--t3);margin-top:2px">${sub}</span></span>
+    // v8.13: shared .choice classes (vault.css) instead of inline styles.
+    return `<button class="choice${on ? ' on' : ''}" data-action="offline-scope" data-scope="${key}" role="radio" aria-checked="${on}" ${run ? 'disabled' : ''}>
+      <span class="choice-dot" aria-hidden="true"></span>
+      <span class="choice-text"><span class="choice-title">${title}</span><span class="choice-sub">${sub}</span></span>
     </button>`;
   };
   const line = k => {
@@ -293,25 +305,30 @@ function renderOfflineSheet() {
     const c = cnt[k], miss = c.total - c.have;
     return `${c.have} of ${c.total} saved${miss ? ` · about ${Math.max(1, Math.round(miss * OFFLINE_AVG_MB))} MB to download` : ' ✓'}`;
   };
-  let html = `<p class="text-md text-muted" style="margin:0 0 14px;line-height:1.5">Pictures save on this phone as you browse. Save the rest ahead of time so figures still show at a show or store with no signal.</p>`;
+  let html = `<p class="sheet-intro">Pictures save on this phone as you browse. Save the rest ahead of time so figures still show at a show or store with no signal.</p>`;
   html += opt('mine', 'My figures', 'Collection and want list — ' + line('mine'));
   html += opt('all', 'Everything', 'The whole catalog, minus hidden lines — ' + line('all'));
+  const progressText = r => `Saving ${r.done} of ${r.total} picture${r.total === 1 ? '' : 's'}…${r.pTotal ? ` · prices ${r.pDone} of ${r.pTotal}` : ''}`;
   if (run) {
-    const pct = run.total ? Math.round((run.done / run.total) * 100) : 0;
-    html += `<div style="margin:14px 0 8px">
-      <div style="height:8px;border-radius:4px;background:var(--bg3);overflow:hidden"><div id="offlineBar" style="height:100%;width:${pct}%;background:var(--acc);transition:width .2s"></div></div>
-      <div id="offlineProgress" style="font-size:12px;color:var(--t2);margin-top:6px">Saving ${run.done} of ${run.total}…</div>
+    const all = run.total + run.pTotal;
+    const pct = all ? Math.round(((run.done + run.pDone) / all) * 100) : 0;
+    html += `<div class="progress">
+      <div class="progress-track"><div id="offlineBar" class="progress-bar" style="width:${pct}%"></div></div>
+      <div id="offlineProgress" class="progress-text">${progressText(run)}</div>
     </div>
     <button data-action="offline-stop" class="btn btn-block">Stop</button>`;
   } else {
     const miss = cnt ? cnt[scope].total - cnt[scope].have : 0;
+    const pMiss = cnt?.prices || 0;
     const online = navigator.onLine !== false;
-    const label = !cnt ? 'Checking…' : !miss ? 'All saved' : !online ? 'Connect to the internet to save' : `Save ${miss} picture${miss === 1 ? '' : 's'}`;
-    html += `<button data-action="offline-start" class="btn btn-block btn-primary" style="margin-top:6px" ${(!cnt || !miss || !online) ? 'disabled' : ''}>${label}</button>`;
-    if (metered && miss) html += `<div style="font-size:12px;color:var(--or);margin-top:8px">You look to be on mobile data — Wi-Fi is better for this.</div>`;
+    const what = [miss ? `${miss} picture${miss === 1 ? '' : 's'}` : '', pMiss ? `${pMiss} price${pMiss === 1 ? '' : 's'}` : ''].filter(Boolean).join(' + ');
+    const label = !cnt ? 'Checking…' : !what ? 'All saved' : !online ? 'Connect to the internet to save' : `Save ${what}`;
+    html += `<button data-action="offline-start" class="btn btn-block btn-primary choice-go" ${(!cnt || !what || !online) ? 'disabled' : ''}>${label}</button>`;
+    if (metered && miss) html += `<div class="sheet-note warn">You look to be on mobile data — Wi-Fi is better for this.</div>`;
   }
-  if (cnt?.used) html += `<div style="font-size:12px;color:var(--t3);margin-top:14px">MOTU Collector is using ${cnt.used < 1e6 ? 'less than 1' : 'about ' + Math.round(cnt.used / 1e6)} MB on this phone.</div>`;
-  html += `<div style="font-size:12px;color:var(--t3);margin-top:6px;line-height:1.5">Figures added to the catalog later save when you view them, or come back here.</div>`;
+  if (cnt?.used) html += `<div class="sheet-note first">MOTU Collector is using ${cnt.used < 1e6 ? 'less than 1' : 'about ' + Math.round(cnt.used / 1e6)} MB on this phone.</div>`;
+  html += `<div class="sheet-note">Figures added to the catalog later save when you view them, or come back here.</div>`;
+  if (isPricingConfigured()) html += `<div class="sheet-note">Also saves current eBay prices for My figures (free — sold lookups only run when you tap Check sold).</div>`;
   return html;
 }
 async function startOfflineSave() {
@@ -319,13 +336,30 @@ async function startOfflineSave() {
   const scope = S._offlineScope || 'mine';
   const have = S._offlineCount?.haveSet || new Set();
   const todo = _offlineUrls(scope).filter(u => !have.has(u));
-  if (!todo.length) return;
-  const run = S._offline = { total: todo.length, done: 0, failed: 0, stop: false };
+  const pTodo = _offlinePriceFigs();
+  if (!todo.length && !pTodo.length) return;
+  const run = S._offline = { total: todo.length, done: 0, failed: 0, stop: false, pTotal: pTodo.length, pDone: 0, pGot: 0 };
   refreshSheetBody();
   let cache = null;
   try { cache = await caches.open(OFFLINE_CACHE); } catch {}
   const viaSW = !!navigator.serviceWorker?.controller;
-  let i = 0;
+  let i = 0, pi = 0;
+  const showProgress = () => {
+    const bar = document.getElementById('offlineBar');
+    const txt = document.getElementById('offlineProgress');
+    const all = run.total + run.pTotal;
+    if (bar) bar.style.width = (all ? Math.round(((run.done + run.pDone) / all) * 100) : 0) + '%';
+    if (txt) txt.textContent = `Saving ${run.done} of ${run.total} picture${run.total === 1 ? '' : 's'}…${run.pTotal ? ` · prices ${run.pDone} of ${run.pTotal}` : ''}`;
+  };
+  const priceWorker = async () => {
+    while (!run.stop && pi < pTodo.length) {
+      const f = pTodo[pi++];
+      const r = await fetchPricing(f.id, { line: f.line, wave: f.wave, year: f.year }).catch(() => null);
+      if (r?.data && (r.data.sealed || r.data.loose)) run.pGot++;
+      run.pDone++;
+      showProgress();
+    }
+  };
   const worker = async () => {
     while (!run.stop && i < todo.length) {
       const url = todo[i++];
@@ -335,20 +369,19 @@ async function startOfflineSave() {
         if (!viaSW && cache) await cache.put(url, res); else await res.arrayBuffer();
       } catch { run.failed++; }
       run.done++;
-      const bar = document.getElementById('offlineBar');
-      const txt = document.getElementById('offlineProgress');
-      if (bar) bar.style.width = Math.round((run.done / run.total) * 100) + '%';
-      if (txt) txt.textContent = `Saving ${run.done} of ${run.total}…`;
+      showProgress();
     }
   };
-  await Promise.all(Array.from({ length: 6 }, worker));
+  await Promise.all([...Array.from({ length: 6 }, worker), ...Array.from({ length: 2 }, priceWorker)]);
   const saved = run.done - run.failed;
   const stopped = run.stop;
   S._offline = null;
   S._offlineCount = null;
-  if (stopped) window.toast?.(`Stopped — ${saved} picture${saved === 1 ? '' : 's'} saved`);
-  else if (run.failed) window.toast?.(`⚠ Saved ${saved} · ${run.failed} couldn’t be saved — try again later`);
-  else window.toast?.(`✓ Saved ${saved} picture${saved === 1 ? '' : 's'} for offline use`);
+  const pics = `${saved} picture${saved === 1 ? '' : 's'}`;
+  const prices = run.pTotal ? ` and ${run.pGot} price${run.pGot === 1 ? '' : 's'}` : '';
+  if (stopped) window.toast?.(`Stopped — ${pics}${prices} saved`);
+  else if (run.failed) window.toast?.(`⚠ Saved ${pics}${prices} · ${run.failed} picture${run.failed === 1 ? '' : 's'} couldn’t be saved — try again later`);
+  else window.toast?.(`✓ Saved ${pics}${prices} for offline use`);
   if (S.sheet === 'offline') refreshSheetBody(); else _offlineCount();
 }
 window.startOfflineSave = startOfflineSave;

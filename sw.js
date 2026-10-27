@@ -3,6 +3,20 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.13 changelog:
+//   • CACHE bumped to v8.13. SHELL: pricing.js + render.js + share.js + stats.js + ui-sheets.js +
+//     delegate-handlers.js + vault.css + motu-vault.html. (Heuristic pass over v8.01–v8.12.)
+//   • eBay prices on the figure screen no longer sit on "Loading…" forever with no signal: a failed
+//     lookup says "No connection — no saved eBay price" (or "Couldn't load") with a Retry button.
+//   • Sharing a For Sale figure says "For sale:" (it said "Check out:" — the code compared the
+//     status against 'forsale', not 'for-sale') and adds the asking price when a copy has one.
+//   • Mark Sold… now shows on Owned copies too, not only For Sale — one step when selling at a show.
+//   • Offline Images also saves the free eBay prices for My figures (collection + want list), so
+//     prices show with no signal. It never starts a paid sold lookup.
+//   • Collection Stats value line says how many prices are sold vs asking.
+//   • Sold and Offline Images sheets use shared styles (sheet-intro/-summary/-note, field-input,
+//     choice, progress) instead of inline ones; same look.
+
 // v8.12 changelog:
 //   • CACHE bumped to v8.12. SHELL: pricing.js + render.js + vault.css + motu-vault.html.
 //   • Figure screen eBay prices restyled (owner pick from three mockups): a quiet line right
@@ -2237,7 +2251,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.12';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.13';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

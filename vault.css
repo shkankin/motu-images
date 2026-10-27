@@ -3950,3 +3950,46 @@ html {
 .market-line .mk-pill { padding: 7px 12px; border-radius: 999px; font-size: var(--fs-sm); font-weight: 600; color: var(--acc); border-color: color-mix(in srgb, var(--acc) 45%, var(--bd)); }
 .market-line .mk-spin svg { animation: spin 1s linear infinite; }
 .market-line .mk-btn:disabled { opacity: .7; }
+
+/* v8.13: shared sheet pieces — replaces the Sold and Offline Images sheets'
+   inline styles (v8.05 scale: --fs-*, --sp-*, --r-*). Reuse for new sheets. */
+.sheet-intro { font-size: var(--fs-md); color: var(--t2); line-height: 1.5; margin: 0 0 var(--sp-4); }
+.sheet-summary { font-size: var(--fs-md); color: var(--t2); margin-bottom: var(--sp-4); }
+.sheet-summary strong { color: var(--t1); font-weight: 700; }
+.sheet-summary-sub, .sheet-note { font-size: var(--fs-sm); color: var(--t3); line-height: 1.5; }
+.sheet-summary-sub { margin-top: var(--sp-1); }
+.sheet-note { margin-top: var(--sp-2); }
+.sheet-note.first { margin-top: var(--sp-4); }
+.sheet-note.warn { color: var(--or); }
+.gain-pos { color: var(--gn); font-weight: 600; }
+.gain-neg { color: var(--rd); font-weight: 600; }
+.field-input {
+  padding: var(--sp-2); border-radius: var(--r-sm); border: 1px solid var(--bd);
+  background: var(--bg2); color: var(--t1); font-size: var(--fs-md); min-width: 0;
+}
+/* Sold sheet */
+.sold-row { padding: var(--sp-3) 0; border-top: 1px solid var(--bd); }
+.sold-name { display: flex; align-items: center; gap: var(--sp-1); padding: 0; border: 0; background: none; min-height: 0;
+  color: var(--t1); font-size: var(--fs-base); font-weight: 600; text-align: left; }
+.sold-meta { font-size: var(--fs-sm); color: var(--t3); margin-top: 2px; }
+.sold-fields { display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-2); }
+.sold-price { display: flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-md); color: var(--t2); flex-shrink: 0; }
+.sold-price .field-input { width: 84px; }
+.sold-date { flex: 1; }
+.sold-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; margin-top: var(--sp-2); }
+/* Single-choice cards (Offline Images scope) */
+.choice { width: 100%; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3);
+  border-radius: var(--r-lg); border: 1px solid var(--bd); background: var(--bg3); margin-bottom: var(--sp-2); text-align: left; }
+.choice.on { border-color: var(--acc); }
+.choice-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--bd); flex-shrink: 0; display: grid; place-items: center; }
+.choice.on .choice-dot { border-color: var(--acc); }
+.choice.on .choice-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--acc); }
+.choice-text { flex: 1; min-width: 0; }
+.choice-title { display: block; font-size: var(--fs-base); color: var(--t1); font-weight: 600; }
+.choice-sub { display: block; font-size: var(--fs-sm); color: var(--t3); margin-top: 2px; }
+.choice-go { margin-top: var(--sp-1); }
+/* Progress bar */
+.progress { margin: var(--sp-3) 0 var(--sp-2); }
+.progress-track { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; }
+.progress-bar { height: 100%; background: var(--acc); transition: width .2s; }
+.progress-text { font-size: var(--fs-sm); color: var(--t2); margin-top: 6px; }

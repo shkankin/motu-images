@@ -16,7 +16,7 @@ import {
   isLineFullyHidden, getEvents, getCompletenessStats, getGapFigures,
 } from './data.js';
 import {
-  getCachedAskingPrice, isPricePending, isPricingConfigured, fetchPricing,
+  getCachedAskingPrice, getCachedPriceKind, isPricePending, isPricingConfigured, fetchPricing,
   getPriceAge,
 } from './pricing.js';
 import { toast } from './render.js';
@@ -279,7 +279,7 @@ function renderStatsSheet() {
   // SAME priced subset — comparing against total spend would mix priced
   // and unpriced figures and overstate/understate the delta.
   {
-    let haveTotal = 0, priced = 0, marketValue = 0, spentOnPriced = 0;
+    let haveTotal = 0, priced = 0, marketValue = 0, spentOnPriced = 0, pricedSold = 0;
     S.figs.filter(f => !figIsHidden(f)).forEach(f => {
       const c = S.coll[f.id];
       const st = c?.status;
@@ -288,6 +288,7 @@ function renderStatsSheet() {
       const price = getCachedAskingPrice(f);
       if (price == null) return;
       priced++;
+      if (getCachedPriceKind(f) === 'sold') pricedSold++;   // v8.13
       const copies = isMigrated(c) && c.copies?.length ? c.copies.length : 1;
       marketValue += price * copies;
       if (isMigrated(c)) for (const cp of c.copies) { const v = parseFloat(cp.paid); if (Number.isFinite(v)) spentOnPriced += v; }
@@ -316,7 +317,7 @@ function renderStatsSheet() {
       if (priced > 0) {
         html += `<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
           <span style="font-family:'Cinzel',serif;font-size:22px;font-weight:700;color:var(--gold)">$${marketValue.toFixed(2)}</span>
-          <span style="font-size:11px;color:var(--t3)">market · ${priced}/${haveTotal} priced</span>
+          <span style="font-size:11px;color:var(--t3)">market · ${priced}/${haveTotal} priced${pricedSold ? ` · ${pricedSold} sold, ${priced - pricedSold} asking` : ''}</span>
         </div>
         <div style="font-size:11px;color:var(--t3);margin-top:2px">Prices as of ${new Date(Date.now() - oldestAge).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}${staleN ? ` · ${staleN} over a week old` : ''}</div>
         ${spentOnPriced > 0 ? `<div style="font-size:12px;color:${unrealized >= 0 ? 'var(--gn)' : 'var(--rd)'};margin-top:4px">${sign(unrealized)} unrealized vs $${spentOnPriced.toFixed(2)} paid (priced figures only)</div>` : ''}`;
@@ -672,9 +673,11 @@ export function renderSoldSheet() {
   const today = _localYMD(Date.now());
   const rows = log.map((sale, idx) => ({ sale, idx }))
     .sort((a, b) => String(b.sale.date || '').localeCompare(String(a.sale.date || '')));
-  let html = `<div style="font-size:13px;color:var(--t2);margin-bottom:14px">
-    <span style="font-weight:700;color:var(--t1)">${log.length}</span> sold · $${gross.toFixed(2)} gross${withPaid ? ` · <span style="color:${profit >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(profit)} realized</span>` : ''}
-    <div style="font-size:12px;color:var(--t3);margin-top:4px">Edit a price or date in place — changes save as you go.</div>
+  // v8.13: shared classes (vault.css "Sold sheet") instead of inline styles.
+  const gainCls = n => n >= 0 ? 'gain-pos' : 'gain-neg';
+  let html = `<div class="sheet-summary">
+    <strong>${log.length}</strong> sold · $${gross.toFixed(2)} gross${withPaid ? ` · <span class="${gainCls(profit)}">${sign(profit)} realized</span>` : ''}
+    <div class="sheet-summary-sub">Edit a price or date in place — changes save as you go.</div>
   </div>`;
   for (const { sale, idx } of rows) {
     const f = figById(sale.figId);
@@ -683,17 +686,17 @@ export function renderSoldSheet() {
     const paid = Number.isFinite(sale.paid) ? sale.paid : null;
     const gain = paid == null ? null : price - paid;
     const meta = [ln(sale.line || f?.line || ''), sale.variant || ''].filter(Boolean).map(esc).join(' · ');
-    html += `<div style="padding:12px 0;border-top:1px solid var(--bd)">
-      ${f ? `<button data-action="open-fig" data-fig-id="${esc(sale.figId)}" style="display:flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--t1);font-size:14px;font-weight:600;text-align:left">${esc(name)}${icon(ICO.chevR, 14)}</button>`
-           : `<div style="font-size:14px;font-weight:600;color:var(--t1)">${esc(name)}</div>`}
-      <div style="font-size:12px;color:var(--t3);margin-top:2px">${meta}${meta && paid != null ? ' · ' : ''}${paid != null ? `paid $${paid.toFixed(2)} · <span style="color:${gain >= 0 ? 'var(--gn)' : 'var(--rd)'};font-weight:600">${sign(gain)}</span>` : ''}</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-        <label style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--t2);flex-shrink:0">$
-          <input type="text" inputmode="decimal" autocomplete="off" value="${price.toFixed(2)}" data-change-action="sold-price" data-idx="${idx}" aria-label="Sold price for ${esc(name)}" style="width:84px;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-size:13px">
+    html += `<div class="sold-row">
+      ${f ? `<button class="sold-name" data-action="open-fig" data-fig-id="${esc(sale.figId)}">${esc(name)}${icon(ICO.chevR, 14)}</button>`
+           : `<div class="sold-name">${esc(name)}</div>`}
+      <div class="sold-meta">${meta}${meta && paid != null ? ' · ' : ''}${paid != null ? `paid $${paid.toFixed(2)} · <span class="${gainCls(gain)}">${sign(gain)}</span>` : ''}</div>
+      <div class="sold-fields">
+        <label class="sold-price">$
+          <input class="field-input" type="text" inputmode="decimal" autocomplete="off" value="${price.toFixed(2)}" data-change-action="sold-price" data-idx="${idx}" aria-label="Sold price for ${esc(name)}">
         </label>
-        <input type="date" value="${esc(_localYMD(sale.date))}" max="${today}" data-change-action="sold-date" data-idx="${idx}" aria-label="Date sold for ${esc(name)}" style="flex:1;min-width:0;padding:7px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-size:13px">
+        <input class="field-input sold-date" type="date" value="${esc(_localYMD(sale.date))}" max="${today}" data-change-action="sold-date" data-idx="${idx}" aria-label="Date sold for ${esc(name)}">
       </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <div class="sold-actions">
         ${f ? `<button data-action="sold-restore" data-idx="${idx}" class="btn btn-sm">Return to collection</button>` : ''}
         <button data-action="sold-delete" data-idx="${idx}" aria-label="Delete the sale of ${esc(name)}" class="btn btn-sm btn-danger">Delete</button>
       </div>

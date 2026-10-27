@@ -262,6 +262,10 @@ export function getCachedPriceKind(fig) {
 // by itself from free data (asking prices, or a sold price already looked up);
 // a paid sold lookup only ever starts from its "Check sold" button.
 const _soldInflight = new Set();
+// v8.13: figures whose price lookup failed this session (no signal, timeout).
+// Without this the line said "Loading eBay prices…" forever: the figure was
+// marked fetched and never asked again.
+const _mkFailed = new Set();
 function _ageText(iso) {
   const t = Date.parse(iso || '');
   if (!Number.isFinite(t)) return '';
@@ -278,11 +282,19 @@ export function renderMarketLine(f) {
   const meta = { line: f.line, wave: f.wave, year: f.year };
   if ((!cached || !cached.fresh) && !_fetched.has(f.id) && !_inflight.has(f.id)) {
     _fetched.add(f.id);
-    fetchPricing(f.id, meta).then(() => {
+    fetchPricing(f.id, meta).then(r => {
+      if (r?.data) _mkFailed.delete(f.id); else _mkFailed.add(f.id);
       if (typeof window.rerenderMarketLine === 'function') window.rerenderMarketLine(f.id);
     });
   }
   const d = cached?.data;
+  if (!d && _mkFailed.has(f.id)) {
+    const off = navigator.onLine === false;
+    return `<div class="market-line">
+    <div class="mk-text"><div class="mk-cap">${off ? 'No connection — no saved eBay price for this figure' : 'Couldn’t load eBay prices'}</div></div>
+    <button class="mk-btn mk-pill" data-action="retry-market-line" data-fig-id="${esc(f.id)}">Retry</button>
+  </div>`;
+  }
   const sold = d?.source === 'ebay-sold';
   const pending = _soldInflight.has(f.id) || (isPricePending(f.id) && (cached?.age ?? Infinity) < 3 * 60 * 1000);
   const fmt = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
@@ -307,6 +319,13 @@ export function renderMarketLine(f) {
     ${btn}
   </div>`;
 }
+
+// v8.13: Retry on the figure screen's eBay line after a failed lookup.
+window.retryMarketLine = (figId) => {
+  _fetched.delete(figId);
+  _mkFailed.delete(figId);
+  if (typeof window.rerenderMarketLine === 'function') window.rerenderMarketLine(figId);
+};
 
 window.checkSoldPrice = async (figId) => {
   const f = (S.activeFig && S.activeFig.id === figId) ? S.activeFig : (S.figs || []).find(x => x.id === figId);

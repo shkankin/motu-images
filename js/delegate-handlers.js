@@ -227,6 +227,7 @@ registerAll({
   'ctx-share':       (e, el, d) => { window.dismissContextMenu?.(); window.shareFigure?.(d.figId); },   // v8.02
   'share-figure':    (e, el, d) => window.shareFigure?.(d.figId),   // v8.02: detail screen share button
   'check-sold-price': (e, el, d) => window.checkSoldPrice?.(d.figId),  // v8.11: figure screen eBay line
+  'retry-market-line': (e, el, d) => window.retryMarketLine?.(d.figId), // v8.13: after a failed lookup
   'ctx-select':      (e, el, d) => { window.dismissContextMenu?.(); window.enterSelectModeWith?.(d.figId); },
 });
 

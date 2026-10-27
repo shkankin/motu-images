@@ -443,9 +443,15 @@ window.shareFigure = figId => {
   const url = buildShareURL([figId]);
   if (!url) { toast('✗ This figure can\'t be shared as a link'); return; }
   const st = S.coll[figId]?.status;
-  const lead = st === 'forsale' ? 'For sale' : (!st || st === 'wishlist') ? 'Looking for' : 'Check out';
+  // v8.13: the status key is 'for-sale' — this compared against 'forsale', so a
+  // For Sale figure was shared as "Check out:". It now also carries the asking
+  // price when one of its copies has one.
+  const lead = st === 'for-sale' ? 'For sale' : (!st || st === 'wishlist') ? 'Looking for' : 'Check out';
   const meta = [ln(fig.line), fig.year].filter(Boolean).join(', ');
-  const text = `${lead}: ${fig.name}${meta ? ` (${meta})` : ''}`;
+  const asks = st === 'for-sale' ? (S.coll[figId]?.copies || []).map(c => parseFloat(c?.asking)).filter(n => Number.isFinite(n) && n > 0) : [];
+  const ask = asks.length ? Math.min(...asks) : null;
+  const askTxt = ask == null ? '' : ` — $${Number.isInteger(ask) ? ask : ask.toFixed(2)}`;
+  const text = `${lead}: ${fig.name}${meta ? ` (${meta})` : ''}${askTxt}`;
   if (navigator.share) {
     navigator.share({ title: fig.name, text, url }).catch(err => {
       if (err && err.name !== 'AbortError') toast('✗ Couldn\'t open the share menu');

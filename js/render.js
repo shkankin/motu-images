@@ -647,7 +647,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.12</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.13</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1978,7 +1978,9 @@ function renderCopyCard(f, cp, i, isMulti, total) {
   </details>`;
 
   // Mark Sold action for for-sale copies.
-  if (isForSale) {
+  // v8.13: and Owned ones — at a show you sell what you own; switching the
+  // figure to For Sale first was an extra step mid-trade.
+  if (isForSale || status === 'owned') {
     h += `<button class="mark-sold-btn" data-action="mark-copy-sold" data-fig-id="${eId}" data-copy-id="${cid}" title="Record the sale and remove this copy">
       ${icon(ICO.tag || ICO.check, 16)} Mark Sold…
     </button>`;
