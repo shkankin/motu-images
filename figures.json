@@ -259,6 +259,19 @@
     "upc": "194735190072"
   },
   {
+    "id": "manual-beast-man-mw1j0m3p",
+    "name": "Beast Man",
+    "sourceName": "Beast Man",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Vintage Card Back",
+    "sourceGroup": "Vintage Card Back",
+    "faction": "Evil Warriors",
+    "year": 2026,
+    "slug": "manual-beast-man-mw1j0m3p",
+    "source": "manual"
+  },
+  {
     "id": "beast-man-200x-cartoon-collection-12169",
     "name": "Beast Man (200x - Cartoon Collection)",
     "line": "origins",
@@ -1462,6 +1475,20 @@
     "upc": "194735350865"
   },
   {
+    "id": "manual-he-man-mw1izjpi",
+    "name": "He-Man",
+    "sourceName": "He-Man",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Vintage Card Back",
+    "sourceGroup": "Vintage Card Back",
+    "faction": "Heroic Warriors",
+    "year": 2026,
+    "retail": 22.99,
+    "slug": "manual-he-man-mw1izjpi",
+    "source": "manual"
+  },
+  {
     "id": "he-man-battle-armor-deluxe-2419",
     "name": "He-Man - Battle Armor (Deluxe)",
     "line": "origins",
@@ -2210,6 +2237,20 @@
     "sourceLine": "origins",
     "sourceGroup": "",
     "upc": "887961875379"
+  },
+  {
+    "id": "manual-man-at-arms-mw1iy0kt",
+    "name": "Man-at-Arms",
+    "sourceName": "Man-at-Arms",
+    "line": "origins",
+    "sourceLine": "origins",
+    "group": "Vintage Card Back",
+    "sourceGroup": "Vintage Card Back",
+    "faction": "Heroic Warriors",
+    "year": 2026,
+    "retail": 22.99,
+    "slug": "manual-man-at-arms-mw1iy0kt",
+    "source": "manual"
   },
   {
     "id": "man-at-arms-7894",
@@ -7160,6 +7201,34 @@
     "upc": "194735350520"
   },
   {
+    "id": "manual-evil-lyn-mw1ivj2v",
+    "name": "Evil-Lyn",
+    "sourceName": "Evil-Lyn",
+    "line": "kids-core",
+    "sourceLine": "kids-core",
+    "group": "Battle for Subternia",
+    "sourceGroup": "Battle for Subternia",
+    "faction": "Evil Warriors",
+    "year": 2027,
+    "retail": 11.99,
+    "slug": "manual-evil-lyn-mw1ivj2v",
+    "source": "manual"
+  },
+  {
+    "id": "manual-he-man-mw1itunj",
+    "name": "He-Man",
+    "sourceName": "He-Man",
+    "line": "kids-core",
+    "sourceLine": "kids-core",
+    "group": "Battle for Subternia",
+    "sourceGroup": "Battle for Subternia",
+    "faction": "Heroic Warriors",
+    "year": 2027,
+    "retail": 11.99,
+    "slug": "manual-he-man-mw1itunj",
+    "source": "manual"
+  },
+  {
     "id": "he-man-nicholas-galitzine-13549",
     "name": "He-Man (Nicholas Galitzine)",
     "line": "kids-core",
@@ -7388,6 +7457,20 @@
     "upc": "194735350490"
   },
   {
+    "id": "manual-trap-jaw-mw1ipuv9",
+    "name": "Trap Jaw",
+    "sourceName": "Trap Jaw",
+    "line": "kids-core",
+    "sourceLine": "kids-core",
+    "group": "Battle for Subternia",
+    "sourceGroup": "Battle for Subternia",
+    "faction": "Evil Warriors",
+    "year": 2027,
+    "retail": 11.99,
+    "slug": "manual-trap-jaw-mw1ipuv9",
+    "source": "manual"
+  },
+  {
     "id": "tri-klops-kojo-attah-14073",
     "name": "Tri-Klops",
     "sourceName": "Tri-Klops (Kojo Attah)",
@@ -7433,6 +7516,20 @@
     "sourceLine": "chronicles",
     "sourceGroup": "",
     "upc": "194735350797"
+  },
+  {
+    "id": "manual-clawful-mw1j5igv",
+    "name": "Clawful",
+    "sourceName": "Clawful",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Evil Warriors",
+    "year": 2027,
+    "retail": 27.99,
+    "slug": "manual-clawful-mw1j5igv",
+    "source": "manual"
   },
   {
     "id": "manual-dream-date-skeletor-msayzo9u",
@@ -7482,6 +7579,20 @@
     "source": "manual",
     "af411_id": "gym-bro-skeletor-14371",
     "af411": 14371
+  },
+  {
+    "id": "manual-he-man-flight-armor-mw1j2lbm",
+    "name": "He-Man (Flight Armor)",
+    "sourceName": "He-Man (Flight Armor)",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Action Figures",
+    "sourceGroup": "Action Figures",
+    "faction": "Heroic Warriors",
+    "year": 2027,
+    "retail": 27.99,
+    "slug": "manual-he-man-flight-armor-mw1j2lbm",
+    "source": "manual"
   },
   {
     "id": "he-man-nicholas-galitzine-13242",
@@ -7558,6 +7669,20 @@
     "sourceLine": "chronicles",
     "sourceGroup": "",
     "upc": "194735350773"
+  },
+  {
+    "id": "manual-mekaneck-mw1j6qy1",
+    "name": "Mekaneck",
+    "sourceName": "Mekaneck",
+    "line": "chronicles",
+    "sourceLine": "chronicles",
+    "group": "Movie",
+    "sourceGroup": "Movie",
+    "faction": "Heroic Warriors",
+    "year": 2027,
+    "retail": 27.99,
+    "slug": "manual-mekaneck-mw1j6qy1",
+    "source": "manual"
   },
   {
     "id": "orko-13983",

@@ -358,6 +358,35 @@
     ],
     "manual-man-at-arms-mqpxj5a6": [
       "Club"
+    ],
+    "manual-he-man-mw1itunj": [
+      "Power Sword"
+    ],
+    "manual-evil-lyn-mw1ivj2v": [
+      "Scepter"
+    ],
+    "manual-man-at-arms-mw1iy0kt": [
+      "Club"
+    ],
+    "manual-he-man-mw1izjpi": [
+      "Power Sword",
+      "Shield"
+    ],
+    "manual-beast-man-mw1j0m3p": [
+      "Whip"
+    ],
+    "manual-he-man-flight-armor-mw1j2lbm": [
+      "Power Sword",
+      "Helmet",
+      "Dagger",
+      "Pair of hands"
+    ],
+    "manual-clawful-mw1j5igv": [
+      "Axe"
+    ],
+    "manual-mekaneck-mw1j6qy1": [
+      "Pair of hands",
+      "Neck accessory"
     ]
   },
   "customAccessories": [
@@ -373,6 +402,7 @@
     "Collar",
     "Cosmic Key",
     "Crown",
+    "Dagger",
     "Effect - Muzzle Blast",
     "Four-pronged Battle Shield",
     "Grabber",
@@ -385,11 +415,14 @@
     "Leg Armor",
     "Magic Trick Discs",
     "Mouser",
+    "Neck accessory",
+    "Pair of hands",
     "Pet Snake",
     "Power Pincer",
     "Red Clip",
     "Rifle",
     "Ripcord",
+    "Scepter",
     "Spiked Ball & Chain",
     "Sword of Power",
     "Tech Axe",
