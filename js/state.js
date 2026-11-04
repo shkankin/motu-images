@@ -207,7 +207,7 @@ const SUBLINES = {
   'kids-core': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
-    {key:'subternia',label:'Battle for Subternia',groups:['Battle for Subternia']},   // v8.15
+    {key:'subternia',label:'Battle of Subternia',groups:['Battle of Subternia','Battle for Subternia']},   // v8.15; v8.16 renamed (old name kept so already-tagged figures still match)
   ],
   original: [
     {key:'action',label:'Action Figures',groups:['Action Figures']},

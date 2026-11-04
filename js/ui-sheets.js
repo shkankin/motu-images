@@ -35,7 +35,7 @@ import {
 } from './data.js';
 import {
   renderKidsCoreAdminSheet,
-  renderContent, render, appConfirm,
+  renderContent, render, appConfirm, renderVendorPicker,
 } from './render.js';
 import {
   renderQR, renderShareSheet,
@@ -884,9 +884,10 @@ function renderImportSheet() {
 function renderBatchEditSheet() {
   const n = S.selected.size;
   if (!n) return '<div class="text-sm text-dim">No figures selected.</div>';
-  const be = S.batchEdit || (S.batchEdit = { mode: 'update', condition: '', variant: '', paid: '', notes: '', status: '', acquired: '', location: '' });
+  const be = S.batchEdit || (S.batchEdit = _freshBatchEdit());
   if (!be.mode) be.mode = 'update';
   const isUpdate = be.mode === 'update';
+  const orderMode = _batchOrderMode(be);
 
   const seg = (val, label) => `<button data-action="batch-set-mode" data-mode="${val}" style="flex:1;padding:9px 8px;border-radius:9px;border:1px solid ${be.mode===val?'var(--acc)':'var(--bd)'};background:${be.mode===val?'color-mix(in srgb,var(--acc) 16%,var(--bg3))':'var(--bg3)'};color:${be.mode===val?'var(--acc)':'var(--t2)'};font-size:13px;font-weight:${be.mode===val?'700':'500'}">${label}</button>`;
 
@@ -900,8 +901,10 @@ function renderBatchEditSheet() {
       ${seg('add','Add new copy')}
     </div>
     <div class="text-sm text-dim" style="line-height:1.5;margin-bottom:14px">
-      ${isUpdate
-        ? `Writes the filled-in fields onto each selected figure's existing copy — no duplicates. Blank fields are left as-is. A figure with no copy yet is marked Owned so the details can attach.`
+      ${orderMode
+        ? `Fills in the order details on each selected figure. Blank fields are left as-is. Condition, accessories and location are added on the Owned tab once it arrives.`
+        : isUpdate
+        ? `Writes the filled-in fields onto each selected figure's existing copy — no duplicates. Blank fields are left as-is. A figure with no copy yet is marked Owned so the details can attach.${_anySelectedOrdered() ? ' To fill in order details instead, set Status to Ordered.' : ''}`
         : `Adds one new copy to each of the ${n} selected figure${n===1?'':'s'} with the fields below.`}
     </div>
     <div style="margin-bottom:12px">
@@ -910,6 +913,23 @@ function renderBatchEditSheet() {
         ${statusOpts}
       </select>
     </div>
+    ${orderMode ? `
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Ordered From (optional)</div>
+      ${renderVendorPicker(be.orderedFrom, 'data-batch="1"', '')}
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Expected Date (optional)</div>
+      <input autocomplete="off" type="month" value="${esc(be.orderedDate || '')}" data-change-action="batch-set-ordered-date">
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Price Paid (optional)</div>
+      <input autocomplete="off" type="number" step="0.01" value="${esc(be.paid)}" placeholder="$0.00" data-input-action="batch-set-paid">
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="field-label text-dim text-sm">Notes (optional)</div>
+      <textarea autocomplete="off" rows="3" placeholder="Order #, tracking, pre-order notes…" data-input-action="batch-set-notes">${esc(be.notes)}</textarea>
+    </div>` : `
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Condition (optional)</div>
       <select data-change-action="batch-set-condition">
@@ -936,7 +956,7 @@ function renderBatchEditSheet() {
     <div style="margin-bottom:12px">
       <div class="field-label text-dim text-sm">Notes (optional)</div>
       <textarea autocomplete="off" rows="3" placeholder="Notes…" data-input-action="batch-set-notes">${esc(be.notes)}</textarea>
-    </div>
+    </div>`}
     <div style="position:sticky;bottom:0;margin:8px -20px 0;padding:12px 20px calc(12px + var(--safe-bottom,0px));background:var(--bg2);border-top:1px solid var(--bd);display:flex;gap:10px">
       <button data-action="close-sheet" style="flex:1;padding:14px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1);font-size:14px;font-weight:600">Cancel</button>
       <button data-action="apply-batch-edit" style="flex:2;padding:14px;border-radius:12px;border:1px solid var(--acc);background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">${isUpdate ? 'Apply to' : 'Add to'} ${n}</button>
@@ -946,9 +966,29 @@ function renderBatchEditSheet() {
 
 
 
+// v8.16: batch edit was built for owned copies only. Selecting ordered
+// figures offered "Date Acquired" (which refuses future dates) and no order
+// fields, and a condition set with Status = Ordered was silently dropped. Now,
+// when Status is Ordered — or every selected figure is already Ordered and
+// Status is left alone — the sheet shows the order fields instead.
+function _freshBatchEdit() {
+  return { mode: 'update', condition: '', variant: '', paid: '', notes: '', status: '', acquired: '', location: '', orderedFrom: '', orderedDate: '' };
+}
+function _anySelectedOrdered() {
+  for (const id of S.selected) if (S.coll[id]?.status === 'ordered') return true;
+  return false;
+}
+function _batchOrderMode(be) {
+  if (!be || be.mode === 'add') return false;
+  if (be.status === 'ordered') return true;
+  if (be.status || !S.selected.size) return false;
+  for (const id of S.selected) if (S.coll[id]?.status !== 'ordered') return false;
+  return true;
+}
+
 window.openBatchEditor = () => {
   if (!S.selected.size) return;
-  S.batchEdit = { mode: 'update', condition: '', variant: '', paid: '', notes: '', status: '', acquired: '', location: '' };
+  S.batchEdit = _freshBatchEdit();
   S.sheet = 'batch';
   pushNav();
   render();
@@ -956,6 +996,12 @@ window.openBatchEditor = () => {
 
 window.applyBatchEdit = () => {
   const be = S.batchEdit; if (!be) return;
+  if (_batchOrderMode(be)) {
+    if (!be.status && !be.orderedFrom && !be.orderedDate && !be.paid && !be.notes) { window.toast?.('Nothing filled in'); return; }
+    window.batchUpdateOrders?.({ orderedFrom: be.orderedFrom, orderedDate: be.orderedDate, orderedPaid: be.paid, notes: be.notes });
+    closeSheet();
+    return;
+  }
   // v7.90: same future-date guard as the single-copy field.
   if (be.acquired && !window.acquiredIsValid?.(be.acquired)) {
     window.toast?.('Acquired date must be MM/YYYY and not in the future');

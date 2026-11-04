@@ -44,7 +44,7 @@ import {
   getStats, getSortedFigs, getLineStats, hasFilters, progressRing,
   isLineFullyHidden, isSublineHidden, getOrderedSublines, getAllLocations,
   getOverrideField, getAccAvail,
-  getLoadout, getCopyCompleteness,
+  getLoadout, getCopyCompleteness, getAllVendors,
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
   isMigrated, saveColl, fetchFigs,
   getSoldLog, backupDue, orderDue,
@@ -651,7 +651,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.15</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.16</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1822,7 +1822,7 @@ function renderDetailStatusBlock(f, c) {
         <div class="ghost-grid" style="margin-bottom:0">
           <div class="input-group">
             <label>Ordered From</label>
-            <input autocomplete="off" type="text" class="ghost-input" value="${esc(c.orderedFrom||'')}" placeholder="e.g. Walmart, BBTS…" data-change-action="update-ordered-field" data-fig-id="${eId}" data-field="orderedFrom">
+            ${renderVendorPicker(c.orderedFrom, `data-fig-id="${eId}"`)}
           </div>
           <div class="input-group">
             <label>Expected Date</label>
@@ -1836,7 +1836,63 @@ function renderDetailStatusBlock(f, c) {
       </div>`;
     }
   }
+  // v8.16: accessories and notes were only on the Owned tab (inside the copy
+  // card). What a figure comes with matters most when you DON'T have it yet —
+  // checking a loose one at a show — so every other tab gets this box too.
+  if (c.status !== 'owned' && c.status !== 'for-sale') h += renderInfoBox(f, c);
   return h;
+}
+
+// v8.16: "Ordered From" picker — a real dropdown of shops (presets + any shop
+// already used), with "Other…" opening a text box for anything else.
+// `attrs` routes it: data-fig-id for a figure, data-batch="1" for batch edit.
+// `cls` is the field style: ghost-input on the figure screen, plain in sheets.
+function renderVendorPicker(cur, attrs, cls = 'ghost-input') {
+  const curT = String(cur || '').trim();
+  const vendors = getAllVendors();
+  if (curT && !vendors.some(v => v.toLowerCase() === curT.toLowerCase())) vendors.push(curT);
+  const opts = vendors.map(v =>
+    `<option value="${esc(v)}"${v.toLowerCase() === curT.toLowerCase() ? ' selected' : ''}>${esc(v)}</option>`).join('');
+  return `<select class="${cls} vendor-select" data-change-action="pick-vendor" ${attrs}>
+      <option value=""${curT ? '' : ' selected'}>Choose a shop…</option>${opts}
+      <option value="__other">Other (type it)…</option>
+    </select>
+    <input autocomplete="off" type="text" class="${cls} vendor-other" style="display:none;margin-top:6px" placeholder="Type the shop name" data-change-action="set-vendor-text" ${attrs}>`;
+}
+
+function renderInfoBox(f, c) {
+  const eId = esc(f.id);
+  const cp0 = isMigrated(c) && c.copies && c.copies.length ? c.copies[0] : null;
+  const mine = cp0 && Array.isArray(cp0.accessories) ? cp0.accessories : [];
+  const loadout = getLoadout(f.id) || [];
+  const items = [...loadout, ...mine.filter(a => !loadout.includes(a))];
+  const have = new Set(mine);
+  const canNote = c.status === 'wishlist' || c.status === 'ordered';
+  if (!items.length && !canNote) return '';
+  // Once the figure has had a copy, its notes ARE that copy's notes, so
+  // the Owned tab and this box always show the same text.
+  const notes = cp0 ? (cp0.notes || '') : (c.entryNotes || '');
+  let h = `<div class="databox info-box">
+    <div class="databox-header">
+      <div class="databox-title-wrap">
+        <h3 class="databox-title">${canNote ? (items.length ? 'Accessories &amp; Notes' : 'Notes') : 'Accessories'}</h3>
+      </div>
+    </div>`;
+  if (items.length) {
+    h += `<div class="acc-group">
+      <label><span>${mine.length ? 'Accessories' : 'Comes with'}</span></label>
+      <div class="acc-chips">${items.map(a =>
+        `<span class="acc-chip acc-chip-ro${have.has(a) ? ' have' : ''}"><span class="acc-chip-label">${esc(a)}</span></span>`).join('')}</div>
+    </div>`;
+  }
+  if (canNote) {
+    const ph = c.status === 'ordered' ? 'Order #, tracking, pre-order notes…' : 'Where you saw it, who has one…';
+    h += `<div class="input-group"${items.length ? ' style="margin-top:12px"' : ''}>
+      ${items.length ? '<label>Notes</label>' : ''}
+      <textarea autocomplete="off" class="ghost-input" rows="3" aria-label="Notes" placeholder="${ph}" data-input-action="update-entry-notes-debounced" data-blur-action="update-entry-notes" data-fig-id="${eId}">${esc(notes)}</textarea>
+    </div>`;
+  }
+  return h + `</div>`;
 }
 
 // Renders a single copy as a "databox" card matching the showcase mock.
@@ -2295,7 +2351,7 @@ window.renderContent = renderContent;
 // defined and used within render.js, just no longer part of the public
 // surface, which keeps the module boundary honest.
 export {
-  toast, haptic, appConfirm, appPromptText, triggerPulse, toastUndo, toastAction, showUpdateBanner, patchFigRow, updateNavBadge, render, renderLoading, renderMain, renderSelectActionbar, renderNavBtn, renderBreadcrumb, renderKidsCoreAdminSheet, renderContent, renderLinesGrid, renderSublines, renderFigList, patchDetailStatus, renderDetail, renderPhotoViewer
+  toast, haptic, appConfirm, appPromptText, triggerPulse, renderVendorPicker, toastUndo, toastAction, showUpdateBanner, patchFigRow, updateNavBadge, render, renderLoading, renderMain, renderSelectActionbar, renderNavBtn, renderBreadcrumb, renderKidsCoreAdminSheet, renderContent, renderLinesGrid, renderSublines, renderFigList, patchDetailStatus, renderDetail, renderPhotoViewer
 };
 
 

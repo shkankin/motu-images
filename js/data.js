@@ -988,7 +988,22 @@ const COLL_JOURNAL_KEY = 'motu-c2-journal';
 let _collTouched = false;   // has the user changed the collection this session?
 
 let _saveCollTimer = null;
+// v8.16: entryNotes (Wishlist/Ordered notes) only exist while a figure has
+// no copy. Copies get created in many places (status taps, the cycle dot,
+// batch edit…), so rather than patch each one, every save folds leftover
+// entryNotes into copy 1. Cheap: one property check per entry.
+function _foldEntryNotes() {
+  for (const id in S.coll) {
+    const e = S.coll[id];
+    if (!e || !e.entryNotes || !Array.isArray(e.copies) || !e.copies.length) continue;
+    const cp = e.copies[0];
+    if (!(cp.notes || '').includes(e.entryNotes)) cp.notes = cp.notes ? `${cp.notes}\n${e.entryNotes}` : e.entryNotes;
+    delete e.entryNotes;
+  }
+}
+
 function saveColl() {
+  _foldEntryNotes();
   // Debounce IndexedDB writes (~80ms) to coalesce rapid taps (batch select,
   // fast status cycling, notes typing). In-memory S.coll is always current.
   // v4.86: bump version counter so _derived cache key invalidates without
@@ -1245,7 +1260,7 @@ function migrateEntry(c) {
   }
   // v8.04: entry-level fields survive the upgrade too — an old backup that
   // carried Order Details or a wishlist target price lost them here.
-  for (const k of ['orderedFrom', 'orderedDate', 'orderedPaid', 'targetPrice']) {
+  for (const k of ['orderedFrom', 'orderedDate', 'orderedPaid', 'targetPrice', 'entryNotes']) {
     if (c[k] != null && c[k] !== '') out[k] = c[k];
   }
   return out;
@@ -1422,14 +1437,51 @@ function migrateOrderedToOwned(id) {
   const e = S.coll[id];
   if (!e.copies || !e.copies.length) e.copies = [{id: 1}];
   const copy = e.copies[0];
+  // v8.16: the order details now STAY on the entry. They used to be deleted
+  // here, so tapping Owned and then back to Ordered (a mis-tap, or "not
+  // arrived after all") showed an empty Order Details box. They're harmless
+  // while Owned (only the Ordered tab shows them), and orderedFrom also feeds
+  // Stats → By shop. The note and price copies are added once, never twice.
   if (e.orderedFrom) {
     const prefix = `Ordered from: ${e.orderedFrom}`;
-    copy.notes = copy.notes ? `${prefix}\n${copy.notes}` : prefix;
+    if (!(copy.notes || '').includes(prefix)) copy.notes = copy.notes ? `${prefix}\n${copy.notes}` : prefix;
   }
   if (e.orderedPaid != null && e.orderedPaid !== '' && !copy.paid) copy.paid = String(e.orderedPaid);
-  delete e.orderedFrom;
-  delete e.orderedDate;
-  delete e.orderedPaid;
+}
+
+// v8.16: shops for "Ordered From" — offered as suggestions, anything can be
+// typed. getVendorOf also reads pre-v8.16 received orders, whose shop was
+// moved into the copy's notes as "Ordered from: X".
+const VENDOR_PRESETS = ['BBTS', 'Entertainment Earth', 'Walmart', 'Target', 'Amazon', 'eBay', 'Mercari',
+  'Mattel Creations', 'Super7', 'GameStop', 'Toy Habits', 'Comic Shop', 'Convention', 'Local Store'];
+function getVendorOf(c) {
+  if (!c) return '';
+  if (c.orderedFrom && String(c.orderedFrom).trim()) return String(c.orderedFrom).trim();
+  const n = isMigrated(c) ? c.copies?.[0]?.notes : '';
+  const m = n ? /^Ordered from: (.+)$/m.exec(n) : null;
+  return m ? m[1].trim() : '';
+}
+function getAllVendors() {
+  const seen = new Map(VENDOR_PRESETS.map(v => [v.toLowerCase(), v]));
+  const extra = [];
+  for (const id in S.coll) {
+    const v = getVendorOf(S.coll[id]);
+    if (v && !seen.has(v.toLowerCase())) { seen.set(v.toLowerCase(), v); extra.push(v); }
+  }
+  return [...VENDOR_PRESETS, ...extra.sort((a, b) => a.localeCompare(b))];
+}
+
+// v8.16: batch edit used to set "Loose Complete" / "Mint in Box" etc. without
+// ticking the accessories the way the single-copy field does (updateCopy), so
+// batch-edited figures still showed as missing accessories. Same rule, shared.
+function autofillCopyAccessories(id, cp) {
+  if (!cp || !AUTOFILL_CONDITIONS.has(cp.condition)) return cp;
+  const loadout = getLoadout(id);
+  if (!loadout || !loadout.length) return cp;
+  const have = new Set(Array.isArray(cp.accessories) ? cp.accessories : []);
+  let added = 0;
+  for (const name of loadout) if (!have.has(name)) { have.add(name); added++; }
+  return added ? { ...cp, accessories: [...have] } : cp;
 }
 
 function setStatus(id, status) {
@@ -1727,6 +1779,24 @@ window.updateOrderedField = (id, key, val) => {
   else next[key] = val;
   S.coll[id] = next;
   saveColl();
+};
+
+// v8.16: notes on the Wishlist / Ordered tabs. Before a figure has ever had a
+// copy they live on the entry (entryNotes, carried into copy 1 when it
+// becomes Owned); once a copy exists they ARE copy 1's notes, so every tab
+// shows and edits the same text.
+const _entryNoteT = {};
+window.updateEntryNotes = (id, val) => {
+  clearTimeout(_entryNoteT[id]); delete _entryNoteT[id];
+  const c = S.coll[id];
+  if (!c) return;
+  const cp0 = isMigrated(c) && c.copies && c.copies[0];
+  if (cp0) window.updateCopy(id, cp0.id, 'notes', val);
+  else window.updateOrderedField(id, 'entryNotes', String(val || '').trim() ? val : '');
+};
+window.updateEntryNotesDebounced = (id, val) => {
+  clearTimeout(_entryNoteT[id]);
+  _entryNoteT[id] = setTimeout(() => window.updateEntryNotes(id, val), 400);
 };
 
 // ─── Accessories + Location (v4.87) ──────────────────────────────
@@ -3438,5 +3508,6 @@ window.insertSale = insertSale;
 
 // ── Exports ─────────────────────────────────────────────────
 export {
+  VENDOR_PRESETS, getVendorOf, getAllVendors, autofillCopyAccessories,
   parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, orderDue, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, updateSale, insertSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
 };

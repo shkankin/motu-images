@@ -26,7 +26,7 @@ import {
   entryCopyCount, getPrimaryCopy, copyVariant,
   rebuildFigIndex, applyOverrides, fetchFigs,
   clearOverrides, _derived, getSortedFigs,
-  isMigrated, migrateEntry, migrateOrderedToOwned,
+  isMigrated, migrateEntry, migrateOrderedToOwned, autofillCopyAccessories,
   recordSale, getSoldLog, nextCopyId,
 } from './data.js';
 import { render, toast, haptic, appConfirm, appPromptText, patchFigRow, toastUndo, triggerPulse, renderContent, renderSelectActionbar } from './render.js';
@@ -1564,7 +1564,7 @@ window.batchAddCopy = (presetCondition = '', extras = {}) => {
     if (extras.acquired) copy.acquired = extras.acquired;
     if (extras.location) copy.location = extras.location;
     if (extras.notes) copy.notes = extras.notes;
-    cur.copies.push(copy);
+    cur.copies.push(autofillCopyAccessories(id, copy));   // v8.16: same accessory fill as the single-copy field
     S.coll[id] = cur;
     // v4.87: same ordered→owned migration setStatus/cycleStatus/batchSetStatus do.
     // Must run after S.coll[id] = cur so migrateOrderedToOwned sees the updated entry.
@@ -1670,6 +1670,9 @@ window.batchUpdateExisting = (presetCondition = '', extras = {}) => {
         if (ownedish) {
           if (!cur.copies || !cur.copies.length) cur.copies = [{ id: 1 }];
           cur.copies[0] = { ...cur.copies[0], ...copyFields };
+          // v8.16: setting Loose Complete / Mint in Box here now ticks the
+          // accessories too, like the single-copy Condition field does.
+          if (copyFields.condition) cur.copies[0] = autofillCopyAccessories(id, cur.copies[0]);
           touched = true;
         } else if (explicit === 'ordered' && paidVal) {
           // Explicitly setting status=ordered with a price: store at entry level.
@@ -1693,6 +1696,35 @@ window.batchUpdateExisting = (presetCondition = '', extras = {}) => {
   if (promoted) msg += ` · ${promoted} marked owned`;
   if (skipped)  msg += ` · ${skipped} skipped`;
   window.toastAction(msg, 'Undo', () => _batchUndo(_snap));
+  render();
+};
+
+// v8.16: batch edit in order mode — writes the Order Details fields (and
+// notes) onto each selected figure and marks it Ordered. Never promotes to
+// Owned. Blank fields are left as they were. One Undo for the batch.
+window.batchUpdateOrders = (f = {}) => {
+  const ids = Array.from(S.selected);
+  if (!ids.length) return;
+  const _snap = {};
+  ids.forEach(id => { _snap[id] = S.coll[id] ? JSON.parse(JSON.stringify(S.coll[id])) : null; });
+  ids.forEach(id => {
+    let cur = S.coll[id];
+    cur = cur ? (isMigrated(cur) ? { ...cur, copies: (cur.copies || []).map(cp => ({ ...cp })) } : migrateEntry(cur)) : { copies: [] };
+    cur.status = 'ordered';
+    if (f.orderedFrom) cur.orderedFrom = f.orderedFrom;
+    if (f.orderedDate) cur.orderedDate = f.orderedDate;
+    if (f.orderedPaid) cur.orderedPaid = f.orderedPaid;
+    if (f.notes) {
+      if (cur.copies && cur.copies.length) cur.copies[0] = { ...cur.copies[0], notes: f.notes };
+      else cur.entryNotes = f.notes;
+    }
+    S.coll[id] = cur;
+    S._recentChanges = [id, ...S._recentChanges.filter(x => x !== id)].slice(0, 10);
+  });
+  saveColl();
+  store.set('motu-recent', S._recentChanges);
+  haptic && haptic(25);
+  window.toastAction(`✓ Updated ${ids.length} order${ids.length === 1 ? '' : 's'}`, 'Undo', () => _batchUndo(_snap));
   render();
 };
 

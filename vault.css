@@ -3993,3 +3993,15 @@ html {
 .progress-track { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; }
 .progress-bar { height: 100%; background: var(--acc); transition: width .2s; }
 .progress-text { font-size: var(--fs-sm); color: var(--t2); margin-top: 6px; }
+
+/* v8.16: read-only accessory chips (Wishlist / Ordered / no-status tabs) */
+.acc-chip.acc-chip-ro { padding: 4px 10px; }
+.acc-chip.acc-chip-ro.have .acc-chip-label::before { content: '✓ '; color: var(--gn); font-weight: 700; }
+.info-box .acc-group > label { display: flex; align-items: center; gap: 8px; }
+/* v8.16: ghost selects have no native arrow — give the shop dropdown one so it reads as a dropdown */
+select.ghost-input.vendor-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8f98' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  padding-right: 22px;
+}

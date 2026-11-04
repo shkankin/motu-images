@@ -596,6 +596,7 @@ registerAll({
 registerAll({
 
   'update-copy-notes': (e, el, d) => window.updateCopy?.(d.figId, d.copyId, 'notes', el.value),
+  'update-entry-notes': (e, el, d) => window.updateEntryNotes?.(d.figId, el.value),   // v8.16
 
 }, 'blur');
 
@@ -610,6 +611,7 @@ registerAll({
   // then commit on change (handled in the 'change' section below).
   'update-copy-notes-debounced': (e, el, d) =>
     window.updateCopyDebounced?.(d.figId, d.copyId, 'notes', el.value),
+  'update-entry-notes-debounced': (e, el, d) => window.updateEntryNotesDebounced?.(d.figId, el.value),   // v8.16
 
   // Kids core text field
   'kc-set-field': (e, el, d) => {
@@ -669,8 +671,27 @@ registerAll({
   'pack-edit-meta': (e, el, d) => window.updatePackMeta?.(d.packId, d.field, el.value),
 
   // Batch edit selects
-  'batch-set-status-field': (e, el) => { if (window.S.batchEdit) window.S.batchEdit.status    = el.value; },
+  // v8.16: refresh so choosing Ordered swaps in the order fields.
+  'batch-set-status-field': (e, el) => { if (window.S.batchEdit) window.S.batchEdit.status    = el.value; window.refreshBatchSheet?.(); },
   'batch-set-condition':    (e, el) => { if (window.S.batchEdit) window.S.batchEdit.condition  = el.value; },
+  'batch-set-ordered-date': (e, el) => { if (window.S.batchEdit) window.S.batchEdit.orderedDate = el.value; },
+
+  // v8.16: "Ordered From" dropdown (figure screen, or batch edit when data-batch)
+  'pick-vendor': (e, el, d) => {
+    const box = el.nextElementSibling?.classList.contains('vendor-other') ? el.nextElementSibling : null;
+    if (el.value === '__other') {
+      if (box) { box.style.display = ''; box.focus(); }
+      return;
+    }
+    if (box) { box.style.display = 'none'; box.value = ''; }
+    if (d.batch) { if (window.S.batchEdit) window.S.batchEdit.orderedFrom = el.value; }
+    else window.updateOrderedField?.(d.figId, 'orderedFrom', el.value);
+  },
+  'set-vendor-text': (e, el, d) => {
+    const v = el.value.trim();
+    if (d.batch) { if (window.S.batchEdit) window.S.batchEdit.orderedFrom = v; }
+    else window.updateOrderedField?.(d.figId, 'orderedFrom', v);
+  },
 
   // Edit figure sheet field changes
   'edit-set-line':    (e, el, d) => { window.setOverrideField?.(d.figId, 'line',    el.value);                                   window.refreshEditSheet?.(); },

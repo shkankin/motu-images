@@ -648,7 +648,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.36.0';   // v1.36.0: three new sublines mirrored from state.js — kids-core 'Battle for Subternia', origins 'Vintage Card Back', chronicles 'Vehicles & Playsets'.   // v1.35.0: two new sublines mirrored from state.js — super7 'ReAction' (Super7's 3.75" line; not on AF411, so all entries are manual-*) and cross-brand 'Little People' (Fisher-Price Little People Collector sets, one row per set).   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
+const EDITOR_VERSION = 'v1.37.0';   // v1.37.0: changing only a picture now counts as a change (Commit used to say nothing to commit); Ordered From presets; kids-core subline renamed Battle of Subternia.   // v1.36.0: three new sublines mirrored from state.js — kids-core 'Battle for Subternia', origins 'Vintage Card Back', chronicles 'Vehicles & Playsets'.   // v1.35.0: two new sublines mirrored from state.js — super7 'ReAction' (Super7's 3.75" line; not on AF411, so all entries are manual-*) and cross-brand 'Little People' (Fisher-Price Little People Collector sets, one row per set).   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -757,7 +757,7 @@ let SUBLINES = {
   'kids-core': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
-    {key:'subternia',label:'Battle for Subternia',groups:['Battle for Subternia']},   // v8.15
+    {key:'subternia',label:'Battle of Subternia',groups:['Battle of Subternia','Battle for Subternia']},   // v8.15; v8.16 renamed (old name kept so already-tagged figures still match)
   ],
   original: [
     {key:'action',   label:'Action Figures',                 groups:['Action Figures']},
@@ -2631,11 +2631,20 @@ function saveGhToken() {
   _doCommit(token);
 }
 
+// v1.37.0: staged pictures for figures that will be in figures.json. A picture
+// on its own is a real change — before, the check below ignored them, so
+// changing only a photo said "No decisions or edits to commit" until some
+// other figure was edited too.
+function _stagedImageCount(merged) {
+  const ids = new Set(merged.map(f => f.id));
+  return Object.keys(pendingImages).filter(id => ids.has(id)).length;
+}
+
 function commitToGitHub() {
-  const { approvedNew, rejectedNew, editedExisting } = buildPayloads();
+  const { approvedNew, rejectedNew, editedExisting, merged } = buildPayloads();
   if (approvedNew.length === 0 && rejectedNew.length === 0 && editedExisting.length === 0
       && Object.keys(customSublines).length === 0 && Object.keys(sublineOrder).length === 0
-      && deletedFigs.size === 0 && manualFigs.length === 0) {
+      && deletedFigs.size === 0 && manualFigs.length === 0 && _stagedImageCount(merged) === 0) {
     alert('No decisions or edits to commit.'); return;
   }
   const token = localStorage.getItem(GH_TOKEN_KEY);
@@ -2778,6 +2787,7 @@ async function _doCommit(token) {
   if (rejectedNew.length)    parts.push(`-${rejectedNew.length} rejected`);
   if (editedExisting.length) parts.push(`${editedExisting.length} edited`);
   if (Object.keys(customSublines).length || Object.keys(sublineOrder).length) parts.push('subline config');
+  { const n = _stagedImageCount(merged); if (n) parts.push(`${n} image${n === 1 ? '' : 's'}`); }   // v1.37.0
   const message = `Editor: ${parts.join(', ') || 'loadout update'}`;
 
   try {

@@ -12,7 +12,7 @@
 
 import { S, store, esc, ln, icon, ICO, jsArg, SUBLINES } from './state.js';
 import {
-  getStats, getLineStats, getSoldLog, figIsHidden, isMigrated, figById, orderDue,
+  getStats, getLineStats, getSoldLog, figIsHidden, isMigrated, figById, orderDue, getVendorOf,
   isLineFullyHidden, getEvents, getCompletenessStats, getGapFigures,
 } from './data.js';
 import {
@@ -629,6 +629,53 @@ function renderStatsSheet() {
           ${items.map(it => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(it.id)}">${esc(nameOf(it.id))}${it.acquired ? ' · ' + esc(it.acquired) : ''}${it.paid ? ' · $' + it.paid.toFixed(0) : ''}</button>`).join('')}
         </div>
       </div>`;
+    }
+  }
+
+  // v8.16: By shop — every figure with an "Ordered From" (still on order, or
+  // received: the shop stays on the entry now, and older received orders are
+  // read from their "Ordered from: X" note). Tap a shop to see its figures.
+  {
+    const shops = new Map();
+    for (const f of S.figs) {
+      if (figIsHidden(f)) continue;
+      const c = S.coll[f.id];
+      if (!c || !['ordered', 'owned', 'for-sale'].includes(c.status)) continue;
+      const v = getVendorOf(c);
+      if (!v) continue;
+      const key = v.toLowerCase();
+      const row = shops.get(key) || { name: v, ord: 0, got: 0, paid: 0, items: [] };
+      const onOrder = c.status === 'ordered';
+      onOrder ? row.ord++ : row.got++;
+      const p = parseFloat(onOrder ? c.orderedPaid : ((isMigrated(c) && c.copies?.[0]?.paid) || c.orderedPaid));
+      if (Number.isFinite(p)) row.paid += p;
+      row.items.push({ id: f.id, name: f.name, onOrder, p: Number.isFinite(p) ? p : null });
+      shops.set(key, row);
+    }
+    const rows = [...shops.values()].sort((a, b) => (b.ord + b.got) - (a.ord + a.got) || a.name.localeCompare(b.name));
+    if (rows.length) {
+      html += `<div style="height:1px;background:var(--bd);margin:18px 0 14px"></div>
+      <div class="label text-upper text-dim text-xs" style="margin-bottom:8px">By shop</div>`;
+      rows.forEach((r, i) => {
+        const wid = 'shop_' + i;
+        const bits = [];
+        if (r.ord) bits.push(`${r.ord} on order`);
+        if (r.got) bits.push(`${r.got} received`);
+        const items = r.items.slice().sort((a, b) => (b.onOrder - a.onOrder) || a.name.localeCompare(b.name));
+        html += `<div class="wave-row">
+          <button class="wave-row-head" data-action="toggle-wave-expand" data-wave-id="${wid}" style="display:flex;align-items:center;gap:10px;padding:7px 0;width:100%;text-align:left;border:0;background:none;cursor:pointer" aria-label="${esc(r.name)}: ${bits.join(', ')}. Show figures">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</div>
+              <div style="font-size:11px;color:var(--t3)">${bits.join(' · ')}</div>
+            </div>
+            ${r.paid > 0 ? `<div style="font-size:12px;color:var(--gold);font-weight:700;flex-shrink:0">$${r.paid.toFixed(0)}</div>` : ''}
+            <span class="wave-caret" id="${wid}_caret">${icon(ICO.chevR, 14)}</span>
+          </button>
+          <div id="${wid}" style="display:none;padding:4px 0 10px">
+            ${items.map(it => `<button class="wave-missing-chip" data-action="open-fig" data-fig-id="${esc(it.id)}">${esc(it.name)}${it.onOrder ? ' · on order' : ''}${it.p != null ? ' · $' + it.p.toFixed(0) : ''}</button>`).join('')}
+          </div>
+        </div>`;
+      });
     }
   }
 

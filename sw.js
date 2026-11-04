@@ -3,6 +3,18 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.16 changelog:
+//   • CACHE bumped to v8.16.
+//   • Ordered → Owned → Ordered no longer wipes the order details (migrateOrderedToOwned keeps them
+//     on the entry; its note/price copies are added once, never twice).
+//   • "Ordered From" is a dropdown of shops (presets + shops already used + "Other (type it)…"),
+//     on the figure screen and in batch edit. New Stats → By shop list (on order / received / paid).
+//   • Accessories ("Comes with") and Notes now show on the Wishlist, Ordered and no-status tabs.
+//     Notes live on the entry (entryNotes) until a copy exists, then they are copy 1's notes.
+//   • Batch edit: Status = Ordered (or all selected already Ordered) shows the order fields —
+//     Ordered From, Expected Date (future allowed), Price Paid, Notes — and never promotes to Owned.
+//     Setting a condition in batch edit now ticks the accessories like the single-copy field does.
+//   • Kids Core subline renamed "Battle of Subternia" (old group name still matches).
 // v8.15 changelog:
 //   • CACHE bumped to v8.15. CUMULATIVE with v8.14 (not deployed when this was built — deploy
 //     this zip alone). Adds state.js + figures-editor.html (EDITOR_VERSION v1.36.0).
@@ -2272,7 +2284,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.15';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.16';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
