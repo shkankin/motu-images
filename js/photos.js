@@ -25,6 +25,10 @@ const PHOTO_COPY_KEY = 'motu-photo-copy';
 const photoURLs = {};   // { "figId-n": objectURL }
 let _opfsDir = null;
 let _opfsReady = false;
+// v8.14: set when this browser can open OPFS but cannot WRITE to it — Safari
+// before 26 has getDirectory() but no createWritable(). Photos then go to the
+// localStorage fallback instead of failing (pre-launch review, blocker).
+let _opfsWriteBroken = false;
 
 // ── v7.87: CSP-independent photo reads ───────────────────────────
 // Every read-back path used to be fetch(objectURL) / fetch(dataURL), which
@@ -62,7 +66,7 @@ async function readPhotoBlob(id, n) {
       const fh = await _opfsDir.getFileHandle(`photo-${id}-${n}.jpg`);
       const file = await fh.getFile();
       if (file && file.size > 0) return file;
-      return null;                       // zero-byte file: genuinely dead
+      // v8.14: zero bytes — check the localStorage fallback before calling it dead
     } catch { /* fall through to the fallback below */ }
   }
   try {
@@ -217,15 +221,23 @@ const photoStore = {
   // v8.03: the storage write, shared by add() and restore(). Returns true
   // once the bytes are stored and an object/data URL is cached for slot n.
   _writeAt: async (id, n, blob) => {
-    if (_opfsReady) {
-      const fh = await _opfsDir.getFileHandle(`photo-${id}-${n}.jpg`, {create: true});
-      const writable = await fh.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      const key = id + '-' + n;
-      if (photoURLs[key]) URL.revokeObjectURL(photoURLs[key]);
-      photoURLs[key] = URL.createObjectURL(blob);
-      return true;
+    if (_opfsReady && !_opfsWriteBroken) {
+      const name = `photo-${id}-${n}.jpg`;
+      try {
+        const fh = await _opfsDir.getFileHandle(name, {create: true});
+        if (typeof fh.createWritable !== 'function') { _opfsWriteBroken = true; throw new Error('no createWritable'); }
+        const writable = await fh.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        const key = id + '-' + n;
+        if (photoURLs[key]) URL.revokeObjectURL(photoURLs[key]);
+        photoURLs[key] = URL.createObjectURL(blob);
+        return true;
+      } catch {
+        // v8.14: drop the empty file getFileHandle just created — it would
+        // otherwise shadow the fallback copy at the next loadAll.
+        try { await _opfsDir.removeEntry(name); } catch {}
+      }
     }
     // Fallback: localStorage base64
     const dataUrl = await new Promise((res, rej) => {
@@ -372,6 +384,7 @@ const photoStore = {
           const parsed = parsePhotoName(name);
           if (!parsed) continue;
           const file = await handle.getFile();
+          if (!file.size) continue;   // v8.14: an empty file must not hide a localStorage copy
           photoURLs[parsed.id + '-' + parsed.n] = URL.createObjectURL(file);
           (buckets[parsed.id] = buckets[parsed.id] || []).push(parsed.n);
         }

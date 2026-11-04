@@ -177,6 +177,7 @@ const SUBLINES = {
     {key:'powers',label:'Powers of Grayskull',groups:['Powers of Grayskull']},
     {key:'thundercats',label:'MOTU x Thundercats',groups:['MOTU x Thundercats']},
     {key:'sketchbook',label:'Sketchbook Series',groups:['Sketchbook Series']},
+    {key:'vintage-card',label:'Vintage Card Back',groups:['Vintage Card Back']},   // v8.15
   ],
   masterverse: [
     {key:'revelation',label:'Revelation',groups:['Revelation','Revelation Deluxe']},
@@ -206,6 +207,7 @@ const SUBLINES = {
   'kids-core': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
+    {key:'subternia',label:'Battle for Subternia',groups:['Battle for Subternia']},   // v8.15
   ],
   original: [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
@@ -236,6 +238,7 @@ const SUBLINES = {
   chronicles: [
     {key:'movie',label:'Movie',groups:['Movie']},
     {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},   // v8.15
   ],
   'new-adventures': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},

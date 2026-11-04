@@ -92,6 +92,10 @@ window.addVariant = async (parentId) => {
 // the figure leaves the collection entirely (status cleared) — selling out
 // is the one case where "owned" should genuinely end.
 window.markCopySold = async (figId, copyId) => {
+  // v8.14: copy ids are numbers; the button hands over its data-copy-id as a
+  // string, so `x.id === copyId` never matched and Mark Sold silently did
+  // nothing (pre-launch review). Every sibling copy action already did this.
+  copyId = Number(copyId);
   const f = figById(figId);
   const c = S.coll[figId];
   if (!f || !c || !isMigrated(c)) return;

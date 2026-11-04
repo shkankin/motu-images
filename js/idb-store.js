@@ -55,14 +55,22 @@ function _openDB() {
   return _dbPromise;
 }
 
+// v8.14: a FAILED read is not the same as an absent key. It used to resolve
+// undefined either way, so a one-off IndexedDB error at boot looked like "no
+// collection yet"; the app then loaded {} as if it were real, and the next
+// tab-hide saved that empty collection over the intact one (pre-launch
+// review, blocker). Failures now resolve READ_ERR; hydrate retries once and
+// records the key in _readFailed so the app can refuse to save over it.
+const READ_ERR = Symbol('idb-read-error');
+const _readFailed = new Set();
 function _idbGet(db, key) {
   return new Promise((resolve) => {
     let tx;
     try { tx = db.transaction(STORE_NAME, 'readonly'); }
-    catch { resolve(undefined); return; }
+    catch { resolve(READ_ERR); return; }
     const req = tx.objectStore(STORE_NAME).get(key);
     req.onsuccess = () => resolve(req.result);     // undefined when the key is absent
-    req.onerror = () => resolve(undefined);
+    req.onerror = () => resolve(READ_ERR);
   });
 }
 
@@ -129,7 +137,15 @@ export async function hydrate(keys, opts = {}) {
 
   for (const key of keys) {
     if (_useIdb) {
-      const got = await _idbGet(db, key);
+      let got = await _idbGet(db, key);
+      if (got === READ_ERR) got = await _idbGet(db, key);     // v8.14: one retry for a transient error
+      if (got === READ_ERR) {
+        // v8.14: the read FAILED. Use a localStorage copy if one exists, but
+        // never treat this as "absent" and never migrate over it.
+        _readFailed.add(key);
+        _mem.set(key, _lsGet(key));
+        continue;
+      }
       if (got !== undefined) { _mem.set(key, got); continue; }   // already in IDB
       // Not in IDB yet — migrate from localStorage if present.
       const ls = _lsGet(key);
@@ -187,6 +203,8 @@ export function bigFlush(key, val) {
 }
 
 export function idbAvailable() { return _useIdb; }
+/** v8.14: true when hydrate could not READ this key (not merely absent). */
+export function readFailed(key) { return _readFailed.has(key); }
 export function isHydrated() { return _hydrated; }
 /** Subscribe to "an IndexedDB write failed and we fell back to localStorage". */
 export function onPersistFail(fn) { _failListeners.add(fn); return () => _failListeners.delete(fn); }

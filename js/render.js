@@ -641,13 +641,17 @@ function renderMain() {
     <span style="flex:1">Storage unavailable — your changes won't persist after closing the app. Common in private/incognito browsing.</span>
     <button data-action="dismiss-storage-banner" aria-label="Dismiss">×</button>
   </div>` : ''}
+  ${S._collReadFailed ? `
+  <div class="storage-banner" role="alert">
+    <span style="flex:1">Couldn’t open your saved collection. Close the app completely and open it again. Until then nothing you change is saved, so your collection stays safe.</span>
+  </div>` : ''}
   <div class="top-bar" id="topBar">
     <div class="header-row">
       <div class="logo-group">
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.13</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.15</span></div>
         </div>
       </div>
       <div class="header-actions">

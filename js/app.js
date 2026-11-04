@@ -16,7 +16,7 @@ import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, AF411_PATHS_CACHE_KEY, CACHE_T
 // back to IDB, and the journal file was deleted on the next line — so if
 // the session ended without another collection write, the journaled
 // changes were silently lost. Found by the new eslint no-undef gate.
-import { hydrate as idbHydrate, bigGet, bigSet } from './idb-store.js';
+import { hydrate as idbHydrate, bigGet, bigSet, readFailed } from './idb-store.js';
 import {
   initOPFS, loadPhotoLabels, loadPhotoCopyMap,
   photoStore, _opfsReady,
@@ -172,7 +172,14 @@ async function init() {
   // the empty initial S.coll = {}. That is a real data wipe. The flag
   // also covers legitimate first runs: no stored collection means an empty
   // write is harmless, and it's set here either way.
-  S._collLoaded = true;
+  // v8.14: if the stored collection could not be READ (not just absent), keep
+  // _collLoaded false — that blocks every collection save this session, so the
+  // empty stand-in can never overwrite the real one — and say so on screen.
+  if (!c && readFailed('motu-c2')) {
+    S._collReadFailed = true;
+  } else {
+    S._collLoaded = true;
+  }
   // Load persisted recent changes
   const rc = store.get('motu-recent');
   if (rc && Array.isArray(rc)) S._recentChanges = rc;

@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.108
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.109
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -85,7 +85,8 @@ export default {
       }
       const invalid = ids.filter(id => !isValidFigId(id));
       if (invalid.length) return json({ error: 'invalid figIds', invalid }, 400, cors);
-      const meta = (body.meta && typeof body.meta === 'object') ? body.meta : {};
+      const rawMeta = (body.meta && typeof body.meta === 'object') ? body.meta : {};
+      const meta = { line: cleanLine(rawMeta.line), wave: rawMeta.wave, year: rawMeta.year };
       const fresh = body.fresh === true;
       // v6.103 (M-3): rate-limit bulk fresh calls — each bulk-fresh fans out to
       // up to 50 live eBay API calls. Count the whole batch as one rate-limit hit.
@@ -110,7 +111,7 @@ export default {
       const figId = decodeURIComponent(m[1]);
       if (!isValidFigId(figId)) return json({ error: 'invalid figId' }, 400, cors);
       const meta = {
-        line: url.searchParams.get('line') || undefined,
+        line: cleanLine(url.searchParams.get('line')),
         wave: url.searchParams.get('wave') || undefined,
         year: url.searchParams.get('year') || undefined,
       };
@@ -132,7 +133,8 @@ export default {
         const data = await getPricing(figId, env, ctx, meta, { fresh, wantSold, noStart: !wantSold });
         return json(data, 200, cors);
       } catch (e) {
-        return json({ error: 'upstream', message: String(e.message || e) }, 502, cors);
+        console.log('pricing error', figId, String(e?.stack || e));
+        return json({ error: 'upstream' }, 502, cors);
       }
     }
 
@@ -371,7 +373,7 @@ async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
       sortOrder: 'endedRecently',
     }),
   });
-  if (!res.ok) throw new Error('Apify start HTTP ' + res.status + ' — ' + (await res.text()).slice(0, 200));
+  if (!res.ok) { console.log('Apify start failed', res.status, (await res.text()).slice(0, 500)); throw new Error('sold lookup failed (' + res.status + ')'); }
   const started = (await res.json())?.data || {};
   if (!started.id) throw new Error('Apify start: no run id');
   await kv.put('soldrun:' + figId, JSON.stringify({ id: started.id, ds: started.defaultDatasetId }), { expirationTtl: 3600 });
@@ -428,7 +430,8 @@ async function ebayActiveProvider(figId, env, meta = {}) {
     },
   });
   const rawBody = await res.text();
-  if (!res.ok) throw new Error('eBay HTTP ' + res.status + ' — ' + rawBody.slice(0, 300));
+  // v6.109: upstream bodies go to the worker log, not to the caller.
+  if (!res.ok) { console.log('eBay Browse failed', res.status, rawBody.slice(0, 500)); throw new Error('eBay unavailable (' + res.status + ')'); }
   const data = JSON.parse(rawBody);
   const items = data.itemSummaries || [];
 
@@ -586,7 +589,7 @@ function figNameTokens(figId) {
 
 // ── eBay OAuth token (client-credentials, KV-cached 2h) ─────────────
 async function getEbayToken(env) {
-  const cached = await env.PRICING_CACHE.get('__ebay_token__', { type: 'json' }).catch(() => null);
+  const cached = await env.PRICING_CACHE.get('int:ebay-token', { type: 'json' }).catch(() => null);
   if (cached && cached.expires > Date.now()) return cached.token;
 
   if (!env.EBAY_APP_ID || !env.EBAY_CERT_ID) throw new Error('EBAY_APP_ID / EBAY_CERT_ID not configured');
@@ -601,13 +604,14 @@ async function getEbayToken(env) {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error('eBay token HTTP ' + res.status + ' — ' + body.slice(0, 200));
+    console.log('eBay token failed', res.status, body.slice(0, 500));
+    throw new Error('eBay unavailable (' + res.status + ')');
   }
   const data = await res.json();
   const token = data.access_token;
   const expires = Date.now() + (data.expires_in - 300) * 1000;   // 5-min buffer
   // Fire-and-forget write. Concurrent cold requests may double-fetch, accepted.
-  env.PRICING_CACHE.put('__ebay_token__', JSON.stringify({ token, expires }), { expirationTtl: 7200 }).catch(() => {});
+  env.PRICING_CACHE.put('int:ebay-token', JSON.stringify({ token, expires }), { expirationTtl: 7200 }).catch(() => {});
   return token;
 }
 
@@ -772,8 +776,19 @@ function figIdToQuery(figId, meta = {}) {
   const lineTerm = (meta.line && LINE_SEARCH_TERMS[meta.line]) || 'Masters of the Universe';
   return name + ' ' + lineTerm;
 }
+// v6.109: must start with a letter or digit. Internal keys used to live in
+// the same KV under '__ebay_token__', so GET /pricing/__ebay_token__ read the
+// cached eBay OAuth token back through the normal cache path (pre-launch
+// review, blocker). Internal keys now also use a ':' prefix, which no figure
+// id can contain — two independent locks.
 function isValidFigId(s) {
-  return typeof s === 'string' && s.length > 0 && s.length < 200 && /^[a-zA-Z0-9_-]+$/.test(s);
+  return typeof s === 'string' && s.length > 0 && s.length < 200 && /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(s);
+}
+// v6.109: only known line ids reach the lookup tables. '?line=constructor'
+// returned Object.prototype.constructor from LINE_REQUIRED_TERMS and every
+// provider threw on `.test`.
+function cleanLine(v) {
+  return (typeof v === 'string' && Object.prototype.hasOwnProperty.call(LINE_SEARCH_TERMS, v)) ? v : undefined;
 }
 
 // v6.103 (L-1): constant-time string comparison to resist timing side-channels
@@ -811,7 +826,7 @@ async function authorizeAdmin(request, env) {
 // avoids the need for a Durable Object (which would require a different binding).
 async function checkFreshRateLimit(request, env, ctx) {
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  const key = `__rl_fresh__${ip}`;
+  const key = `int:rl:${ip}`;
   try {
     const raw = await env.PRICING_CACHE.get(key);
     const count = raw ? parseInt(raw, 10) : 0;

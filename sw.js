@@ -3,6 +3,27 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.15 changelog:
+//   • CACHE bumped to v8.15. CUMULATIVE with v8.14 (not deployed when this was built — deploy
+//     this zip alone). Adds state.js + figures-editor.html (EDITOR_VERSION v1.36.0).
+//   • New sublines: Kids Core → Battle for Subternia; Origins → Vintage Card Back;
+//     Chronicles → Vehicles & Playsets. A figure lands in one by setting its subline
+//     (group) to that exact name in the editor. The editor's fallback list matches.
+
+// v8.14 changelog:
+//   • CACHE bumped to v8.14. SHELL: handlers.js + idb-store.js + app.js + render.js + photos.js +
+//     motu-vault.html. Ships backend/pricing-worker.js v6.109 (paste into Cloudflare).
+//     Blockers from the 2026-10-29 pre-launch review:
+//   • Mark Sold… did nothing: the copy id arrived as text and was compared to a number. Fixed.
+//   • A failed IndexedDB read at startup looked like "no collection yet", and the next tab-hide
+//     saved the empty stand-in over the real collection. Reads are now retried once; if the
+//     collection still can't be read, nothing is saved that session and a banner says to reopen.
+//   • iPhones on iOS before 26 couldn't save photos (no OPFS createWritable). Photos now fall back
+//     to the older storage, with no empty file left behind to hide them after a restart.
+//   • Backend v6.109: the cached eBay token could be read via /pricing/__ebay_token__ (ids must now
+//     start with a letter/digit, internal keys moved to an "int:" prefix); ?line= is checked
+//     against known lines; upstream error text is logged, not returned.
+
 // v8.13 changelog:
 //   • CACHE bumped to v8.13. SHELL: pricing.js + render.js + share.js + stats.js + ui-sheets.js +
 //     delegate-handlers.js + vault.css + motu-vault.html. (Heuristic pass over v8.01–v8.12.)
@@ -2251,7 +2272,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.13';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.15';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

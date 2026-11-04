@@ -648,7 +648,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.35.0';   // v1.35.0: two new sublines mirrored from state.js — super7 'ReAction' (Super7's 3.75" line; not on AF411, so all entries are manual-*) and cross-brand 'Little People' (Fisher-Price Little People Collector sets, one row per set).   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
+const EDITOR_VERSION = 'v1.36.0';   // v1.36.0: three new sublines mirrored from state.js — kids-core 'Battle for Subternia', origins 'Vintage Card Back', chronicles 'Vehicles & Playsets'.   // v1.35.0: two new sublines mirrored from state.js — super7 'ReAction' (Super7's 3.75" line; not on AF411, so all entries are manual-*) and cross-brand 'Little People' (Fisher-Price Little People Collector sets, one row per set).   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -727,6 +727,7 @@ let SUBLINES = {
     {key:'powers',label:'Powers of Grayskull',groups:['Powers of Grayskull']},
     {key:'thundercats',label:'MOTU x Thundercats',groups:['MOTU x Thundercats']},
     {key:'sketchbook',label:'Sketchbook Series',groups:['Sketchbook Series']},
+    {key:'vintage-card',label:'Vintage Card Back',groups:['Vintage Card Back']},   // v8.15
   ],
   masterverse: [
     {key:'revelation',     label:'Revelation',           groups:['Revelation','Revelation Deluxe']},
@@ -756,6 +757,7 @@ let SUBLINES = {
   'kids-core': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
     {key:'movie',label:'Movie (2026)',groups:['Movie (2026)','Movie']},
+    {key:'subternia',label:'Battle for Subternia',groups:['Battle for Subternia']},   // v8.15
   ],
   original: [
     {key:'action',   label:'Action Figures',                 groups:['Action Figures']},
@@ -781,6 +783,7 @@ let SUBLINES = {
   chronicles: [
     {key:'movie',label:'Movie',groups:['Movie']},
     {key:'action',label:'Action Figures',groups:['Action Figures']},
+    {key:'vehicles',label:'Vehicles & Playsets',groups:['Vehicles & Playsets']},   // v8.15
   ],
   'new-adventures': [
     {key:'action',label:'Action Figures',groups:['Action Figures']},
