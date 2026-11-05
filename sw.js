@@ -3,6 +3,12 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.17 changelog:
+//   • CACHE bumped to v8.17. No app code changes — this release ships figures-editor.html v1.38.0:
+//     ✂ photo crop tool (trims the plain white border, drag to adjust, pads back to a square so the
+//     app's square list thumbnails don't cut feet off), and figures still saved under the old subline
+//     name 'Battle for Subternia' are moved to 'Battle of Subternia' on load (commit to save) — the
+//     app lists print the saved name, which is why v8.16's rename didn't show there.
 // v8.16 changelog:
 //   • CACHE bumped to v8.16.
 //   • Ordered → Owned → Ordered no longer wipes the order details (migrateOrderedToOwned keeps them
@@ -2284,7 +2290,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.16';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.17';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

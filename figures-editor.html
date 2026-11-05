@@ -217,6 +217,13 @@
   }
   .fig-img .imgbtn:hover { background: rgba(0,0,0,0.78); }
   .fig-img .imgbtn input { display: none; }
+  /* v1.38.0: crop tool button */
+  .fig-img .cropbtn {
+    position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; padding: 0;
+    border: none; border-radius: 50%; background: rgba(0,0,0,0.62); color: #fff;
+    font-size: 14px; line-height: 28px; text-align: center; cursor: pointer;
+  }
+  .fig-img .cropbtn:hover { background: rgba(0,0,0,0.8); }
 
   .fig-body { display: flex; flex-direction: column; gap: 10px; }
   .fig-header {
@@ -604,7 +611,8 @@
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--t2);grid-column:1/-1">Image (optional)
         <input id="afImage" type="file" accept="image/*" onchange="afImageChange(event)" style="font-size:13px;padding:6px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--bg3);color:var(--t1)">
         <div id="afImageInfo" style="font-size:11px;color:var(--t3);min-height:14px"></div>
-        <div id="afImagePreviewWrap" style="display:none;margin-top:6px"><img id="afImagePreview" style="max-width:140px;max-height:140px;border-radius:6px;border:1px solid var(--bd)"></div>
+        <div id="afImagePreviewWrap" style="display:none;margin-top:6px"><img id="afImagePreview" style="max-width:140px;max-height:140px;border-radius:6px;border:1px solid var(--bd);vertical-align:bottom">
+          <button type="button" class="secondary" style="margin-left:8px" onclick="openCropForAddFig(event)">&#x2702; Crop</button></div>
       </label>
       <!-- v1.17: accessories / loadout. Selections are staged under the
            '__addfig__' key and moved onto the real figure id on submit, so
@@ -633,6 +641,33 @@
   </div>
 </div>
 
+<!-- v1.38.0: photo crop / trim-white-border tool -->
+<div id="cropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10001;align-items:center;justify-content:center;padding:12px">
+  <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:14px;width:100%;max-width:520px;max-height:100%;overflow-y:auto;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0">
+      <strong style="font-size:15px;flex-shrink:0">Crop photo</strong>
+      <span id="cropTitle" style="font-size:12px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    </div>
+    <div style="text-align:center;line-height:0"><canvas id="cropCanvas" style="max-width:100%;max-height:55vh;width:auto;height:auto;touch-action:none;border-radius:6px;background:#fff"></canvas></div>
+    <div id="cropInfo" style="font-size:12px;color:var(--t2);min-height:16px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button type="button" class="secondary" onclick="cropAutoTrim()">Trim white border</button>
+      <button type="button" class="secondary" onclick="cropReset()">Whole picture</button>
+      <label style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:5px"><input type="checkbox" id="cropSquare" checked onchange="cropDraw()"> Square</label>
+      <label style="font-size:12px;color:var(--t2);display:flex;align-items:center;gap:5px">Margin
+        <select id="cropMargin" onchange="cropDraw()"><option value="0">0%</option><option value="0.02">2%</option><option value="0.04" selected>4%</option><option value="0.08">8%</option></select></label>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div style="width:96px;height:96px;display:flex;align-items:center;justify-content:center;flex-shrink:0"><canvas id="cropOut" width="96" height="96" style="border-radius:4px;border:1px solid var(--bd)"></canvas></div>
+      <div style="font-size:11px;color:var(--t3);line-height:1.5">Result <span id="cropDims"></span>. Drag an edge of the box to adjust it, or drag inside it to move it. <b>Square</b> pads with the background so the app's square thumbnails don't cut anything off.</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button type="button" class="secondary" onclick="cropClose()">Cancel</button>
+      <button type="button" class="success" onclick="cropApply()">Use this</button>
+    </div>
+  </div>
+</div>
+
 <!-- v1.9: Delete Confirm Modal -->
 <div id="deleteFigModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:380px;width:90%;display:flex;flex-direction:column;gap:14px">
@@ -648,7 +683,7 @@
 
 <script>
 // ── Editor Version ──────────────────────────────────────────────────
-const EDITOR_VERSION = 'v1.37.0';   // v1.37.0: changing only a picture now counts as a change (Commit used to say nothing to commit); Ordered From presets; kids-core subline renamed Battle of Subternia.   // v1.36.0: three new sublines mirrored from state.js — kids-core 'Battle for Subternia', origins 'Vintage Card Back', chronicles 'Vehicles & Playsets'.   // v1.35.0: two new sublines mirrored from state.js — super7 'ReAction' (Super7's 3.75" line; not on AF411, so all entries are manual-*) and cross-brand 'Little People' (Fisher-Price Little People Collector sets, one row per set).   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
+const EDITOR_VERSION = 'v1.38.0';   // v1.38.0: photo crop tool (✂ on every photo — trims the plain white border, drag to adjust, pads back to a square so app thumbnails don't cut feet off); figures still saved under a renamed subline ('Battle for Subternia') are moved to the new name on load, ready to commit.   // v1.37.0: changing only a picture now counts as a change (Commit used to say nothing to commit); Ordered From presets; kids-core subline renamed Battle of Subternia.   // v1.36.0: three new sublines mirrored from state.js — kids-core 'Battle for Subternia', origins 'Vintage Card Back', chronicles 'Vehicles & Playsets'.   // v1.35.0: two new sublines mirrored from state.js — super7 'ReAction' (Super7's 3.75" line; not on AF411, so all entries are manual-*) and cross-brand 'Little People' (Fisher-Price Little People Collector sets, one row per set).   // v1.34.0: filter selections (line, subline, status) survive refreshUI — changing a figure's line keeps the current filter and the figure simply drops out of the list in place instead of resetting to All-lines.   // v1.33.0: flushPendingEdits baseline fix — changing one figure's line no longer marks every visible figure as edited; no-op setEdit writes now clear instead of store (reverting a field un-marks the card).   // v1.32.0: 'AF411 current id' (af411_id) field on ALL figures, both forms — acknowledges AF411 renames (sync v1.9.4 skips acknowledged candidates silently) and powers the app's AF411 deep link. v1.31.0 added the manual-only claim field.   // v1.30.0: MOTU Collector rebrand (title + h1)
 document.addEventListener('DOMContentLoaded', async () => {
   const b = document.getElementById('editorVersionBadge');
   if (b) b.textContent = EDITOR_VERSION;
@@ -1139,8 +1174,9 @@ function figImgBlock(f) {
   const src = staged ? staged.dataUrl : (f.slug ? `${RAW_IMG}/${f.slug}.jpg` : '');
   const canUpload = !!f.slug;
   return `
-      <img id="cardimg-${id}"${src ? ` src="${esc(src)}"` : ' style="display:none"'} onerror="this.style.display='none';var p=document.getElementById('noimg-${id}');if(p)p.style.display=''">
+      <img id="cardimg-${id}"${src ? ` src="${esc(src)}"` : ' style="display:none"'} onerror="this.style.display='none';var p=document.getElementById('noimg-${id}');if(p)p.style.display='';var c=document.getElementById('cropbtn-${id}');if(c)c.style.display='none'">
       <span id="noimg-${id}" class="noimg"${src ? ' style="display:none"' : ''}>no image</span>
+      ${src && canUpload ? `<button type="button" class="cropbtn" id="cropbtn-${id}" title="Crop / trim the white border" onclick="openCropForFig('${id}')">\u2702</button>` : ''}
       ${canUpload ? `<label class="imgbtn" title="Set or replace photo — commits as ${esc(f.slug)}.jpg">
         <input type="file" accept="image/*" onchange="cardImageChange(event,'${id}')">
         <span id="imgbtnlbl-${id}">${staged ? '\u2713 staged' : '\uD83D\uDCF7 photo'}</span></label>` : ''}`;
@@ -1165,6 +1201,249 @@ async function cardImageChange(ev, figId) {
   const y = window.scrollY;
   refreshUI();
   window.scrollTo(0, y);
+}
+
+// ── v1.38.0: crop / trim the white border ────────────────────────────────────
+// Product photos often sit on a big white canvas, so the figure looks small in
+// the app. This finds the plain border (its colour is read from the picture's
+// outer edge, so off-white backgrounds work too), lets you drag the box to
+// fine-tune it, and by default pads the result back to a SQUARE with that
+// background: the app's list thumbnails are square top-anchored "cover" crops,
+// so a tall, tightly trimmed photo would otherwise lose the figure's feet.
+// The result is staged in pendingImages like any new photo (same commit).
+const CROP_MAX = 1600;   // longest side of the saved JPEG
+let _crop = null;        // { img, w, h, x, y, cw, ch, bg, data, onApply, drag }
+
+async function openCropForFig(figId) {
+  const fig = pendingFigs.find(f => f.id === figId) || manualFigs.find(f => f.id === figId) || approvedFigs.find(f => f.id === figId);
+  if (!fig || !fig.slug) { alert('This figure has no slug, so its photo cannot be saved.'); return; }
+  let src = pendingImages[figId] && pendingImages[figId].dataUrl;
+  if (!src) src = await _fetchPhotoObjectUrl(fig.slug);
+  if (!src) { alert("Couldn't load this figure's photo to edit."); return; }
+  _openCrop(src, fig.name || fig.id, (dataUrl, size) => {
+    pendingImages[figId] = { filename: 'images/' + fig.slug + '.jpg', dataUrl, mime: 'image/jpeg', size };
+    const y = window.scrollY;
+    refreshUI();
+    window.scrollTo(0, y);
+  });
+}
+function openCropForAddFig(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }   // it sits inside the file input's <label>
+  const st = document.getElementById('afImage')._stagedImage;
+  if (!st) return;
+  const base = String(st.name || 'photo').replace(/ \(cropped\)$/, '');
+  _openCrop(st.dataUrl, base, (dataUrl, size) => _stageImage(dataUrl, 'image/jpeg', 'jpg', size, base + ' (cropped)'));
+}
+// Committed photo → object URL. fetch (not <img>) so the canvas isn't tainted:
+// the raw CDN sends CORS headers, a cached non-CORS <img> copy might not.
+async function _fetchPhotoObjectUrl(slug) {
+  for (const url of [`${RAW_IMG}/${slug}.jpg`, `images/${slug}.jpg`]) {
+    try {
+      const r = await fetch(url + '?v=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) return URL.createObjectURL(await r.blob());
+    } catch {}
+  }
+  return null;
+}
+
+function _openCrop(src, title, onApply) {
+  const img = new Image();
+  img.onload = () => {
+    if (src.startsWith('blob:')) URL.revokeObjectURL(src);
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) { alert('Could not read that picture.'); return; }
+    const cv = document.getElementById('cropCanvas');
+    const s = Math.min(1, 900 / Math.max(w, h));
+    cv.width = Math.max(1, Math.round(w * s));
+    cv.height = Math.max(1, Math.round(h * s));
+    _crop = { img, w, h, x: 0, y: 0, cw: w, ch: h, bg: [255, 255, 255], data: _cropSample(img, w, h), onApply, drag: null };
+    _cropBindPointer(cv);
+    document.getElementById('cropTitle').textContent = title || '';
+    document.getElementById('cropModal').style.display = 'flex';
+    cropAutoTrim();
+  };
+  img.onerror = () => alert('Could not read that picture.');
+  img.src = src;
+}
+
+// Small copy of the pixels for border detection (fast on phones).
+function _cropSample(img, w, h) {
+  const k = Math.min(1, 400 / Math.max(w, h));
+  const aw = Math.max(1, Math.round(w * k)), ah = Math.max(1, Math.round(h * k));
+  const c = document.createElement('canvas');
+  c.width = aw; c.height = ah;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, aw, ah);
+  return { aw, ah, k, px: ctx.getImageData(0, 0, aw, ah).data };
+}
+
+// → { bg:[r,g,b], box:{x0,y0,x1,y1} in sample px } ; box null when there's
+// no plain border (a busy photo) or nothing but border.
+function _cropFindBox(a, tol = 28) {
+  const { aw, ah, px } = a;
+  const ring = [];
+  for (let x = 0; x < aw; x++) { ring.push((x) * 4, ((ah - 1) * aw + x) * 4); }
+  for (let y = 1; y < ah - 1; y++) { ring.push((y * aw) * 4, (y * aw + aw - 1) * 4); }
+  const ch = [0, 1, 2].map(c => ring.map(i => px[i + c]).sort((p, q) => p - q)[ring.length >> 1]);   // median edge colour
+  const off = i => Math.max(Math.abs(px[i] - ch[0]), Math.abs(px[i + 1] - ch[1]), Math.abs(px[i + 2] - ch[2]));
+  const plain = ring.filter(i => off(i) <= tol).length / ring.length;
+  if (plain < 0.6) return { bg: [255, 255, 255], box: null };
+  const rowHit = new Uint32Array(ah), colHit = new Uint32Array(aw);
+  for (let y = 0; y < ah; y++) {
+    for (let x = 0; x < aw; x++) if (off((y * aw + x) * 4) > tol) { rowHit[y]++; colHit[x]++; }
+  }
+  // a row/column counts as "figure" once a few pixels differ (ignores specks)
+  const rMin = Math.max(1, Math.round(aw * 0.004)), cMin = Math.max(1, Math.round(ah * 0.004));
+  let y0 = 0; while (y0 < ah && rowHit[y0] < rMin) y0++;
+  if (y0 >= ah) return { bg: ch, box: null };
+  let y1 = ah - 1; while (y1 > y0 && rowHit[y1] < rMin) y1--;
+  let x0 = 0; while (x0 < aw && colHit[x0] < cMin) x0++;
+  let x1 = aw - 1; while (x1 > x0 && colHit[x1] < cMin) x1--;
+  return { bg: ch, box: { x0, y0, x1: x1 + 1, y1: y1 + 1 } };
+}
+
+function cropAutoTrim() {
+  if (!_crop) return;
+  const { bg, box } = _cropFindBox(_crop.data);
+  const info = document.getElementById('cropInfo');
+  if (!box) {
+    cropReset();
+    info.textContent = 'No plain border found — drag the box edges to crop by hand.';
+    return;
+  }
+  _crop.bg = bg;
+  const k = _crop.data.k;
+  // back to full-size pixels, with one sample pixel of slack so nothing is shaved
+  const x0 = Math.max(0, Math.floor((box.x0 - 1) / k)), y0 = Math.max(0, Math.floor((box.y0 - 1) / k));
+  const x1 = Math.min(_crop.w, Math.ceil((box.x1 + 1) / k)), y1 = Math.min(_crop.h, Math.ceil((box.y1 + 1) / k));
+  Object.assign(_crop, { x: x0, y: y0, cw: x1 - x0, ch: y1 - y0 });
+  const cut = 1 - (_crop.cw * _crop.ch) / (_crop.w * _crop.h);
+  info.textContent = cut < 0.03 ? 'The border is already tight.' : `Border trimmed — ${Math.round(cut * 100)}% of the picture cut away.`;
+  cropDraw();
+}
+function cropReset() {
+  if (!_crop) return;
+  Object.assign(_crop, { x: 0, y: 0, cw: _crop.w, ch: _crop.h });
+  document.getElementById('cropInfo').textContent = '';
+  cropDraw();
+}
+
+// Output size in source pixels (crop + margin, squared if asked) and the
+// saved JPEG's pixel size (capped at CROP_MAX).
+function _cropGeom() {
+  const m = parseFloat(document.getElementById('cropMargin').value) || 0;
+  let W = _crop.cw * (1 + 2 * m), H = _crop.ch * (1 + 2 * m);
+  if (document.getElementById('cropSquare').checked) W = H = Math.max(W, H);
+  const sc = Math.min(1, CROP_MAX / Math.max(W, H));
+  return { W, H, outW: Math.max(1, Math.round(W * sc)), outH: Math.max(1, Math.round(H * sc)) };
+}
+function _cropPaint(ctx, cW, cH, g) {
+  ctx.imageSmoothingQuality = 'high';
+  ctx.fillStyle = `rgb(${_crop.bg.join(',')})`;
+  ctx.fillRect(0, 0, cW, cH);
+  const f = Math.min(cW / g.W, cH / g.H);
+  const dw = _crop.cw * f, dh = _crop.ch * f;
+  ctx.drawImage(_crop.img, _crop.x, _crop.y, _crop.cw, _crop.ch, (cW - dw) / 2, (cH - dh) / 2, dw, dh);
+}
+
+function cropDraw() {
+  if (!_crop) return;
+  const cv = document.getElementById('cropCanvas'), ctx = cv.getContext('2d');
+  const s = cv.width / _crop.w;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(_crop.img, 0, 0, cv.width, cv.height);
+  const rx = _crop.x * s, ry = _crop.y * s, rw = _crop.cw * s, rh = _crop.ch * s;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, cv.width, ry);
+  ctx.fillRect(0, ry + rh, cv.width, cv.height - ry - rh);
+  ctx.fillRect(0, ry, rx, rh);
+  ctx.fillRect(rx + rw, ry, cv.width - rx - rw, rh);
+  ctx.strokeStyle = '#f59f00';
+  ctx.lineWidth = Math.max(2, cv.width / 300);
+  ctx.strokeRect(rx, ry, rw, rh);
+  const hs = Math.max(10, cv.width / 45);
+  ctx.fillStyle = '#f59f00';
+  for (const [hx, hy] of [[rx + rw / 2, ry], [rx + rw / 2, ry + rh], [rx, ry + rh / 2], [rx + rw, ry + rh / 2]]) {
+    ctx.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
+  }
+  const g = _cropGeom();
+  const out = document.getElementById('cropOut');
+  const tk = 96 / Math.max(g.W, g.H);
+  out.width = Math.max(1, Math.round(g.W * tk));
+  out.height = Math.max(1, Math.round(g.H * tk));
+  _cropPaint(out.getContext('2d'), out.width, out.height, g);
+  document.getElementById('cropDims').textContent = `(${g.outW} × ${g.outH})`;
+}
+
+// Drag an edge (or a corner) to resize, drag inside the box to move it.
+function _cropBindPointer(cv) {
+  if (cv._cropBound) return;
+  cv._cropBound = true;
+  const at = ev => {
+    const r = cv.getBoundingClientRect();
+    const k = _crop.w / r.width;   // source px per screen px
+    return { px: (ev.clientX - r.left) * k, py: (ev.clientY - r.top) * k, k };
+  };
+  let raf = 0;
+  cv.addEventListener('pointerdown', ev => {
+    if (!_crop) return;
+    const { px, py, k } = at(ev);
+    const T = 24 * k;
+    const { x, y, cw, ch } = _crop;
+    const inY = py > y - T && py < y + ch + T, inX = px > x - T && px < x + cw + T;
+    const e = {
+      l: inY && Math.abs(px - x) < T, r: inY && Math.abs(px - (x + cw)) < T,
+      t: inX && Math.abs(py - y) < T, b: inX && Math.abs(py - (y + ch)) < T,
+    };
+    if (e.l && e.r) { if (Math.abs(px - x) < Math.abs(px - (x + cw))) e.r = false; else e.l = false; }
+    if (e.t && e.b) { if (Math.abs(py - y) < Math.abs(py - (y + ch))) e.b = false; else e.t = false; }
+    const edge = e.l || e.r || e.t || e.b;
+    const inside = px > x && px < x + cw && py > y && py < y + ch;
+    if (!edge && !inside) return;
+    _crop.drag = { e: edge ? e : null, sx: px, sy: py, o: { x, y, cw, ch } };
+    try { cv.setPointerCapture(ev.pointerId); } catch {}
+    ev.preventDefault();
+  });
+  cv.addEventListener('pointermove', ev => {
+    const d = _crop && _crop.drag;
+    if (!d) return;
+    const { px, py } = at(ev);
+    const dx = px - d.sx, dy = py - d.sy, o = d.o, W = _crop.w, H = _crop.h;
+    const MIN = Math.max(8, Math.min(W, H) * 0.04);
+    let x0 = o.x, y0 = o.y, x1 = o.x + o.cw, y1 = o.y + o.ch;
+    if (!d.e) {
+      x0 = Math.min(Math.max(0, o.x + dx), W - o.cw); x1 = x0 + o.cw;
+      y0 = Math.min(Math.max(0, o.y + dy), H - o.ch); y1 = y0 + o.ch;
+    } else {
+      if (d.e.l) x0 = Math.min(Math.max(0, o.x + dx), x1 - MIN);
+      if (d.e.r) x1 = Math.max(Math.min(W, o.x + o.cw + dx), x0 + MIN);
+      if (d.e.t) y0 = Math.min(Math.max(0, o.y + dy), y1 - MIN);
+      if (d.e.b) y1 = Math.max(Math.min(H, o.y + o.ch + dy), y0 + MIN);
+    }
+    Object.assign(_crop, { x: Math.round(x0), y: Math.round(y0), cw: Math.round(x1 - x0), ch: Math.round(y1 - y0) });
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; cropDraw(); });
+  });
+  const end = () => { if (_crop) _crop.drag = null; };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+}
+
+function cropApply() {
+  if (!_crop) return;
+  const g = _cropGeom();
+  const c = document.createElement('canvas');
+  c.width = g.outW; c.height = g.outH;
+  _cropPaint(c.getContext('2d'), g.outW, g.outH, g);
+  const dataUrl = c.toDataURL('image/jpeg', 0.9);
+  const size = Math.floor((dataUrl.length - 'data:image/jpeg;base64,'.length) * 3 / 4);
+  const cb = _crop.onApply;
+  cropClose();
+  cb(dataUrl, size);
+}
+function cropClose() {
+  document.getElementById('cropModal').style.display = 'none';
+  if (_crop) _crop.drag = null;
+  _crop = null;
 }
 
 function afUpdateSlugPreview() {
@@ -1534,7 +1813,8 @@ async function loadFromFetch(opts) {
   if (lds) ingestLoadouts(lds);
   if (rej) ingestRejected(rej);
   if (pending) ingestPending(pending);
-  setServerStatus('ok', Array.isArray(approved) ? `✓ ${approved.length} figures loaded from server` : '✓ loaded from server');
+  setServerStatus('ok', (Array.isArray(approved) ? `✓ ${approved.length} figures loaded from server` : '✓ loaded from server')
+    + (_renamedOnLoad ? ` · ${_renamedOnLoad} moved to a renamed subline — commit to save` : ''));
   refreshUI();
 }
 
@@ -1582,6 +1862,7 @@ function ingestPending(data) {
     }
     return f;
   });
+  applyGroupRenames(pendingFigs, false);   // v1.38.0
   // v1.24: guard against slug collisions. Figure images resolve as
   // images/<slug>.jpg, so two figures sharing a slug share — and on upload
   // overwrite — the same image file (e.g. a freshly imported "Beast Man"
@@ -1617,9 +1898,34 @@ function ingestPending(data) {
   }
 }
 
+// v1.38.0: subline renames. state.js keeps an old name in groups[] so figures
+// already tagged with it still match the subline — but the catalog still
+// stores the old string, and the app prints it in the figure lists. This
+// editor's subline dropdown already SHOWS the new name for them, so picking
+// it again changed nothing. Now those figures get the new name as an edit on
+// load (marked EDITED, saved by the next commit); pending ones are renamed in
+// place before review. Add an entry here for any future rename.
+const GROUP_RENAMES = { 'Battle for Subternia': 'Battle of Subternia' };
+let _renamedOnLoad = 0;
+function applyGroupRenames(list, asEdits) {
+  let n = 0;
+  for (const f of list) {
+    const to = GROUP_RENAMES[f.group];
+    if (!to) continue;
+    if (!asEdits) { f.group = to; n++; continue; }
+    if (edits[f.id] && edits[f.id].group !== undefined) continue;   // a hand edit wins
+    if (!edits[f.id]) edits[f.id] = {};
+    edits[f.id].group = to;
+    if (f.source === 'manual' && f.sourceGroup === f.group) edits[f.id].sourceGroup = to;
+    n++;
+  }
+  return n;
+}
+
 function ingestApproved(data) {
   if (!Array.isArray(data)) { alert('figures.json must be an array'); return; }
   approvedFigs = data;
+  _renamedOnLoad = applyGroupRenames(approvedFigs, true);
   // v1.5: existing figures may already have loadout entries; seed the
   // editable accessories selections so users can adjust them in Existing mode.
   for (const f of approvedFigs) {
