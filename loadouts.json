@@ -387,6 +387,12 @@
     "manual-mekaneck-mw1j6qy1": [
       "Pair of hands",
       "Neck accessory"
+    ],
+    "manual-eldor-mw5ahfly": [
+      "Staff",
+      "Hood",
+      "Crystal Ball",
+      "Spell Book"
     ]
   },
   "customAccessories": [
@@ -402,6 +408,7 @@
     "Collar",
     "Cosmic Key",
     "Crown",
+    "Crystal Ball",
     "Dagger",
     "Effect - Muzzle Blast",
     "Four-pronged Battle Shield",
@@ -423,6 +430,7 @@
     "Rifle",
     "Ripcord",
     "Scepter",
+    "Spell Book",
     "Spiked Ball & Chain",
     "Sword of Power",
     "Tech Axe",
