@@ -112,7 +112,9 @@ export function getPricingBackend() {
   return b ? { url: b.url, hasKey: !!b.apiKey } : null;
 }
 
+let _keyWarned = false;   // v8.19: one "key missing or wrong" toast per session
 export function configurePricingBackend(url, apiKey) {
+  _keyWarned = false;      // a newly saved key gets a fresh chance to warn
   if (!url) {
     store.set(BACKEND_KEY, null);
     localStorage.removeItem(BACKEND_KEY);
@@ -192,6 +194,13 @@ export async function fetchPricing(figId, opts = {}) {
       const url = urlObj.toString();
       const res = await fetch(url, { headers, signal: ctl.signal });
       clearTimeout(timer);
+      // v8.19: worker v6.111 answers 401 when its APP_KEY is set and the key
+      // saved in the Pricing Backend sheet is missing or different. Without
+      // this the tap just did nothing. Said once per session.
+      if (res.status === 401 && !_keyWarned) {
+        _keyWarned = true;
+        try { window.toast?.('⚠ Pricing key missing or wrong — check Menu → Pricing Backend', { duration: 6000 }); } catch {}
+      }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       if (!data || typeof data !== 'object') throw new Error('Invalid response');
@@ -254,8 +263,26 @@ export function isPricePending(figId) {
 export function getCachedPriceKind(fig) {
   const cached = fig && fig.id ? getCachedPricing(fig.id, { anyAge: true }) : null;
   if (!cached || !cached.data) return null;
-  return cached.data.source === 'ebay-sold' ? 'sold' : 'asking';
+  return _soldOf(cached.data) ? 'sold' : 'asking';
 }
+
+// v8.18: which prices a cached answer holds. Backend v6.110+ sends `sold`
+// (sales it watched end + Apify sold lookups, merged) and `asking` (current
+// Buy It Now) side by side; older answers only have the top-level pair,
+// labelled by `source`. Sold and asking are never averaged together — they
+// measure different things, and the gap between them is the useful part.
+function _soldOf(d) {
+  if (d?.sold && (d.sold.sealed || d.sold.loose)) return d.sold;
+  if (d?.source === 'ebay-sold' && (d.sealed || d.loose)) return d;
+  return null;
+}
+function _askingOf(d) {
+  if (d?.asking && (d.asking.sealed || d.asking.loose)) return d.asking;
+  if (d && d.source !== 'ebay-sold' && (d.sealed || d.loose)) return d;
+  return null;
+}
+// A figure's value: what it sells for when known, else what it's listed at.
+function _valueOf(d) { return _soldOf(d) || _askingOf(d); }
 
 // v8.11: the figure screen's eBay line, for every figure (not only For Sale) —
 // sealed and loose side by side, for buying and trading at shows. It fills in
@@ -295,7 +322,12 @@ export function renderMarketLine(f) {
     <button class="mk-btn mk-pill" data-action="retry-market-line" data-fig-id="${esc(f.id)}">Retry</button>
   </div>`;
   }
-  const sold = d?.source === 'ebay-sold';
+  // v8.18: two rows — Sold (what it actually went for) over Asking (what
+  // it's listed at now) — instead of one or the other.
+  const soldB = d ? _soldOf(d) : null;
+  const askB  = d ? _askingOf(d) : null;
+  const sales = d?.sold?.sales || [];
+  const paidLookup = !!d?.sold?.apifyAsof || d?.source === 'ebay-sold';   // "Check sold" already used
   const pending = _soldInflight.has(f.id) || (isPricePending(f.id) && (cached?.age ?? Infinity) < 3 * 60 * 1000);
   const fmt = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
   const val = (label, b) => {
@@ -303,21 +335,64 @@ export function renderMarketLine(f) {
     const p = Number.isFinite(b.median) ? b.median : b.avg;
     return `<span class="mk-val${b.confidence === 'low' ? ' mk-dim' : ''}">${label} <b>${fmt(p)}</b></span>`;
   };
-  const vals = d ? [val('Sealed', d.sealed), val('Loose', d.loose)].filter(Boolean).join('<span class="mk-dot">·</span>') : '';
-  const n = (d?.sealed?.n || 0) + (d?.loose?.n || 0);
-  const cap = !d ? 'Loading eBay prices…'
-    : sold ? `eBay sold · ${n} sale${n === 1 ? '' : 's'}, last 90 days · ${_ageText(d.asof)}`
-    : vals ? `eBay asking · ${n} listing${n === 1 ? '' : 's'} now`
-    : 'No eBay listings found';
+  const pair = b => b ? [val('Sealed', b.sealed), val('Loose', b.loose)].filter(Boolean).join('<span class="mk-dot">·</span>') : '';
+  const cnt = b => (b?.sealed?.n || 0) + (b?.loose?.n || 0);
+  const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const rows = (soldB ? `<div class="mk-vals"><span class="mk-kind">Sold</span> ${pair(soldB)}</div>` : '')
+    + (askB ? `<div class="mk-vals${soldB ? ' mk-ask' : ''}"><span class="mk-kind">Asking</span> ${pair(askB)}</div>` : '');
+  let cap;
+  if (!d) cap = 'Loading eBay prices…';
+  else {
+    const parts = [];
+    if (soldB) parts.push(`${pl(cnt(soldB), 'sale')}, last 90 days`);
+    else if (d.sold?.watching) parts.push(`watching ${pl(d.sold.watching, 'listing')} for sales`);
+    if (askB) parts.push(`${pl(cnt(askB), 'listing')} now`);
+    cap = parts.length ? 'eBay · ' + parts.join(' · ') : 'No eBay listings found';
+  }
+  const link = sales.length && !pending
+    ? ` <button class="mk-link" data-action="open-ebay-sales" data-fig-id="${esc(f.id)}">See sales</button>` : '';
   const btn = pending
     ? `<button class="mk-btn mk-round mk-spin" disabled aria-label="Checking sold prices">${_ICO_REFRESH}</button>`
-    : sold
+    : paidLookup
       ? `<button class="mk-btn mk-round" data-action="check-sold-price" data-fig-id="${esc(f.id)}" aria-label="Update sold prices" title="Update sold prices">${_ICO_REFRESH}</button>`
       : d ? `<button class="mk-btn mk-pill" data-action="check-sold-price" data-fig-id="${esc(f.id)}">Check sold</button>` : '';
+  // The button sits on the caption row so both price rows get the full width.
   return `<div class="market-line">
-    <div class="mk-text">${vals ? `<div class="mk-vals">${vals}</div>` : ''}<div class="mk-cap">${pending ? 'Checking eBay sold listings…' : cap}</div></div>
-    ${btn}
+    <div class="mk-text">${rows}<div class="mk-foot"><div class="mk-cap">${pending ? 'Checking eBay sold listings…' : cap + link}</div>${btn}</div></div>
   </div>`;
+}
+
+// v8.18: the sales behind the Sold price, newest first (AF411-style list).
+window.openEbaySales = (figId) => { S._salesFig = figId; window.openSheet?.('ebaySales'); };
+export function renderEbaySalesSheet() {
+  const id = S._salesFig;
+  const f = (S.figs || []).find(x => x.id === id) || (S.activeFig?.id === id ? S.activeFig : null);
+  const d = id ? getCachedPricing(id, { anyAge: true })?.data : null;
+  const sales = d?.sold?.sales || [];
+  if (!f || !sales.length) return `<div style="padding:24px 8px;text-align:center;color:var(--t3);font-size:13px">No eBay sales recorded for this figure yet.</div>`;
+  const fmt = n => '$' + (Math.round(n * 100) / 100).toFixed(2);
+  const soldB = _soldOf(d), askB = _askingOf(d);
+  const pick = b => b ? (Number.isFinite(b.median) ? b.median : b.avg) : null;
+  const sum = (label, b) => {
+    if (!b) return '';
+    const cells = [['Sealed', b.sealed], ['Loose', b.loose]].filter(([, x]) => x)
+      .map(([k, x]) => `<span>${k} <b>${fmt(pick(x))}</b> <i>(${x.n})</i></span>`).join('');
+    return `<div class="es-sum"><span class="es-kind">${label}</span>${cells}</div>`;
+  };
+  const day = iso => { const t = Date.parse(iso || ''); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : ''; };
+  const kind = s => s.ty === 'A' ? 'Auction' : s.ty === 'B' ? 'Buy It Now' : 'Sold search';
+  const rows = sales.map(s => `<div class="es-row${s.bo ? ' es-gray' : ''}">
+      <div class="es-main"><div class="es-title">${esc(s.t)}</div>
+        <div class="es-meta">${[day(s.d), kind(s), s.b === 'sealed' ? 'Sealed' : s.b === 'loose' ? 'Loose' : '', s.days != null ? `${s.days} day${s.days === 1 ? '' : 's'} listed` : '', s.bo ? 'Best Offer — not counted' : ''].filter(Boolean).join(' · ')}</div></div>
+      <div class="es-price">${fmt(s.p)}</div>
+    </div>`).join('');
+  return `<div class="es-head">
+      <div class="es-fig">${esc(f.name || '')}</div>
+      ${sum('Sold', soldB)}${sum('Asking', askB)}
+      <div class="es-note">Sold = median of eBay sales in the last 90 days, shipping included: auctions and Buy It Now listings this app watched end, plus any <b>Check sold</b> lookups. Asking = Buy It Now listings now. Gray rows are Best Offer sales — eBay hides the accepted amount, so they're left out of the price.</div>
+    </div>
+    <div class="es-list">${rows}</div>
+    ${d?.sold?.watching ? `<div class="es-note" style="text-align:center;margin-top:12px">Watching ${d.sold.watching} live listing${d.sold.watching === 1 ? '' : 's'} — new sales are added as they end.</div>` : ''}`;
 }
 
 // v8.13: Retry on the figure screen's eBay line after a failed lookup.
@@ -381,7 +456,29 @@ function _sanitize(d) {
     note:     typeof d.note === 'string' ? d.note.slice(0, 200) : null,
     pending:  d.pending === true,   // v8.09
     soldUnavailable: typeof d.soldUnavailable === 'string' ? d.soldUnavailable.slice(0, 20) : null,   // v8.11
+    // v8.18: backend v6.110 — asking and sold side by side, plus the sales list.
+    asking: d.asking && typeof d.asking === 'object'
+      ? { sealed: _sanitizeBucket(d.asking.sealed), loose: _sanitizeBucket(d.asking.loose) } : null,
+    sold: d.sold && typeof d.sold === 'object' ? {
+      sealed: _sanitizeBucket(d.sold.sealed),
+      loose:  _sanitizeBucket(d.sold.loose),
+      sales:  _sanitizeSales(d.sold.sales),
+      watching: Number.isInteger(+d.sold.watching) && +d.sold.watching > 0 ? +d.sold.watching : 0,
+      apifyAsof: typeof d.sold.apifyAsof === 'string' ? d.sold.apifyAsof.slice(0, 30) : null,
+    } : null,
   };
+}
+function _sanitizeSales(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, 40).map(s => ({
+    t:    typeof s?.t === 'string' ? s.t.slice(0, 100) : '',
+    p:    Number.isFinite(+s?.p) && +s.p > 0 ? +s.p : null,
+    d:    typeof s?.d === 'string' ? s.d.slice(0, 30) : null,
+    ty:   s?.ty === 'A' || s?.ty === 'B' ? s.ty : null,
+    days: Number.isInteger(+s?.days) && +s.days >= 0 && s?.days !== null ? +s.days : null,
+    bo:   s?.bo === true,
+    b:    s?.b === 'sealed' || s?.b === 'loose' ? s.b : null,
+  })).filter(s => s.p != null);
 }
 
 // ── Render helpers ──────────────────────────────────────────────────
@@ -420,8 +517,9 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
     }
     return `<span class="mv-inline mv-loading text-dim">eBay: …</span>`;
   }
-  const d = cached.data;
-  if (!d.sealed && !d.loose) return '';
+  const dd = cached.data;
+  const d = _valueOf(dd);   // v8.18: sold when known, else asking
+  if (!d) return '';
   const meta = renderMarketValueBlock._meta || {};
   // v6.64: pick the bucket that matches the era. Modern → sealed; vintage → loose.
   // Fall back to whichever bucket is populated if the preferred one is empty.
@@ -436,7 +534,7 @@ export function renderMarketValueBlock(figId, paidArr, condition) {
   // Show low-sample as dim so users can tell it's an estimate without a badge.
   const dimClass = (bucket.confidence === 'low') ? ' mv-inline-dim' : '';
   // v8.09: say which kind of price this is — sold (last 90 days) or asking.
-  const sold = d.source === 'ebay-sold';
+  const sold = d === _soldOf(dd);
   const label = sold ? 'eBay Sold' : 'eBay Asking';
   const title = sold ? `Median of ${bucket.n} eBay sales in the last 90 days` : `Median of ${bucket.n} eBay Buy It Now listings`;
   return `<span class="mv-inline${dimClass}" title="${title}">${label}: <span class="price">${fmtMoney(price)}</span></span>`;
@@ -450,7 +548,8 @@ export function getCachedAskingPrice(fig) {
   if (!fig || !fig.id) return null;
   const cached = getCachedPricing(fig.id, { anyAge: true });   // v7.91: dated, not dropped
   if (!cached || !cached.data) return null;
-  const d = cached.data;
+  const d = _valueOf(cached.data);   // v8.18: sold when known, else asking
+  if (!d) return null;
   const prefersSealed = !VINTAGE_LINES.has(fig.line);
   const bucket = (prefersSealed ? d.sealed : d.loose) || (prefersSealed ? d.loose : d.sealed);
   if (!bucket) return null;
@@ -472,7 +571,9 @@ function _loadHistory() {
   if (isHydrated()) _history = data;       // same race guard as _loadCache
   return data;
 }
-function _recordHistory(figId, data, line) {
+function _recordHistory(figId, raw, line) {
+  const data = _valueOf(raw);   // v8.18: same number the figure screen calls its value
+  if (!data) return;
   const prefersSealed = !VINTAGE_LINES.has(line);
   const bucket = (prefersSealed ? data.sealed : data.loose) || (prefersSealed ? data.loose : data.sealed);
   if (!bucket) return;

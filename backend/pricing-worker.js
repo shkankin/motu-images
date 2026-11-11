@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════
-// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.109
+// MOTU Vault — pricing-worker.js (Cloudflare Workers) — v6.111
 // ────────────────────────────────────────────────────────────────────
 // Reference backend for the client-side pricing.js. Deploy to Cloudflare
 // Workers (free tier covers a multi-thousand-figure catalog comfortably).
@@ -29,6 +29,36 @@
 //                    lookups never start runs, and APIFY_DAILY_RUNS caps spend.
 //   "stub"         — deterministic mock data for dev.
 //
+// v6.111 — APP KEY (v8.17 audit D1/D2):
+//   The read endpoints had no authentication, so anyone who learned the worker
+//   URL could start a paid sold lookup (?sold=1), force live eBay calls
+//   (?fresh=1) or push figures onto the watch list. With the APP_KEY secret
+//   set, those three things need "Authorization: Bearer <APP_KEY>" — the app
+//   already sends that header with the key from its Pricing Backend sheet.
+//   A plain cached lookup still works without the key. With APP_KEY NOT set
+//   the worker behaves exactly as v6.110 did; /health reports appKey true/false
+//   so setup can be checked from a browser.
+//   Bulk lookups no longer return upstream error text (logged instead), the
+//   same as single lookups since v6.109.
+//
+// v6.110 — WATCHED SALES (AF411-style sold history, free):
+//   Every figure the app looks up is added to a watch list (trk:index, newest
+//   150). A scheduled run (Cron Trigger, hourly) searches eBay for each
+//   watched figure's auctions and Buy It Now listings and remembers them
+//   (trk:<id>). Once an auction's end time passes, or a Buy It Now listing
+//   drops out of the results, the run asks eBay's Trading API GetItem — the
+//   one official call that still reads ENDED listings — whether it sold and
+//   for how much. Sales are kept 120 days. Needs the EBAY_AUTH_TOKEN secret
+//   (an Auth'n'Auth user token from developer.ebay.com); without it listings
+//   are watched but no sales are recorded.
+//   Every /pricing response now also carries:
+//     asking: { sealed, loose }  — current Buy It Now listings
+//     sold:   { sealed, loose, sales[], watching, since, apifyAsof }
+//             — watched sales and Apify sold results merged (duplicates
+//               dropped), last 90 days. Top-level fields are unchanged.
+//   Budgets per run (free plan safe): 4 searches, 15 GetItem calls, ~10 KV
+//   writes. /health reports the last run.
+//
 // Sold prices via Apify: PROVIDER_CHAIN = "apify-sold,ebay-active"
 // plus the APIFY_TOKEN secret. Until a sold run finishes, that figure falls
 // back to ebay-active with a note saying sold prices are on the way.
@@ -43,7 +73,11 @@
 // Bindings (see wrangler.toml):
 //   KV: PRICING_CACHE, COMMUNITY_PRICES, (optional) QUERY_MAP
 //   vars: PROVIDER_CHAIN (or legacy PROVIDER), ALLOWED_ORIGINS, MIN_SAMPLES
-//   secrets: EBAY_APP_ID, EBAY_CERT_ID, ADMIN_TOKEN, (optional) APIFY_TOKEN
+//   secrets: EBAY_APP_ID, EBAY_CERT_ID, ADMIN_TOKEN, (optional) APIFY_TOKEN,
+//     (recommended, v6.111) APP_KEY — any long random string; the same value goes
+//       in the app's Pricing Backend sheet. Guards sold/fresh lookups and the watch list.
+//     (optional, v6.110) EBAY_AUTH_TOKEN — Trading API user token for watched sales
+//   trigger (v6.110): Cron Trigger "17 * * * *" runs the watched-sales tracker
 //   apify vars (optional): APIFY_SOLD_ACTOR, APIFY_SOLD_COUNT (25),
 //     APIFY_SOLD_DAYS (90), APIFY_DAILY_RUNS (15), SOLD_CACHE_DAYS (30)
 // ════════════════════════════════════════════════════════════════════
@@ -72,7 +106,14 @@ export default {
     }
 
     if (url.pathname === '/health') {
-      return json({ status: 'ok', chain: getChain(env) }, 200, cors);
+      // v6.110: watched-sales status, so setup can be checked from a browser.
+      const last = await env.PRICING_CACHE.get('trk:lastrun', { type: 'json' }).catch(() => null);
+      // v6.111: appKey = the check is on; keyOk = the key sent with THIS request
+      // matches (null when the check is off), so "Save & test" can tell.
+      const keyOk = env.APP_KEY ? await hasAppKey(request, env) : null;
+      return json({ status: 'ok', chain: getChain(env), appKey: !!env.APP_KEY, keyOk, watchedSales: {
+        resolving: !!env.EBAY_AUTH_TOKEN, lastRun: last?.at || null, lastResult: last?.stats || null,
+      } }, 200, cors);
     }
 
     // POST /pricing/bulk  body: { figIds: [...], meta?: {line, wave, year} }
@@ -91,16 +132,21 @@ export default {
       // v6.103 (M-3): rate-limit bulk fresh calls — each bulk-fresh fans out to
       // up to 50 live eBay API calls. Count the whole batch as one rate-limit hit.
       if (fresh) {
+        if (!(await hasAppKey(request, env))) return json({ error: 'key_required' }, 401, cors);   // v6.111
         const limited = await checkFreshRateLimit(request, env, ctx);
         if (limited) return json({ error: 'rate_limited', retryAfter: FRESH_RATE_WINDOW }, 429, cors);
       }
       const results = await Promise.all(
         // v6.105: bulk never starts paid sold runs (noStart) — it only reads
         // sold results that single-figure lookups already paid for.
-        ids.map(id => getPricing(id, env, ctx, meta, { fresh, noStart: true }).catch(e => ({
-          figId: id, sealed: null, loose: null, source: 'error',
-          error: String(e.message || e), asof: new Date().toISOString(),
-        })))
+        ids.map(id => getPricing(id, env, ctx, meta, { fresh, noStart: true })
+          .then(d => addMarketDetail(id, d, env, ctx, meta, { bulk: true }))   // v6.110
+          .catch(e => {
+          // v6.111: log the upstream text, don't hand it to the caller.
+          console.log('bulk pricing error', id, String(e?.stack || e));
+          return { figId: id, sealed: null, loose: null, source: 'error',
+                   error: 'upstream', asof: new Date().toISOString() };
+        }))
       );
       return json({ results }, 200, cors);
     }
@@ -121,6 +167,9 @@ export default {
       // cache (that holds the asking answer) and counts toward the rate limit.
       const wantSold = url.searchParams.get('sold') === '1';
       const fresh = url.searchParams.get('fresh') === '1' || wantSold;
+      // v6.111: with APP_KEY set, sold/fresh lookups and watch-list adds are the owner's only.
+      const keyed = await hasAppKey(request, env);
+      if (fresh && !keyed) return json({ error: 'key_required' }, 401, cors);
       // v6.103 (M-3): rate-limit fresh single-figure calls.
       if (fresh) {
         const limited = await checkFreshRateLimit(request, env, ctx);
@@ -131,7 +180,9 @@ export default {
       if (url.searchParams.get('debug') === '1') meta._debug = true;
       try {
         const data = await getPricing(figId, env, ctx, meta, { fresh, wantSold, noStart: !wantSold });
-        return json(data, 200, cors);
+        // v6.110: a figure you look at gets watched for sales from now on.
+        if (!meta._debug && keyed) ctx.waitUntil(trackFigure(figId, meta, env).catch(e => console.log('track add failed', String(e))));
+        return json(await addMarketDetail(figId, data, env, ctx, meta), 200, cors);
       } catch (e) {
         console.log('pricing error', figId, String(e?.stack || e));
         return json({ error: 'upstream' }, 502, cors);
@@ -155,6 +206,11 @@ export default {
     }
 
     return json({ error: 'not found' }, 404, cors);
+  },
+
+  // v6.110: Cron Trigger → watched-sales tracker.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runTracker(env, Number(event?.scheduledTime) || Date.now()).catch(e => console.log('tracker failed', String(e?.stack || e))));
   },
 };
 
@@ -337,6 +393,7 @@ async function apifySoldProvider(figId, env, meta = {}, opts = {}, ctx) {
     if (!ds.ok) throw new Error('Apify dataset HTTP ' + ds.status);
     const raw = await ds.json();
     const items = (Array.isArray(raw) ? raw : []).slice(0, 200).map(it => ({
+      id: apifyItemId(it),   // v6.110: matches the same sale seen by the watcher
       title: String(it?.title || '').slice(0, 160), soldPrice: it?.soldPrice ?? null,
       totalPrice: it?.totalPrice ?? null, condition: it?.condition || '',
       isBestOfferAccepted: !!it?.isBestOfferAccepted, endedAt: it?.endedAt || null,
@@ -493,16 +550,16 @@ function classifyListings(rows, figId, meta = {}, opts = {}) {
   const MOTU_CHARACTERS = ['tung lashor','slamurai','mer-man','merman','beast man','beastman','man-at-arms','teela','evil-lyn','evillyn','trap jaw','trapjaw','tri-klops','triklops','stratos','zodac','mosquitor','two bad','twobad','clamp champ','rio blast','sy-klone','ram man','ramman','fisto','snout spout','roboto','mekaneck','stinkor','spikor','buzz-off','buzzoff','grizzlor','leech','mantenna','modulok','multi-bot','hordak','king hiss','rattlor','kobra khan','snake face','snakeface','sssqueeze','orko','prince adam','battle cat','battlecat','panthor','cringer','horde trooper','faker','sorceress','queen marlena','king randor','prahvus','flogg','optikk','hoove','nocturna','crita','slush head','butthead','blade','saurod','blast attak','dragon blaster','clawful','jitsu','whiplash','dragstor','extendar','rotar','twistoid','karatti','staghorn','draego-man','geldor','demo-man','demogorgon','mighty spector','procrustus','keldor','strobo','marzo','hypno','reptilax','huntara','ninjor','spinwit'];
   const figName = (figId || '').replace(/-\d{2,6}$/, '').replace(/-/g, ' ').toLowerCase();
   const SEP_CTX = '(?:^|[\\s,+&|/\\\\]|\\band\\b|\\bwith\\b|\\bfeat(?:uring)?\\b)';
+  // Require the character name to appear in a separator context — this
+  // distinguishes "Tung Lashor + Slamurai" (bundle) from "He-Man brand
+  // figure" (franchise word). v6.110: the per-character regexes are built
+  // once per call instead of once per title (same matches, ~100× less CPU —
+  // the scheduled tracker classifies several searches per run).
+  const otherCharRes = MOTU_CHARACTERS.filter(c => c !== figName).map(c =>
+    new RegExp(SEP_CTX + c.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '(?=[\\s,+&|/\\\\]|$|\\bwith\\b)', 'i'));
   const countOtherCharacters = (title) => {
     let count = 0;
-    for (const c of MOTU_CHARACTERS) {
-      if (c === figName) continue;
-      // Require the character name to appear in a separator context — this
-      // distinguishes "Tung Lashor + Slamurai" (bundle) from "He-Man brand
-      // figure" (franchise word). Build per-character regex.
-      const re = new RegExp(SEP_CTX + c.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '(?=[\\s,+&|/\\\\]|$|\\bwith\\b)', 'i');
-      if (re.test(title)) count++;
-    }
+    for (const re of otherCharRes) if (re.test(title)) count++;
     return count;
   };
 
@@ -568,6 +625,7 @@ function classifyListings(rows, figId, meta = {}, opts = {}) {
       else if (condBucket) bucket = condBucket;
       else if (hasHint && isModernLine) bucket = 'sealed';
       // else: no marker at all — too ambiguous, reject
+      if (opts.tagRows && bucket) it._bucket = bucket;   // v6.110: per-row result for the sales list
       if (bucket === 'sealed') { sealed.push(price); if (debug && keptSealed.length < 8) keptSealed.push(`$${price} ${rawTitle.slice(0, 70)}`); }
       else if (bucket === 'loose') { loose.push(price); if (debug && keptLoose.length < 8) keptLoose.push(`$${price} ${rawTitle.slice(0, 70)}`); }
       else { rejAmbig++; if (debug && dbg.ambig.length < 8) dbg.ambig.push(`[no-cond] ${rawTitle.slice(0, 80)}`); }
@@ -820,6 +878,14 @@ async function authorizeAdmin(request, env) {
   return timingSafeEqual(auth, 'Bearer ' + env.ADMIN_TOKEN);
 }
 
+// v6.111: the app key. No APP_KEY secret = check off (v6.110 behaviour), so
+// pasting this worker in changes nothing until the secret is added.
+async function hasAppKey(request, env) {
+  if (!env.APP_KEY) return true;
+  const auth = request.headers.get('authorization') || '';
+  return timingSafeEqual(auth, 'Bearer ' + env.APP_KEY);
+}
+
 // v6.103 (M-3): KV-backed per-IP token-bucket rate limiter for cache-bypass paths.
 // Uses a simple counter key with a TTL. Last-write-wins on concurrent increments
 // is acceptable — the small over-count only benefits the attacker marginally and
@@ -878,4 +944,333 @@ function json(body, status, extra) {
     status,
     headers: { 'Content-Type': 'application/json', ...(extra || {}) },
   });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// v6.110 — Watched sales (AF411-style sold history) + combined response
+// ════════════════════════════════════════════════════════════════════
+const TRACK_MAX_FIGS        = 150;              // figures watched (most recently looked up)
+const TRACK_REFRESH_PER_RUN = 4;                // eBay searches per scheduled run
+const TRACK_RESOLVE_PER_RUN = 15;               // Trading API GetItem calls per run
+const TRACK_REFRESH_AGE_MS  = 6 * 3600 * 1000;  // re-search a figure at most every 6h
+const TRACK_WATCH_MAX       = 150;              // listings remembered per figure
+const TRACK_SALES_MAX       = 60;               // sales remembered per figure
+const TRACK_SALES_KEEP_DAYS = 120;
+const SALES_WINDOW_DAYS     = 90;               // what the price uses
+const ENDED_GRACE_MS        = 10 * 60 * 1000;   // ask about an auction 10 min after it ends
+const BROWSE_SEARCH = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
+const TRADING_API   = 'https://api.ebay.com/ws/api.dll';
+
+// Add (or refresh) a figure on the watch list. One small write at most per
+// figure per day, so browsing the app doesn't eat the KV write allowance.
+async function trackFigure(figId, meta, env) {
+  if (!env.EBAY_APP_ID || !env.EBAY_CERT_ID) return;
+  const kv = env.PRICING_CACHE;
+  const idx = (await kv.get('trk:index', { type: 'json' })) || [];
+  const now = Date.now();
+  const e = idx.find(x => x.id === figId);
+  if (e) {
+    if (now - (e.seen || 0) < 86400000 && (!meta.line || e.line === meta.line)) return;
+    e.seen = now;
+    if (meta.line) e.line = meta.line;
+  } else {
+    idx.push({ id: figId, line: meta.line || null, seen: now, snap: 0, due: 0 });
+  }
+  idx.sort((a, b) => (b.seen || 0) - (a.seen || 0));
+  await kv.put('trk:index', JSON.stringify(idx.slice(0, TRACK_MAX_FIGS)));
+}
+
+async function loadTrack(kv, figId) {
+  const r = await kv.get('trk:' + figId, { type: 'json' });
+  return (r && r.watch && Array.isArray(r.sales)) ? r : { watch: {}, sales: [], since: new Date().toISOString() };
+}
+
+// Earliest time something on this figure needs a GetItem check (0 = nothing).
+function nextDue(rec) {
+  let due = 0;
+  for (const w of Object.values(rec.watch)) {
+    const t = w.g ? 1 : (w.ty === 'A' && w.end ? Date.parse(w.end) + ENDED_GRACE_MS : 0);
+    if (t && (!due || t < due)) due = t;
+  }
+  return due;
+}
+
+// The scheduled run. nowMs is injectable for tests.
+async function runTracker(env, nowMs = Date.now()) {
+  const kv = env.PRICING_CACHE;
+  const idx = (await kv.get('trk:index', { type: 'json' })) || [];
+  const stats = { figures: idx.length, refreshed: 0, checked: 0, sold: 0, errors: 0 };
+  if (idx.length) {
+    const canResolve = !!env.EBAY_AUTH_TOKEN;
+    let budget = TRACK_RESOLVE_PER_RUN;
+    let authBroken = false;
+    // A. Check ended auctions and vanished Buy It Now listings.
+    for (const e of idx.filter(x => x.due && x.due <= nowMs).sort((a, b) => a.due - b.due)) {
+      if (canResolve && (budget <= 0 || authBroken)) break;
+      const rec = await loadTrack(kv, e.id);
+      const res = await resolveFigure(rec, env, nowMs, canResolve ? budget : 0, stats);
+      budget -= res.used;
+      if (res.authBroken) authBroken = true;
+      e.due = nextDue(rec);
+      if (res.changed) await kv.put('trk:' + e.id, JSON.stringify(rec));
+    }
+    // B. Re-search the figures that haven't been looked at for longest.
+    const stale = idx.filter(x => nowMs - (x.snap || 0) > TRACK_REFRESH_AGE_MS)
+      .sort((a, b) => (a.snap || 0) - (b.snap || 0)).slice(0, TRACK_REFRESH_PER_RUN);
+    for (const e of stale) {
+      try {
+        const rec = await loadTrack(kv, e.id);
+        await snapshotFigure(rec, e, env);
+        e.due = nextDue(rec);
+        await kv.put('trk:' + e.id, JSON.stringify(rec));
+        stats.refreshed++;
+      } catch (err) {
+        stats.errors++;
+        console.log('watched-sales search failed', e.id, String(err?.message || err));
+      }
+      e.snap = nowMs;   // a failing figure waits its turn instead of blocking the queue
+    }
+    if (authBroken) stats.authError = true;
+    await kv.put('trk:index', JSON.stringify(idx));
+  }
+  await kv.put('trk:lastrun', JSON.stringify({ at: new Date(nowMs).toISOString(), stats }));
+  return stats;
+}
+
+// One Browse search (auctions + Buy It Now) for a watched figure. Listings
+// that pass the same filters as the price (right figure, right line, sealed
+// or loose, not a lot/custom/broken) are remembered.
+async function snapshotFigure(rec, e, env) {
+  const token = await getEbayToken(env);
+  const meta = { line: e.line || undefined };
+  const queryName = (await getQueryMapping(e.id, env)) || figIdToQuery(e.id, meta);
+  const res = await fetch(BROWSE_SEARCH + '?' + new URLSearchParams({
+    q: queryName, filter: 'buyingOptions:{AUCTION|FIXED_PRICE}', limit: '100',
+  }), { headers: {
+    'Authorization': 'Bearer ' + token,
+    'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+    'X-EBAY-C-ENDUSERCTX': 'contextualLocation=country%3DUS',
+  } });
+  const body = await res.text();
+  if (!res.ok) { console.log('eBay Browse (watch) failed', res.status, body.slice(0, 300)); throw new Error('eBay search ' + res.status); }
+  const data = JSON.parse(body);
+  const items = Array.isArray(data.itemSummaries) ? data.itemSummaries : [];
+  // Price 100 is a stand-in: an auction's opening bid says nothing about
+  // whether it's the right figure, so only the title/condition filters apply.
+  const rows = items.map(it => ({ it, title: String(it?.title || ''), price: 100, condition: String(it?.condition || '') }));
+  classifyListings(rows, e.id, meta, { requireName: true, tagRows: true });
+  const seen = new Set();
+  for (const r of rows) {
+    if (!r._bucket) continue;
+    const it = r.it;
+    const id = String(it.legacyItemId || String(it.itemId || '').split('|')[1] || '');
+    if (!/^\d{6,20}$/.test(id)) continue;
+    seen.add(id);
+    const auction = Array.isArray(it.buyingOptions) && it.buyingOptions.includes('AUCTION');
+    const prev = rec.watch[id] || {};
+    rec.watch[id] = {
+      t: r.title.slice(0, 120),
+      ty: auction ? 'A' : 'B',
+      end: it.itemEndDate || prev.end || null,
+      s: it.itemCreationDate || prev.s || null,
+      cn: r.condition.slice(0, 24),
+    };
+  }
+  // A Buy It Now listing that dropped out of the results probably ended.
+  // Only trusted when the search returned everything (else it may just have
+  // slipped past the first 100).
+  const complete = (Number(data.total) || items.length) <= items.length;
+  if (complete) for (const [id, w] of Object.entries(rec.watch)) if (w.ty === 'B' && !seen.has(id)) w.g = 1;
+  const ids = Object.keys(rec.watch);
+  if (ids.length > TRACK_WATCH_MAX) {
+    ids.sort((a, b) => {
+      const A = rec.watch[a], B = rec.watch[b];
+      if ((A.ty === 'A') !== (B.ty === 'A')) return A.ty === 'A' ? -1 : 1;   // auctions first
+      return (Date.parse(B.s || 0) || 0) - (Date.parse(A.s || 0) || 0);       // then newest listings
+    });
+    for (const id of ids.slice(TRACK_WATCH_MAX)) delete rec.watch[id];
+  }
+  rec.asof = new Date().toISOString();
+}
+
+// GetItem every due listing on this figure (within budget). A sale is
+// recorded when eBay says the listing is over and at least one sold.
+async function resolveFigure(rec, env, nowMs, budget, stats) {
+  const out = { used: 0, changed: false, authBroken: false };
+  const due = Object.entries(rec.watch).filter(([, w]) =>
+    w.g || (w.ty === 'A' && w.end && Date.parse(w.end) + ENDED_GRACE_MS <= nowMs));
+  for (const [id, w] of due) {
+    if (!env.EBAY_AUTH_TOKEN) {
+      // Can't ask eBay how it ended. Forget it once it's clearly over.
+      if (w.g || Date.parse(w.end) < nowMs - 2 * 86400000) { delete rec.watch[id]; out.changed = true; }
+      continue;
+    }
+    if (out.used >= budget) break;
+    out.used++;
+    let r;
+    try { r = await tradingGetItem(id, env); }
+    catch (err) {
+      stats.errors++;
+      if (err.auth) { out.authBroken = true; console.log('Trading API token rejected —', err.message); break; }
+      console.log('GetItem failed', id, String(err?.message || err));
+      continue;
+    }
+    stats.checked++;
+    out.changed = true;
+    if (r.status === 'Active') { delete w.g; continue; }   // still for sale — the search just didn't show it
+    delete rec.watch[id];
+    if (r.qtySold > 0 && Number.isFinite(r.price) && r.price > 0) {
+      const end = r.end || new Date(nowMs).toISOString();
+      const start = r.start || w.s;
+      const days = start ? Math.max(0, Math.round((Date.parse(end) - Date.parse(start)) / 86400000)) : null;
+      rec.sales = rec.sales.filter(s => s.id !== id);
+      rec.sales.unshift({
+        id, t: String(r.title || w.t || '').slice(0, 120),
+        p: round2(r.price + (Number.isFinite(r.ship) ? r.ship : 0)),   // incl. shipping, like the Apify prices
+        d: end, ty: r.auction ? 'A' : 'B', days: Number.isFinite(days) ? days : null,
+        bo: !r.auction && !!r.bestOffer,   // the accepted offer is hidden — kept out of the price
+        cn: String(r.cond || w.cn || '').slice(0, 24),
+      });
+      stats.sold++;
+    }
+  }
+  const keep = nowMs - TRACK_SALES_KEEP_DAYS * 86400000;
+  rec.sales = rec.sales.filter(s => Date.parse(s.d) > keep)
+    .sort((a, b) => Date.parse(b.d) - Date.parse(a.d)).slice(0, TRACK_SALES_MAX);
+  return out;
+}
+
+// eBay Trading API GetItem — reads a listing even after it has ended
+// (about 90 days). Auth'n'Auth tokens go in the XML body; an OAuth user
+// token (starts "v^1.1#") goes in the IAF header instead.
+async function tradingGetItem(itemId, env) {
+  const tok = String(env.EBAY_AUTH_TOKEN || '');
+  const oauth = tok.startsWith('v^1.1');
+  const xmlEsc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const body = '<?xml version="1.0" encoding="utf-8"?>'
+    + '<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+    + (oauth ? '' : `<RequesterCredentials><eBayAuthToken>${xmlEsc(tok)}</eBayAuthToken></RequesterCredentials>`)
+    + `<ItemID>${itemId}</ItemID>`
+    + '</GetItemRequest>';
+  const headers = {
+    'Content-Type': 'text/xml',
+    'X-EBAY-API-CALL-NAME': 'GetItem',
+    'X-EBAY-API-SITEID': '0',
+    'X-EBAY-API-COMPATIBILITY-LEVEL': '1349',
+  };
+  if (oauth) headers['X-EBAY-API-IAF-TOKEN'] = tok;
+  if (env.EBAY_APP_ID) headers['X-EBAY-API-APP-NAME'] = env.EBAY_APP_ID;
+  if (env.EBAY_DEV_ID) headers['X-EBAY-API-DEV-NAME'] = env.EBAY_DEV_ID;
+  if (env.EBAY_CERT_ID) headers['X-EBAY-API-CERT-NAME'] = env.EBAY_CERT_ID;
+  const res = await fetch(TRADING_API, { method: 'POST', headers, body });
+  const xml = await res.text();
+  const tag = (name, src = xml) => {
+    const m = new RegExp('<' + name + '(?:\\s[^>]*)?>([^<]*)</' + name + '>').exec(src);
+    return m ? m[1].trim() : null;
+  };
+  const ack = tag('Ack');
+  if (!res.ok || ack === 'Failure') {
+    const code = parseInt(tag('ErrorCode') || '0', 10);
+    const msg = tag('ShortMessage') || ('HTTP ' + res.status);
+    // 17 / 21916002 etc.: listing removed — nothing to learn, treat as ended unsold.
+    if ([17, 21916002, 21916012].includes(code)) return { status: 'Ended', qtySold: 0 };
+    const err = new Error(`GetItem ${code || res.status}: ${msg}`);
+    if ([931, 932, 16110, 17470, 21916984].includes(code) || res.status === 401) err.auth = true;
+    throw err;
+  }
+  const sell = /<SellingStatus>([\s\S]*?)<\/SellingStatus>/.exec(xml)?.[1] || '';
+  const ld = /<ListingDetails>([\s\S]*?)<\/ListingDetails>/.exec(xml)?.[1] || '';
+  const ship = /<ShippingServiceOptions>([\s\S]*?)<\/ShippingServiceOptions>/.exec(xml)?.[1] || '';
+  const price = parseFloat(tag('ConvertedCurrentPrice', sell) ?? tag('CurrentPrice', sell));
+  const shipCost = parseFloat(tag('ShippingServiceCost', ship));
+  return {
+    status: tag('ListingStatus', sell) || 'Active',
+    qtySold: parseInt(tag('QuantitySold', sell) || '0', 10) || 0,
+    price,
+    ship: Number.isFinite(shipCost) ? shipCost : null,
+    auction: tag('ListingType') === 'Chinese',
+    bestOffer: tag('BestOfferEnabled') === 'true',
+    title: tag('Title'),
+    start: tag('StartTime', ld),
+    end: tag('EndTime', ld),
+    cond: tag('ConditionDisplayName'),
+  };
+}
+
+// Apify rows carry the listing id under different names; keep whichever exists.
+function apifyItemId(it) {
+  const direct = String(it?.itemId ?? it?.id ?? '').replace(/\D/g, '');
+  if (/^\d{9,20}$/.test(direct)) return direct;
+  const m = /\/itm\/(?:[^/?#]*\/)?(\d{9,20})/.exec(String(it?.url || it?.itemUrl || ''));
+  return m ? m[1] : null;
+}
+
+// Adds `asking` (current Buy It Now) and `sold` (watched + Apify sales) to a
+// /pricing answer. Read fresh on every request — sales arrive between the
+// 24h cache refreshes. Bulk lookups never make the extra eBay call.
+async function addMarketDetail(figId, out, env, ctx, meta = {}, opts = {}) {
+  if (!out || typeof out !== 'object' || out.source === 'error') return out;
+  const res = { ...out };
+  try {
+    if (out.source === 'ebay-active') {
+      if (out.sealed || out.loose) res.asking = { sealed: out.sealed, loose: out.loose, asof: out.asof };
+    } else {
+      let ask = await env.PRICING_CACHE.get('ask:' + figId, { type: 'json' });
+      if (!ask && !opts.bulk && env.EBAY_APP_ID && !meta._debug) {
+        const raw = await ebayActiveProvider(figId, env, meta);
+        const shaped = shapeResult(figId, raw, 'ebay-active', env);
+        ask = { sealed: shaped.sealed, loose: shaped.loose, asof: shaped.asof };
+        ctx.waitUntil(env.PRICING_CACHE.put('ask:' + figId, JSON.stringify(ask), { expirationTtl: CACHE_TTL_SECONDS }));
+      }
+      if (ask && (ask.sealed || ask.loose)) res.asking = ask;
+    }
+  } catch (e) { console.log('asking detail failed', figId, String(e?.message || e)); }
+  try {
+    const sold = await buildSold(figId, env, meta);
+    if (sold) res.sold = sold;
+  } catch (e) { console.log('sold detail failed', figId, String(e?.message || e)); }
+  return res;
+}
+
+async function buildSold(figId, env, meta = {}, nowMs = Date.now()) {
+  const kv = env.PRICING_CACHE;
+  const [kept, trk] = await Promise.all([
+    kv.get('sold:' + figId, { type: 'json' }),
+    kv.get('trk:' + figId, { type: 'json' }),
+  ]);
+  if (!kept?.items && !trk) return null;
+  const cutoff = nowMs - SALES_WINDOW_DAYS * 86400000;
+  const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
+  const seen = new Set();
+  const sales = [];
+  for (const s of (Array.isArray(trk?.sales) ? trk.sales : [])) {
+    if (!(Date.parse(s.d) > cutoff)) continue;
+    if (s.id) seen.add('id:' + s.id);
+    seen.add(norm(s.t) + '|' + String(s.d).slice(0, 10));
+    sales.push({ t: s.t, p: s.p, d: s.d, ty: s.ty, days: s.days, bo: !!s.bo, cn: s.cn || '', src: 'watched' });
+  }
+  for (const it of (Array.isArray(kept?.items) ? kept.items : [])) {
+    const p = parseFloat(it?.totalPrice ?? it?.soldPrice);
+    const d = it?.endedAt || kept.asof;
+    if (!Number.isFinite(p) || !(Date.parse(d) > cutoff)) continue;
+    if ((it.id && seen.has('id:' + it.id)) || seen.has(norm(it.title) + '|' + String(d).slice(0, 10))) continue;
+    sales.push({ t: it.title, p, d, ty: null, days: null, bo: !!it.isBestOfferAccepted, cn: it.condition || '', src: 'search' });
+  }
+  // Same filters as every other price: right figure, right line, sealed/loose.
+  const rows = sales.map(s => ({ s, title: s.t || '', price: s.p, condition: s.cn }));
+  classifyListings(rows, figId, meta, { requireName: true, tagRows: true });
+  const minN = parseInt(env.MIN_SAMPLES || MIN_SAMPLES_DEFAULT, 10);
+  const prices = b => rows.filter(r => r._bucket === b && !r.s.bo).map(r => r.s.p);
+  const list = rows.filter(r => r._bucket)
+    .sort((a, b) => Date.parse(b.s.d) - Date.parse(a.s.d)).slice(0, 40)
+    .map(r => ({ t: String(r.s.t || '').slice(0, 100), p: round2(r.s.p), d: r.s.d, ty: r.s.ty || null,
+      days: r.s.days ?? null, bo: r.s.bo, b: r._bucket, src: r.s.src }));
+  return {
+    sealed: validateBucket(bucketStats(prices('sealed')), minN),
+    loose:  validateBucket(bucketStats(prices('loose')), minN),
+    sales: list,
+    watching: trk?.watch ? Object.keys(trk.watch).length : 0,
+    since: trk?.since || null,
+    apifyAsof: kept?.asof || null,
+  };
 }

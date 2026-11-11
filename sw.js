@@ -3,6 +3,35 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.19 changelog:
+//   • CACHE bumped to v8.19. CUMULATIVE with v8.18 (not deployed when this was built — deploy
+//     this zip alone). Fixes from the v8.17 audit; pricing worker v6.111 ships in the same zip.
+//   • A1 Storage: a failed save is no longer silent. The change is kept in a rescue copy, a banner
+//     and toast say the device is low on storage, and the next launch reads the rescue copy back
+//     (before, the older saved value won and the change was lost).
+//   • C1 Un-owning a figure no longer leaves an empty copy behind, so owning it again later stamps
+//     the new date instead of keeping the old one. Copies with any detail or a linked photo stay.
+//   • B1 Lines hero art (.webp) is cached like other images, so it shows offline.
+//     B2 loadouts.json is cached once by path (was one extra cached copy per sync).
+//   • B5 Removed the unused splash-logo preload and the frame-ancestors CSP entry that browsers
+//     ignore in a meta tag (it logged an error on every load).
+//   • F1 Contrast: dim text, tab badges and the Eternia orange now meet 4.5:1 in all four themes;
+//     the smallest text size is 12px (badges and chart ticks stay 10px).
+//   • E  Off-screen list rows skip layout and paint (content-visibility) — faster All/Collection tabs.
+//   • G3 Want List sheet no longer says "scan the code above" when the list is too long for a QR code.
+//     G4 Theme sheet shows a short description instead of hex codes.
+//   • D1 Pricing: with the worker's APP_KEY set, a missing or wrong key shows one clear toast, and
+//     "Save & test" says when the key doesn't match. D2 is worker-side (see pricing-worker.js).
+// v8.18 changelog:
+//   • CACHE bumped to v8.18.
+//   • Figure screen eBay line shows Sold over Asking (two rows) instead of one or the other.
+//     Sold = sales the pricing backend (v6.110) watched end on eBay — auctions and Buy It Now,
+//     AF411-style — merged with any "Check sold" (Apify) lookups, duplicates dropped, last 90 days.
+//     Asking = current Buy It Now listings. Never averaged together.
+//   • "See sales" opens an eBay Sales sheet: every sale behind the price, newest first, with date,
+//     auction/Buy It Now, sealed/loose and days listed; Best Offer sales shown gray and not counted.
+//   • Copy-card value, collection value and price history use the Sold price when there is one.
+//   • Works with older backends (falls back to the single sold-or-asking price).
 // v8.17 changelog:
 //   • CACHE bumped to v8.17. No app code changes — this release ships figures-editor.html v1.38.0:
 //     ✂ photo crop tool (trims the plain white border, drag to adjust, pads back to a square so the
@@ -2290,7 +2319,7 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.17';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.19';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -2504,7 +2533,11 @@ self.addEventListener('fetch', e => {
   // v7.85: af411-paths.json gets the same network-first + normalized-key
   // treatment as figures.json — the app cache-busts it with ?t=, and it must
   // still resolve from cache offline so the AF411 button keeps working.
-  if (url.pathname.endsWith('figures.json') || url.pathname.endsWith('af411-paths.json')) {
+  // v8.19 (audit B2): loadouts.json joins this branch. It is fetched as
+  // loadouts.json?t=<now>, and the generic handler below stored every one of
+  // those under its own URL — one more cached copy per sync until the next
+  // release cleared the cache. Here it is cached once, by path.
+  if (url.pathname.endsWith('figures.json') || url.pathname.endsWith('af411-paths.json') || url.pathname.endsWith('/loadouts.json')) {
     const cacheKey = url.origin + url.pathname;
     e.respondWith(
       fetch(e.request)
@@ -2542,7 +2575,7 @@ self.addEventListener('fetch', e => {
   // cached image is served instantly, then revalidated in the background if its
   // entry is older than IMG_MAX_AGE (so corrected re-uploads eventually reach
   // everyone) — see the image-freshness helpers above.
-  if (url.hostname === 'raw.githubusercontent.com' && (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.png') || url.pathname.endsWith('.mp3'))) {
+  if (url.hostname === 'raw.githubusercontent.com' && (url.pathname.endsWith('.jpg') || url.pathname.endsWith('.png') || url.pathname.endsWith('.webp') || url.pathname.endsWith('.mp3'))) {
     e.respondWith(
       caches.match(e.request).then(cached => {
         if (cached) {

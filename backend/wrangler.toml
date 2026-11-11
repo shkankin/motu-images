@@ -34,8 +34,19 @@ MIN_SAMPLES = "1"
 APIFY_DAILY_RUNS = "2"              # v6.108: paid sold lookups per day (owner: as-needed use)
 SOLD_CACHE_DAYS = "90"              # v6.108: keep each paid sold result 90 days                   # v6.56: keep low-sample data, flag confidence client-side
 
+# ─── Scheduled run (v6.110) ─────────────────────────────────────────
+# Watched-sales tracker: hourly, at :17. (Dashboard: Worker → Settings →
+# Triggers → Cron Triggers → add "17 * * * *".)
+[triggers]
+crons = ["17 * * * *"]
+
 # ─── Secrets ────────────────────────────────────────────────────────
 # Set with `wrangler secret put EBAY_APP_ID` etc.; do NOT commit them here.
 #   EBAY_APP_ID    (required for ebay-active and ebay-sold)
 #   EBAY_CERT_ID   (required for ebay-active and ebay-sold — OAuth client secret)
 #   ADMIN_TOKEN    (required for /admin/community/* writes)
+#   APP_KEY        (recommended, v6.111 — any long random string; the same value
+#                   goes in the app's Pricing Backend sheet. Guards sold/fresh
+#                   lookups and the watch list. Unset = no check.)
+#   EBAY_AUTH_TOKEN (optional, v6.110 — Auth'n'Auth user token; lets the
+#                   hourly run read ended listings so sales get recorded)

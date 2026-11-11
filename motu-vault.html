@@ -25,9 +25,12 @@
      belt-and-braces now: js/photos.js v7.87 reads OPFS bytes via
      getFileHandle().getFile() and decodes data: URLs in-process, so NO photo
      read path depends on connect-src any more. Keep both. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' blob: data: https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com; connect-src 'self' blob: data: https: https://raw.githubusercontent.com; media-src 'self' blob: https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'">
 
-<meta name="app-version" content="8.17">
+<!-- v8.19: frame-ancestors was dropped from the policy above. Browsers ignore
+     it in a meta tag (it only works as an HTTP header, which GitHub Pages
+     cannot send) and logged an error on every load. -->
+<meta name="app-version" content="8.19">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="images/icon-192.png">
 <meta name="description" content="Track your Masters of the Universe action figure collection — works offline, no account needed.">
@@ -37,8 +40,9 @@
      unsafe-inline, the v7.00 hardening) silently refused to execute in
      every browser. External file = allowed by 'self', hardening intact. -->
 <script src="js/route.js"></script>
-<!-- Preload the splash logo in parallel with HTML parse -->
-<link rel="preload" as="image" href="images/masters_logo.png" fetchpriority="high">
+<!-- v8.19: the splash-logo preload was removed. The splash has been off since
+     v5.01, so the logo was fetched on every cold start and never shown. The
+     file itself stays (the About sheet uses it) and stays in the SW SHELL. -->
 <!-- Paint black immediately + define splash styles inline so they apply at
      first paint (independent of external stylesheet loading). -->
 <style>

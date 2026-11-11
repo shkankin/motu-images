@@ -43,7 +43,7 @@ import {
 } from './share.js';
 import { renderStatsSheet, renderMissingDetailsSheet, renderSoldSheet } from './stats.js';
 import { pushNav } from './handlers.js';
-import { isPricingConfigured, fetchPricing, getPriceAge } from './pricing.js';   // v8.13: offline prices
+import { isPricingConfigured, fetchPricing, getPriceAge, renderEbaySalesSheet } from './pricing.js';   // v8.13: offline prices; v8.18: sales list
 
 // § RENDER-SHEETS ── renderSheet, filter/sort/import/export/theme/menu/stats/edit/batch/share sheets ──
 // v7.60: the sheet-body builder, extracted from renderSheet so a sheet can
@@ -80,6 +80,7 @@ function buildSheetBody() {
   else if (S.sheet === 'about') body = renderAboutSheet();
   else if (S.sheet === 'locations') body = renderLocationsSheet();
   else if (S.sheet === 'packEdit') body = renderPackEditSheet();   // v7.82
+  else if (S.sheet === 'ebaySales') body = renderEbaySalesSheet();   // v8.18
   return body;
 }
 
@@ -98,7 +99,7 @@ window.refreshSheetBody = refreshSheetBody;
 
 function renderSheet() {
   const titles = {filter:'Filter', sort:'Sort By', import:'Backup & Restore', export:'Backup & Restore', backup:'Backup & Restore', missing:'Missing Details', theme:'Theme', menu:'Menu', stats:'Collection Stats', sold:'Sold', offline:'Offline Images', edit:'Edit Figure Info', batch:'Edit Selected Figures', share:'Want List', wantListView:'Want List', kidsCoreAdmin:'Kids Core — Add Figure', accessoryPicker:'Accessories', pricing:'Pricing Backend', wishlistHistory:'Viewed Wishlists', about:'About', locations:'Locations',
-    packEdit: 'Edit Pack',
+    packEdit: 'Edit Pack', ebaySales: 'eBay Sales',
   };
   let body = buildSheetBody();
 
@@ -462,7 +463,7 @@ function renderPricingSheet() {
     value="${esc(cfg?.url || '')}"
     style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-family:ui-monospace,monospace;font-size:13px;margin-bottom:12px">
   <div class="field-label text-dim text-sm">API Key (optional)</div>
-  <input id="pricingBackendKey" type="password" autocomplete="off" placeholder="${configured && cfg.hasKey ? '••••••••' : 'Leave blank if your backend is public'}"
+  <input id="pricingBackendKey" type="password" autocomplete="off" placeholder="${configured && cfg.hasKey ? '••••••••' : 'The APP_KEY you set on the worker (blank if none)'}"
     style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);color:var(--t1);font-family:ui-monospace,monospace;font-size:13px;margin-bottom:14px">
   <div style="display:flex;gap:8px">
     <button data-action="save-pricing-backend" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--acc);color:var(--btn-t);font-size:14px;font-weight:700">Save & test</button>
@@ -487,12 +488,16 @@ window.savePricingBackend = async () => {
     return;
   }
   // Quick health check — hit /health and report. Don't block on it.
-  let healthOk = false;
+  let healthOk = false, keyBad = false;
   try {
     const res = await fetch(url.replace(/\/$/, '') + '/health', { headers: key ? { Authorization: 'Bearer ' + key } : {} });
     healthOk = res.ok;
+    // v8.19: worker v6.111 says whether the key just saved matches its APP_KEY.
+    if (res.ok) { const h = await res.json().catch(() => null); if (h && h.keyOk === false) keyBad = true; }
   } catch {}
-  window.toast?.(healthOk ? '✓ Pricing backend connected' : '⚠ Saved, but health check failed');
+  window.toast?.(!healthOk ? '⚠ Saved, but health check failed'
+    : keyBad ? '⚠ Connected, but the API key doesn’t match the worker’s APP_KEY'
+    : '✓ Pricing backend connected');
   // Re-render the sheet so Disconnect/Clear-cache appear
   const body = document.querySelector('.sheet-body');
   if (body && S.sheet === 'pricing') body.innerHTML = renderPricingSheet();
@@ -1205,6 +1210,14 @@ window.openFigureEditor = figId => {
   render();
 };
 
+// v8.19 (audit G4): each theme row used to show two hex codes under its
+// name. A plain description says the same thing in words.
+const THEME_BLURB = {
+  eternia:  'Dark · violet and cobalt',
+  skeletor: 'Dark · purple and gold',
+  heman:    'Dark · warm brown and orange',
+  light:    'Light · sky blue and orange',
+};
 function renderThemeSheet() {
   // v7.62: Line Art controls, graduated from the art-preview sandbox on
   // user request ("users would like these"). Live preview: each control
@@ -1230,7 +1243,7 @@ function renderThemeSheet() {
       <div class="swatch" style="background:linear-gradient(135deg,${th.gold},${th.acc})"></div>
       <div style="flex:1">
         <div class="font-display" style="font-size:15px;color:${th.fg||'var(--t1)'}">${th.name}</div>
-        <div class="text-sm" style="color:${th.fg2||'var(--t2)'};margin-top:2px">${th.bg} · ${th.acc}</div>
+        <div class="text-sm" style="color:${th.fg2||'var(--t2)'};margin-top:2px">${THEME_BLURB[key] || ''}</div>
       </div>
       ${S.theme===key ? `<div style="color:${th.acc}">${icon(ICO.check,20)}</div>` : ''}
     </button>`

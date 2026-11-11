@@ -16,7 +16,7 @@ import { S, store, CACHE_KEY, LOADOUTS_CACHE_KEY, AF411_PATHS_CACHE_KEY, CACHE_T
 // back to IDB, and the journal file was deleted on the next line — so if
 // the session ended without another collection write, the journaled
 // changes were silently lost. Found by the new eslint no-undef gate.
-import { hydrate as idbHydrate, bigGet, bigSet, readFailed } from './idb-store.js';
+import { hydrate as idbHydrate, bigGet, bigSet, readFailed, onPersistFail } from './idb-store.js';
 import {
   initOPFS, loadPhotoLabels, loadPhotoCopyMap,
   photoStore, _opfsReady,
@@ -277,6 +277,20 @@ async function init() {
   bootDelegation();
   // Render the UI behind the splash so it's ready by the time splash fades.
   render();
+  // v8.19 (audit A1): a failed IndexedDB write used to be invisible — the
+  // listener existed in idb-store.js and nothing subscribed. Say so once per
+  // session. S._saveFailed is 'kept' when the change is held in the rescue
+  // copy (it comes back next launch) and 'lost' when that failed too.
+  onPersistFail(saved => {
+    const state = saved ? 'kept' : 'lost';
+    if (S._saveFailed === state || S._saveFailed === 'lost') return;
+    S._saveFailed = state;
+    // A full render behind an open sheet flashes and resets its scroll
+    // (handoff3 invariant) — the banner appears on the next ordinary render.
+    if (!S.sheet && S.screen === 'main') render();
+    toast(saved ? '⚠ Storage is full — free up space, then back up'
+                : '⚠ Storage is full — recent changes are NOT saved', { duration: 6000 });
+  });
   window.__motuBooted = true;   // v8.03: first screen is up — see the boot safety net in js/route.js
   // Defer the figures.json network request until the splash is well past its
   // entry phase (~1s in). Cached data already populated the view above, so

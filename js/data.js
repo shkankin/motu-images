@@ -1484,6 +1484,31 @@ function autofillCopyAccessories(id, cp) {
   return added ? { ...cp, accessories: [...have] } : cp;
 }
 
+// v8.19 (audit C1): a copy that holds nothing but its id and the auto-stamped
+// acquired date is a placeholder, not a record. Un-owning a figure used to
+// leave that placeholder behind, so the entry never went away and — because
+// the date is only stamped when empty — owning the figure again months later
+// kept the OLD date. A copy with any real detail, or a photo linked to it,
+// is kept.
+function _isBareCopy(id, cp) {
+  if (!cp || typeof cp !== 'object') return true;
+  for (const k in cp) {
+    if (k === 'id' || k === 'acquired') continue;
+    const v = cp[k];
+    if (v == null || v === '' || (Array.isArray(v) && !v.length)) continue;
+    return false;
+  }
+  const links = getPhotoCopyMap()?.[id];
+  if (links) for (const n in links) if (Number(links[n]) === Number(cp.id)) return false;
+  return true;
+}
+function _dropBareCopies(id) {
+  const e = S.coll[id];
+  if (!e || !Array.isArray(e.copies) || !e.copies.length) return;
+  const kept = e.copies.filter(cp => !_isBareCopy(id, cp));
+  if (kept.length !== e.copies.length) S.coll[id] = { ...e, copies: kept };
+}
+
 function setStatus(id, status) {
   // v6.39: helper for auto-stamping the 'acquired' field. MM/YYYY matches
   // the AF411 export format and the user's preferred granularity.
@@ -1502,10 +1527,15 @@ function setStatus(id, status) {
     // Toggle off: clear status. If there's no remaining ownership signal
     // (no status and no copies), drop the entry entirely.
     delete S.coll[id].status;
+    _dropBareCopies(id);   // v8.19: see _isBareCopy
     if (!S.coll[id].status && (!S.coll[id].copies || S.coll[id].copies.length === 0)) {
       delete S.coll[id];
     }
   } else {
+    // v8.19: an entry with no status can still carry a placeholder copy left
+    // by an older version's un-own. Drop it so the date below is stamped fresh
+    // and a Wishlist/Ordered entry doesn't start life with a copy.
+    if (!wasStatus) _dropBareCopies(id);
     S.coll[id] = {...S.coll[id], status};
     // v4.90: ensure owned/for-sale always has at least one copy slot.
     // Previously setStatus left `copies: []` for newly-owned figures, while

@@ -641,6 +641,13 @@ function renderMain() {
     <span style="flex:1">Storage unavailable — your changes won't persist after closing the app. Common in private/incognito browsing.</span>
     <button data-action="dismiss-storage-banner" aria-label="Dismiss">×</button>
   </div>` : ''}
+  ${S._saveFailed ? `
+  <div class="storage-banner" role="alert">
+    <span style="flex:1">${S._saveFailed === 'lost'
+      ? 'This device is out of storage, so your latest changes are not being saved. Free up space, then make a backup.'
+      : 'This device is low on storage. Your changes are being kept in a spare spot for now — free up space, then make a backup.'}</span>
+    <button class="banner-act" data-action="open-sheet" data-sheet="backup">Back up</button>
+  </div>` : ''}
   ${S._collReadFailed ? `
   <div class="storage-banner" role="alert">
     <span style="flex:1">Couldn’t open your saved collection. Close the app completely and open it again. Until then nothing you change is saved, so your collection stays safe.</span>
@@ -651,7 +658,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.17</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.19</span></div>
         </div>
       </div>
       <div class="header-actions">

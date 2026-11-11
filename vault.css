@@ -15,7 +15,7 @@
   --gold:#3b82f6;       /* Cobalt highlight (the "gold" accent slot) */
   --t1:  #f8fafc;
   --t2:  #94a3b8;
-  --t3:  #64748b;
+  --t3:  #8593a8;       /* v8.19: was #64748b (3.5:1 on cards). Now 5.3:1 on bg2, 4.8:1 on bg3 */
   --btn-t: #ffffff;     /* white text on the violet primary */
   --gn:  #10b981;       /* emerald */
   --rd:  #ef4444;
@@ -32,12 +32,12 @@
 [data-theme="skeletor"] {
   --bg: #090212; --bg2: #16062b; --bg3: #220b40; --bd: #361850;
   --acc: #b14eff; --gold: #f2e162; --rd: #d63a76;
-  --t1: #faf5ff; --t2: #c0a8e6; --t3: #8a71b5; --btn-t: #ffffff;
+  --t1: #faf5ff; --t2: #c0a8e6; --t3: #9a83c2; --btn-t: #ffffff;   /* v8.19: t3 was #8a71b5 (4.3:1 on bg3), now 5.4:1 */
 }
 [data-theme="heman"] {
   --bg: #140803; --bg2: #241107; --bg3: #351c0e; --bd: #4a2916;
   --acc: #cbd5e1; --gold: #ff8a1f; --rd: #c43d2a;
-  --t1: #fff7ed; --t2: #d6c5b3; --t3: #a38d7a; --btn-t: #000000;
+  --t1: #fff7ed; --t2: #d6c5b3; --t3: #ab9683; --btn-t: #000000;   /* v8.19: t3 was #a38d7a, now 5.6:1 on bg3 */
 }
 /* v7.72: green Grayskull theme retired (see THEMES in state.js).
    [data-theme="grayskull"] {
@@ -61,10 +61,10 @@
   --bg3: #f1f5f9;       /* inputs / elevated */
   --bd:  #cbd5e1;       /* light slate borders */
   --acc: #0284c7;       /* sky-600 — Sorceress falcon blue */
-  --gold:#ea580c;       /* orange-600 — falcon plumage accent (the "gold" slot) */
+  --gold:#c2410c;       /* orange-700 — falcon plumage accent (the "gold" slot). v8.19: was #ea580c (3.6:1 on white), now 5.2:1 */
   --t1:  #0f172a;       /* slate-900 primary text */
   --t2:  #334155;       /* slate-700 secondary */
-  --t3:  #64748b;       /* slate-500 tertiary — AA on bg/bg2 */
+  --t3:  #566579;       /* v8.19: was slate-500 #64748b (4.4:1 on bg — just under AA), now 5.5:1 */
   --btn-t:#ffffff;      /* white on the sky-blue primary */
   --gn:  #15803d;       /* green-700 */
   --rd:  #b91c1c;       /* red-700 */
@@ -133,7 +133,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
    10px. Migrate inline styles to these as screens are touched. */
 :root {
   --fs-badge: 10px;  /* uppercase badges, chart ticks only */
-  --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px; --fs-xl: 18px;
+  --fs-xs: 12px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px; --fs-xl: 18px;
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
   --r-sm: 8px; --r-md: 10px; --r-lg: 12px;
 }
@@ -270,10 +270,14 @@ button:active { opacity: 0.7; transform: scale(0.97); }
 .bottom-nav button.active svg { stroke-width: 2.5; }
 .bottom-nav .badge {
   font-size: var(--fs-badge);
-  background: var(--bd);
-  color: var(--t3);
+  /* v8.19 (audit F1): was --t3 on --bd, 2.3:1 in Grayskull and 3.2:1 in
+     Eternia. --t2 on --bg3 clears 4.5:1 in all four themes; the hairline
+     keeps the pill visible where --bg3 is close to the bar colour. */
+  background: var(--bg3);
+  color: var(--t2);
+  border: 1px solid var(--bd);
   border-radius: 8px;
-  padding: 1px 5px;
+  padding: 0 5px;
   margin-left: 0px;
 }
 .bottom-nav button.active .badge { background: var(--acc); color: var(--bg); }
@@ -437,7 +441,7 @@ button:active { opacity: 0.7; transform: scale(0.97); }
   display: inline-block;
 }
 
-.sort-label { font-size: 11px; color: var(--t3); }
+.sort-label { font-size: 12px; color: var(--t3); }
 
 /* ── Breadcrumb ──────────────────────────────────────────────────── */
 .breadcrumb {
@@ -644,7 +648,7 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
   font-size: 14px; color: var(--t1);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.line-row-meta { font-size: 11px; color: var(--t3); margin-top: 2px; }
+.line-row-meta { font-size: 12px; color: var(--t3); margin-top: 2px; }
 .line-row-progress {
   margin-top: 6px;
   height: 3px; border-radius: 2px;
@@ -973,9 +977,15 @@ body.no-art-scrim .line-row.has-art .line-row-meta {
 
 /* ── Figure List ─────────────────────────────────────────────────── */
 .fig-list { padding: 12px 12px 0; }
-.fig-count { font-size: 11px; color: var(--t3); margin-bottom: 8px; padding-left: 4px; }
+.fig-count { font-size: 12px; color: var(--t3); margin-bottom: 8px; padding-left: 4px; }
 
 .fig-row {
+  /* v8.19 (audit E): rows that are off screen skip layout and paint. The All
+     tab builds 1,300+ rows at once; this is what made switching to it slow.
+     The size hint is a first guess only — `auto` remembers each row's real
+     height once it has been drawn, so the scrollbar and scroll-restore hold. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 93px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2475,6 +2485,13 @@ details.more-details[open] { padding-bottom: 12px; }
   cursor: pointer;
 }
 .storage-banner button:active { background: rgba(255,255,255,0.08); }
+/* v8.19: the "Back up" action on the storage-full banner — a text button,
+   so it opts out of the 28px icon-button box above. */
+.storage-banner button.banner-act {
+  width: auto; height: auto; min-height: 32px;
+  padding: 6px 12px; border: 1px solid var(--gold);
+  color: var(--t1); font-size: 12px; font-weight: 700; white-space: nowrap;
+}
 
 /* ── Toast Notifications ─────────────────────────────────────────── */
 .toast-container {
@@ -4005,3 +4022,26 @@ select.ghost-input.vendor-select {
   background-position: right 4px center;
   padding-right: 22px;
 }
+
+/* v8.18: Sold over Asking on the figure screen, and the eBay Sales sheet */
+.market-line .mk-kind { display: inline-block; min-width: 52px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--t3); }
+.market-line .mk-ask { margin-top: 2px; }
+.market-line .mk-ask .mk-val b { font-size: var(--fs-lg); color: var(--t1); }
+.market-line .mk-link { background: none; border: 0; padding: 0; min-height: 0; font: inherit; font-weight: 700; color: var(--acc); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.es-head { padding-bottom: var(--sp-3); border-bottom: 1px solid var(--bd); margin-bottom: var(--sp-2); }
+.es-fig { font-size: var(--fs-md); font-weight: 700; color: var(--t1); margin-bottom: 6px; }
+.es-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: var(--fs-sm); color: var(--t2); margin-bottom: 4px; }
+.es-sum b { color: var(--gold); }
+.es-sum i { font-style: normal; color: var(--t3); font-size: var(--fs-xs); }
+.es-kind { min-width: 52px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--t3); }
+.es-note { font-size: var(--fs-xs); color: var(--t3); line-height: 1.5; margin-top: 8px; }
+.es-row { display: flex; align-items: center; gap: var(--sp-3); padding: 10px 0; border-bottom: 1px solid color-mix(in srgb, var(--bd) 45%, transparent); }
+.es-main { flex: 1; min-width: 0; }
+.es-title { font-size: var(--fs-sm); color: var(--t1); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.es-meta { font-size: var(--fs-xs); color: var(--t3); margin-top: 3px; }
+.es-price { flex-shrink: 0; font-size: var(--fs-lg); font-weight: 700; color: var(--gold); }
+.es-gray { opacity: .5; }
+.es-gray .es-price { text-decoration: line-through; }
+.market-line .mk-val { white-space: nowrap; }
+.market-line .mk-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.market-line .mk-foot .mk-cap { flex: 1; min-width: 0; }

@@ -31,8 +31,8 @@ Your collection lives on your device; the app is just a static site.
   insurance or estate purposes.
 - **Built for one collection done deeply, not a thousand done shallowly.**
   Multi-copy support with per-copy condition/price/photos, sold-log with
-  realized gains, want-list share links with QR codes, celebration
-  milestones, and a theming system with more Easter eggs than is strictly
+  realized gains, want-list share links with QR codes, line-complete
+  celebrations, and a theming system with more Easter eggs than is strictly
   responsible.
 
 ## Quick start
@@ -57,7 +57,7 @@ Your collection lives on your device; the app is just a static site.
   recently-changed strip, list or grid display, rich sorting.
 - **Lines** — per-line progress with sublines, hide lines you don't chase.
 - **Stats** — completion, spend by year, activity timeline, market-value
-  dashboard, collection-worth-over-time chart, milestones, data-gap audit.
+  dashboard, collection-worth-over-time chart, data-gap audit.
 - **Pricing** — optional self-hosted pricing worker fetches eBay sold
   medians; values are cached on-device and drive stats and reports.
   Setup guide: [`backend/README.md`](backend/README.md).

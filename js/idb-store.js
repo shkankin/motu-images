@@ -112,13 +112,50 @@ function _lsSet(k, v) {
 }
 function _lsRemove(k) { try { localStorage.removeItem(k); } catch {} }
 
+// v8.19 (audit A1): rescue-copy bookkeeping. When an IndexedDB write fails,
+// bigSet saves the value to localStorage instead. Until v8.19 nothing ever
+// read that copy back: the next launch found the OLDER value still in
+// IndexedDB and used it, so the change was lost and the copy sat there for
+// good. The marker below records WHICH keys hold a rescue copy that is newer
+// than IndexedDB. hydrate() trusts a localStorage copy only when the marker
+// names it — a bare leftover from an older version has no marker and is
+// ignored exactly as before, because a later successful IndexedDB write may
+// have made it stale.
+const RESCUE_KEY = 'motu-idb-rescue';
+let _rescue = null;
+function _rescueMap() {
+  if (!_rescue) { const m = _lsGet(RESCUE_KEY); _rescue = (m && typeof m === 'object' && !Array.isArray(m)) ? m : {}; }
+  return _rescue;
+}
+function _rescueMark(key) {
+  const m = _rescueMap();
+  if (m[key]) return;
+  m[key] = Date.now();
+  _lsSet(RESCUE_KEY, m);
+}
+function _rescueClear(key) {
+  const m = _rescueMap();
+  if (!m[key]) return;
+  delete m[key];
+  if (Object.keys(m).length) _lsSet(RESCUE_KEY, m); else _lsRemove(RESCUE_KEY);
+  _lsRemove(key);
+}
+// One place for "the IndexedDB write failed": keep the value in localStorage,
+// mark it as the newer copy, and tell the app. `saved` is false when even the
+// localStorage copy could not be written (both stores full).
+function _rescueWrite(key, val) {
+  const saved = _lsSet(key, val);
+  if (saved) _rescueMark(key);
+  _notifyFail(saved);
+}
+
 // ── Synchronous in-memory mirror ─────────────────────────────────────
 const _mem = new Map();
 let _useIdb = false;     // resolved at hydrate()
 let _hydrated = false;
 const _failListeners = new Set();
 
-function _notifyFail() { for (const fn of _failListeners) { try { fn(); } catch {} } }
+function _notifyFail(saved) { for (const fn of _failListeners) { try { fn(saved); } catch {} } }
 
 /**
  * Hydrate the given keys from IndexedDB (migrating any that still live only in
@@ -145,6 +182,17 @@ export async function hydrate(keys, opts = {}) {
         _readFailed.add(key);
         _mem.set(key, _lsGet(key));
         continue;
+      }
+      // v8.19 (audit A1): a marked rescue copy is newer than IndexedDB — use
+      // it, write it through, and free it only after a CONFIRMED write.
+      if (_rescueMap()[key]) {
+        const rescued = _lsGet(key);
+        if (rescued !== null) {
+          _mem.set(key, rescued);
+          if (await _idbSet(db, key, rescued)) _rescueClear(key);
+          continue;
+        }
+        _rescueClear(key);            // marker without a copy: nothing to recover
       }
       if (got !== undefined) { _mem.set(key, got); continue; }   // already in IDB
       // Not in IDB yet — migrate from localStorage if present.
@@ -177,8 +225,14 @@ export function bigSet(key, val) {
   _mem.set(key, val);
   if (_useIdb) {
     _openDB().then(db => db ? _idbSet(db, key, val) : false)
-             .then(ok => { if (!ok) { _lsSet(key, val); _notifyFail(); } })
-             .catch(() => { _lsSet(key, val); _notifyFail(); });
+             .then(ok => {
+               // v8.19: a write that lands makes any earlier rescue copy stale.
+               // Only when the mirror still holds THIS value — a newer bigSet
+               // may be in flight and may yet fail.
+               if (ok) { if (_mem.get(key) === val) _rescueClear(key); }
+               else _rescueWrite(key, val);
+             })
+             .catch(() => _rescueWrite(key, val));
   } else {
     _lsSet(key, val);
   }
@@ -188,6 +242,7 @@ export function bigSet(key, val) {
 /** Remove a key from the mirror, IndexedDB, and localStorage. */
 export function bigRemove(key) {
   _mem.delete(key);
+  _rescueClear(key);
   if (_useIdb) _openDB().then(db => { if (db) _idbDelete(db, key); }).catch(() => {});
   _lsRemove(key);
 }
@@ -198,7 +253,13 @@ export function bigRemove(key) {
  *  every change (the mirror/IDB are already near-current). Returns nothing. */
 export function bigFlush(key, val) {
   _mem.set(key, val);
-  if (_useIdb) { _openDB().then(db => { if (db) _idbSet(db, key, val); }).catch(() => {}); }
+  if (_useIdb) {
+    // v8.19: same rescue path as bigSet. The tab is being hidden, so the app
+    // is not told (no banner to show) — the copy is simply there next launch.
+    _openDB().then(db => db ? _idbSet(db, key, val) : false)
+             .then(ok => { if (!ok && _lsSet(key, val)) _rescueMark(key); })
+             .catch(() => { if (_lsSet(key, val)) _rescueMark(key); });
+  }
   else { _lsSet(key, val); }
 }
 
@@ -206,7 +267,9 @@ export function idbAvailable() { return _useIdb; }
 /** v8.14: true when hydrate could not READ this key (not merely absent). */
 export function readFailed(key) { return _readFailed.has(key); }
 export function isHydrated() { return _hydrated; }
-/** Subscribe to "an IndexedDB write failed and we fell back to localStorage". */
+/** Subscribe to "an IndexedDB write failed and we fell back to localStorage".
+ *  The listener gets one argument: true when the fallback copy was saved,
+ *  false when that failed too. */
 export function onPersistFail(fn) { _failListeners.add(fn); return () => _failListeners.delete(fn); }
 
 // ── PHASE 2 (collection) — IMPLEMENTED in v6.96 ──────────────────────

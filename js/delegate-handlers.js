@@ -228,6 +228,7 @@ registerAll({
   'share-figure':    (e, el, d) => window.shareFigure?.(d.figId),   // v8.02: detail screen share button
   'check-sold-price': (e, el, d) => window.checkSoldPrice?.(d.figId),  // v8.11: figure screen eBay line
   'retry-market-line': (e, el, d) => window.retryMarketLine?.(d.figId), // v8.13: after a failed lookup
+  'open-ebay-sales': (e, el, d) => window.openEbaySales?.(d.figId),     // v8.18: the sales behind the Sold price
   'ctx-select':      (e, el, d) => { window.dismissContextMenu?.(); window.enterSelectModeWith?.(d.figId); },
 });
 

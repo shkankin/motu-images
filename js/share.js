@@ -394,7 +394,7 @@ function renderShareSheet() {
       </button>`;
     })()}
     <div style="background:var(--bg3);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-      <div style="flex:1;font-size:12px;color:var(--t3);line-height:1.4">Share link ready — scan the code above, or copy it.</div>
+      <div style="flex:1;font-size:12px;color:var(--t3);line-height:1.4">${qrSvg.startsWith('<svg') ? 'Share link ready — scan the code above, or copy it.' : 'Share link ready — copy it to send.'}</div>
       <button data-action="copy-share-url" style="flex-shrink:0;padding:8px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--bg2);color:var(--acc);font-size:12px;font-weight:600">Copy</button>
     </div>
     ${canShare ? `<button data-action="native-share" class="btn btn-block btn-primary" style="margin-bottom:10px">

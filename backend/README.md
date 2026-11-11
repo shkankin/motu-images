@@ -66,6 +66,8 @@ add the secret `APIFY_TOKEN` (your Apify API token) and set
    wrangler secret put EBAY_APP_ID
    wrangler secret put EBAY_CERT_ID
    wrangler secret put ADMIN_TOKEN     # any long random string; guards /admin
+   wrangler secret put APP_KEY         # recommended: any long random string; see "App key" below
+   wrangler secret put EBAY_AUTH_TOKEN # optional: Trading API token for watched sales
    ```
 5. **Set vars** in `wrangler.toml`: `ALLOWED_ORIGINS` — your app's origin(s),
    comma-separated (CORS allow-list; requests from anywhere else are
@@ -79,12 +81,32 @@ add the secret `APIFY_TOKEN` (your Apify API token) and set
 
 ## Good to know
 
+- **App key (recommended).** Without it, anyone who learns your worker's
+  address can start a paid sold lookup, force live eBay calls or add figures
+  to the watch list. Add the secret `APP_KEY` (any long random string), then
+  enter the same value in the app under Menu → Pricing Backend → API key.
+  Sold lookups, refreshes and watch-list adds then need that key; ordinary
+  cached lookups do not. Open `<your worker>/health` — `"appKey": true`
+  means the check is on. Leave `APP_KEY` unset and nothing changes.
+
 - **Caching:** positive results cache in KV for 24h; the app caches
   on-device for 24h (usable for 7 days). Negative results are never
   cached, so a figure with no listings retries naturally.
 - **Rate limiting:** cache-*bypass* lookups (`?fresh=1` / bulk `fresh`)
   are limited to 10/minute per IP. Normal cached reads are unlimited —
   they're cheap KV hits.
+- **Watched sales (sold history):** every figure the app looks up is
+  watched. An hourly Cron Trigger (`17 * * * *`) searches eBay for its
+  auctions and Buy It Now listings, and once a listing ends it asks the
+  Trading API (`GetItem`, which still reads ended listings) whether it sold
+  and for how much, shipping included. Needs one more secret,
+  `EBAY_AUTH_TOKEN` — an Auth'n'Auth user token from developer.ebay.com
+  (User Tokens page). Without it listings are watched but no sales are
+  recorded. `/health` shows the last run. Free-plan safe: 4 searches and
+  15 GetItem calls per run.
+- **Asking vs sold:** every answer carries `asking` (current Buy It Now)
+  and `sold` (watched sales plus any Apify sold lookups, duplicates
+  dropped, last 90 days) side by side — they are never averaged together.
 - **Community prices:** `POST /admin/community/<figId>` with your
   `ADMIN_TOKEN` writes an authoritative price and busts that figure's
   cache. Useful for figures eBay searches match poorly.
