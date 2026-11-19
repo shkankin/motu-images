@@ -506,6 +506,8 @@ window.nativeShare = () => {
 // figures are loaded. Action runs once then the URL is cleaned so a refresh
 // doesn't re-trigger.
 const SHORTCUT_ACTIONS = {
+  // v8.20: Android share sheet → sw.js → here (see data.js importSharedPack)
+  'import-shared': () => window.importSharedPack?.(),
   'share-wantlist': () => openSheet('share'),
   'stats':          () => openSheet('stats'),
   'sync':           () => fetchFigs(true),

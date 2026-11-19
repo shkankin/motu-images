@@ -3,6 +3,14 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.20 changelog:
+//   • CACHE bumped to v8.20.
+//   • Packs ⇄ Discord. (1) manifest share_target + the POST branch below: on Android, sharing a
+//     pack file (.json, bundle .zip, or the .txt the app now shares) to MOTU Collector parks it
+//     in the 'motu-share-inbox' cache and reopens the app at ?action=import-shared, which runs
+//     the normal pack import. (2) Pack → Share sends a photo-less pack to the share sheet as
+//     plain text (Chrome refuses .json/.zip in navigator.share); with photos, or if the device
+//     refuses, the bundle downloads as before. The inbox cache is kept across version bumps.
 // v8.19 changelog:
 //   • CACHE bumped to v8.19. CUMULATIVE with v8.18 (not deployed when this was built — deploy
 //     this zip alone). Fixes from the v8.17 audit; pricing worker v6.111 ships in the same zip.
@@ -2319,7 +2327,8 @@
 //     UPDATE_AVAILABLE postMessage. Fixing it is what lets deployed
 //     updates actually propagate to users.
 
-const CACHE = 'motu-vault-v8.19';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const SHARE_INBOX = 'motu-share-inbox';
+const CACHE = 'motu-vault-v8.20';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every
@@ -2500,7 +2509,7 @@ self.addEventListener('activate', e => {
     // v6.84: keep BOTH the current shell cache and the unversioned image
     // cache. Only stale versioned shell caches are evicted now, so figure
     // images persist across app updates instead of being wiped each bump.
-    await Promise.all(keys.filter(k => k !== CACHE && k !== IMG_CACHE).map(k => caches.delete(k)));
+    await Promise.all(keys.filter(k => k !== CACHE && k !== IMG_CACHE && k !== SHARE_INBOX).map(k => caches.delete(k)));
     await self.clients.claim();
     // v7.94 (audit BUG-05): tell open windows a new version is live. The app
     // has listened for this and had a banner since long before, but nothing
@@ -2514,6 +2523,23 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+
+  // v8.20: Web Share Target — a pack file shared to the app from the Android
+  // share sheet. Park it for the page and bounce to the import action.
+  if (e.request.method === 'POST' && url.origin === self.location.origin && url.searchParams.get('share-target') === 'pack') {
+    e.respondWith((async () => {
+      try {
+        const fd = await e.request.formData();
+        const f = fd.get('pack');
+        if (f && typeof f !== 'string' && f.size > 0 && f.size <= 60 * 1024 * 1024) {
+          const c = await caches.open(SHARE_INBOX);
+          await c.put('/__shared-pack', new Response(f, { headers: { 'content-type': f.type || 'application/octet-stream' } }));
+        }
+      } catch {}
+      return Response.redirect('motu-vault.html?action=import-shared', 303);
+    })());
+    return;
+  }
 
   // v6.28: pricing backend (configurable per-user). Pass through untouched
   // — pricing.js has its own application-level cache with stale-while-

@@ -258,9 +258,13 @@ async function handlePackFile(el) {
   const file = el && el.files && el.files[0];
   if (el) el.value = '';   // allow re-selecting the same file
   if (!file) return;
-  // v7.82: bundles (zip: pack.json + photos) come through the same
-  // picker. Detect by magic bytes, not extension — mobile share sheets
-  // rename files freely.
+  await importPackFromFile(file);
+}
+
+// v8.20: one content-sniffing import for every way a pack file arrives
+// (file picker, Android share sheet). Detected by content, never by
+// extension — a pack shared through the share sheet arrives as .txt.
+async function importPackFromFile(file) {
   const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
   if (head[0] === 0x50 && head[1] === 0x4b) {   // 'PK'
     await importPackBundle(await file.arrayBuffer());
@@ -272,8 +276,38 @@ async function handlePackFile(el) {
   await importPackObject(raw);
 }
 
-// v7.82: Share now exports the full BUNDLE (zip of pack.json + photos).
-// The json-only path lives on inside the bundle; anyone can unzip it.
+// v8.20: Android "Share → MOTU Collector". sw.js parks the shared file in
+// the SHARE_INBOX cache and redirects here with ?action=import-shared.
+const SHARE_INBOX = 'motu-share-inbox';
+const SHARE_INBOX_KEY = '/__shared-pack';
+async function importSharedPack() {
+  let blob = null;
+  try {
+    const c = await caches.open(SHARE_INBOX);
+    const res = await c.match(SHARE_INBOX_KEY);
+    if (res) { blob = await res.blob(); await c.delete(SHARE_INBOX_KEY); }
+  } catch {}
+  if (!blob || !blob.size) { toast('No shared pack file was received'); return; }
+  await importPackFromFile(blob);
+}
+
+// v8.20: send a photo-less pack straight to the share sheet (Discord).
+// Chrome only lets a few file types through navigator.share — .json and
+// .zip are refused (the v7.38 backup-share failure) — so the pack goes as
+// plain text; import reads it by content. Returns true when the share
+// sheet took it (or the user closed it), false to fall back to download.
+async function _sharePackFile(baked) {
+  try {
+    const file = new File([JSON.stringify(baked, null, 2)],
+      `motu-pack-${baked.packId}-v${baked.version}.json.txt`, { type: 'text/plain' });
+    if (!navigator.canShare || !navigator.canShare({ files: [file] })) return false;
+    await navigator.share({ files: [file], title: `${baked.name} — MOTU Collector pack` });
+    return true;
+  } catch (e) {
+    return e && e.name === 'AbortError';
+  }
+}
+
 function exportPack(packId) { return exportPackBundle(packId); }
 
 async function removePack(packId) {
@@ -411,6 +445,9 @@ async function exportPackBundle(packId) {
   if (Object.keys(labels).length || Object.keys(defaults).length) {
     entries.push({ name: 'photos.json', blob: new Blob([JSON.stringify({ labels, defaults })], { type: 'application/json' }) });
   }
+  // v8.20: no photos → offer the share sheet first (Discord); otherwise,
+  // or if the device refuses, the bundle downloads as before.
+  if (entries.length === 1 && await _sharePackFile(baked)) return;
   const zip = await buildZip(entries);
   _downloadBlobSafe(zip, `motu-pack-${baked.packId}-v${baked.version}-bundle.zip`);
   const nPhotos = entries.length - 1 - (entries.some(e => e.name === 'photos.json') ? 1 : 0);
@@ -551,6 +588,7 @@ function openPackEdit(packId) {
 }
 
 window.handlePackFile = handlePackFile;
+window.importSharedPack = importSharedPack;
 window.exportPack = exportPack;
 window.removePack = removePack;
 window.openPackEdit = openPackEdit;

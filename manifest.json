@@ -84,5 +84,25 @@
       ]
     }
   ],
-  "id": "https://motucollector.app/motu-vault.html"
+  "id": "https://motucollector.app/motu-vault.html",
+  "share_target": {
+    "action": "https://motucollector.app/motu-vault.html?share-target=pack",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "pack",
+          "accept": [
+            "application/json",
+            ".json",
+            "application/zip",
+            ".zip",
+            "text/plain",
+            ".txt"
+          ]
+        }
+      ]
+    }
+  }
 }

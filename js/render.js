@@ -658,7 +658,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.19</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.20</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1152,9 +1152,10 @@ function renderLinesGrid() {
       <div style="flex:1;min-width:0">
         <div class="font-display" style="font-size:14px;color:var(--t1)">Import a pack</div>
         <div class="text-sm text-dim" style="margin-top:2px">${packIds.length ? 'Add another community line from a pack file or bundle' : 'Add community lines from a pack .json or bundle .zip (shared on Discord)'}</div>
+        <div class="text-sm text-dim" style="margin-top:4px">From Discord: download the pack, then tap Import — or Share the file to MOTU Collector.</div>
       </div>
       <button class="reorder-hide-btn" data-action="pack-import" aria-label="Import a line pack file">Import</button>
-      <input type="file" id="packFileInput" accept="application/json,.json,application/zip,.zip" style="display:none" data-change-action="handle-pack-file">
+      <input type="file" id="packFileInput" accept="application/json,.json,application/zip,.zip,text/plain,.txt" style="display:none" data-change-action="handle-pack-file">
     </div>`;
     html += '</div>';
   } else {
