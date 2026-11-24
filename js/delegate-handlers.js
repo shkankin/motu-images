@@ -379,6 +379,7 @@ registerAll({
 
   // Figure list controls
   'enter-select': () => window.enterSelectMode?.(),
+  'print-checklist': () => window.printChecklist?.(),
   'exit-select':  () => window.exitSelectMode?.(),
   'set-view': (e, el, d) => window.setViewMode?.(d.view),
 

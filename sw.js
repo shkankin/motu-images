@@ -3,6 +3,14 @@
 // figures.json: network-first
 // Images: cache-first + time-bucketed background revalidation (v6.98)
 //
+// v8.21 changelog:
+//   • CACHE bumped to v8.21.
+//   • Origins ↔ vintage links: an Origins figure's screen shows its "Vintage original"; a vintage
+//     figure's screen shows its "Origins versions". Matched by name at runtime (data.js
+//     vintageOriginalOf / originsVersionsOf) with a small override table for names that differ.
+//   • Printable checklist: a Print button on any line's figure list prints what the list shows
+//     (subline, filters, sort), grouped by subline for "All Figures", owned boxes ticked.
+//     Uses the browser print dialog (Save as PDF); print CSS hides the rest of the app.
 // v8.20 changelog:
 //   • CACHE bumped to v8.20.
 //   • Packs ⇄ Discord. (1) manifest share_target + the POST branch below: on Android, sharing a
@@ -2328,7 +2336,7 @@
 //     updates actually propagate to users.
 
 const SHARE_INBOX = 'motu-share-inbox';
-const CACHE = 'motu-vault-v8.20';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
+const CACHE = 'motu-vault-v8.21';   // cache PREFIX stays motu-vault (internal identifier; see v7.26 note)
 // v6.84: figure images + sounds live in their OWN cache, deliberately NOT
 // version-stamped. Previously they shared the versioned shell CACHE, so the
 // activate-handler cleanup (which deletes every cache != CACHE) wiped every

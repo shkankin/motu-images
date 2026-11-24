@@ -3575,7 +3575,80 @@ window.updateSale = updateSale;
 window.insertSale = insertSale;
 
 // ── Exports ─────────────────────────────────────────────────
+
+// ── v8.21: Origins ↔ vintage links ─────────────────────────────────────
+// Each Origins figure links to the 1980s figure it is based on, and each
+// vintage figure lists its Origins versions. Matched by name at runtime —
+// no catalog field, so new Origins releases link themselves. Name rules:
+// "(…)" suffixes dropped, "He-Man - Battle Armor" read as "Battle Armor
+// He-Man", the word "Playset" ignored, punctuation and spaces ignored.
+// Ties prefer the original carded figure (Action Figures / She-Ra), then a
+// name without a "(…)" suffix, then the earliest year — so He-Man links to
+// the 1982 figure, not the Commemorative reissue or the Wonder Bread mail-in.
+// WWE figures are skipped (wrestlers, not vintage characters).
+// VINTAGE_LINK_OVERRIDES fixes names that differ (Origins id → vintage id,
+// or null to suppress a wrong match).
+const VINTAGE_LINK_OVERRIDES = {
+  'camo-khan-deluxe-5540': 'manual-camo-kahn-mp0e6owj',
+  'flying-fist-he-man-deluxe-3342': 'flying-fists-he-man-3778',
+  'hordak-buzz-saw-deluxe-2421': 'buzz-saw-hordak-3979',
+  'terror-claw-skeletor-deluxe-3343': 'terror-claws-skeletor-3783',
+  'talon-fighter-point-dread-6223': 'point-dread-and-talon-fighter-2844',
+  'skeletor-screeech-6219': 'skeletor-and-screeech-2847',
+  'two-bad-multipack-cartoon-collection-8698': 'two-bad-3755',
+};
+const _VINTAGE_FIRST_GROUPS = ['Action Figures', 'She-Ra / Princess of Power', 'Vehicles & Playsets', 'Vehicles and Playsets'];
+function _vintageKey(name) {
+  let n = String(name || '').toLowerCase().replace(/[‘’]/g, "'");
+  n = n.replace(/\([^)]*\)/g, '');
+  const dash = n.match(/^(.*?)\s+-\s+(.*)$/);
+  if (dash) n = dash[2] + ' ' + dash[1];
+  n = n.replace(/\bplayset\b/g, '');
+  return n.replace(/[^a-z0-9]/g, '');
+}
+let _vlCache = { figs: null, n: -1, toVintage: null, toOrigins: null };
+function _vintageIndex() {
+  if (_vlCache.figs === S.figs && _vlCache.n === S.figs.length) return _vlCache;
+  const vintage = S.figs.filter(f => f.line === 'original');
+  const rank = f => [
+    _VINTAGE_FIRST_GROUPS.includes(f.group) ? 0 : (/commemorative/i.test(f.group || '') ? 2 : 1),
+    /\(/.test(f.name || '') ? 1 : 0,
+    Number(f.year) || 9999,
+  ];
+  const cmp = (a, b) => { const ra = rank(a), rb = rank(b); for (let i = 0; i < 3; i++) if (ra[i] !== rb[i]) return ra[i] - rb[i]; return 0; };
+  const byKey = new Map();
+  for (const v of vintage) {
+    const k = _vintageKey(v.name);
+    if (!k) continue;
+    const cur = byKey.get(k);
+    if (!cur || cmp(v, cur) < 0) byKey.set(k, v);
+  }
+  const toVintage = new Map(), toOrigins = new Map();
+  for (const f of S.figs) {
+    if (f.line !== 'origins' || f.group === 'WWE') continue;
+    let v = null;
+    if (Object.prototype.hasOwnProperty.call(VINTAGE_LINK_OVERRIDES, f.id)) {
+      const vid = VINTAGE_LINK_OVERRIDES[f.id];
+      v = vid ? figById(vid) : null;
+    } else {
+      v = byKey.get(_vintageKey(f.name)) || null;
+    }
+    if (!v || v.line !== 'original') continue;
+    toVintage.set(f.id, v);
+    if (!toOrigins.has(v.id)) toOrigins.set(v.id, []);
+    toOrigins.get(v.id).push(f);
+  }
+  for (const list of toOrigins.values()) list.sort((a, b) => (Number(a.year) || 9999) - (Number(b.year) || 9999) || String(a.name).localeCompare(String(b.name)));
+  _vlCache = { figs: S.figs, n: S.figs.length, toVintage, toOrigins };
+  return _vlCache;
+}
+// The vintage figure an Origins figure is based on, or null.
+function vintageOriginalOf(f) { return f ? (_vintageIndex().toVintage.get(f.id) || null) : null; }
+// The Origins figures based on a vintage figure (oldest first), or [].
+function originsVersionsOf(f) { return f ? (_vintageIndex().toOrigins.get(f.id) || []) : []; }
+
 export {
+  vintageOriginalOf, originsVersionsOf,
   VENDOR_PRESETS, getVendorOf, getAllVendors, autofillCopyAccessories,
   parseCSV, parseCSVRows, fetchFigs, saveColl, flushSaveColl, flushAllPending, rebuildFigIndex, figById, figVariants, OVERRIDES_KEY, loadOverrides, saveOverrides, applyOverrides, getOverrideField, getOverridesFor, setOverrideField, clearOverrides, isMigrated, migrateEntry, migrateColl, getPrimaryCopy, copyCondition, copyPaid, copyNotes, copyVariant, entryCopyCount, toggleHidden, isLineFullyHidden, isSublineHidden, getOrderedSublines, figIsHidden, migrateOrderedToOwned, orderDue, setStatus, nextCopyId, getAllLocations, renderSheetBody, renderAccessoryPickerSheet, findOrphanedEntries, cleanOrphanedEntries, ACC_AVAIL_KEY, getAccAvail, saveAccAvail, getLoadout, getCopyCompleteness, flushFieldDebounces, _derived, getStats, getSortedFigs, getLineStats, hasFilters, progressRing, exportCSV, crc32, buildZip, exportJSON, exportGaps, getCompletenessStats, getGapFigures, importJSON, applyImportedBackup, applyImportedSettings, SETTINGS_KEYS, renderExportSheet, doImport, LINE_ID_MAP, buildFigIndexes, doImportVault, doImportAF411, loadPersistedNewFigIds, NEW_FIG_IDS_KEY, getEvents, groupEventsByMonth, EVENTS_KEY, getBackupMeta, markBackupDone, backupDue, getSoldLog, recordSale, deleteSale, updateSale, insertSale, getWishlistHistory, recordWishlistView, clearWishlistHistory, deleteWishlistHistoryEntry, WISHLIST_HISTORY_KEY, mergeCustomSublines, getPacks, sanitizePack, applyPacks, importPackObject, exportPack, removePack, parseZip, exportPackBundle, importPackBundle, updatePackMeta, packAddSubline, packRemoveSubline, packAddFigure, packRemoveFigure, PACK_BAKE_FIELDS
 };

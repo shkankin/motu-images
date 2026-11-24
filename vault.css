@@ -4045,3 +4045,44 @@ select.ghost-input.vendor-select {
 .market-line .mk-val { white-space: nowrap; }
 .market-line .mk-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .market-line .mk-foot .mk-cap { flex: 1; min-width: 0; }
+
+/* v8.21: Origins ↔ vintage link strip (render.js renderDetail) */
+.related-title {
+  font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--t2); margin: 2px 0 8px;
+}
+.variant-chip-sub {
+  font-size: 10px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* v8.21: printable checklist (render.js printChecklist). Hidden on screen;
+   while printing, everything but the checklist is hidden. Plain black on
+   white whatever the theme. */
+#printArea { display: none; }
+@media print {
+  html.printing-checklist, html.printing-checklist body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  html.printing-checklist body > *:not(#printArea) { display: none !important; }
+  html.printing-checklist #printArea {
+    display: block; color: #000; background: #fff;
+    font: 11pt/1.3 Arial, Helvetica, sans-serif;
+  }
+  @page { margin: 12mm; }
+  #printArea .pc-head { border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 10px; }
+  #printArea .pc-title { font-size: 16pt; font-weight: 700; }
+  #printArea .pc-sub { font-size: 9.5pt; color: #333; margin-top: 2px; }
+  #printArea h2 { font-size: 12pt; margin: 12px 0 4px; break-after: avoid; page-break-after: avoid; }
+  #printArea h2 span { font-weight: 400; color: #444; }
+  #printArea .pc-list { columns: 2; column-gap: 10mm; }
+  #printArea .pc-row {
+    display: flex; align-items: baseline; gap: 6px; padding: 2px 0;
+    border-bottom: 1px solid #ccc; break-inside: avoid; page-break-inside: avoid;
+  }
+  #printArea .pc-box {
+    flex: 0 0 auto; width: 11px; height: 11px; border: 1.5px solid #000;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9pt; line-height: 1; position: relative; top: 1px;
+  }
+  #printArea .pc-name { flex: 1; min-width: 0; }
+  #printArea .pc-name em { font-style: normal; font-size: 8.5pt; color: #444; border: 1px solid #888; border-radius: 3px; padding: 0 3px; margin-left: 3px; }
+  #printArea .pc-meta { flex: 0 0 auto; font-size: 9pt; color: #333; }
+}

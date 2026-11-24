@@ -48,7 +48,7 @@ import {
   buildFigIndexes, LINE_ID_MAP, SETTINGS_KEYS,
   isMigrated, saveColl, fetchFigs,
   getSoldLog, backupDue, orderDue,
-  getPacks,
+  getPacks, vintageOriginalOf, originsVersionsOf,
 } from './data.js';
 import {
   playSound, preloadSound, getThemeIcon, getThemeSounds,
@@ -658,7 +658,7 @@ function renderMain() {
         <img src="${themeIcon}" alt="" class="logo-icon" data-action="home-icon" style="cursor:pointer">
         <div>
           <div class="logo-title font-display text-gold" data-action="${titleClick}" style="cursor:pointer;user-select:none">${themeTitles[S.titleIdx % themeTitles.length]}</div>
-          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.20</span></div>
+          <div class="logo-subtitle text-dim text-upper">${stats.total} Figures · ${stats.owned} Owned · <span class="text-gold" style="text-transform:none">v8.21</span></div>
         </div>
       </div>
       <div class="header-actions">
@@ -1609,6 +1609,7 @@ function renderFigList() {
   const gridActive = isGrid ? 'active' : '';
   html += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-left:4px;gap:8px">
     <div class="fig-count" style="margin-bottom:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${figs.length} figure${figs.length!==1?'s':''}${S.search?' across all lines':hf?' (filtered)':''}${spentInfo}</div>
+    ${S.activeLine && !S.search && !S.selectMode && figs.length ? `<button class="select-btn" data-action="print-checklist" title="Print a checklist of this list" aria-label="Print a checklist of this list">${icon(ICO.export,13)} Print</button>` : ''}
     <button class="select-btn${S.selectMode ? ' active' : ''}" data-action="${S.selectMode ? 'exit-select' : 'enter-select'}" title="Select mode">
       ${S.selectMode ? 'Done' : 'Select'}
     </button>
@@ -2237,6 +2238,34 @@ function renderDetail() {
         </div></div>
       </div>`;
     })()}
+    ${(() => {
+      // v8.21: Origins ↔ vintage links (data.js vintageOriginalOf). Same
+      // chip strip as the variant family above; tapping opens the figure.
+      const orig = vintageOriginalOf(f);
+      const versions = orig ? [] : originsVersionsOf(f);
+      const members = orig ? [orig] : versions;
+      if (!members.length) return '';
+      const title = orig ? 'Vintage original' : `Origins version${versions.length === 1 ? '' : 's'} (${versions.length})`;
+      const short = n => String(n || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim() || n;
+      const sub = m => {
+        const par = (String(m.name || '').match(/\(([^)]*)\)/) || [])[1];
+        return [par || (orig ? '' : (m.group !== 'Action Figures' ? m.group : '')), m.year].filter(Boolean).join(' · ');
+      };
+      const chip = (m) => {
+        const mImg = (S.customPhotos[m.id] && photoStore.get(m.id)) || (!S.imgErrors[m.image] && m.image) || '';
+        const owned = S.coll[m.id]?.status === 'owned';
+        const sl = sub(m);
+        return `<div class="variant-chip related-chip" data-action="open-fig" data-fig-id="${esc(m.id)}" role="button" tabindex="0" aria-label="Open ${esc(m.name)}${sl ? ', ' + esc(sl) : ''}${owned ? ', owned' : ''}">
+          <div class="variant-chip-thumb">${mImg ? `<img src="${esc(mImg)}" alt="" loading="lazy">` : `<span>${esc((m.name || '?')[0])}</span>`}${owned ? '<div class="variant-chip-dot"></div>' : ''}</div>
+          <div class="variant-chip-label">${esc(short(m.name))}</div>
+          ${sl ? `<div class="variant-chip-sub">${esc(sl)}</div>` : ''}
+        </div>`;
+      };
+      return `<div class="variant-section related-section">
+        <div class="related-title">${title}</div>
+        <div class="variant-strip">${members.map(chip).join('')}</div>
+      </div>`;
+    })()}
     <div id="detailStatusBlock">${renderDetailStatusBlock(f, c)}</div>
     <datalist id="locationSuggestions">
       ${getAllLocations().map(l => `<option value="${esc(l)}"></option>`).join('')}
@@ -2346,6 +2375,61 @@ function renderPhotoViewer() {
 // v6.31: window mirrors so delegated handlers can call them without
 // import cycles. (checkShareLink moved to share.js in v6.81.)
 window.appConfirm = appConfirm;
+
+// § PRINT-CHECKLIST ── v8.21: printable checklist of the current list ──
+// Prints exactly what the list shows (line, subline, filters, sort), so
+// "Missing" + Print makes a shopping list. "All Figures" on a line with
+// sublines is grouped by subline in the app's order. Works through the
+// browser's print dialog (Save as PDF on Android): the checklist is added
+// as #printArea and print CSS hides everything else (vault.css), so no
+// popup, blob page or download is needed, and it works in the installed app.
+function printChecklist() {
+  const figs = getSortedFigs();
+  if (!S.activeLine || !figs.length) return;
+  const lineName = ln(S.activeLine);
+  const subs = getOrderedSublines(S.activeLine).filter(sl => !isSublineHidden(S.activeLine, sl.key));
+  const subLabel = S.activeSubline && S.activeSubline !== '__all__'
+    ? (subs.find(s => s.key === S.activeSubline)?.label || '') : (subs.length ? 'All Figures' : '');
+  const groups = [];
+  if ((!S.activeSubline || S.activeSubline === '__all__') && subs.length > 1) {
+    const used = new Set();
+    for (const sl of subs) {
+      const g = figs.filter(f => !used.has(f.id) && sl.groups.includes(f.group));
+      g.forEach(f => used.add(f.id));
+      if (g.length) groups.push({ label: sl.label, figs: g });
+    }
+    const rest = figs.filter(f => !used.has(f.id));
+    if (rest.length) groups.push({ label: 'Other', figs: rest });
+  } else {
+    groups.push({ label: '', figs });
+  }
+  const STATUS = { owned: '', ordered: 'Ordered', wishlist: 'Want', 'for-sale': 'For sale' };
+  const owned = figs.filter(f => S.coll[f.id]?.status === 'owned' || S.coll[f.id]?.status === 'for-sale').length;
+  const row = f => {
+    const st = S.coll[f.id]?.status || '';
+    const have = st === 'owned' || st === 'for-sale';
+    const meta = [f.wave ? 'W' + f.wave : '', f.year || ''].filter(Boolean).join(' · ');
+    return `<div class="pc-row${have ? ' pc-have' : ''}"><span class="pc-box" aria-hidden="true">${have ? '✓' : ''}</span><span class="pc-name">${esc(f.name)}${STATUS[st] ? ` <em>${STATUS[st]}</em>` : ''}</span><span class="pc-meta">${esc(String(meta))}</span></div>`;
+  };
+  const filtered = hasFilters() ? ' · filtered' : '';
+  const today = new Date().toLocaleDateString();
+  const html = `<div class="pc-head">
+      <div class="pc-title">${esc(lineName)}${subLabel ? ' — ' + esc(subLabel) : ''}</div>
+      <div class="pc-sub">${owned} of ${figs.length} owned${filtered} · ${esc(today)} · MOTU Collector</div>
+    </div>
+    ${groups.map(g => `<section class="pc-group">${g.label ? `<h2>${esc(g.label)} <span>(${g.figs.length})</span></h2>` : ''}<div class="pc-list">${g.figs.map(row).join('')}</div></section>`).join('')}`;
+  document.getElementById('printArea')?.remove();
+  const area = document.createElement('div');
+  area.id = 'printArea';
+  area.innerHTML = html;
+  document.body.appendChild(area);
+  document.documentElement.classList.add('printing-checklist');
+  const done = () => { document.documentElement.classList.remove('printing-checklist'); area.remove(); };
+  window.addEventListener('afterprint', done, { once: true });
+  try { window.print(); } catch { done(); toast('Printing is not available on this device'); }
+}
+window.printChecklist = printChecklist;
+
 window.appPromptText = appPromptText;
 window.toast = toast;
 // v6.33: tab-swipe handler in handlers.js needs renderContent so it can
